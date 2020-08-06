@@ -1,0 +1,7 @@
+<script>
+	function page_search(event) {
+		event = event || window.event;
+		if ((event.keyCode || event.which) == 13)
+			window.location = '/{{pwic.project|urlencode}}/special/search?q=' + encodeURI(document.getElementById('page_search').value);
+	}
+</script>

@@ -1,0 +1,12 @@
+<footer>
+	Powered by Pwic &copy; 2020 &mdash; {{pwic.emojis.sos}} <a href="/special/help">Help</a> &mdash;
+	{% if pwic.user %}
+		{{pwic.emojis.laptop}} <a href="/special/user/{{pwic.user|urlencode}}" title="Your profile">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure that you want to disconnect from Pwic ?')">Log out</a></strong>)
+	{% else %}
+		<a href="/api/logon">Log on</a>
+	{% endif %}
+</footer>
+
+<script>
+	pwic_url_status("The operation is a success.", "The operation failed.");
+</script>

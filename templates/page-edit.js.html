@@ -1,0 +1,113 @@
+<script>
+	function edit_uncheck(name) {
+		document.getElementById(name).checked = false;
+	}
+
+	function edit_decorate(tag) {
+		var	ta = document.getElementById('edit_markdown'),
+			ss = ta.selectionStart,
+			se = ta.selectionEnd;
+
+		// Replace the text by another one
+		if (ss == se)
+			return false;
+		ta.value = ta.value.substr(0, ss) + tag + ta.value.substr(ss, se-ss) + tag + ta.value.substr(se);
+		ta.selectionStart = ss + tag.length;
+		ta.selectionEnd = se + tag.length;
+		ta.focus();
+		return true;
+	}
+
+	function edit_link(text) {
+		var	ta = document.getElementById('edit_markdown'),
+			ss = ta.selectionStart,
+			se = ta.selectionEnd;
+
+		// Find the cursors
+		if (ss == se)
+			return false;
+		if (ss > se)
+			ss, se = se, ss;
+
+		// Ask for the link
+		url = prompt(text, '');
+		if ((url == '') || (url == null))
+			return false;
+		url = url.trim();
+		if (url.match(/^[a-z0-9_\-\.]+$/i))
+			url = '/{{pwic.project}}/' + url.toLowerCase();
+
+		// Replace the text by another one
+		ta.value = ta.value.substr(0, ss) + '[' + ta.value.substr(ss, se-ss) + ']('+url+')' + ta.value.substr(se);
+		ta.selectionStart = ss;
+		ta.selectionEnd = se + 4 + url.length;
+		ta.focus();
+		return true;
+	}
+
+	function edit_prepend(tag) {
+		var	ta = document.getElementById('edit_markdown'),
+			ss = ta.selectionStart,
+			se = ta.selectionEnd;
+		if (ss > se)
+			ss, se = se, ss
+
+		// Prepend the tag
+		appended = 0;
+		for (i=se ; i>=0 ; i--)
+		{
+			if ((i == 0) || (ta.value[i] == "\n"))
+			{
+				j = (i != 0 ? 1 : 0);
+				ta.value = ta.value.substr(0, i+j) + tag + ta.value.substr(i+j);
+				appended++;
+				if (i <= ss)
+					break;
+			}
+		}
+		ta.selectionStart = ss + tag.length;
+		ta.selectionEnd = se + appended * tag.length;
+		ta.focus();
+		return true;
+	}
+
+	var edit_submittable = false;
+
+	function edit_submit(errorText) {
+		edit_submittable = (document.getElementById('edit_title').value != '')
+						&& (document.getElementById('edit_comment').value != '');
+		if (edit_submittable)
+			document.getElementById('edit_form').submit();
+		else
+			alert(errorText);
+	}
+
+	window.onbeforeunload = function (e) {
+		var	msg = 'The current changes may be lost.',
+			e = e || window.event;
+		if (!edit_submittable)
+		{
+			if (e)
+				e.returnValue = msg;
+			return msg;
+		}
+	};
+
+	function edit_preview(pageTitle, buttonTitle) {
+		var	ta = document.getElementById('edit_markdown'),
+			ss = ta.selectionStart,
+			se = ta.selectionEnd,
+			xhr = new XMLHttpRequest();
+		xhr.open('POST', '/api/markdown');
+		xhr.send('content='+encodeURI(ss == se ? ta.value : ta.value.substring(ss, se)));
+		xhr.onload = function() {
+			if ((xhr.status == 200) && (xhr.responseText != ''))
+			{
+				header = '<p style="position:fixed; top:0px; right:0px; padding:15px"><input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" /></p>'
+				page = window.open('');
+				page.document.title = pageTitle;
+				page.document.body.innerHTML = header + xhr.responseText;
+			}
+		};
+	}
+</script>

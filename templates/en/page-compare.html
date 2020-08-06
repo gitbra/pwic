@@ -1,0 +1,22 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+		<h2><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">[{{pwic.page|escape}}] {{pwic.page_title|escape}}</a></h2>
+	</header>
+
+	<article>
+		<h2>Comparison of <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.old_revision|escape}}">revision {{pwic.old_revision|escape}}</a> and <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.new_revision|escape}}">revision {{pwic.new_revision|escape}}</a></h2>
+
+		<hr/>
+
+		<p>{{pwic.diff}}</p>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

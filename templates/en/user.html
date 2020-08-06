@@ -1,0 +1,94 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/">User profile</a></h1>
+	</header>
+
+	{% include 'user.js.html' %}
+
+	<article>
+		<h1>{{pwic.userpage|escape}}</h1>
+
+		<h2>Profile</h2>
+		<ul>
+			{% if pwic.projects|count > 0 %}
+				<li>Projects :
+				{% for project in pwic.projects %}
+					<a href="/{{project|urlencode}}">{{project|escape}}</a>
+				{% endfor %}
+				</li>
+			{% endif %}
+			<li>Own password : {{ 'no' if pwic.initial_password else 'yes' }}
+				{% if pwic.user == pwic.userpage %}
+					(<a href="#" onclick="return pwic_toggle('user_password_popup')">change it</a>)
+				{% endif %}
+			</li>
+		</ul>
+
+		{% if pwic.user == pwic.userpage %}
+			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
+				<div class="pwic_popup">
+					<form id="user_password_form" action="/api/user/change-password" method="post">
+						<h3>Change your password</h3>
+						{% if not pwic.ssl %}
+						<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
+						{% endif %}
+						<table>
+							<tr><td>Current password:</td>	<td><input class="pwic_fill" type="password" id="user_password_current" name="user_password_current" /></td></tr>
+							<tr><td>New password:</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" name="user_password_new1" /></td></tr>
+							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" name="user_password_new2" /></td></tr>
+						</table>
+						<p>
+							<input type="button" value="Submit" onclick="user_password_submit('The form is inconsistent.')"/>
+							<input type="button" value="Cancel" onclick="pwic_toggle('user_password_popup')"/>
+						</p>
+					</form>
+				</div>
+			</div>
+		{% endif %}
+
+		<h2>All the latest contributions</h2>
+		{% if pwic.pages|count == 0 %}
+			<p>The user has no contribution yet.</p>
+		{% else%}
+			<table>
+				<tr>
+					<th class="pwic_desktop">Project</th>
+					<th class="pwic_desktop">Page</th>
+					<th>Title</th>
+					<th>Flags</th>
+					<th>Date</th>
+					<th class="pwic_desktop">Time</th>
+				</tr>
+
+				{% for page in pwic.pages %}
+					<tr>
+						<td class="pwic_desktop">{{page.project|escape}}</td>
+						<td class="pwic_desktop">{{page.page|escape}}</td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td>
+							{% if page.draft %}
+							<span title="Draft">{{pwic.emojis.hourglass}}</span>
+							{% endif %}
+							{% if page.final %}
+							<span title="Marked as final">{{pwic.emojis.notes}}</span>
+							{% endif %}
+							{% if page.valuser != '' %}
+							<span title="Validated">{{pwic.emojis.flag}}</span>
+							{% endif %}
+						</td>
+						<td>{{page.date|escape}}</td>
+						<td class="pwic_desktop">{{page.time|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

@@ -1,0 +1,9 @@
+HEADER, .pwic_action_bar, FOOTER {
+	display: none;
+}
+
+ARTICLE {
+	border: none;
+	margin: none;
+	width: 95%;
+}

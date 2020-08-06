@@ -1,0 +1,227 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+		{% if pwic.links|count > 0 %}
+			<div class="pwic_tagbox">
+				{% for link in pwic.links %}
+					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+				{% endfor %}
+				<div class="pwic_searchbox">
+					{{pwic.emojis.search}}
+					<input type="text" id="page_search" onkeypress="page_search()" />
+				</div>
+			</div>
+		{% endif %}
+	</header>
+
+	{% include 'search.js.html' %}
+
+	<article>
+		{% include 'page-banner.html' %}
+
+		<p class="pwic_action_bar">
+			{% if pwic.protection %}
+				<span title="The page is protected">{{pwic.emojis.padlock}}</span>
+			{% endif %}
+			{% if pwic.page == 'home' %}
+				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
+			{% endif %}
+			{% if pwic.admin and pwic.special %}
+				<a href="/special/create-user">{{pwic.emojis.users}} Create user</a>
+				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
+			{% endif %}
+			{% if pwic.manager %}
+				<a href="/special/create-page">{{pwic.emojis.sheet}} Create page</a>
+			{% endif %}
+			{% if not pwic.special %}
+				{% if pwic.manager or (pwic.editor and not pwic.protection) %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
+				{% endif %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
+				{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/validate" onclick="return confirm('The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
+				{% endif %}
+			{% endif %}
+			{% if pwic.removable %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/delete" onclick="return confirm('WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
+			{% endif %}
+		</p>
+
+		{% if pwic.special %}
+			{% if pwic.recents|count > 0 %}
+				<h1>Recent updates</h1>
+				<table>
+					<tr>
+						<th>Date</th>
+						<th class="pwic_desktop">Time</th>
+						<th>Page</th>
+						<th>Comment</th>
+						<th class="pwic_desktop">Author</th>
+					</tr>
+
+					{% for recent in pwic.recents %}
+						<tr>
+							<td>{{recent.date}}</td>
+							<td class="pwic_desktop">{{recent.time}}</td>
+							<td><a href="/{{pwic.project|urlencode}}/{{recent.page|urlencode}}">{{recent.title|escape}}</a></td>
+							<td>{{recent.comment|escape}}</td>
+							<td class="pwic_desktop"><a href="/special/user/{{recent.author|urlencode}}">{{recent.author|escape}}</a></td>
+						</tr>
+					{% endfor %}
+				</table>
+			{% endif %}
+
+
+			<h1>Team members</h1>
+			<ul>
+			{% if pwic.admins|count > 0 %}
+				<li><strong>Administrators :</strong>
+					{% for admin in pwic.admins %}
+					<a href="/special/user/{{admin|urlencode}}">{{admin|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			{% if pwic.managers|count > 0 %}
+				<li><strong>Managers :</strong>
+					{% for manager in pwic.managers %}
+					<a href="/special/user/{{manager|urlencode}}">{{manager|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			{% if pwic.editors|count > 0 %}
+				<li><strong>Editors :</strong>
+					{% for editor in pwic.editors %}
+					<a href="/special/user/{{editor|urlencode}}">{{editor|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			{% if pwic.validators|count > 0 %}
+				<li><strong>Validators :</strong>
+					{% for validator in pwic.validators %}
+					<a href="/special/user/{{validator|urlencode}}">{{validator|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			{% if pwic.readers|count > 0 %}
+				<li><strong>Readers :</strong>
+					{% for reader in pwic.readers %}
+					<a href="/special/user/{{reader|urlencode}}">{{reader|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			{% if pwic.inactive_users|count > 0 %}
+				<li><strong>Inactive users :</strong>
+					{% for user in pwic.inactive_users %}
+					<a href="/special/user/{{user|urlencode}}">{{user|escape}}</a>
+					{% endfor %}
+				</li>
+			{% endif %}
+			</ul>
+
+
+			{% if pwic.pages|count > 0 %}
+				<h1>All the pages of the project</h1>
+				<table>
+					<tr>
+						<th>Page</th>
+						<th>Title</th>
+						<th class="pwic_desktop">Revision</th>
+						<th>Flags</th>
+						<th>Author</th>
+						<th class="pwic_desktop">Date</th>
+						<th class="pwic_desktop">Time</th>
+					</tr>
+				{% for page in pwic.pages %}
+					<tr>
+						<td>{{page.page|escape}}</td>
+						<td><a href="/{{pwic.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td class="pwic_desktop">{{page.revision|escape}}</td>
+						<td>
+							{% if page.draft %}
+							<span title="Draft">{{pwic.emojis.hourglass}}</span>
+							{% endif %}
+							{% if page.final %}
+							<span title="Marked as final">{{pwic.emojis.notes}}</span>
+							{% endif %}
+							{% if page.valuser != '' %}
+							<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							{% endif %}
+						</td>
+						<td><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
+						<td class="pwic_desktop">{{page.date|escape}}</td>
+						<td class="pwic_desktop">{{page.time|escape}}</td>
+					</tr>
+				{% endfor %}
+				</table>
+			{% endif %}
+
+
+			{% if pwic.audits|count > 0 %}
+				<h1 id="special_audit">Audit of the last 30 days</h1>
+				<table>
+					<tr>
+						<th>Date</th>
+						<th>Time</th>
+						<th>Author</th>
+						<th>Event</th>
+						<th class="pwic_desktop">User</th>
+						<th class="pwic_desktop">Project</th>
+						<th>Page</th>
+						<th class="pwic_desktop">Revision</th>
+					</tr>
+
+					{% for audit in pwic.audits %}
+						<tr>
+							<td>{{audit.date|escape}}</td>
+							<td>{{audit.time|escape}}</td>
+							<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
+							<td>{{audit.event|escape}}</td>
+							<td class="pwic_desktop">
+								{% if audit.user != '' %}
+									<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
+								{% endif %}
+							</td>
+							<td class="pwic_desktop">
+								{% if audit.project != '' %}
+									<a href="/{{audit.project|urlencode}}">{{audit.project|escape}}</a>
+								{% endif %}
+							</td>
+							<td>
+								{% if audit.page != '' %}
+									<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}">{{audit.page|escape}}</a>
+								{% endif %}
+							</td>
+							<td class="pwic_desktop">
+								{% if audit.revision > 0 %}
+									<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
+								{% endif %}
+							</td>
+						</tr>
+					{% endfor %}
+				</table>
+			{% endif %}
+
+		{% else %}
+
+			{% if not pwic.latest %}
+			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.</p>
+			{% endif %}
+
+			{% if pwic.valuser != '' %}
+			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
+			{% endif %}
+
+			{{pwic.html}}
+
+			<p id="page_lastmod">Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}</p>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

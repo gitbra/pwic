@@ -1,0 +1,10 @@
+<script>
+	function create_submit(errorText) {
+		var	project = document.getElementById('create_project').value,
+			page = document.getElementById('create_page').value.trim();
+		if ((project != '') && page.match(/^[a-z0-9_\-\.]+$/i) && (['admin', 'special'].indexOf(page) == -1))
+			document.getElementById('create_form').submit();
+		else
+			alert(errorText);
+	}
+</script>

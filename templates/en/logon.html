@@ -1,0 +1,21 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1>Connect to Pwic</h1>
+	</header>
+
+	<article>
+		<form action="/api/logon" method="post">
+			<p><strong>User:</strong> <input class="pwic_fill" type="text" name="logon_user" /></p>
+			<p><strong>Password:</strong> <input class="pwic_fill" type="password" name="logon_password" /></p>
+			<p><input type="submit" value="Log in" /></p>
+		</form>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

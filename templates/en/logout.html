@@ -1,0 +1,17 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/">You are disconnected</a></h1>
+	</header>
+
+	<article>
+		<p class="pwic_information">{{pwic.emojis.globe}} You successfully logged out of Pwic.</p>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

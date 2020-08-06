@@ -1,0 +1,59 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">Edit the page</a></h1>
+	</header>
+
+	{% include 'page-edit.js.html' %}
+
+	<article>
+		<h1>{{pwic.page|escape}} / {{pwic.page_title|escape}}</h1>
+
+		{% if not pwic.manager and (pwic.protection or not pwic.editor)  %}
+			<p class="pwic_error">{{pwic.emojis.padlock}} You are not authorized to edit the page.</p>
+		{% else %}
+			<form id="edit_form" action="/api/page/update" method="post">
+				<p><input id="edit_title" name="edit_title" class="pwic_fill" type="text" value="{{pwic.title|escape}}" /></p>
+
+				<div id="edit_toolbar">
+					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
+					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" :>
+					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
+					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](...)" onclick="edit_link('Type the link:')" />
+					<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
+					<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
+					<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
+					<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
+					<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
+					<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
+					<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
+					<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
+					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`')" />
+					<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```')" />
+				</div>
+				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
+
+				<p>Reason for the modification : <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
+				<p>
+					<div><input type="checkbox" id="edit_draft" name="edit_draft" {% if pwic.draft %}checked="checked"{% endif %} onclick="edit_uncheck('edit_final')" />Save as draft</div>
+					<div><input type="checkbox" id="edit_final" name="edit_final" onclick="edit_uncheck('edit_draft')" />Final version</div>
+					<div><input type="checkbox" name="edit_protection" {% if pwic.protection %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} />Protected page *</div>
+					<div><input type="checkbox" name="edit_header" {% if pwic.header %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} />Header line *</div>
+				</p>
+				<p>
+					<input type="hidden" name="edit_project" value="{{pwic.project|escape}}" />
+					<input type="hidden" name="edit_page" value="{{pwic.page|escape}}" />
+					<input type="button" value="{{pwic.emojis.save}} Save the modifications" onclick="edit_submit('Some fields cannot be blank.')" />
+					<input type="button" value="{{pwic.emojis.glasses}} Preview" onclick="edit_preview('Preview of &quot;{{pwic.page_title|escape}}&quot;', 'Close the preview')" />
+				</p>
+			</form>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

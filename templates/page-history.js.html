@@ -1,0 +1,24 @@
+<script>
+	function history_compare() {
+		var	i, e, count, rev=[],
+			elements = document.getElementsByTagName('input');
+		for (i=0 ; i<elements.length ; i++)
+		{
+			e = elements[i];
+			if ((e.type == "checkbox") && e.checked)
+			{
+				count++;
+				rev.push(e.dataset.revision);
+			}
+		}
+		if (rev.length > 2)
+			return false;
+		else
+			if (rev.length == 2)
+			{
+				rev.sort();
+				window.location = '/{{pwic.project|escape}}/{{pwic.page|escape}}/rev'+rev[1]+'/compare/rev'+rev[0];
+			}
+		return true;
+	}
+</script>

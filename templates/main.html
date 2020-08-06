@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{{pwic.title|escape}} - Pwic</title>
+	<link rel="stylesheet" type="text/css" href="/static/styles.css" />
+	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
+	<link rel="icon" type="image/png" href="/static/favicon.png" />
+	<script>
+		function pwic_toggle(id) {
+			document.getElementById(id).classList.toggle('pwic_hidden');
+			return false;
+		}
+
+		function pwic_url_status(success, failed) {
+			if (window.location.toString().indexOf('?success') !== -1)
+				alert(success);
+			else
+				if (window.location.toString().indexOf('?failed') !== -1)
+					alert(failed);
+		}
+	</script>
+</head>
+<body>
+	{% block content%}{% endblock %}
+	{% block footer%}{% endblock %}
+</body>
+</html>

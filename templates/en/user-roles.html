@@ -1,0 +1,58 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">User roles on the project "{{pwic.project|escape}}"</a></h1>
+	</header>
+
+	{% include 'user-roles.js.html' %}
+
+	<article>
+		<p class="pwic_action_bar">
+			<a href="/{{pwic.project|urlencode}}/special#special_audit">{{pwic.emojis.glasses}} Audit</a>
+			<a href="/special/create-user">{{pwic.emojis.users}} Create user</a>
+		</p>
+
+		<table class="pwic_zebra">
+			<tr>
+				<th>User</th>
+				<th>Password</th>
+				<th>Admin</th>
+				<th>Manager</th>
+				<th>Editor</th>
+				<th>Validator</th>
+				<th>Reader</th>
+				<th>Drop</th>
+			</tr>
+
+			{% set u = namespace(value=0) %}
+			{% for role in pwic.roles %}
+				<tr id="roles_tag_{{u.value+6}}">
+					<td><a href="/special/user/{{role.user|urlencode}}">{{role.user|escape}}</a></td>
+					<td>
+						{% if role.initial %}
+						<span title="The user must change its password">{{pwic.emojis.unlocked}}</span>
+						{% endif %}
+					</td>
+					<td><input id="roles_tag_{{u.value+1}}" type="checkbox" onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')" {% if role.admin %} checked="checked" {% endif %} /></td>
+					<td><input id="roles_tag_{{u.value+2}}" type="checkbox" onclick="return roles_toggle({{u.value+2}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'manager')" {% if role.manager %} checked="checked" {% endif %} /></td>
+					<td><input id="roles_tag_{{u.value+3}}" type="checkbox" onclick="return roles_toggle({{u.value+3}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'editor')" {% if role.editor %} checked="checked" {% endif %} /></td>
+					<td><input id="roles_tag_{{u.value+4}}" type="checkbox" onclick="return roles_toggle({{u.value+4}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'validator')" {% if role.validator %} checked="checked" {% endif %} /></td>
+					<td><input id="roles_tag_{{u.value+5}}" type="checkbox" onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')" {% if role.reader %} checked="checked" {% endif %} /></td>
+					<td>
+						{% if role.user != pwic.user %}
+						<input type="button" onclick="return roles_drop('Are you sure to drop the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Drop {{role.user|escape}}" />
+						{% endif %}
+					</td>
+				</tr>
+				{% set u.value = u.value + 6 %}
+			{% endfor %}
+		</table>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

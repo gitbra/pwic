@@ -1,0 +1,47 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+	</header>
+
+	{% include 'search.js.html' %}
+
+	<article>
+		<h1>{{pwic.results|count}} results</h1>
+
+		<p>Search terms: <input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" /></p>
+
+		<p>&nbsp;<p>
+
+		{% if pwic.results|count > 0 %}
+			<table>
+				<tr>
+					<th class="pwic_desktop">Page</th>
+					<th>Title</th>
+					<th class="pwic_desktop">Author</th>
+					<th>Date</th>
+					<th class="pwic_desktop">Time</th>
+					<th>Score</th>
+				</tr>
+
+				{% for result in pwic.results %}
+					<tr>
+						<td class="pwic_desktop">{{result.page|escape}}</td>
+						<td><a href="/{{result.project|urlencode}}/{{result.page|urlencode}}">{{result.title|escape}}</a></td>
+						<td class="pwic_desktop"><a href="/special/user/{{result.author|urlencode}}">{{result.author|escape}}</a></td>
+						<td>{{result.date|escape}}</td>
+						<td class="pwic_desktop">{{result.time|escape}}</td>
+						<td>{{result.score|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

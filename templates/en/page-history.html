@@ -1,0 +1,55 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+		<h2><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">History of the page</a></h2>
+	</header>
+
+	{% include 'page-history.js.html' %}
+
+	<article>
+		<h1>[{{pwic.page|escape}}] {{pwic.page_title|escape}}</h1>
+		<table>
+			<tr>
+				<th><span class="pwic_desktop">Diff</span></th>
+				<th>Rev<span class="pwic_desktop">ision</span></th>
+				<th>Flags</th>
+				<th class="pwic_desktop">Title</th>
+				<th>Author</th>
+				<th>Date</th>
+				<th class="pwic_desktop">Time</th>
+				<th>Comment</th>
+			</tr>
+
+			{% for rev in pwic.revisions %}
+				<tr>
+					<td><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()" /></td>
+					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">#{{rev.revision}}</a></td>
+					<td>
+						{% if rev.draft %}
+						<span title="Draft">{{pwic.emojis.hourglass}}</span>
+						{% endif %}
+						{% if rev.final %}
+						<span title="Marked as final">{{pwic.emojis.notes}}</span>
+						{% endif %}
+						{% if rev.valuser != '' %}
+						<span title="Validated by {{rev.valuser|escape}} on {{rev.valdate|escape}} at {{rev.valtime|escape}}">{{pwic.emojis.flag}}</span>
+						{% endif %}
+					</td>
+					<td class="pwic_desktop">{{rev.title|escape}}</td>
+					<td><a href="/special/user/{{rev.author|urlencode}}">{{rev.author|escape}}</a></td>
+					<td>{{rev.date|escape}}</td>
+					<td class="pwic_desktop">{{rev.time|escape}}</td>
+					<td>{{rev.comment|escape}}</td>
+				</tr>
+			{% endfor %}
+		</table>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

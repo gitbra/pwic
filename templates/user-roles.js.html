@@ -1,0 +1,31 @@
+<script>
+	function roles_toggle(id, project, user, role) {
+		var element = document.getElementById('roles_tag_' + id);
+		if (element != null)
+		{
+			element.classList.toggle('pwic_hidden');			// Hide until the request is completed
+
+			var xhr = new XMLHttpRequest();
+			xhr.open('POST', '/api/roles');
+			xhr.send('project='+encodeURI(project)+'&user='+encodeURI(user)+'&role='+encodeURI(role));
+			xhr.onload = function() {
+				setTimeout(function() {
+					if ((xhr.status == 200) && (element.type == 'checkbox'))
+						element.checked = (xhr.responseText == 'X');
+					if (xhr.responseText != 'OK')
+						element.classList.toggle('pwic_hidden');
+				}, 2000);
+			};
+			xhr.onerror = function() {
+				setTimeout(function() {
+					element.classList.toggle('pwic_hidden');	// Restore the visibility of the element
+				}, 2000);
+			};
+		}
+		return false;	// The element is updated async later
+	}
+
+	function roles_drop(text, id, project, user) {
+		return confirm(text) && roles_toggle(id, project, user, 'drop');
+	}
+</script>
