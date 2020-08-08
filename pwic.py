@@ -291,7 +291,7 @@ class PwicServer():
 
                 # Fetch the pages of the project
                 sql.execute('   SELECT page, title, revision, final, author,    \
-                                        date, time, valuser, valdate, valtime   \
+                                       date, time, valuser, valdate, valtime    \
                                 FROM pages                                      \
                                 WHERE project = ?                               \
                                   AND latest  = "X"                             \
@@ -400,7 +400,7 @@ class PwicServer():
                         FROM roles AS a                         \
                             INNER JOIN projects AS b            \
                                 ON b.project = a.project        \
-                        WHERE a.user = ?                        \
+                        WHERE a.user    = ?                     \
                           AND a.manager = "X"', (user, ))
         for row in sql.fetchall():
             pwic['projects'].append({'project': row[0],
@@ -427,7 +427,7 @@ class PwicServer():
                         FROM roles AS a                         \
                             INNER JOIN projects AS b            \
                                 ON b.project = a.project        \
-                        WHERE a.user = ?                        \
+                        WHERE a.user  = ?                       \
                           AND a.admin = "X"', (user, ))
         for row in sql.fetchall():
             pwic['projects'].append({'project': row[0],
@@ -644,6 +644,76 @@ class PwicServer():
             raise web.HTTPUnauthorized()        # Or project not found
         else:
             return await self._handleOutput('user-roles', pwic=pwic)
+
+    async def page_links(self, request):
+        ''' Serve the check of the links '''
+        self.request = request
+
+        # Verify that the user is connected
+        session = PwicSession(self.request)
+        user = await session.getUser()
+        if user == '':
+            return await self._handleLogon()
+
+        # Fetch the pages
+        sql = app['sql'].cursor()
+        project = self.request.match_info.get('project', '')
+        sql.execute('   SELECT b.page, b.header, b.markdown     \
+                        FROM roles AS a                         \
+                            INNER JOIN pages AS b               \
+                                ON  b.project = a.project       \
+                                AND b.latest  = "X"             \
+                        WHERE   a.project = ?                   \
+                          AND   a.user    = ?                   \
+                          AND ( a.admin   = "X"                 \
+                             OR a.manager = "X" )               \
+                        ORDER BY b.page',
+                    (project, user))
+
+        # Extract the links between the pages
+        ok = False
+        reg_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)\)', re.IGNORECASE)
+        linkmap = {'home': []}
+        for row in sql.fetchall():
+            ok = True
+            page = row[0]
+            if page not in linkmap:
+                linkmap[page] = []
+
+            # Generate a fake link at the home page for all the bookmarked pages
+            if row[1] == "X" and page not in linkmap['home']:
+                linkmap['home'].append(page)
+
+            # Find the links to the other pages
+            subpages = reg_page.findall(row[2])
+            if subpages is not None:
+                for sp in subpages:
+                    if (sp[0] == project) and (sp[1] not in linkmap[page]):
+                        linkmap[page].append(sp[1])
+        if not ok:
+            raise web.HTTPUnauthorized()
+
+        # Find the orphaned and broken links
+        allpages = [key for key in linkmap]
+        orphans = allpages.copy()
+        orphans.remove('home')
+        broken = []
+        for link in linkmap:
+            for page in linkmap[link]:
+                if page in orphans:
+                    orphans.remove(page)
+                if page not in allpages:
+                    broken.append({'source': link,
+                                   'destination': page})
+
+        # Show the values
+        sql.execute('SELECT description FROM projects WHERE project = ?', (project, ))
+        pwic = {'title': 'Report of the links',
+                'project': project,
+                'project_description': sql.fetchone()[0],
+                'orphans': orphans,
+                'broken': broken}
+        return await self._handleOutput('links', pwic=pwic)
 
     async def page_compare(self, request):
         ''' Serve the page that compare two revisions '''
@@ -1249,6 +1319,7 @@ app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                 web.get(r'/special/user/{userpage:[a-z0-9_\-\.@]+}', app['pwic'].page_user),
                 web.get(r'/{project:[a-z0-9_\-\.]+}/special/search', app['pwic'].page_search),
                 web.get(r'/{project:[a-z0-9_\-\.]+}/special/roles', app['pwic'].page_roles),
+                web.get(r'/{project:[a-z0-9_\-\.]+}/special/links', app['pwic'].page_links),
                 web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
                 web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/validate', app['pwic'].api_page_validate),
                 web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),

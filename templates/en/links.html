@@ -1,0 +1,47 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+	</header>
+
+	<article>
+		<h1>List of the orphaned pages</h1>
+		{% if pwic.orphans|count == 0 %}
+			<p>You have no orphaned page.</p>
+		{% else %}
+			<p>These pages cannot be reached by simple clicks but are still referenced by the search engine.</p>
+			<ul>
+				{% for page in pwic.orphans %}
+				<li><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+
+		<h1>List of the broken links</h1>
+		{% if pwic.broken|count == 0 %}
+			<p>You have no broken link among the project "{{pwic.project|escape}}".</p>
+		{% else %}
+			<p>A broken link displays the error 404 because the targetted page does not exist. The reader is then interrupted in his reading.</p>
+			<p>The following table does not check the links to other projects.</p>
+			<table class="pwic_fit">
+				<tr>
+					<th>Page</th>
+					<th>Non-existent page</th>
+				</tr>
+				{% for page in pwic.broken %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{page.source|urlencode}}">{{page.source|escape}}</a></td>
+						<td>{{page.destination|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

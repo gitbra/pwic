@@ -30,6 +30,7 @@
 			<tr><td><a href="#help_print">{{pwic.emojis.glasses}}</a></td><td>Print to PDF</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td>&nbsp;</td><td>View the history of a page</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_validate">{{pwic.emojis.glasses}}</a></td><td>Validate a revision</td><td></td><td></td><td></td><td>{{pwic.emojis.check}}</td><td></td></tr>
+			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_search">{{pwic.emojis.glasses}}</a></td><td>Search across the pages</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 		</table>
@@ -107,7 +108,7 @@
 
 
 		<h1 id="help_validate">Validate a revision</h1>
-		<p>Several conditions are required to validate a page :</p>
+		<p>Several conditions are required to validate a page:</p>
 			<ul>
 				<li>You have the role "validator" on the project.</li>
 				<li>You have changed your password once.</li>
@@ -115,13 +116,23 @@
 			</ul>
 
 
+		<h1 id="help_links">Verify the links</h1>
+		<p>Pwic can verify the internal links of the pages to ensure that:</p>
+			<ul>
+				<li>Each page is linked to another one at least (check for orphans).</li>
+				<li>Each page is not linking to a non-existent page (check for broken links).</li>
+			</ul>
+		<p>The checks apply within a given project. The links to other projects are neither reported as orphan, nor broken.</p>
+		<p>The feature serves as a general monitoring tool for the documentation, so it is not accessible to the editors and below.</p>
+
+
 		<h1 id="help_search">Search across the pages</h1>
-		<p>The search works with exact literals. If you are looking for the word <code>excellent</code> but the page contains the word <code>exellent</code> (without the <code>c</code>), you won't find any result. Consequenty, writing without mistake is a main objective not only for search purposes, but also for the general quality of the documentation.</p>
-		<p>The search engine doesn't build an index of words. It means that you are able to search within a word. For example, <code>document</code> will match with both <code>document</code> and <code>documents</code>, but <code>documents</code> will match with itself only. Consequently, you should avoid the plural forms to maximize the number of results. This feature is also very important to be able to search for technical keywords if the documentation contains lines of code.</p>
+		<p>The search works with exact literals. If you are looking for the word <code>excellent</code> but the page contains the word <code>exellent</code> (without the <code>c</code>), you won't find any result. Consequently, writing without mistake is a main objective not only for search purposes, but also for the general quality of the documentation.</p>
+		<p>The search engine doesn't build an index of words. It means that you are able to search within a word. For example, <code>document</code> will match with both <code>document</code> and <code>documents</code>, but <code>documents</code> will match with itself only. Consequently, you should avoid the plural forms to maximize the number of results. This feature is also very important to be able to search for partial technical keywords if the documentation contains lines of code.</p>
 		<p>You can search for individual words, but also for sentences if you use double quotes. For exemple, <code>"my documentation"</code> will not match with <code>my last documentation</code>. However, <code>my documentation</code> would match with it because there is no quote (<code>my</code> and <code>documentation</code> are processed separately).</p>
 		<p>You can exclude a term by adding a leading minus sign (<code>-</code>). For example, <code>-validated</code> will exclude all the pages containing the word <code>validated</code>. You can combine negated terms and they will act as an OR condition. It means that if one of the negated terms is part of the page, then the page is fully excluded. If case you want to search the minus sign explicitly, consider using surrounding quotes (<code>"-validated"</code>).</p>
 		<p>The terms that are not negated act as an AND condition. It means that all the terms must appear so that the page can be selected. Usually, you should not use the keyword <code>and</code> explicitly. It is not possible to make OR conditions with these terms, so do separate searches instead.</p>
-		<p>Some special search terms exist :</p>
+		<p>Some special search terms exist:</p>
 			<ul>
 				<li><code>term</code> searches in the content of the page, or for the exact page identifier. This is the default behavior.</li>
 				<li><code>author:term</code> checks the term against the author of the latest revision.</li>
@@ -130,9 +141,9 @@
 				<li><code>:not-draft</code> searches for copies not marked as draft.</li>
 				<li><code>:final</code> searches for final copies.</li>
 				<li><code>:not-final</code> searches for copies not marked as final.</li>
-				<li><code>validator:term</code> checks the term against the validator of the latest revision. If the term is empty, the check returns a match.</li>
+				<li><code>validator:term</code> checks the term against the validator of the latest revision. If the term is empty, the check returns a match, so prefer the keyword <code>:validated</code> in that case.</li>
 				<li><code>:validated</code> checks that the page is validated, whoever is the validator.</li>
-				<li><code>:not-validated</code> checks that the page is not validated, independently from the other possible statuses.</li>
+				<li><code>:not-validated</code> checks that the page is not validated.</li>
 			</ul>
 		<p>At the end, the pages are sorted by the number of occurrences of the search terms. Each term that is not negated contribute to the score as a sum. Because of that, your search terms should be at least 3 or 4 character-long.</p>
 		<p>The search is case-insensitive.</p>
