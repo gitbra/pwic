@@ -16,6 +16,7 @@ PWIC_DB = './db/pwic.sqlite'
 PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
 PWIC_USER = 'pwic-system'
 PWIC_DEFAULT_PASSWORD = 'initial'
+PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
@@ -46,7 +47,8 @@ PWIC_EMOJIS = {'chains': '&#x1F517;',
                'trash': '&#x1F5D1;',
                'unlocked': '&#x1F513;',
                'users': '&#x1F465;',
-               'validate': '&#x1F44C;'}
+               'validate': '&#x1F44C;',
+               'world': '&#x1F5FA;'}
 
 
 # ===================================================
@@ -86,7 +88,7 @@ def _dt():
 
 def _sha256(value):
     ''' Calculate the SHA256 as string for the given value '''
-    return sha256(value.encode()).hexdigest()
+    return sha256((PWIC_SALT + value).encode()).hexdigest()
 
 
 # ===================================================
@@ -104,6 +106,7 @@ def pwic_extended_syntax(markdown):
     numbering = []
     last_depth = 0
     parse_on = True
+    tmap = []
 
     # For each line
     for i in range(len(lines)):
@@ -137,9 +140,12 @@ def pwic_extended_syntax(markdown):
 
                     # Adapt the line
                     lines[i] = '%s <a class="pwic_paragraph_id" id="p%s" title="#p%s">%s</a>%s' % (line[:depth], ss[1:], ss[1:], ss[1:], line[depth:])
+                    tmap.append({'header': ss[1:],
+                                 'level': ss[1:].count('.') + 1,
+                                 'title': line[depth:]})
 
     # Final formatting
-    return '\n'.join(lines)
+    return '\n'.join(lines), tmap
 
 
 # ===================================================

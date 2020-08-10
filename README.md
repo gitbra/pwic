@@ -2,24 +2,24 @@
 
 **Pwic** is an easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has some advantages for a professional use.
 
-** Project proficiency **
+**Project proficiency**
 
 - Central repository for an online and up-to-date documentation
 - Linear and undoable versioning of the documents for a proper customer's validation
-- Lean documents with no rainbow colors or overloaded revision marks
+- Lean documents with no rainbow color or overloaded revision marks
 - Display of the differences between two versions
-- New pages and broken links supervised by the project managers
+- New pages, broken links and orphaned pages supervised by the project managers
 - Follow-up of the deliverable documents
 - Unified look and feel among all the pages
-- In-text search with inclusion and exclusion
+- In-text search with inclusion, exclusion and special keywords
 
-** Cost effectiveness **
+**Cost effectiveness**
 
 - Extra fast setup
 - Low technical requirements
 - Easy backup and recovery
 
-** Custom use **
+**Custom use**
 
 - Internationalization: English
 - Customizable UI with Jinja2 templates
@@ -43,12 +43,14 @@ Copyright (C) Alexandre Bréard, 2020
 - Install Python: `apt-get install python3`
 - Install the dependencies: `pip install cryptography aiohttp aiohttp-session jinja2 sqlite3 parsimonious PrettyTable`
 - Generate your self-signed SSL keys: `python pwic_admin.py ssl`
+- Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Initialize the SQLite database: `python pwic_admin.py init-db`
 - Create a new project: `python pwic_admin.py new-project --help`
 - Run the server: `python pwic.py --ssl`
 - Open your browser at `https://localhost:1234`
 
 If you intend to change the cascading style sheets (CSS), you need SASS:
+
 - Install Node.js: `apt-get install node`
 - Install the dependencies: `npm install -g sass`
 - Run the watcher: `sass --no-source-map --style=compressed --watch static/styles.sass static/styles.css`

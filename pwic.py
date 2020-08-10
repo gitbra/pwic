@@ -78,7 +78,8 @@ class PwicServer():
         return pwic_audit(sql, object, self.request, commit)
 
     def _md2html(self, markdown):
-        return app['markdown'].convert(pwic_extended_syntax(markdown))
+        text, tmap = pwic_extended_syntax(markdown)
+        return app['markdown'].convert(text), tmap
 
     async def _handlePost(self):
         ''' Return the POST as a readable object.get() '''
@@ -215,7 +216,7 @@ class PwicServer():
                 pwic['time'] = row[7]
                 pwic['title'] = row[8]
                 pwic['markdown'] = row[9]
-                pwic['html'] = self._md2html(row[9])
+                pwic['html'], pwic['tmap'] = self._md2html(row[9])
                 pwic['valuser'] = row[10]
                 pwic['valdate'] = row[11]
                 pwic['valtime'] = row[12]
@@ -1264,7 +1265,7 @@ class PwicServer():
 
         # Return the converted output
         post = await self._handlePost()
-        html = self._md2html(post.get('content', ''))
+        html, _ = self._md2html(post.get('content', ''))
         return web.Response(text=html, content_type='text/plain')
 
 

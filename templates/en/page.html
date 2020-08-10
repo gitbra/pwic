@@ -17,6 +17,7 @@
 		{% endif %}
 	</header>
 
+	{% include 'page.js.html' %}
 	{% include 'search.js.html' %}
 
 	<article>
@@ -215,6 +216,17 @@
 
 			{% if pwic.valuser != '' %}
 			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
+			{% endif %}
+
+			{% if pwic.tmap|count > 0 %}
+				<div id="pwic_browser_access" title="Show/Hide the map of the article" onclick="page_tmap()">
+					{{pwic.emojis.world}}
+				</div>
+				<div id="pwic_browser" class="pwic_hidden">
+					{% for tmap in pwic.tmap %}
+					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#p{{tmap.header|urlencode}}" onclick="page_tmap()">{{tmap.header|escape}} {{tmap.title|escape}}</a>
+					{% endfor %}
+				</div>
 			{% endif %}
 
 			{{pwic.html}}

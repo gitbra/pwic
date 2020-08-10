@@ -51,7 +51,7 @@ CODE
 // --------------------------------
 
 HEADER
-	background-color: lightgrey
+	background-color: #F0F0F0
 	border-bottom: 1px solid black
 	box-shadow: 0px 0px 5px gray
 
@@ -73,7 +73,7 @@ HEADER
 			line-height: 25px
 
 		A
-			border: 1px solid white
+			border: 1px solid black
 		A:hover
 			background-color: white
 
@@ -98,9 +98,11 @@ ARTICLE
 	margin: auto
 	width: 90%
 	padding: 20px
-	border-left: 1px solid lightgrey
-	border-right: 1px solid lightgrey
+	// border-left: 1px solid lightgrey
+	// border-right: 1px solid lightgrey
 	border-bottom: 1px dashed lightgrey
+
+	// -------------------------------- Standard tags
 
 	H1
 		background-color: #F4F4F4
@@ -130,12 +132,80 @@ ARTICLE
 		text-align: left
 		border-bottom: 1px solid gray
 
-	A:not(.pwic_paragraph_id)
+	A:not(.pwic_paragraph_id):not(.pwic_browser_item)
 		color: red
 		text-decoration: underline
 
 	A.pwic_paragraph_id
 		text-decoration: underline
+
+	// -------------------------------- Document browser
+
+	#pwic_browser_access
+		position: fixed
+		bottom: 50px
+		right: 75px
+		z-index: 999
+
+		width: 50px
+		height: 50px
+		line-height: 50px
+		border-radius: 25px
+		border: 2px solid green
+		background-color: rgb(149, 236, 168)
+		box-shadow: 0px 0px 0px 10px white
+
+		font-size: 26pt
+		text-align: center
+	#pwic_browser_access:hover
+		cursor: pointer
+		background-color: green
+		color: white
+
+	#pwic_browser
+		position: fixed
+		left: 10px
+		right: 10px
+		top: 10px
+		bottom: 10px
+		z-index: 998
+		overflow-x: hidden
+		overflow-y: scroll
+
+		padding: 10px
+		border: 1px solid black
+		box-shadow: 0px 0px 0px 10px white
+		background-color: #F0F0F0
+
+		A
+			display: block
+			padding: 5px
+			margin: 5px
+			font-size: 16pt
+
+		A.pwic_browser_item_h1
+			padding-left: 10px
+			border-bottom: 1px solid grey
+			font-weight: bold
+
+		A.pwic_browser_item_h2
+			padding-left: 20px
+
+		A.pwic_browser_item_h3
+			padding-left: 30px
+
+		A.pwic_browser_item_h4
+			padding-left: 40px
+
+		A.pwic_browser_item_h5
+			padding-left: 50px
+
+		A.pwic_browser_item_h6
+			padding-left: 60px
+
+		A:hover
+			background-color: lightyellow
+			font-weight: bold
 
 
 // --------------------------------
