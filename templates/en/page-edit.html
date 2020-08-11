@@ -28,10 +28,12 @@
 					<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
 					<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
 					<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
+					<input type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
 					<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
 					<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
 					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`')" />
-					<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```')" />
+					<input type="button" value="Code" title="```Code```" onclick="edit_decorate2('```\n', '\n```')" />
+					<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
 				</div>
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
 
@@ -45,7 +47,7 @@
 				<p>
 					<input type="hidden" name="edit_project" value="{{pwic.project|escape}}" />
 					<input type="hidden" name="edit_page" value="{{pwic.page|escape}}" />
-					<input type="button" value="{{pwic.emojis.save}} Save the modifications" onclick="edit_submit('Some fields cannot be blank.')" />
+					<input type="button" value="{{pwic.emojis.save}} Save the modifications" onclick="edit_submit('Some fields cannot be blank.', 'The server cannot be reached. Verify your Internet connection or the status of the server.', 'Your session is not valid anymore. Please reconnect from another tab and retry.')" />
 					<input type="button" value="{{pwic.emojis.glasses}} Preview" onclick="edit_preview('Preview of &quot;{{pwic.page_title|escape}}&quot;', 'Close the preview')" />
 				</p>
 			</form>

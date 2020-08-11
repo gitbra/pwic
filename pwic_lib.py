@@ -97,8 +97,8 @@ def _sha256(value):
 
 def pwic_extended_syntax(markdown):
     ''' Automatic numbering of the MD headers '''
-    # HTML protection
-    markdown = markdown.replace('<', '&lt;').replace('>', '&gt;')
+    # HTML secure
+    # TODO markdown = markdown.replace('<', '&lt;').replace('>', '&gt;').replace('\n&gt; ', '\n> ')
 
     # Initialisation
     reg_header = re.compile(r'^(#+)', re.IGNORECASE)

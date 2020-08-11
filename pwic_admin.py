@@ -250,9 +250,9 @@ def add_project(project, description, admin):
         return False
 
     # Add the user account if not existent. The default password is encoded in the SQLite database
-    sql.execute('   INSERT INTO users (user, password)      \
-                    SELECT ?, ?                             \
-                    WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )',
+    sql.execute(''' INSERT INTO users (user, password)
+                    SELECT ?, ?
+                    WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
                 (admin, _sha256(PWIC_DEFAULT_PASSWORD), admin))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USER,
@@ -276,8 +276,8 @@ def add_project(project, description, admin):
 
     # Add a default homepage
     page = 'home'
-    sql.execute('   INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)   \
-                    VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")',
+    sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
+                    VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")''',
                 (project, page, admin, dt['date'], dt['time']))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USER,
@@ -300,10 +300,11 @@ def reset_password(user):
     sql = db_connect()
 
     # Check if the user is administrator
-    sql.execute('   SELECT COUNT(*) AS total    \
-                    FROM roles                  \
-                    WHERE user  = ?             \
-                      AND admin = "X"', (user, ))
+    sql.execute(''' SELECT COUNT(*) AS total
+                    FROM roles
+                    WHERE user  = ?
+                      AND admin = "X"''',
+                (user, ))
     if sql.fetchone()[0] > 0:
         print("The user '%s' has administrative rights on some projects." % user)
         print("For that reason, you must provide a manual password.")
@@ -346,11 +347,11 @@ def show_log(dmin, dmax):
 
     # Select the data
     sql = db_connect()
-    sql.execute('   SELECT id, date, time, author, event, user,     \
-                           project, page, revision, count, ip       \
-                    FROM audit                                      \
-                    WHERE date >= ? AND date <= ?                   \
-                    ORDER BY id ASC',
+    sql.execute(''' SELECT id, date, time, author, event, user,
+                           project, page, revision, count, ip
+                    FROM audit
+                    WHERE date >= ? AND date <= ?
+                    ORDER BY id ASC''',
                 (dmin, dmax))
 
     # Report the log

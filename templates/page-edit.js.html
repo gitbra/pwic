@@ -4,6 +4,10 @@
 	}
 
 	function edit_decorate(tag) {
+		return edit_decorate2(tag, tag);
+	}
+
+	function edit_decorate2(tagStart, tagEnd) {
 		var	ta = document.getElementById('edit_markdown'),
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
@@ -11,9 +15,9 @@
 		// Replace the text by another one
 		if (ss == se)
 			return false;
-		ta.value = ta.value.substr(0, ss) + tag + ta.value.substr(ss, se-ss) + tag + ta.value.substr(se);
-		ta.selectionStart = ss + tag.length;
-		ta.selectionEnd = se + tag.length;
+		ta.value = ta.value.substr(0, ss) + tagStart + ta.value.substr(ss, se-ss) + tagEnd + ta.value.substr(se);
+		ta.selectionStart = ss + tagStart.length;
+		ta.selectionEnd = se + tagEnd.length;
 		ta.focus();
 		return true;
 	}
@@ -26,8 +30,10 @@
 		// Find the cursors
 		if (ss == se)
 			return false;
-		if (ss > se)
-			ss, se = se, ss;
+
+		// Check the current selection for an autolink
+		if (ta.value.substr(ss, se-ss).match('^[a-z]{3,5}:\/\/'))
+			return edit_decorate2('<', '>');
 
 		// Ask for the link
 		url = prompt(text, '');
@@ -71,15 +77,84 @@
 		return true;
 	}
 
+	function edit_table(textCol, textRow) {
+		// Get the dimensions of the table
+		var ncol = parseInt(prompt(textCol, 0));
+		if (isNaN(ncol) || (ncol < 1))
+			return false;
+		var nrow = parseInt(prompt(textRow, 0));
+		if (isNaN(nrow) || (nrow < 1))
+			return false;
+
+		// Prepare the associated markdown
+		var i, j, buffer = '';
+		for (i=0 ; i<nrow ; i++)
+		{
+			buffer += '|';
+			for (j=0 ; j<ncol ; j++)
+				buffer += '          |';
+			buffer += '\n';
+			if (i == 0)
+			{
+				buffer += '|';
+				for (j=0 ; j<ncol ; j++)
+					buffer += ' -------- |';
+				buffer += '\n';
+			}
+		}
+
+		// Apply the text
+		var	ta = document.getElementById('edit_markdown'),
+			se = ta.selectionEnd;
+		ta.value = ta.value.substring(0, se) + buffer + ta.value.substring(se);
+		return true;
+	}
+
+	function edit_footnote() {
+		var	ta = document.getElementById('edit_markdown'),
+			se = ta.selectionEnd;
+
+		// Search for the highest current footnote
+		var	id = 0,
+			list = [...ta.value.matchAll(/\[\^([0-9]+)\]/g)];
+		list.forEach(function(match){
+			var value = parseInt(match[1]);
+			if (value > id)
+				id = value;
+		});
+
+		// Apply the footnote
+		ta.value = ta.value.substring(0, se) + ' [^'+(id+1)+']' + ta.value.substring(se) + '\n\n' + '[^'+(id+1)+']: '
+		ta.selectionStart = ta.selectionEnd = ta.value.length;
+		ta.focus();
+		return true;
+	}
+
 	var edit_submittable = false;
 
-	function edit_submit(errorText) {
+	function edit_submit(errorText, errorShutdown, errorPing) {
+		// Check the current values
 		edit_submittable = (document.getElementById('edit_title').value != '')
 						&& (document.getElementById('edit_comment').value != '');
-		if (edit_submittable)
-			document.getElementById('edit_form').submit();
-		else
+		if (!edit_submittable)
 			alert(errorText);
+		else
+		{
+			// First ping-pong the server to make sure that the session is still valid
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', '/api/ping');
+			xhr.send();
+			xhr.onload = function() {
+				if ((xhr.status == 200) && (xhr.responseText == 'OK'))
+					// OK let's submit the modification to not lose the current work in progress
+					document.getElementById('edit_form').submit();
+				else
+					alert(errorPing);
+			};
+			xhr.onerror = function() {
+				alert(errorShutdown);
+			};
+		}
 	}
 
 	window.onbeforeunload = function (e) {
@@ -103,10 +178,22 @@
 		xhr.onload = function() {
 			if ((xhr.status == 200) && (xhr.responseText != ''))
 			{
-				header = '<p style="position:fixed; top:0px; right:0px; padding:15px"><input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" /></p>'
-				page = window.open('');
+				var page = window.open('');
 				page.document.title = pageTitle;
-				page.document.body.innerHTML = header + xhr.responseText;
+				page.document.body.innerHTML = '\
+<html>\
+<head>\
+	<link rel="stylesheet" type="text/css" href="'+window.location.protocol+'//'+window.location.host+'/static/styles.css" />\
+</head>\
+<body>\
+	<article>\
+		<p style="position:fixed; top:0px; right:0px; padding:15px">\
+			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" />\
+		</p>\
+		' + xhr.responseText + '\
+	</article>\
+</body>\
+</html>';
 			}
 		};
 	}

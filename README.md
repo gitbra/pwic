@@ -33,6 +33,7 @@ Copyright (C) Alexandre Bréard, 2020
 - SQLite is released in the public domain
 - Jinja2 is released under 3-Clause BSD License
 - Markdown2 is released under MIT license
+	- PwicMarkdown is a modified version to consider all the links as valid
 - Parsimonious is released under MIT license
 - PrettyTable is released under BSD license
 - FavIcon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
@@ -41,7 +42,7 @@ Copyright (C) Alexandre Bréard, 2020
 ## Install
 
 - Install Python: `apt-get install python3`
-- Install the dependencies: `pip install cryptography aiohttp aiohttp-session jinja2 sqlite3 parsimonious PrettyTable`
+- Install the dependencies: `pip install cryptography aiohttp aiohttp-session jinja2 sqlite3 parsimonious PrettyTable pygments`
 - Generate your self-signed SSL keys: `python pwic_admin.py ssl`
 - Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Initialize the SQLite database: `python pwic_admin.py init-db`
