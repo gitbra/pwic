@@ -25,10 +25,13 @@ def main():
 
     subparsers.add_parser('backup', help='Make a backup copy of the database')
 
-    parser_newproj = subparsers.add_parser('new-project', help='Create a new project')
+    parser_newproj = subparsers.add_parser('create-project', help='Create a new project')
     parser_newproj.add_argument('project', default='', help='Project name')
     parser_newproj.add_argument('description', default='', help='Project description')
     parser_newproj.add_argument('admin', default='', help='User name of the administrator of the project')
+
+    parser_delproj = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
+    parser_delproj.add_argument('project', default='', help='Project name')
 
     parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
     parser_reset_user.add_argument('user', default='', help='User name')
@@ -45,8 +48,10 @@ def main():
         return generate_db()
     elif args.command == 'backup':
         return backup_db()
-    elif args.command == 'new-project':
-        return add_project(args.project, args.description, args.admin)
+    elif args.command == 'create-project':
+        return create_project(args.project, args.description, args.admin)
+    elif args.command == 'delete-project':
+        return delete_project(args.project)
     elif args.command == 'reset-password':
         return reset_password(args.user)
     elif args.command == 'log':
@@ -226,7 +231,7 @@ def backup_db():
         return False
 
 
-def add_project(project, description, admin):
+def create_project(project, description, admin):
     # Check the arguments
     project = project.lower().strip()
     description = description.strip()
@@ -283,7 +288,8 @@ def add_project(project, description, admin):
         pwic_audit(sql, {'author': PWIC_USER,
                          'event': 'create-page',
                          'project': project,
-                         'page': page})
+                         'page': page,
+                         'revision': 1})
 
     # Finalization
     sql.execute('COMMIT')
@@ -294,6 +300,33 @@ def add_project(project, description, admin):
     print('')
     print('Thanks for using Pwic!')
     return True
+
+
+def delete_project(project):
+    # Verify that the project exists yet
+    sql = db_connect()
+    project = project.lower().strip()
+    if sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
+        print('Error: project does not exist')
+        return False
+
+    # Confirm
+    print('This operation CANNOT be reverted.')
+    print('Type "YES" in uppercase to confirm the deletion of the project "%s".' % project)
+    if input() == 'YES':
+
+        # Delete
+        sql.execute('DELETE FROM roles WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM pages WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM projects WHERE project = ?', (project, ))
+        pwic_audit(sql, {'author': PWIC_USER,
+                         'event': 'delete-project'})
+        sql.execute('COMMIT')
+        print('Project "%s" is deleted' % project)
+        return True
+    else:
+        print('Aborted')
+        return False
 
 
 def reset_password(user):

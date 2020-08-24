@@ -17,6 +17,7 @@
 			<tr><th>Doc</th><th>Action</th><th>Admin</th><th>Manager</th><th>Editor</th><th>Validator</th><th>Reader</th></tr>
 			<tr><td><a href="#help_setup">{{pwic.emojis.glasses}}</a></td><td>Setup the server</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_backup">{{pwic.emojis.glasses}}</a></td><td>Create a backup</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
+			<tr><td><a href="#help_export">{{pwic.emojis.glasses}}</a></td><td>Export a project</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_project">{{pwic.emojis.glasses}}</a></td><td>Create a project</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_user">{{pwic.emojis.glasses}}</a></td><td>Create a user account</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_pass1">{{pwic.emojis.glasses}}</a></td><td>Change own password</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
@@ -30,7 +31,7 @@
 			<tr><td><a href="#help_print">{{pwic.emojis.glasses}}</a></td><td>Print to PDF</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td>&nbsp;</td><td>View the history of a page</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_validate">{{pwic.emojis.glasses}}</a></td><td>Validate a revision</td><td></td><td></td><td></td><td>{{pwic.emojis.check}}</td><td></td></tr>
-			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
+			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_search">{{pwic.emojis.glasses}}</a></td><td>Search across the pages</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 		</table>
@@ -46,8 +47,14 @@
 		<p>The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs.</p>
 
 
+		<h1 id="help_export">Export a project</h1>
+		<p>The administrators are able to download a project as a ZIP file containing each page as a text file written in Markdown. There is no HTML rendering.</p>
+		<p>The purposes are the creation of a backup or the preparation of a migration for example.</p>
+		<p>The export is audited.</p>
+
+
 		<h1 id="help_project">Create a project</h1>
-		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python pwic_admin.py new-project --help</code> for further details.</p>
+		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python pwic_admin.py create-project --help</code> for further details.</p>
 		<p>By default, you cannot create new pages. You must expand your rights, or add new dedicated users having the right profile. Refer to the matrix above for the feasible actions per profile.</p>
 
 
@@ -95,7 +102,7 @@
 		<h1 id="help_delete">Delete a revision</h1>
 		<p>A page is not deleted, but a given revision. When all the revisions are deleted, the page is then fully deleted. However, not all the revisions can be deleted because of the required traceability.</p>
 		<p>A manager or an editor can delete his/her own drafts. An administrator can delete a revision that is neither final, nor validated.</p>
-		<p>After deletion, the old number of a revision can be reallocated later if it is the next one in the sequential numbering.</p>
+		<p>A deleted revision may be reallocated later because the numbering is done in a sequential order.</p>
 
 
 		<h1 id="help_read">Read a page</h1>
@@ -122,8 +129,8 @@
 				<li>Each page is linked to another one at least (check for orphans).</li>
 				<li>Each page is not linking to a non-existent page (check for broken links).</li>
 			</ul>
-		<p>The checks apply within a given project. The links to other projects are neither reported as orphan, nor broken.</p>
-		<p>The feature serves as a general monitoring tool for the documentation, so it is not accessible to the editors and below.</p>
+		<p>The checks apply within a given project. The links to other projects are neither reported as orphan, nor as broken.</p>
+		<p>The feature serves as a general monitoring tool for the documentation.</p>
 
 
 		<h1 id="help_search">Search across the pages</h1>

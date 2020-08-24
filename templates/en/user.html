@@ -15,9 +15,11 @@
 		<ul>
 			{% if pwic.projects|count > 0 %}
 				<li>Projects :
-				{% for project in pwic.projects %}
-					<a href="/{{project|urlencode}}">{{project|escape}}</a>
-				{% endfor %}
+					<ul>
+						{% for project in pwic.projects %}
+							<li><a href="/{{project.project|urlencode}}">{{project.description|escape}}</a></li>
+						{% endfor %}
+					</ul>
 				</li>
 			{% endif %}
 			<li>Own password : {{ 'no' if pwic.initial_password else 'yes' }}
@@ -32,7 +34,7 @@
 				<div class="pwic_popup">
 					<form id="user_password_form" action="/api/user/change-password" method="post">
 						<h3>Change your password</h3>
-						{% if not pwic.ssl %}
+						{% if not pwic.options.ssl %}
 						<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
 						{% endif %}
 						<table>

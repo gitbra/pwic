@@ -8,14 +8,17 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from jinja2 import Environment, FileSystemLoader
 from difflib import HtmlDiff
 import sqlite3
+import zipfile
 from cryptography import fernet
 from urllib.parse import parse_qs
+import os
 import re
 import base64
+from multidict import MultiDict
 import time
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
     _, _x, _xb, _int, _dt, _sha256, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
 
@@ -78,8 +81,7 @@ class PwicServer():
         return pwic_audit(sql, object, self.request, commit)
 
     def _md2html(self, markdown):
-        text, tmap = pwic_extended_syntax(markdown)
-        return app['markdown'].convert(text), tmap
+        return pwic_extended_syntax(app['markdown'].convert(markdown))
 
     async def _handlePost(self):
         ''' Return the POST as a readable object.get() '''
@@ -96,7 +98,8 @@ class PwicServer():
         template = app['jinja'].get_template('en/%s.html' % name)
         session = PwicSession(self.request)
         pwic['user'] = await session.getUser()
-        pwic['ssl'] = app['ssl']
+        pwic['options'] = app['options']
+        pwic['version'] = PWIC_VERSION
         pwic['emojis'] = PWIC_EMOJIS
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
@@ -318,26 +321,29 @@ class PwicServer():
 
                     # Audit log
                     if pwic['admin']:
-                        sql.execute(''' SELECT date, time, author, event,
+                        sql.execute(''' SELECT id, date, time, author, event,
                                                user, project, page, revision
                                         FROM audit
                                         WHERE project = ?
                                           AND date   >= ?
-                                        ORDER BY date DESC, time DESC''',
+                                        ORDER BY id DESC''',
                                     (project, dt['date-30d']))
                         pwic['audits'] = []
                         for row in sql.fetchall():
-                            pwic['audits'].append({'date': row[0],
-                                                   'time': row[1],
-                                                   'author': row[2],
-                                                   'event': row[3],
-                                                   'user': row[4],
-                                                   'project': row[5],
-                                                   'page': row[6],
-                                                   'revision': row[7]})
+                            pwic['audits'].append({'date': row[1],
+                                                   'time': row[2],
+                                                   'author': row[3],
+                                                   'event': row[4],
+                                                   'user': row[5],
+                                                   'project': row[6],
+                                                   'page': row[7],
+                                                   'revision': row[8]})
 
                 # Output
-                return await self._handleOutput('page', pwic)
+                if not app['options']['raw_possible'] or self.request.rel_url.query.get('raw', None) is None:
+                    return await self._handleOutput('page', pwic)
+                else:
+                    return web.Response(text=pwic['markdown'], content_type='text/plain')
 
             # Edit the requested page
             elif action == 'edit':
@@ -472,16 +478,18 @@ class PwicServer():
                 'pages': []}
 
         # Fetch the commonly-accessible projects assigned to the user
-        sql.execute(''' SELECT a.project
+        sql.execute(''' SELECT a.project, c.description
                         FROM roles AS a
                             INNER JOIN roles AS b
                                 ON  b.project = a.project
                                 AND b.user    = ?
+                            INNER JOIN projects AS c
+                                ON  c.project = a.project
                         WHERE a.user = ?
-                        ORDER BY a.project''',
+                        ORDER BY c.description''',
                     (user, userpage))
         for row in sql.fetchall():
-            pwic['projects'].append(row[0])
+            pwic['projects'].append({'project': row[0], 'description': row[1]})
 
         # Fetch the latest pages updated by the selected user
         sql.execute(''' SELECT b.project, b.page, b.revision, b.final,
@@ -675,16 +683,15 @@ class PwicServer():
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.latest  = "X"
-                        WHERE   a.project = ?
-                          AND   a.user    = ?
-                          AND ( a.admin   = "X"
-                             OR a.manager = "X" )
+                        WHERE a.project = ?
+                          AND a.user    = ?
+                          AND a.manager = "X"
                         ORDER BY b.page''',
                     (project, user))
 
         # Extract the links between the pages
         ok = False
-        reg_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)\)', re.IGNORECASE)
+        regex_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)\)', re.IGNORECASE)
         linkmap = {'home': []}
         for row in sql.fetchall():
             ok = True
@@ -697,7 +704,7 @@ class PwicServer():
                 linkmap['home'].append(page)
 
             # Find the links to the other pages
-            subpages = reg_page.findall(row[2])
+            subpages = regex_page.findall(row[2])
             if subpages is not None:
                 for sp in subpages:
                     if (sp[0] == project) and (sp[1] not in linkmap[page]):
@@ -726,6 +733,57 @@ class PwicServer():
                 'orphans': orphans,
                 'broken': broken}
         return await self._handleOutput('links', pwic=pwic)
+
+    async def page_export(self, request):
+        ''' Download the project as a zip file '''
+        self.request = request
+
+        # Verify that the user is connected
+        session = PwicSession(self.request)
+        user = await session.getUser()
+        if user == '':
+            return await self._handleLogon()
+
+        # Fetch the pages
+        sql = app['sql'].cursor()
+        project = self.request.match_info.get('project', '')
+        sql.execute(''' SELECT b.page, b.markdown
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON  b.project = a.project
+                                AND b.latest  = "X"
+                        WHERE a.project = ?
+                          AND a.user    = ?
+                          AND a.admin   = "X"
+                        ORDER BY b.page''',
+                    (project, user))
+        pages = []
+        for row in sql.fetchall():
+            pages.append(row)
+
+        # Build the zip file
+        if len(pages) == 0:
+            raise web.HTTPUnauthorized()
+        try:
+            zipname = PWIC_DB + '.zip'
+            zip = zipfile.ZipFile(zipname, mode='w', compression=zipfile.ZIP_DEFLATED)
+            for page in pages:
+                zip.writestr('%s.md' % page[0], page[1])
+            zip.close()
+        except Exception:
+            raise web.HTTPNotFound()
+
+        # Audit the action
+        self._audit(sql, {'author': user,
+                          'event': 'export-project',
+                          'project': project},
+                    commit=True)
+
+        # Return the file
+        with open(zipname, 'rb') as f:
+            content = f.read()
+        os.remove(zipname)
+        return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'Attachment;filename=%s.zip' % project}))
 
     async def page_compare(self, request):
         ''' Serve the page that compare two revisions '''
@@ -842,15 +900,16 @@ class PwicServer():
             return await self._handleLogon()
 
         # Fetch the submitted data
-        reg_page = re.compile(r'^[a-z0-9_\-\.]+$', re.IGNORECASE)
+        regex_page = re.compile(r'^[a-z0-9_\-\.]+$', re.IGNORECASE)
         post = await self._handlePost()
         project = post.get('create_project', '').lower().strip()
         page = post.get('create_page', '').lower().strip()
-        if '' in [project, page] or reg_page.match(page) is None or page in ['admin', 'special']:
+        ref_project = post.get('create_ref_project', '').lower().strip()
+        ref_page = post.get('create_ref_page', '').lower().strip()
+        if '' in [project, page] or regex_page.match(page) is None or page in ['admin', 'special']:
             raise web.HTTPBadRequest()
 
         # Verify that the user is manager of the provided project, and that the page doesn't exist yet
-        ok = False
         sql = app['sql'].cursor()
         sql.execute(''' SELECT b.page
                         FROM roles AS a
@@ -863,26 +922,40 @@ class PwicServer():
                           AND a.manager = "X"''',
                     (page, project, user))
         row = sql.fetchone()
-        if row is not None and row[0] is None:
-            ok = True
+        if row is None or row[0] is not None:
+            raise web.HTTPFound('/special/create-page?failed')
+
+        # Fetch the default markdown if the page is created in reference to another one
+        default_markdown = '# %s' % page
+        if ref_project != '' and ref_page != '':
+            sql.execute(''' SELECT b.markdown
+                            FROM roles AS a
+                                INNER JOIN pages AS b
+                                    ON  b.project = a.project
+                                    AND b.page    = ?
+                                    AND b.latest  = "X"
+                            WHERE a.project = ?
+                              AND a.user    = ?''',
+                        (ref_page, ref_project, user))
+            row = sql.fetchone()
+            if row is None:
+                raise web.HTTPFound('/special/create-page?failed')
+            default_markdown = row[0]
 
         # Handle the creation of the page
-        if not ok:
-            raise web.HTTPFound('/special/create-page?failed')
-        else:
-            dt = _dt()
-            revision = 1
-            sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                        (project, page, revision, user, dt['date'], dt['time'], page, ('# ' + page), _('Initial')))
-            if sql.rowcount > 0:
-                self._audit(sql, {'author': user,
-                                  'event': 'create-page',
-                                  'project': project,
-                                  'page': page,
-                                  'revision': revision})
-            sql.execute('COMMIT')
-            raise web.HTTPFound('/%s/%s?success' % (project, page))
+        dt = _dt()
+        revision = 1
+        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, _('Initial')))
+        assert(sql.rowcount > 0)
+        self._audit(sql, {'author': user,
+                          'event': 'create-page',
+                          'project': project,
+                          'page': page,
+                          'revision': revision})
+        sql.execute('COMMIT')
+        raise web.HTTPFound('/%s/%s?success' % (project, page))
 
     async def api_page_update(self, request):
         ''' API to update an existing page '''
@@ -1115,11 +1188,11 @@ class PwicServer():
             return await self._handleLogon()
 
         # Fetch the submitted data
-        reg_user = re.compile(r'^[a-z0-9_\-\.@]+$', re.IGNORECASE)
+        regex_user = re.compile(r'^[a-z0-9_\-\.@]+$', re.IGNORECASE)
         post = await self._handlePost()
         project = post.get('create_project', '').lower().strip()
         newuser = post.get('create_user', '').lower().strip()
-        if '' in [project, newuser] or reg_user.match(newuser) is None or (newuser[:4] == 'pwic'):
+        if '' in [project, newuser] or regex_user.match(newuser) is None or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator of the provided project
@@ -1308,6 +1381,7 @@ def main():
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=1234, help='Listening port')
     parser.add_argument('--ssl', action='store_true', help='Enable HTTPS')
+    parser.add_argument('--no-raw', action='store_true', help='Prevent the showing of raw Markdown contents to the non-administrators to reduce the interest of downloading the projects in mass')
     args = parser.parse_args()
 
     # SSL binding
@@ -1316,8 +1390,7 @@ def main():
         try:
             https.load_cert_chain('db/pwic_secure.crt', 'db/pwic_secure.key')
         except FileNotFoundError:
-            print('Warning: invalid certificates. Generate self-signed certificates with `python pwic_genssl.py`')
-            print('Switching to the unsecure mode')
+            print('Warning: invalid certificates. Switching to the unsecure mode')
             https = None
     else:
         https = None
@@ -1329,7 +1402,8 @@ def main():
     app['pwic'] = PwicServer()
     app['sql'] = sqlite3.connect('./db/pwic.sqlite')
     # app['sql'].set_trace_callback(print)
-    app['ssl'] = https is not None
+    app['options'] = {'ssl': https is not None,
+                      'raw_possible': not args.no_raw}
     setup(app, EncryptedCookieStorage(base64.urlsafe_b64decode(fernet.Fernet.generate_key())))  # Storage for cookies
 
     # Routes
@@ -1351,6 +1425,7 @@ def main():
                     web.get(r'/{project:[a-z0-9_\-\.]+}/special/search', app['pwic'].page_search),
                     web.get(r'/{project:[a-z0-9_\-\.]+}/special/roles', app['pwic'].page_roles),
                     web.get(r'/{project:[a-z0-9_\-\.]+}/special/links', app['pwic'].page_links),
+                    web.get(r'/{project:[a-z0-9_\-\.]+}/special/export', app['pwic'].page_export),
                     web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
                     web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/validate', app['pwic'].api_page_validate),
                     web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),

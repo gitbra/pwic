@@ -5,8 +5,8 @@
 **Project proficiency**
 
 - Central repository for an online and up-to-date documentation
-- Linear and undoable versioning of the documents for a proper customer's validation
-- Lean documents with no rainbow color or overloaded revision marks
+- Linear and partially undoable versioning of the documents for a proper customer's validation
+- Lean documents with no rainbow color or overloaded revision mark
 - Display of the differences between two versions
 - New pages, broken links and orphaned pages supervised by the project managers
 - Follow-up of the deliverable documents
@@ -46,7 +46,7 @@ Copyright (C) Alexandre Bréard, 2020
 - Generate your self-signed SSL keys: `python pwic_admin.py ssl`
 - Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Initialize the SQLite database: `python pwic_admin.py init-db`
-- Create a new project: `python pwic_admin.py new-project --help`
+- Create a new project: `python pwic_admin.py create-project --help`
 - Run the server: `python pwic.py --ssl`
 - Open your browser at `https://localhost:1234`
 

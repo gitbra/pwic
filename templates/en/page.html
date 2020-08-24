@@ -3,7 +3,9 @@
 
 {% block content %}
 	<header>
-		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+		<h1>
+			<a href="/{% if pwic.page != 'home' %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a>
+		</h1>
 		{% if pwic.links|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
@@ -38,6 +40,9 @@
 				<a href="/special/create-page">{{pwic.emojis.sheet}} Create page</a>
 			{% endif %}
 			{% if not pwic.special %}
+				{% if pwic.options.raw_possible %}
+				<a href="?raw">{{pwic.emojis.brick}} Raw</a>
+				{% endif %}
 				{% if pwic.manager or (pwic.editor and not pwic.protection) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 				{% endif %}
@@ -46,11 +51,14 @@
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/validate" onclick="return confirm('The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
 				{% endif %}
 			{% endif %}
-			{% if (pwic.admin or pwic.manager) and pwic.special %}
+			{% if pwic.manager and pwic.special %}
 				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
 			{% endif %}
 			{% if pwic.removable %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/delete" onclick="return confirm('WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
+			{% endif %}
+			{% if pwic.admin and pwic.special %}
+				<a href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>
 			{% endif %}
 		</p>
 

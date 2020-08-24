@@ -6,8 +6,6 @@
 		<h1><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">Edit the page</a></h1>
 	</header>
 
-	{% include 'page-edit.js.html' %}
-
 	<article>
 		<h1>{{pwic.page|escape}} / {{pwic.page_title|escape}}</h1>
 
@@ -21,7 +19,7 @@
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" :>
 					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
-					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](...)" onclick="edit_link('Type the link:')" />
+					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Type the link:')" />
 					<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
 					<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
 					<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
@@ -30,6 +28,7 @@
 					<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
 					<input type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
 					<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
+					<input type="button" value="Right" title="Shift to right" onclick="edit_prepend('    ')" />
 					<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
 					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`')" />
 					<input type="button" value="Code" title="```Code```" onclick="edit_decorate2('```\n', '\n```')" />
@@ -48,9 +47,11 @@
 					<input type="hidden" name="edit_project" value="{{pwic.project|escape}}" />
 					<input type="hidden" name="edit_page" value="{{pwic.page|escape}}" />
 					<input type="button" value="{{pwic.emojis.save}} Save the modifications" onclick="edit_submit('Some fields cannot be blank.', 'The server cannot be reached. Verify your Internet connection or the status of the server.', 'Your session is not valid anymore. Please reconnect from another tab and retry.')" />
-					<input type="button" value="{{pwic.emojis.glasses}} Preview" onclick="edit_preview('Preview of &quot;{{pwic.page_title|escape}}&quot;', 'Close the preview')" />
+					<input type="button" value="{{pwic.emojis.glasses}} Preview" onclick="edit_preview('Preview of &quot;{{pwic.page|urlencode}}&quot;', 'Close the preview')" />
 				</p>
 			</form>
+
+			{% include 'page-edit.js.html' %}
 		{% endif %}
 	</article>
 {% endblock %}

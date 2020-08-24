@@ -1,4 +1,7 @@
 <script>
+
+	// -------------------------------- Toolbar
+
 	function edit_uncheck(name) {
 		document.getElementById(name).checked = false;
 	}
@@ -130,6 +133,33 @@
 		return true;
 	}
 
+
+	// -------------------------------- Editor
+
+	document.getElementById('edit_markdown').onkeydown = function (event) {
+		if (event.keyCode == 9)
+		{
+			var	ta = document.getElementById('edit_markdown'),
+				ss = ta.selectionStart,
+				se = ta.selectionEnd;
+
+			if (ss == se)
+			{
+				ta.value = ta.value.substring(0, ss) + "\t" + ta.value.substring(ss);
+				ta.selectionStart = ss + 1;
+				ta.selectionEnd = ss + 1;
+			}
+			else
+				edit_prepend("\t");
+			return false;
+		}
+		else
+			return true;
+	};
+
+
+	// -------------------------------- Submit
+
 	var edit_submittable = false;
 
 	function edit_submit(errorText, errorShutdown, errorPing) {
@@ -156,17 +186,6 @@
 			};
 		}
 	}
-
-	window.onbeforeunload = function (e) {
-		var	msg = 'The current changes may be lost.',
-			e = e || window.event;
-		if (!edit_submittable)
-		{
-			if (e)
-				e.returnValue = msg;
-			return msg;
-		}
-	};
 
 	function edit_preview(pageTitle, buttonTitle) {
 		var	ta = document.getElementById('edit_markdown'),
@@ -197,4 +216,18 @@
 			}
 		};
 	}
+
+
+	// -------------------------------- Leave without save
+
+	window.onbeforeunload = function (e) {
+		var	msg = 'The current changes may be lost.',
+			e = e || window.event;
+		if (!edit_submittable)
+		{
+			if (e)
+				e.returnValue = msg;
+			return msg;
+		}
+	};
 </script>

@@ -12,6 +12,7 @@ from parsimonious.nodes import NodeVisitor
 #  Constants
 # ===================================================
 
+PWIC_VERSION = '0.9'
 PWIC_DB = './db/pwic.sqlite'
 PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
 PWIC_USER = 'pwic-system'
@@ -20,8 +21,10 @@ PWIC_SALT = ''    # Random string to secure the generated hashes for the passwor
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
-PWIC_EMOJIS = {'chains': '&#x1F517;',
+PWIC_EMOJIS = {'brick': '&#x1F9F1;',
+               'chains': '&#x1F517;',
                'check': '&#x2714;',
+               'clamp': '&#x1F5DC;',
                'door': '&#x1F6AA;',
                'eye': '&#x1F441;',
                'flag': '&#x1F3C1;',
@@ -37,6 +40,7 @@ PWIC_EMOJIS = {'chains': '&#x1F517;',
                'plug': '&#x1F50C;',
                'printer': '&#x1F5A8;',
                'recycle': '&#x267B;',
+               'right_arrow': '&#x21E5;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
                'search': '&#x1F50D;',
@@ -97,52 +101,43 @@ def _sha256(value):
 
 def pwic_extended_syntax(markdown):
     ''' Automatic numbering of the MD headers '''
-    # HTML secure
-    # TODO markdown = markdown.replace('<', '&lt;').replace('>', '&gt;').replace('\n&gt; ', '\n> ')
-
     # Initialisation
-    reg_header = re.compile(r'^(#+)', re.IGNORECASE)
+    reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)
     lines = markdown.replace('\r', '').split('\n')
     numbering = []
     last_depth = 0
-    parse_on = True
     tmap = []
 
     # For each line
     for i in range(len(lines)):
         line = lines[i]
-        simpl = lines[i].strip()
 
         # Parse
-        if simpl[:3] == '```':
-            parse_on = not parse_on
-        if simpl[-3:] == '```':
-            parse_on = not parse_on
-        elif parse_on:
-            match = reg_header.match(line)
-            if match is not None:
-                depth = len(match.group(0))
-                if depth <= 6:
-                    # Align the found header to the right depth
-                    if depth > last_depth:
-                        while len(numbering) < depth:
-                            numbering.append(0)
-                    elif depth < last_depth:
-                        while len(numbering) > depth:
-                            numbering.pop(-1)
-                    last_depth = depth
-                    numbering[depth - 1] += 1
+        match = reg_header.match(line)
+        if match is not None:
+            depth = int(match.group(1))
 
-                    # Build the readable identifier of the paragraph
-                    ss = ''
-                    for n in numbering:
-                        ss += '.%d' % n
+            # Align the found header to the right depth
+            if depth > last_depth:
+                while len(numbering) < depth:
+                    numbering.append(0)
+            elif depth < last_depth:
+                while len(numbering) > depth:
+                    numbering.pop(-1)
+            last_depth = depth
+            numbering[depth - 1] += 1
 
-                    # Adapt the line
-                    lines[i] = '%s <a class="pwic_paragraph_id" id="p%s" title="#p%s">%s</a>%s' % (line[:depth], ss[1:], ss[1:], ss[1:], line[depth:])
-                    tmap.append({'header': ss[1:],
-                                 'level': ss[1:].count('.') + 1,
-                                 'title': line[depth:]})
+            # Build the readable identifier of the paragraph
+            ss = ''
+            for n in numbering:
+                ss += '.%d' % n
+            ss = ss[1:]
+
+            # Adapt the line
+            lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], ss, ss, ss, line[4:])
+            tmap.append({'header': ss,
+                         'level': ss.count('.') + 1,
+                         'title': line.strip()[4:-5]})
 
     # Final formatting
     return '\n'.join(lines), tmap

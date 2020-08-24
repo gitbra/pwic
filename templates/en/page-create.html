@@ -16,6 +16,7 @@
 		{% else %}
 
 			<form id="create_form" action="/api/page/create" method="post">
+				<h2>New page</h2>
 				<p><strong>Project:</strong><br/>
 					<select id="create_project" name="create_project">
 						{% for p in pwic.projects %}
@@ -24,6 +25,18 @@
 					</select>
 				</p>
 				<p><strong>Page name:</strong> <input id="create_page" class="pwic_fill" type="text" name="create_page" /></p>
+
+				<h2>Copy in reference to another page</h2>
+				<p><strong>Project:</strong><br/>
+					<select name="create_ref_project">
+						<option value=""></option>
+						{% for p in pwic.projects %}
+						<option value="{{p.project|escape}}">{{p.description|escape}}</option>
+						{% endfor %}
+					</select>
+				</p>
+				<p><strong>Page:</strong> <input class="pwic_fill" type="text" name="create_ref_page" /></p>
+
 				<p><input type="button" value="Create the page" onclick="create_submit('The names are not acceptable.')" /></p>
 			</form>
 
