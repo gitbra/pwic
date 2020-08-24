@@ -33,11 +33,11 @@
 				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% endif %}
 			{% if pwic.admin and pwic.special %}
-				<a href="/special/create-user">{{pwic.emojis.users}} Create user</a>
+				<a href="/special/create-user">{{pwic.emojis.users}} Create a user</a>
 				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/special/create-page">{{pwic.emojis.sheet}} Create page</a>
+				<a href="/special/create-page">{{pwic.emojis.sheet}} Create a page</a>
 			{% endif %}
 			{% if not pwic.special %}
 				{% if pwic.options.raw_possible %}

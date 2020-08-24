@@ -1,9 +1,9 @@
-<p class="pwic_center"><a href="#top">Top of the page</a></p>
+<p id="page_topofpage"><a href="#top">Top of the page</a></p>
 
 <footer>
 	Powered by Pwic v{{pwic.version|escape}} &copy; 2020 &mdash; {{pwic.emojis.sos}} <a href="/special/help">Help</a> &mdash;
 	{% if pwic.user %}
-		{{pwic.emojis.laptop}} <a href="/special/user/{{pwic.user|urlencode}}" title="Your profile">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure that you want to disconnect from Pwic ?')">Log out</a></strong>)
+		{{pwic.emojis.laptop}} <a href="/special/user/{{pwic.user|urlencode}}" title="Your profile">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure to disconnect from Pwic?')">Log out</a></strong>)
 	{% else %}
 		<a href="/api/logon">Log on</a>
 	{% endif %}

@@ -732,7 +732,7 @@ class PwicServer():
                 'project_description': sql.fetchone()[0],
                 'orphans': orphans,
                 'broken': broken}
-        return await self._handleOutput('links', pwic=pwic)
+        return await self._handleOutput('page-links', pwic=pwic)
 
     async def page_export(self, request):
         ''' Download the project as a zip file '''
