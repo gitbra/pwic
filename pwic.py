@@ -2,15 +2,15 @@
 
 import argparse
 import ssl
+from cryptography import fernet
 from aiohttp import web
 from aiohttp_session import setup, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from jinja2 import Environment, FileSystemLoader
-from difflib import HtmlDiff
-import sqlite3
-import zipfile
-from cryptography import fernet
 from urllib.parse import parse_qs
+from jinja2 import Environment, FileSystemLoader
+import sqlite3
+from difflib import HtmlDiff
+import zipfile
 import os
 import re
 import base64
@@ -47,7 +47,7 @@ class PwicSession():
     async def destroy(self):
         ''' Destroy the content of the session '''
         session = await get_session(self.request)
-        if (session is not None) and ('data' in session):
+        if session is not None and 'data' in session:
             del session['data']
 
     def getDefaultData(self):
@@ -338,6 +338,12 @@ class PwicServer():
                                                    'project': row[6],
                                                    'page': row[7],
                                                    'revision': row[8]})
+
+                # Text of the maintenance banner
+                sql.execute("SELECT value FROM env WHERE key = 'maintenance'")
+                row = sql.fetchone()
+                if row is not None:
+                    pwic['maintenance'] = row[0]
 
                 # Output
                 if not app['options']['raw_possible'] or self.request.rel_url.query.get('raw', None) is None:
@@ -691,7 +697,7 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        regex_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)\)', re.IGNORECASE)
+        regex_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)(#p[0-9\.]+)?\)', re.IGNORECASE)
         linkmap = {'home': []}
         for row in sql.fetchall():
             ok = True

@@ -45,9 +45,10 @@
 
 
 		<h1 id="help_backup">Create a backup</h1>
-		<p>It is recommended to shut down the server. Then run the command <code>python pwic_admin.py backup</code> on a periodic basis.</p>
+		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>.</p>
+		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis.</p>
 		<p>A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs.</p>
-		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with the current version of Pwic.</p>
+		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic.</p>
 
 
 		<h1 id="help_project">Create a project</h1>
@@ -61,7 +62,7 @@
 
 		<h1 id="help_user">Create a user account</h1>
 		<p>The users are created by default as readers. The default password is predetermined by the general configuration.</p>
-		<p>The users must change their password if they want new authorizations.</p>
+		<p>The users must change their password before you can change their authorizations.</p>
 
 
 		<h1 id="help_pass1">Change own password</h1>
@@ -168,7 +169,7 @@
 		<h1 id="help_log">View the activity log</h1>
 		<p>Pwic logs few activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better overview of the situation.</p>
 		<p>Online, the administrator of a project can see the events related to the project only, like the creation of a page, a deletion, a validation...</p>
-		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py log 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
+		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py show-log 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
 
 		<h1 id="help_log_user">View the activity of a user</h1>

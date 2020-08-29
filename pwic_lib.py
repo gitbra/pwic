@@ -22,6 +22,7 @@ PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
 PWIC_EMOJIS = {'brick': '&#x1F9F1;',
+               'calendar': '&#x1F4C5;',
                'chains': '&#x1F517;',
                'check': '&#x2714;',
                'clamp': '&#x1F5DC;',

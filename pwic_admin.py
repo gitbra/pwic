@@ -23,7 +23,7 @@ def main():
 
     subparsers.add_parser('init-db', help='Initialize the database once')
 
-    subparsers.add_parser('backup', help='Make a backup copy of the database')
+    subparsers.add_parser('create-backup', help='Make a backup copy of the database')
 
     parser_newproj = subparsers.add_parser('create-project', help='Create a new project')
     parser_newproj.add_argument('project', default='', help='Project name')
@@ -36,9 +36,15 @@ def main():
     parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
     parser_reset_user.add_argument('user', default='', help='User name')
 
-    parser_log = subparsers.add_parser('log', help='Show the full log')
+    parser_log = subparsers.add_parser('show-log', help='Show the full log')
     parser_log.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
     parser_log.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
+
+    parser_env = subparsers.add_parser('set-env', help='Set a global value')
+    parser_env.add_argument('name', default='', help='Name of the variable')
+    parser_env.add_argument('value', default='', help='Value of the variable')
+
+    subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
     # Parse the command line
     args = parser.parse_args()
@@ -46,16 +52,20 @@ def main():
         return generate_ssl()
     elif args.command == 'init-db':
         return generate_db()
-    elif args.command == 'backup':
-        return backup_db()
+    elif args.command == 'create-backup':
+        return create_backup()
     elif args.command == 'create-project':
         return create_project(args.project, args.description, args.admin)
     elif args.command == 'delete-project':
         return delete_project(args.project)
     elif args.command == 'reset-password':
         return reset_password(args.user)
-    elif args.command == 'log':
+    elif args.command == 'show-log':
         return show_log(args.min, args.max)
+    elif args.command == 'set-env':
+        return set_env(args.name, args.value)
+    elif args.command == 'execute-sql':
+        return execute_sql()
 
 
 def db_connect():
@@ -133,8 +143,16 @@ CREATE TABLE "audit" (
     "page" TEXT NOT NULL DEFAULT '',
     "revision" INTEGER NOT NULL DEFAULT 0,
     "count" INTEGER NOT NULL DEFAULT 0,
+    "string" TEXT NOT NULL DEFAULT '',
     "ip" TEXT NOT NULL DEFAULT '',
     PRIMARY KEY("id" AUTOINCREMENT)
+)''')
+            # Table ENV
+            sql.execute('''
+CREATE TABLE "env" (
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    PRIMARY KEY("key")
 )''')
             # Table PAGES
             sql.execute('''
@@ -209,7 +227,7 @@ END''')
     return ok
 
 
-def backup_db():
+def create_backup():
     # Check
     if not isfile(PWIC_DB):
         print('Error: the database is not created yet')
@@ -312,7 +330,7 @@ def delete_project(project):
 
     # Confirm
     print('This operation CANNOT be reverted.')
-    print('Type "YES" in uppercase to confirm the deletion of the project "%s".' % project)
+    print('Type "YES" in uppercase to confirm the deletion of the project "%s": ' % project, end='')
     if input() == 'YES':
 
         # Delete
@@ -341,7 +359,7 @@ def reset_password(user):
     if sql.fetchone()[0] > 0:
         print("The user '%s' has administrative rights on some projects." % user)
         print("For that reason, you must provide a manual password.")
-        print("Type the new temporary password with 8 characters at least:")
+        print("Type the new temporary password with 8 characters at least: ", end='')
         pwd = input()
         if len(pwd) < 8:
             print('Error: password too short')
@@ -400,5 +418,54 @@ def show_log(dmin, dmax):
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
     return True
 
+
+def set_env(name, value):
+    # Check the keys
+    keys = ['maintenance']
+    if name not in keys:
+        print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
+        return False
+
+    # Update the variable
+    sql = db_connect()
+    sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': '%sset-%s' % ('un' if value == '' else '', name),
+                     'string': value})
+    sql.execute('COMMIT')
+    print('Variable updated')
+    return True
+
+
+def execute_sql():
+    # Warn the user
+    print('This feature may corrupt the database. Please use it to upgrade Pwic upon request only.')
+    print('Type "YES" to continue: ', end='')
+    if input() == 'YES':
+
+        # Ask for a query
+        print("\nType the query to execute on a single line. You can't select any data.")
+        query = input()
+        if len(query) > 0:
+
+            # Ask for the confirmation
+            print('\nAre you sure to execute << %s >> ?\nType "YES" to continue: ' % query, end='')
+            if input() == 'YES':
+
+                # Execute
+                sql = db_connect()
+                rownone = sql.execute(query).fetchone() is None
+                rowcount = sql.rowcount
+                pwic_audit(sql, {'author': PWIC_USER,
+                                 'event': 'execute-sql',
+                                 'string': query})
+                sql.execute('COMMIT')
+                print('\nFirst row is null = %s' % str(rownone))
+                print('Affected rows = %d' % rowcount)
+                return True
+
+    # Default behavior
+    print('Aborted')
+    return False
 
 main()

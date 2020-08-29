@@ -23,7 +23,9 @@
 	{% include 'search.js.html' %}
 
 	<article>
-		{% include 'page-banner.html' %}
+		{% if pwic.maintenance != '' %}
+		<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.maintenance|escape}}</p>
+		{% endif %}
 
 		<p class="pwic_action_bar">
 			{% if pwic.protection %}
