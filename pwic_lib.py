@@ -60,11 +60,6 @@ PWIC_EMOJIS = {'brick': '&#x1F9F1;',
 #  Reusable functions
 # ===================================================
 
-def _(text):
-    ''' Temporary sign for a translatable text '''
-    return text
-
-
 def _x(value):
     ''' Convert a boolean to 'X' or empty string '''
     return 'X' if value is True else ''

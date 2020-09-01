@@ -170,7 +170,8 @@ CREATE TABLE "pages" (
     "time" TEXT NOT NULL CHECK("time" <> ''),
     "title" TEXT NOT NULL CHECK("title" <> ''),
     "markdown" TEXT NOT NULL DEFAULT '',
-    "comment" TEXT NOT NULL CHECK("comment" <> '') COLLATE BINARY,
+    "comment" TEXT NOT NULL CHECK("comment" <> ''),
+    "milestone"	TEXT NOT NULL DEFAULT '',
     "valuser" TEXT NOT NULL DEFAULT '',
     "valdate" TEXT NOT NULL DEFAULT '',
     "valtime" TEXT NOT NULL DEFAULT '',
@@ -338,8 +339,8 @@ def delete_project(project):
         sql.execute('DELETE FROM pages WHERE project = ?', (project, ))
         sql.execute('DELETE FROM projects WHERE project = ?', (project, ))
         pwic_audit(sql, {'author': PWIC_USER,
-                         'event': 'delete-project'})
-        sql.execute('COMMIT')
+                         'event': 'delete-project'},
+                   commit=True)
         print('Project "%s" is deleted' % project)
         return True
     else:
@@ -431,8 +432,8 @@ def set_env(name, value):
     sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
     pwic_audit(sql, {'author': PWIC_USER,
                      'event': '%sset-%s' % ('un' if value == '' else '', name),
-                     'string': value})
-    sql.execute('COMMIT')
+                     'string': value},
+               commit=True)
     print('Variable updated')
     return True
 
@@ -458,8 +459,8 @@ def execute_sql():
                 rowcount = sql.rowcount
                 pwic_audit(sql, {'author': PWIC_USER,
                                  'event': 'execute-sql',
-                                 'string': query})
-                sql.execute('COMMIT')
+                                 'string': query},
+                           commit=True)
                 print('\nFirst row is null = %s' % str(rownone))
                 print('Affected rows = %d' % rowcount)
                 return True
@@ -467,5 +468,6 @@ def execute_sql():
     # Default behavior
     print('Aborted')
     return False
+
 
 main()

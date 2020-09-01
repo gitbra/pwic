@@ -73,6 +73,7 @@
 						<th class="pwic_desktop">Time</th>
 						<th>Page</th>
 						<th>Comment</th>
+						<th class="pwic_desktop">Milestone</th>
 						<th class="pwic_desktop">Author</th>
 					</tr>
 
@@ -82,6 +83,7 @@
 							<td class="pwic_desktop">{{recent.time}}</td>
 							<td><a href="/{{pwic.project|urlencode}}/{{recent.page|urlencode}}">{{recent.title|escape}}</a></td>
 							<td>{{recent.comment|escape}}</td>
+							<td class="pwic_desktop">{{recent.milestone|escape}}</td>
 							<td class="pwic_desktop"><a href="/special/user/{{recent.author|urlencode}}">{{recent.author|escape}}</a></td>
 						</tr>
 					{% endfor %}
@@ -147,6 +149,7 @@
 						<th>Author</th>
 						<th class="pwic_desktop">Date</th>
 						<th class="pwic_desktop">Time</th>
+						<th class="pwic_desktop">Milestone</th>
 					</tr>
 				{% for page in pwic.pages %}
 					<tr>
@@ -167,6 +170,7 @@
 						<td><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
 						<td class="pwic_desktop">{{page.date|escape}}</td>
 						<td class="pwic_desktop">{{page.time|escape}}</td>
+						<td class="pwic_desktop">{{page.milestone|escape}}</td>
 					</tr>
 				{% endfor %}
 				</table>

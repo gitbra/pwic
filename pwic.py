@@ -19,7 +19,7 @@ import time
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
-    _, _x, _xb, _int, _dt, _sha256, \
+    _x, _xb, _int, _dt, _sha256, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
 
 
@@ -74,54 +74,46 @@ class PwicSession():
 # ===================================================
 
 class PwicServer():
-    def __init__(self):
-        self.request = None
-
-    def _audit(self, sql, object, commit=False):
-        return pwic_audit(sql, object, self.request, commit)
-
     def _md2html(self, markdown):
         return pwic_extended_syntax(app['markdown'].convert(markdown))
 
-    async def _handlePost(self):
+    async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
         result = {}
-        if self.request.body_exists:
-            data = await self.request.text()
+        if request.body_exists:
+            data = await request.text()
             result = parse_qs(data)
             for res in result:
                 result[res] = result[res][0]
         return result
 
-    async def _handleOutput(self, name, pwic):
+    async def _handleOutput(self, request, name, pwic):
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         template = app['jinja'].get_template('en/%s.html' % name)
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         pwic['user'] = await session.getUser()
         pwic['options'] = app['options']
         pwic['version'] = PWIC_VERSION
         pwic['emojis'] = PWIC_EMOJIS
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
-    async def _handleLogon(self):
+    async def _handleLogon(self, request):
         ''' Show the logon page '''
-        return await self._handleOutput('logon', {'title': _('Connect to Pwic')})
+        return await self._handleOutput(request, 'logon', {'title': 'Connect to Pwic'})
 
     async def page(self, request):
         ''' Serve the pages '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Show the requested page
-        project = self.request.match_info.get('project', '')
-        page = self.request.match_info.get('page', 'home')
-        revision = self.request.match_info.get('revision', None)
-        action = self.request.match_info.get('action', 'view')
+        project = request.match_info.get('project', '')
+        page = request.match_info.get('page', 'home')
+        revision = request.match_info.get('revision', None)
+        action = request.match_info.get('action', 'view')
         sql = app['sql'].cursor()
         pwic = {'title': 'Wiki',
                 'project': project,
@@ -159,11 +151,11 @@ class PwicServer():
                                     AND b.user = ?
                             ORDER BY a.description''',
                         (user, ))
-            pwic['title'] = _('Select your project')
+            pwic['title'] = 'Select your project'
             pwic['projects'] = []
             for row in sql.fetchall():
                 pwic['projects'].append({'project': row[0], 'description': row[1]})
-            return await self._handleOutput('select-project', pwic)
+            return await self._handleOutput(request, 'select-project', pwic)
 
         # Fetch the links of the header line
         sql.execute(''' SELECT a.page, a.title
@@ -232,7 +224,7 @@ class PwicServer():
                 # Additional information for the special page
                 else:
                     # Fetch the recently updated pages
-                    sql.execute(''' SELECT page, author, date, time, title, comment
+                    sql.execute(''' SELECT page, author, date, time, title, comment, milestone
                                     FROM pages
                                     WHERE project = ?
                                       AND latest  = "X"
@@ -246,7 +238,8 @@ class PwicServer():
                                                 'date': row[2],
                                                 'time': row[3],
                                                 'title': row[4],
-                                                'comment': row[5]})
+                                                'comment': row[5],
+                                                'milestone': row[6]})
 
                     # Fetch the team members of the project
                     sql.execute(''' SELECT user, admin, manager, editor, validator, reader
@@ -300,7 +293,8 @@ class PwicServer():
 
                     # Fetch the pages of the project
                     sql.execute(''' SELECT page, title, revision, final, author,
-                                           date, time, valuser, valdate, valtime
+                                           date, time, milestone, valuser, valdate,
+                                           valtime
                                     FROM pages
                                     WHERE project = ?
                                       AND latest  = "X"
@@ -315,9 +309,10 @@ class PwicServer():
                                               'author': row[4],
                                               'date': row[5],
                                               'time': row[6],
-                                              'valuser': row[7],
-                                              'valdate': row[8],
-                                              'valtime': row[9]})
+                                              'milestone': row[7],
+                                              'valuser': row[8],
+                                              'valdate': row[9],
+                                              'valtime': row[10]})
 
                     # Audit log
                     if pwic['admin']:
@@ -346,14 +341,14 @@ class PwicServer():
                     pwic['maintenance'] = row[0]
 
                 # Output
-                if not app['options']['raw_possible'] or self.request.rel_url.query.get('raw', None) is None:
-                    return await self._handleOutput('page', pwic)
+                if not app['options']['raw_possible'] or request.rel_url.query.get('raw', None) is None:
+                    return await self._handleOutput(request, 'page', pwic)
                 else:
                     return web.Response(text=pwic['markdown'], content_type='text/plain')
 
             # Edit the requested page
             elif action == 'edit':
-                sql.execute(''' SELECT draft, final, header, protection, title, markdown
+                sql.execute(''' SELECT draft, final, header, protection, title, markdown, milestone
                                 FROM pages
                                 WHERE project = ?
                                   AND page    = ?
@@ -368,12 +363,13 @@ class PwicServer():
                 pwic['protection'] = _xb(row[3])
                 pwic['title'] = row[4]
                 pwic['markdown'] = row[5]
-                return await self._handleOutput('page-edit', pwic)
+                pwic['milestone'] = row[6]
+                return await self._handleOutput(request, 'page-edit', pwic)
 
             # Show the history of the page
             elif action == 'history':
                 sql.execute(''' SELECT revision, latest, draft, final, author, date, time,
-                                       title, comment, valuser, valdate, valtime
+                                       title, comment, milestone, valuser, valdate, valtime
                                 FROM pages
                                 WHERE project = ? AND page = ?
                                 ORDER BY revision DESC''',
@@ -389,32 +385,30 @@ class PwicServer():
                                               'time': row[6],
                                               'title': row[7],
                                               'comment': row[8],
-                                              'valuser': row[9],
-                                              'valdate': row[10],
-                                              'valtime': row[11]})
-                pwic['title'] = _('Revisions of the page')
-                return await self._handleOutput('page-history', pwic)
+                                              'milestone': row[9],
+                                              'valuser': row[10],
+                                              'valdate': row[11],
+                                              'valtime': row[12]})
+                pwic['title'] = 'Revisions of the page'
+                return await self._handleOutput(request, 'page-history', pwic)
 
         # Default output if nothing was done before
         raise web.HTTPNotFound()
 
     async def page_help(self, request):
         ''' Serve the help page to any user '''
-        self.request = request
-        return await self._handleOutput('help', {'title': _('Help for Pwic')})
+        return await self._handleOutput(request, 'help', {'title': 'Help for Pwic'})
 
     async def page_create(self, request):
         ''' Serve the page to create a new page '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the projects where the user can add pages
-        pwic = {'title': _('Create a page'),
+        pwic = {'title': 'Create a page',
                 'projects': []}
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.project, b.description
@@ -422,27 +416,26 @@ class PwicServer():
                             INNER JOIN projects AS b
                                 ON b.project = a.project
                         WHERE a.user    = ?
-                          AND a.manager = "X"''',
+                          AND a.manager = "X"
+                        ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
             pwic['projects'].append({'project': row[0],
                                      'description': row[1]})
 
         # Show the page
-        return await self._handleOutput('page-create', pwic=pwic)
+        return await self._handleOutput(request, 'page-create', pwic=pwic)
 
     async def user_create(self, request):
         ''' Serve the page to create a new user '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the projects where users can be created
-        pwic = {'title': _('Create a user'),
+        pwic = {'title': 'Create a user',
                 'projects': []}
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.project, b.description
@@ -450,33 +443,32 @@ class PwicServer():
                             INNER JOIN projects AS b
                                 ON b.project = a.project
                         WHERE a.user  = ?
-                          AND a.admin = "X"''',
+                          AND a.admin = "X"
+                        ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
             pwic['projects'].append({'project': row[0],
                                      'description': row[1]})
 
         # Show the page
-        return await self._handleOutput('user-create', pwic=pwic)
+        return await self._handleOutput(request, 'user-create', pwic=pwic)
 
     async def page_user(self, request):
         ''' Serve the page to view the profile of a user '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the information of the user
         sql = app['sql'].cursor()
-        userpage = self.request.match_info.get('userpage', None)
+        userpage = request.match_info.get('userpage', None)
         sql.execute('SELECT initial FROM users WHERE user = ?', (userpage, ))
         row = sql.fetchone()
         if row is None:
             raise web.HTTPNotFound()    # User does not exist
-        pwic = {'title': _('User profile'),
+        pwic = {'title': 'User profile',
                 'user': user,
                 'userpage': userpage,
                 'initial_password': _xb(row[0]),
@@ -499,7 +491,7 @@ class PwicServer():
 
         # Fetch the latest pages updated by the selected user
         sql.execute(''' SELECT b.project, b.page, b.revision, b.final,
-                               b.date, b.time, b.title, b.valuser
+                               b.date, b.time, b.title, b.milestone, b.valuser
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
@@ -516,31 +508,30 @@ class PwicServer():
                                   'date': row[4],
                                   'time': row[5],
                                   'title': row[6],
-                                  'valuser': row[7]})
+                                  'milestone': row[7],
+                                  'valuser': row[8]})
 
         # Show the page
-        return await self._handleOutput('user', pwic=pwic)
+        return await self._handleOutput(request, 'user', pwic=pwic)
 
     async def page_search(self, request):
         ''' Serve the search engine '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Parse the query
-        project = self.request.match_info.get('project', '')
-        terms = self.request.rel_url.query.get('q', '')
+        project = request.match_info.get('project', '')
+        terms = request.rel_url.query.get('q', '')
         query = pwic_search_parse(terms)
         if query is None:
             raise web.HTTPBadRequest()
 
         # Fetch the pages
         sql = app['sql'].cursor()
-        pwic = {'title': _('Search'),
+        pwic = {'title': 'Search',
                 'project': project,
                 'terms': pwic_search_tostring(query),
                 'results': []}
@@ -626,21 +617,19 @@ class PwicServer():
 
         # Show the page
         pwic['results'].sort(key=lambda x: x['score'], reverse=True)
-        return await self._handleOutput('search', pwic=pwic)
+        return await self._handleOutput(request, 'search', pwic=pwic)
 
     async def page_roles(self, request):
         ''' Serve the search engine '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the roles
         sql = app['sql'].cursor()
-        project = self.request.match_info.get('project', '')
+        project = request.match_info.get('project', '')
         sql.execute(''' SELECT a.user, c.initial, a.admin, a.manager,
                                a.editor, a.validator, a.reader
                         FROM roles AS a
@@ -655,7 +644,7 @@ class PwicServer():
                     (user, project))
 
         # Show the page
-        pwic = {'title': _('Roles'),
+        pwic = {'title': 'Roles',
                 'project': project,
                 'roles': []}
         for row in sql.fetchall():
@@ -669,21 +658,19 @@ class PwicServer():
         if len(pwic['roles']) == 0:
             raise web.HTTPUnauthorized()        # Or project not found
         else:
-            return await self._handleOutput('user-roles', pwic=pwic)
+            return await self._handleOutput(request, 'user-roles', pwic=pwic)
 
     async def page_links(self, request):
         ''' Serve the check of the links '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the pages
         sql = app['sql'].cursor()
-        project = self.request.match_info.get('project', '')
+        project = request.match_info.get('project', '')
         sql.execute(''' SELECT b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -738,21 +725,19 @@ class PwicServer():
                 'project_description': sql.fetchone()[0],
                 'orphans': orphans,
                 'broken': broken}
-        return await self._handleOutput('page-links', pwic=pwic)
+        return await self._handleOutput(request, 'page-links', pwic=pwic)
 
     async def page_export(self, request):
         ''' Download the project as a zip file '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the pages
         sql = app['sql'].cursor()
-        project = self.request.match_info.get('project', '')
+        project = request.match_info.get('project', '')
         sql.execute(''' SELECT b.page, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -780,10 +765,10 @@ class PwicServer():
             raise web.HTTPNotFound()
 
         # Audit the action
-        self._audit(sql, {'author': user,
-                          'event': 'export-project',
-                          'project': project},
-                    commit=True)
+        pwic_audit(sql, {'author': user,
+                         'event': 'export-project',
+                         'project': project},
+                   request, commit=True)
 
         # Return the file
         with open(zipname, 'rb') as f:
@@ -793,20 +778,18 @@ class PwicServer():
 
     async def page_compare(self, request):
         ''' Serve the page that compare two revisions '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the pages
         sql = app['sql'].cursor()
-        project = self.request.match_info.get('project', '')
-        page = self.request.match_info.get('page', '')
-        new_revision = _int(self.request.match_info.get('new_revision', ''))
-        old_revision = _int(self.request.match_info.get('old_revision', ''))
+        project = request.match_info.get('project', '')
+        page = request.match_info.get('page', '')
+        new_revision = _int(request.match_info.get('new_revision', ''))
+        old_revision = _int(request.match_info.get('old_revision', ''))
         sql.execute(''' SELECT d.description,
                                b.title,
                                b.markdown AS new_markdown,
@@ -836,7 +819,7 @@ class PwicServer():
             tto = tto.replace('\r', '').split('\n')
             return diff.make_table(tfrom, tto).replace('&nbsp;', ' ').replace(' nowrap="nowrap"', '').replace(' cellpadding="0"', '')
 
-        pwic = {'title': _('Comparison'),
+        pwic = {'title': 'Comparison',
                 'project': project,
                 'project_description': row[0],
                 'page': page,
@@ -844,19 +827,17 @@ class PwicServer():
                 'new_revision': new_revision,
                 'old_revision': old_revision,
                 'diff': _diff(row[3], row[2])}
-        return await self._handleOutput('page-compare', pwic=pwic)
+        return await self._handleOutput(request, 'page-compare', pwic=pwic)
 
     async def api_logon(self, request):
         ''' API to log on people '''
-        self.request = request
-
         # Destroy the current session
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         await session.destroy()
 
         # Fetch the submitted data
         ok = False
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         if ('logon_user' in post) and ('logon_password' in post):
             user = post.get('logon_user', 'anonymous').lower().strip()
             pwd = _sha256(post.get('logon_password', ''))
@@ -876,40 +857,38 @@ class PwicServer():
                     data['user'] = user
                     session = await session.getSession()
                     session['data'] = data
-                    self._audit(sql, {'author': user,
-                                      'event': 'logon'},
-                                commit=True)
+                    pwic_audit(sql, {'author': user,
+                                     'event': 'logon'},
+                               request, commit=True)
 
         # Final redirection
         raise web.HTTPFound('/' if ok else '/?failed')
 
     async def api_logout(self, request):
         ''' API to log out '''
-        self.request = request
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user != '':
             await session.destroy()
-            self._audit(app['sql'].cursor(), {'author': user,
-                                              'event': 'logout'},
-                        commit=True)
-        return await self._handleOutput('logout', {'title': _('Disconnected from Pwic')})
+            pwic_audit(app['sql'].cursor(), {'author': user,
+                                             'event': 'logout'},
+                       request, commit=True)
+        return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
     async def api_page_create(self, request):
         ''' API to create a new page '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
         regex_page = re.compile(r'^[a-z0-9_\-\.]+$', re.IGNORECASE)
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         project = post.get('create_project', '').lower().strip()
         page = post.get('create_page', '').lower().strip()
+        milestone = post.get('create_milestone', '').strip()
         ref_project = post.get('create_ref_project', '').lower().strip()
         ref_page = post.get('create_ref_page', '').lower().strip()
         if '' in [project, page] or regex_page.match(page) is None or page in ['admin', 'special']:
@@ -951,35 +930,34 @@ class PwicServer():
         # Handle the creation of the page
         dt = _dt()
         revision = 1
-        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, _('Initial')))
+        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment, milestone)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, 'Initial', milestone))
         assert(sql.rowcount > 0)
-        self._audit(sql, {'author': user,
-                          'event': 'create-page',
-                          'project': project,
-                          'page': page,
-                          'revision': revision})
-        sql.execute('COMMIT')
+        pwic_audit(sql, {'author': user,
+                         'event': 'create-page',
+                         'project': project,
+                         'page': page,
+                         'revision': revision},
+                   request, commit=True)
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
     async def api_page_update(self, request):
         ''' API to update an existing page '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         project = post.get('edit_project', '')
         page = post.get('edit_page', '')
         title = post.get('edit_title', '')
         markdown = post.get('edit_markdown', '')
         comment = post.get('edit_comment', '')
+        milestone = post.get('edit_milestone', '')
         draft = _x('edit_draft' in post)
         final = _x('edit_final' in post)
         protection = _x('edit_protection' in post)
@@ -1018,17 +996,18 @@ class PwicServer():
         sql.execute(''' INSERT INTO pages
                             (project, page, revision, draft, final, header,
                              protection, author, date, time, title,
-                             markdown, comment)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                             markdown, comment, milestone)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (project, page, revision + 1, draft, final, header,
                      protection, user, dt['date'], dt['time'], title,
-                     markdown, comment))
+                     markdown, comment, milestone))
         if sql.rowcount > 0:
-            self._audit(sql, {'author': user,
-                              'event': 'update-page',
-                              'project': project,
-                              'page': page,
-                              'revision': revision + 1})
+            pwic_audit(sql, {'author': user,
+                             'event': 'update-page',
+                             'project': project,
+                             'page': page,
+                             'revision': revision + 1},
+                       request)
 
             # Remove the own drafts
             if final:
@@ -1042,12 +1021,13 @@ class PwicServer():
                                   AND valuser   = ""''',
                             (project, page, revision, user))
                 if sql.rowcount > 0:
-                    self._audit(sql, {'author': user,
-                                      'event': 'delete-drafts',
-                                      'project': project,
-                                      'page': page,
-                                      'revision': revision + 1,
-                                      'count': sql.rowcount})
+                    pwic_audit(sql, {'author': user,
+                                     'event': 'delete-drafts',
+                                     'project': project,
+                                     'page': page,
+                                     'revision': revision + 1,
+                                     'count': sql.rowcount},
+                               request)
 
             # Purge the old flags
             sql.execute(''' UPDATE pages
@@ -1062,18 +1042,16 @@ class PwicServer():
 
     async def api_page_validate(self, request):
         ''' Validate the pages '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the revision to validate
-        project = self.request.match_info.get('project', '')
-        page = self.request.match_info.get('page', 'home')
-        revision = _int(self.request.match_info.get('revision', 0))
+        project = request.match_info.get('project', '')
+        page = request.match_info.get('page', 'home')
+        revision = _int(request.match_info.get('revision', 0))
 
         # Verify that it is possible to validate the page
         sql = app['sql'].cursor()
@@ -1102,28 +1080,26 @@ class PwicServer():
                         SET valuser = ?, valdate = ?, valtime = ?
                         WHERE project = ? AND page = ? AND revision = ?''',
                     (user, dt['date'], dt['time'], project, page, revision))
-        self._audit(sql, {'author': user,
-                          'event': 'validate-page',
-                          'project': project,
-                          'page': page,
-                          'revision': revision})
-        sql.execute('COMMIT')
+        pwic_audit(sql, {'author': user,
+                         'event': 'validate-page',
+                         'project': project,
+                         'page': page,
+                         'revision': revision},
+                   request, commit=True)
         raise web.HTTPFound('/%s/%s/rev%d?success' % (project, page, revision))
 
     async def api_page_delete(self, request):
         ''' Delete a page upon administrative request '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the revision to delete
-        project = self.request.match_info.get('project', '')
-        page = self.request.match_info.get('page', '')
-        revision = _int(self.request.match_info.get('revision', 0))
+        project = request.match_info.get('project', '')
+        page = request.match_info.get('page', '')
+        revision = _int(request.match_info.get('revision', 0))
 
         # Verify the preconditions
         sql = app['sql'].cursor()
@@ -1153,11 +1129,12 @@ class PwicServer():
                           AND page     = ?
                           AND revision = ?''',
                     (project, page, revision))
-        self._audit(sql, {'author': user,
-                          'event': 'delete-revision',
-                          'project': project,
-                          'page': page,
-                          'revision': revision})
+        pwic_audit(sql, {'author': user,
+                         'event': 'delete-revision',
+                         'project': project,
+                         'page': page,
+                         'revision': revision},
+                   request)
         if revision > 1:
             # Find the latest revision that is not necessarily "revision - 1"
             sql.execute(''' SELECT MAX(revision)
@@ -1185,17 +1162,15 @@ class PwicServer():
 
     async def api_user_create(self, request):
         ''' API to create a new user '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon()
+            return await self._handleLogon(request)
 
         # Fetch the submitted data
         regex_user = re.compile(r'^[a-z0-9_\-\.@]+$', re.IGNORECASE)
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         project = post.get('create_project', '').lower().strip()
         newuser = post.get('create_user', '').lower().strip()
         if '' in [project, newuser] or regex_user.match(newuser) is None or (newuser[:4] == 'pwic'):
@@ -1218,9 +1193,10 @@ class PwicServer():
                         WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
                     (newuser, _sha256(PWIC_DEFAULT_PASSWORD), newuser))
         if sql.rowcount > 0:
-            self._audit(sql, {'author': user,
-                              'event': 'create-user',
-                              'user': newuser})
+            pwic_audit(sql, {'author': user,
+                             'event': 'create-user',
+                             'user': newuser},
+                       request)
 
         # Grant the default rights as reader
         sql.execute(''' INSERT INTO roles (project, user, reader)
@@ -1229,26 +1205,25 @@ class PwicServer():
                     (project, newuser, project, newuser))
         if sql.rowcount > 0:
             ok = True
-            self._audit(sql, {'author': user,
-                              'event': 'grant-reader',
-                              'project': project,
-                              'user': newuser})
+            pwic_audit(sql, {'author': user,
+                             'event': 'grant-reader',
+                             'project': project,
+                             'user': newuser},
+                       request)
         sql.execute('COMMIT')
         raise web.HTTPFound('/%s/special/roles?%s' % (project, 'success' if ok else 'failed'))
 
     async def api_user_change_password(self, request):
         ''' Change the password of the current user '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the posted values
         ok = False
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         current = post.get('user_password_current', '')
         new1 = post.get('user_password_new1', '')
         new2 = post.get('user_password_new2', '')
@@ -1263,9 +1238,10 @@ class PwicServer():
                 # Update the password
                 sql.execute('UPDATE users SET initial = "", password = ? WHERE user = ?', (_sha256(new1), user))
                 if sql.rowcount > 0:
-                    self._audit(sql, {'author': user,
-                                      'event': 'change-password',
-                                      'user': user})
+                    pwic_audit(sql, {'author': user,
+                                     'event': 'change-password',
+                                     'user': user},
+                               request)
                 sql.execute('COMMIT')
                 ok = True
 
@@ -1275,16 +1251,14 @@ class PwicServer():
 
     async def api_roles(self, request):
         ''' Change the roles of a user '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         user = await session.getUser()
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the posted values
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         project = post.get('project', '')
         userpost = post.get('user', '')
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'drop']
@@ -1320,11 +1294,11 @@ class PwicServer():
                               AND user   <> ?''',
                         (project, userpost, user))
             if sql.rowcount > 0:
-                self._audit(sql, {'author': user,
-                                  'event': 'drop-user',
-                                  'project': project,
-                                  'user': userpost})
-                sql.execute('COMMIT')
+                pwic_audit(sql, {'author': user,
+                                 'event': 'drop-user',
+                                 'project': project,
+                                 'user': userpost},
+                           request, commit=True)
                 return web.Response(text='OK', content_type='text/plain')
             else:
                 raise web.HTTPBadRequest()
@@ -1343,31 +1317,28 @@ class PwicServer():
             if sql.rowcount == 0:
                 raise web.HTTPBadRequest()
             else:
-                self._audit(sql, {'author': user,
-                                  'event': '%s-%s' % ('grant' if newvalue == 'X' else 'ungrant', roles[roleid]),
-                                  'project': project,
-                                  'user': userpost})
-                sql.execute('COMMIT')
+                pwic_audit(sql, {'author': user,
+                                 'event': '%s-%s' % ('grant' if newvalue == 'X' else 'ungrant', roles[roleid]),
+                                 'project': project,
+                                 'user': userpost},
+                           request, commit=True)
                 return web.Response(text=newvalue, content_type='text/plain')
 
     async def api_markdown(self, request):
         ''' Return the HTML corresponding to the posted Markdown '''
-        self.request = request
-
         # Verify that the user is connected
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         if await session.getUser() == '':
             raise web.HTTPUnauthorized()
 
         # Return the converted output
-        post = await self._handlePost()
+        post = await self._handlePost(request)
         html, _ = self._md2html(post.get('content', ''))
         return web.Response(text=html, content_type='text/plain')
 
     async def api_ping(self, request):
         ''' Notify if the session is still alive '''
-        self.request = request
-        session = PwicSession(self.request)
+        session = PwicSession(request)
         text = 'KO' if await session.getUser() == '' else 'OK'
         return web.Response(text=text, content_type='text/plain')
 

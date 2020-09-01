@@ -63,6 +63,7 @@
 					<th>Flags</th>
 					<th>Date</th>
 					<th class="pwic_desktop">Time</th>
+					<th class="pwic_desktop">Milestone</th>
 				</tr>
 
 				{% for page in pwic.pages %}
@@ -83,6 +84,7 @@
 						</td>
 						<td>{{page.date|escape}}</td>
 						<td class="pwic_desktop">{{page.time|escape}}</td>
+						<td class="pwic_desktop">{{page.milestone|escape}}</td>
 					</tr>
 				{% endfor %}
 			</table>

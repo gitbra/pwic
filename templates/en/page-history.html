@@ -21,6 +21,7 @@
 				<th>Date</th>
 				<th class="pwic_desktop">Time</th>
 				<th>Comment</th>
+				<th class="pwic_desktop">Milestone</th>
 			</tr>
 
 			{% for rev in pwic.revisions %}
@@ -43,6 +44,7 @@
 					<td>{{rev.date|escape}}</td>
 					<td class="pwic_desktop">{{rev.time|escape}}</td>
 					<td>{{rev.comment|escape}}</td>
+					<td class="pwic_desktop">{{rev.milestone|escape}}</td>
 				</tr>
 			{% endfor %}
 		</table>
