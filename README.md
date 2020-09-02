@@ -5,6 +5,7 @@
 **Project proficiency**
 
 - Central repository for an online and up-to-date documentation
+- Ready for Unicode
 - Linear and partially undoable versioning of the documents for a proper customer's validation
 - Lean documents with no rainbow color or overloaded revision mark
 - Display of the differences between two versions
@@ -12,6 +13,7 @@
 - Follow-up of the deliverable documents
 - Unified look and feel among all the pages
 - In-text search with inclusion, exclusion and special keywords
+- Automatic highlight of the code
 
 **Cost effectiveness**
 
@@ -23,6 +25,7 @@
 
 - Internationalization: English
 - Customizable UI with Jinja2 templates
+- API to perform operations by bots or scripts
 
 
 ## Licenses
@@ -37,6 +40,7 @@ Copyright (C) Alexandre Bréard, 2020
 - Parsimonious is released under MIT license
 - PrettyTable is released under BSD license
 - FavIcon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
+- Baloo 2 is released under Open Font License
 
 
 ## Install

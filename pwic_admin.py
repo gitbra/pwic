@@ -122,7 +122,6 @@ def generate_ssl():
 
 
 def generate_db():
-    ok = False
     if isfile(PWIC_DB):
         print('Error: the database is already created')
     else:
@@ -223,9 +222,9 @@ BEFORE UPDATE ON audit
 BEGIN
     SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
 END''')
-            ok = True
             print('The database is created at "%s"' % PWIC_DB)
-    return ok
+            return True
+    return False
 
 
 def create_backup():
@@ -255,11 +254,7 @@ def create_project(project, description, admin):
     project = project.lower().strip()
     description = description.strip()
     admin = admin.lower().strip()
-    regfmt = re.compile(r'^[a-z0-9_\-\.]+$', re.IGNORECASE)
-    if regfmt.match(project) is None        \
-       or project in ['api', 'special']     \
-       or description == ''                 \
-       or regfmt.match(admin) is None:
+    if project in ['api', 'special'] or '' in [project, description, admin]:
         print('Error: invalid arguments')
         return False
 
@@ -285,30 +280,30 @@ def create_project(project, description, admin):
 
     # Add the project
     sql.execute('INSERT INTO projects (project, description) VALUES (?, ?)', (project, description))
-    if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER,
-                         'event': 'create-project',
-                         'project': project})
+    assert(sql.rowcount > 0)
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': 'create-project',
+                     'project': project})
 
     # Add the role
-    sql.execute('INSERT INTO roles (project, user, admin) VALUES (?, ?, "X")', (project, admin))
-    if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER,
-                         'event': 'grant-admin',
-                         'project': project,
-                         'user': admin})
+    sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')", (project, admin))
+    assert(sql.rowcount > 0)
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': 'grant-admin',
+                     'project': project,
+                     'user': admin})
 
     # Add a default homepage
     page = 'home'
     sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
                     VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")''',
                 (project, page, admin, dt['date'], dt['time']))
-    if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER,
-                         'event': 'create-page',
-                         'project': project,
-                         'page': page,
-                         'revision': 1})
+    assert(sql.rowcount > 0)
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': 'create-page',
+                     'project': project,
+                     'page': page,
+                     'revision': 1})
 
     # Finalization
     sql.execute('COMMIT')
@@ -330,7 +325,7 @@ def delete_project(project):
         return False
 
     # Confirm
-    print('This operation CANNOT be reverted.')
+    print('This operation is IRREVERSIBLE.')
     print('Type "YES" in uppercase to confirm the deletion of the project "%s": ' % project, end='')
     if input() == 'YES':
 
@@ -400,7 +395,7 @@ def show_log(dmin, dmax):
     # Select the data
     sql = db_connect()
     sql.execute(''' SELECT id, date, time, author, event, user,
-                           project, page, revision, count, ip
+                           project, page, revision, count, ip, string
                     FROM audit
                     WHERE date >= ? AND date <= ?
                     ORDER BY id ASC''',
@@ -408,12 +403,13 @@ def show_log(dmin, dmax):
 
     # Report the log
     tab = PrettyTable()
-    tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Revision', 'Count', 'IP']
+    tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Revision', 'Count', 'IP', 'String']
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
         tab.add_row([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],
-                     '' if row[8] == 0 else row[8], '' if row[9] == 0 else row[9], row[10]])
+                     '' if row[8] == 0 else row[8], '' if row[9] == 0 else row[9],
+                     row[10], row[11]])
     tab.header = True
     tab.border = False
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
@@ -440,7 +436,7 @@ def set_env(name, value):
 
 def execute_sql():
     # Warn the user
-    print('This feature may corrupt the database. Please use it to upgrade Pwic upon request only.')
+    print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
     print('Type "YES" to continue: ', end='')
     if input() == 'YES':
 

@@ -31,6 +31,7 @@ PWIC_EMOJIS = {'brick': '&#x1F9F1;',
                'flag': '&#x1F3C1;',
                'glasses': '&#x1F453;',
                'globe': '&#x1F310;',
+               'hammer': '&#x1F528;',
                'hourglass': '&#x23F3;',
                'key': '&#x1F511;',
                'laptop': '&#x1F4BB;',
@@ -83,6 +84,7 @@ def _dt():
     dts = str(datetime.datetime.now())
     return {'date': dts[:10],
             'date-30d': str(datetime.date.today() - datetime.timedelta(days=30))[:10],
+            'date-90d': str(datetime.date.today() - datetime.timedelta(days=90))[:10],
             'time': dts[11:19]}
 
 

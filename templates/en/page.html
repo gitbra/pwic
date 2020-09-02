@@ -24,7 +24,7 @@
 
 	<article>
 		{% if pwic.maintenance != '' %}
-		<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.maintenance|escape}}</p>
+			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.maintenance|escape}}</p>
 		{% endif %}
 
 		<p class="pwic_action_bar">
@@ -43,7 +43,7 @@
 			{% endif %}
 			{% if not pwic.special %}
 				{% if pwic.options.raw_possible %}
-				<a href="?raw">{{pwic.emojis.brick}} Raw</a>
+				<a href="?raw">{{pwic.emojis.hammer}} Raw</a>
 				{% endif %}
 				{% if pwic.manager or (pwic.editor and not pwic.protection) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>

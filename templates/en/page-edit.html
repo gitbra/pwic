@@ -20,19 +20,25 @@
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" :>
 					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
 					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Type the link:')" />
+					<input type="button" value="Right" title="Shift to right" onclick="edit_prepend('    ')" />
+
+					<div class="pwic_spacer"></div>
+
 					<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
 					<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
 					<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
 					<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
 					<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
 					<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
+					<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
+
+					<div class="pwic_spacer"></div>
+
 					<input type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
 					<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
-					<input type="button" value="Right" title="Shift to right" onclick="edit_prepend('    ')" />
 					<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
 					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`')" />
 					<input type="button" value="Code" title="```Code```" onclick="edit_decorate2('```\n', '\n```')" />
-					<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
 				</div>
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
 

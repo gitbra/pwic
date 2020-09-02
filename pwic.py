@@ -490,16 +490,35 @@ class PwicServer():
             pwic['projects'].append({'project': row[0], 'description': row[1]})
 
         # Fetch the latest pages updated by the selected user
-        sql.execute(''' SELECT b.project, b.page, b.revision, b.final,
-                               b.date, b.time, b.title, b.milestone, b.valuser
-                        FROM roles AS a
-                            INNER JOIN pages AS b
-                                ON  b.project = a.project
-                                AND b.latest  = "X"
-                                AND b.author  = ?
-                        WHERE a.user = ?
-                        ORDER BY b.date DESC, b.time DESC''',
-                    (userpage, user))
+        dt = _dt()
+        sql.execute(''' SELECT u.project, u.page, p.revision, p.final,
+                               p.date, p.time, p.title, p.milestone,
+                               p.valuser, p.valdate, p.valtime
+                        FROM (
+                            SELECT DISTINCT project, page
+                            FROM (
+                                SELECT project, page
+                                FROM pages
+                                WHERE latest   = "X"
+                                  AND author   = ?
+                                  AND date    >= ?
+                            UNION
+                                SELECT project, page
+                                FROM pages
+                                WHERE valuser  = ?
+                                  AND valdate >= ?
+                            )
+                        ) AS u
+                            INNER JOIN roles AS r
+                                ON  r.project  = u.project
+                                AND r.user     = ?
+                            INNER JOIN pages AS p
+                                ON  p.project  = u.project
+                                AND p.page     = u.page
+                                AND p.latest   = "X"
+                        ORDER BY date DESC,
+                                 time DESC''',
+                    (userpage, dt['date-90d'], userpage, dt['date-90d'], user))
         for row in sql.fetchall():
             pwic['pages'].append({'project': row[0],
                                   'page': row[1],
@@ -509,7 +528,9 @@ class PwicServer():
                                   'time': row[5],
                                   'title': row[6],
                                   'milestone': row[7],
-                                  'valuser': row[8]})
+                                  'valuser': row[8],
+                                  'valdate': row[9],
+                                  'valtime': row[10]})
 
         # Show the page
         return await self._handleOutput(request, 'user', pwic=pwic)
@@ -684,7 +705,7 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        regex_page = re.compile(r'\]\(\/([a-z0-9_\-\.]+)\/([a-z0-9_\-\.]+)(#p[0-9\.]+)?\)', re.IGNORECASE)
+        regex_page = re.compile(r'\]\(\/([^\/#]+)\/([^\/#]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)', re.IGNORECASE)
         linkmap = {'home': []}
         for row in sql.fetchall():
             ok = True
@@ -884,14 +905,13 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
-        regex_page = re.compile(r'^[a-z0-9_\-\.]+$', re.IGNORECASE)
         post = await self._handlePost(request)
         project = post.get('create_project', '').lower().strip()
         page = post.get('create_page', '').lower().strip()
         milestone = post.get('create_milestone', '').strip()
         ref_project = post.get('create_ref_project', '').lower().strip()
         ref_page = post.get('create_ref_page', '').lower().strip()
-        if '' in [project, page] or regex_page.match(page) is None or page in ['admin', 'special']:
+        if project in ['', 'api', 'special'] or page in ['', 'special']:
             raise web.HTTPBadRequest()
 
         # Verify that the user is manager of the provided project, and that the page doesn't exist yet
@@ -1169,11 +1189,10 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Fetch the submitted data
-        regex_user = re.compile(r'^[a-z0-9_\-\.@]+$', re.IGNORECASE)
         post = await self._handlePost(request)
         project = post.get('create_project', '').lower().strip()
         newuser = post.get('create_user', '').lower().strip()
-        if '' in [project, newuser] or regex_user.match(newuser) is None or (newuser[:4] == 'pwic'):
+        if '' in [project, newuser] or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator of the provided project
@@ -1398,18 +1417,18 @@ def main():
                     web.get('/special/create-project', app['pwic'].page_help),
                     web.get('/special/create-page', app['pwic'].page_create),
                     web.get('/special/create-user', app['pwic'].user_create),
-                    web.get(r'/special/user/{userpage:[a-z0-9_\-\.@]+}', app['pwic'].page_user),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/special/search', app['pwic'].page_search),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/special/roles', app['pwic'].page_roles),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/special/links', app['pwic'].page_links),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/special/export', app['pwic'].page_export),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/validate', app['pwic'].api_page_validate),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/rev{revision:[0-9]+}', app['pwic'].page),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}/{action:view|edit|history}', app['pwic'].page),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}/{page:[a-z0-9_\-\.]+}', app['pwic'].page),
-                    web.get(r'/{project:[a-z0-9_\-\.]+}', app['pwic'].page),
+                    web.get('/special/user/{userpage}', app['pwic'].page_user),
+                    web.get(r'/{project:[^\/]+}/special/search', app['pwic'].page_search),
+                    web.get(r'/{project:[^\/]+}/special/roles', app['pwic'].page_roles),
+                    web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
+                    web.get(r'/{project:[^\/]+}/special/export', app['pwic'].page_export),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}/validate', app['pwic'].api_page_validate),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}', app['pwic'].page),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history}', app['pwic'].page),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}', app['pwic'].page),
+                    web.get(r'/{project:[^\/]+}', app['pwic'].page),
                     web.get('/', app['pwic'].page)])
 
     # Initialization

@@ -51,7 +51,7 @@
 			</div>
 		{% endif %}
 
-		<h2>All the latest contributions</h2>
+		<h2>Contributions in the last 90 days</h2>
 		{% if pwic.pages|count == 0 %}
 			<p>The user has no contribution yet.</p>
 		{% else%}
@@ -79,7 +79,7 @@
 							<span title="Marked as final">{{pwic.emojis.notes}}</span>
 							{% endif %}
 							{% if page.valuser != '' %}
-							<span title="Validated">{{pwic.emojis.flag}}</span>
+							<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
 						<td>{{page.date|escape}}</td>
