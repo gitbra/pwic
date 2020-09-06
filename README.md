@@ -6,14 +6,15 @@
 
 - Central repository for an online and up-to-date documentation
 - Ready for Unicode
-- Linear and partially undoable versioning of the documents for a proper customer's validation
+- File attachments with normalized names
+- Linear and partially undoable versioning of the pages for a proper customer's validation
 - Lean documents with no rainbow color or overloaded revision mark
 - Display of the differences between two versions
 - New pages, broken links and orphaned pages supervised by the project managers
-- Follow-up of the deliverable documents
+- Follow-up of the deliverable pages
 - Unified look and feel among all the pages
 - In-text search with inclusion, exclusion and special keywords
-- Automatic highlight of the code
+- Automatic highlight of the lines of code
 
 **Cost effectiveness**
 

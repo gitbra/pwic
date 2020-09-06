@@ -2,7 +2,7 @@
 
 # This is a modified copy of https://github.com/trentm/python-markdown2
 # List of the changes:
-# - all the links are valid in safe_mode
+# - all the links are valid in safe_mode, else they are replaced by "#"
 
 
 # Copyright (c) 2012 Trent Mick.

@@ -15,6 +15,7 @@ from parsimonious.nodes import NodeVisitor
 PWIC_VERSION = '0.9'
 PWIC_DB = './db/pwic.sqlite'
 PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
+PWIC_DOCUMENTS_PATH = './db/documents/%s/'
 PWIC_USER = 'pwic-system'
 PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
@@ -88,9 +89,10 @@ def _dt():
             'time': dts[11:19]}
 
 
-def _sha256(value):
+def _sha256(value, salt=True):
     ''' Calculate the SHA256 as string for the given value '''
-    return sha256((PWIC_SALT + value).encode()).hexdigest()
+    text = (PWIC_SALT if salt else '') + value
+    return sha256(text.encode()).hexdigest()
 
 
 # ===================================================
@@ -128,13 +130,12 @@ def pwic_extended_syntax(markdown):
             # Build the readable identifier of the paragraph
             ss = ''
             for n in numbering:
-                ss += '.%d' % n
-            ss = ss[1:]
+                ss += '%d.' % n
 
             # Adapt the line
             lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], ss, ss, ss, line[4:])
             tmap.append({'header': ss,
-                         'level': ss.count('.') + 1,
+                         'level': ss.count('.'),
                          'title': line.strip()[4:-5]})
 
     # Final formatting

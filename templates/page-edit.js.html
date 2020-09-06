@@ -158,6 +158,54 @@
 	};
 
 
+	// -------------------------------- File drop
+
+	function edit_refresh_files() {
+		alert('NOT IMPLEMENTED');  // BUG
+	}
+
+	function edit_drop(event, errorUnsupported) {
+		var files, file, i, form;
+		document.getElementById('edit_files_drop').classList.remove('pwic_dragover');
+		if (event.dataTransfer.items)
+		{
+			event.preventDefault();
+			event.stopPropagation();
+			
+			// Create an XHR for each file
+			files = event.dataTransfer.files;
+			for (i=0 ; i<files.length ; i++)
+			{
+				// Fields
+				form = new FormData();
+				form.append('project', '{{pwic.project|escape}}');
+				form.append('page', '{{pwic.page|escape}}');
+				form.append('content', files[i]);
+
+				// Request
+				fetch('/api/document/create', {method: 'POST', body: form})
+					.then(function() {
+						setTimeout(edit_refresh_files(), 2000);
+					});
+			}
+		}
+		else
+			alert(errorUnsupported);
+	}
+
+	function edit_dragover(event) {
+		document.getElementById('edit_files_drop').classList.add('pwic_dragover');
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
+	function edit_dragleave(event) {
+		document.getElementById('edit_files_drop').classList.remove('pwic_dragover');
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
+
 	// -------------------------------- Submit
 
 	var edit_submittable = false;

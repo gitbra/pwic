@@ -42,8 +42,14 @@
 				</div>
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
 
-				<p>Reason for the modification: <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
-				<p>Milestone: <input class="pwic_fill" type="text" name="edit_milestone" value="{{pwic.milestone|escape}}" /></p>
+				{% if not pwic.msie %}
+					<p><strong>Files:</strong></p>
+					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">Drop the files here</div>
+					<ul id="edit_files_list"></ul>
+				{% endif %}
+
+				<p><strong>Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
+				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="edit_milestone" value="{{pwic.milestone|escape}}" /></p>
 				<p>
 					<div><input type="checkbox" id="edit_draft" name="edit_draft" {% if pwic.draft %}checked="checked"{% endif %} onclick="edit_uncheck('edit_final')" /> <label for="edit_draft">Save as draft</label></div>
 					<div><input type="checkbox" id="edit_final" name="edit_final" onclick="edit_uncheck('edit_draft')" /> <label for="edit_final">Final version</label></div>

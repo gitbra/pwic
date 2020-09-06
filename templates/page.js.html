@@ -1,4 +1,10 @@
 <script>
+	window.onscroll = function() {
+		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
+			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+		document.getElementById('pwic_progression').style.height = ((scroll / height) * 100).toString() + 'vh';
+	}
+
 	function page_tmap() {
 		var element = document.getElementById('pwic_browser');
 		element.classList.toggle('pwic_hidden');

@@ -23,6 +23,8 @@
 	{% include 'search.js.html' %}
 
 	<article>
+		<div id="pwic_progression"></div>
+
 		{% if pwic.maintenance != '' %}
 			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.maintenance|escape}}</p>
 		{% endif %}
@@ -245,7 +247,10 @@
 
 			{{pwic.html}}
 
-			<p id="page_lastmod">Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}</p>
+			<p id="page_lastmod">
+				Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
+				<br/>Hash key: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
+			</p>
 		{% endif %}
 	</article>
 {% endblock %}

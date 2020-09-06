@@ -141,7 +141,6 @@ CREATE TABLE "audit" (
     "project" TEXT NOT NULL DEFAULT '',
     "page" TEXT NOT NULL DEFAULT '',
     "revision" INTEGER NOT NULL DEFAULT 0,
-    "count" INTEGER NOT NULL DEFAULT 0,
     "string" TEXT NOT NULL DEFAULT '',
     "ip" TEXT NOT NULL DEFAULT '',
     PRIMARY KEY("id" AUTOINCREMENT)
@@ -403,13 +402,12 @@ def show_log(dmin, dmax):
 
     # Report the log
     tab = PrettyTable()
-    tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Revision', 'Count', 'IP', 'String']
+    tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Revision', 'IP', 'String']
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
         tab.add_row([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],
-                     '' if row[8] == 0 else row[8], '' if row[9] == 0 else row[9],
-                     row[10], row[11]])
+                     '' if row[8] == 0 else row[8], row[9], row[10]])
     tab.header = True
     tab.border = False
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
@@ -418,7 +416,7 @@ def show_log(dmin, dmax):
 
 def set_env(name, value):
     # Check the keys
-    keys = ['maintenance']
+    keys = ['document_name_regex', 'maintenance', 'max_document_size']
     if name not in keys:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
         return False

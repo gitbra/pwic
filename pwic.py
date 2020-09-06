@@ -3,7 +3,7 @@
 import argparse
 import ssl
 from cryptography import fernet
-from aiohttp import web
+from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from urllib.parse import parse_qs
@@ -18,7 +18,8 @@ from multidict import MultiDict
 import time
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, \
+    PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
     _x, _xb, _int, _dt, _sha256, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
 
@@ -27,11 +28,15 @@ from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_USER, PWIC_DEFAULT_PASSWORD, PW
 #  Documentation
 #   - Jinja2 :          http://zetcode.com/python/jinja/
 #   - Markdown :        https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
-#   - HTTP codes :      https://docs.pylonsproject.org/projects/pyramid/en/latest/api/httpexceptions.html
+#   - HTTP codes :      https://docs.aiohttp.org/en/latest/web_exceptions.html
+#                       https://docs.pylonsproject.org/projects/pyramid/en/latest/api/httpexceptions.html
 #   - SSL :             https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
 #   - PyParsing :       https://github.com/pyparsing/pyparsing/blob/master/examples/searchparser.py
 #   - Parsimonious :    https://github.com/erikrose/parsimonious
 #                       http://zderadicka.eu/writing-simple-parser-in-python/
+#   - HTML5 upload :    https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
+#                       https://css-tricks.com/drag-and-drop-file-uploading/
+#                       https://docs.aiohttp.org/en/stable/multipart.html
 # ===============
 
 
@@ -77,6 +82,15 @@ class PwicServer():
     def _md2html(self, markdown):
         return pwic_extended_syntax(app['markdown'].convert(markdown))
 
+    def _safeFileName(self, name):
+        name = name.replace('/', '').replace('\\', '').strip().replace(' ', '_')
+        while True:
+            curlen = len(name)
+            name = name.replace('..', '.').replace('__', '_')
+            if len(name) == curlen:
+                break
+        return name.strip().lower()
+
     async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
         result = {}
@@ -95,6 +109,8 @@ class PwicServer():
         pwic['options'] = app['options']
         pwic['version'] = PWIC_VERSION
         pwic['emojis'] = PWIC_EMOJIS
+        ua = request.headers.get('User-Agent', '')
+        pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browsers
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
     async def _handleLogon(self, request):
@@ -195,7 +211,8 @@ class PwicServer():
                                            author, date, time, title, markdown,
                                            valuser, valdate, valtime
                                     FROM pages
-                                    WHERE project = ? AND page = ?
+                                    WHERE project = ?
+                                      AND page    = ?
                                     ORDER BY revision DESC''',
                                 (project, page))
                     found = False
@@ -216,6 +233,7 @@ class PwicServer():
                     pwic['title'] = row[8]
                     pwic['markdown'] = row[9]
                     pwic['html'], pwic['tmap'] = self._md2html(row[9])
+                    pwic['hash'] = _sha256(row[9], salt=False)
                     pwic['valuser'] = row[10]
                     pwic['valdate'] = row[11]
                     pwic['valtime'] = row[12]
@@ -759,7 +777,7 @@ class PwicServer():
         # Fetch the pages
         sql = app['sql'].cursor()
         project = request.match_info.get('project', '')
-        sql.execute(''' SELECT b.page, b.markdown
+        sql.execute(''' SELECT b.page, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
@@ -780,10 +798,41 @@ class PwicServer():
             zipname = PWIC_DB + '.zip'
             zip = zipfile.ZipFile(zipname, mode='w', compression=zipfile.ZIP_DEFLATED)
             for page in pages:
-                zip.writestr('%s.md' % page[0], page[1])
+                # Raw markdown
+                zip.writestr('%s.md' % page[0], page[5])
+
+                # HTML
+                html = '''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="%s">
+    <meta name="last-modified" content="%s %s">
+    <title>%s %s</title>
+    <link rel="stylesheet" type="text/css" href="static/styles.css" />
+</head>
+<body>
+    <article>%s</article>
+</body>
+</html>'''
+                html = html % (page[1].replace('"', '&quote;'),
+                               page[2],
+                               page[3],
+                               page[0].replace('<', '&lt;').replace('>', '&gt;'),
+                               page[4].replace('<', '&lt;').replace('>', '&gt;'),
+                               self._md2html(page[5])[0])
+                zip.writestr('%s.html' % page[0], html)
+
+            # Additional files
+            cssfn = 'static/styles.css'
+            with open(cssfn, 'rb') as f:
+                content = f.read()
+            zip.writestr(cssfn, content)
+
+            # Close the archive
             zip.close()
         except Exception:
-            raise web.HTTPNotFound()
+            raise web.HTTPInternalServerError()
 
         # Audit the action
         pwic_audit(sql, {'author': user,
@@ -928,7 +977,7 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
-            raise web.HTTPFound('/special/create-page?failed')
+            raise web.HTTPNotModified('/special/create-page?failed')
 
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
@@ -944,7 +993,7 @@ class PwicServer():
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
-                raise web.HTTPFound('/special/create-page?failed')
+                raise web.HTTPNotModified('/special/create-page?failed')
             default_markdown = row[0]
 
         # Handle the creation of the page
@@ -1045,8 +1094,7 @@ class PwicServer():
                                      'event': 'delete-drafts',
                                      'project': project,
                                      'page': page,
-                                     'revision': revision + 1,
-                                     'count': sql.rowcount},
+                                     'revision': revision + 1},
                                request)
 
             # Purge the old flags
@@ -1230,7 +1278,11 @@ class PwicServer():
                              'user': newuser},
                        request)
         sql.execute('COMMIT')
-        raise web.HTTPFound('/%s/special/roles?%s' % (project, 'success' if ok else 'failed'))
+
+        if ok:
+            raise web.HTTPFound('/%s/special/roles?success' % project)
+        else:
+            raise web.HTTPNotModified('/%s/special/roles?failed' % project)
 
     async def api_user_change_password(self, request):
         ''' Change the password of the current user '''
@@ -1265,8 +1317,10 @@ class PwicServer():
                 ok = True
 
         # Redirection
-        ok = 'success' if ok else 'failed'
-        raise web.HTTPFound('/special/user/%s?%s' % (user, ok))
+        if ok:
+            raise web.HTTPFound('/special/user/%s?success' % user)
+        else
+            raise web.HTTPNotModified('/special/user/%s?failed' % user)
 
     async def api_roles(self, request):
         ''' Change the roles of a user '''
@@ -1326,10 +1380,12 @@ class PwicServer():
         else:
             newvalue = {'X': '', '': 'X'}[row[roleid + 1]]
             if roleid == 0 and newvalue != 'X' and user == userpost:
-                raise web.HTTPBadRequest()      # Cannot self-ungrant admin, so there is always at least one admin on the project
+                raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
             try:
-                sql.execute(''' UPDATE roles SET %s = ?
-                                WHERE project = ? AND user = ?''' % roles[roleid],
+                sql.execute(''' UPDATE roles
+                                SET %s = ?
+                                WHERE project = ?
+                                  AND user    = ?''' % roles[roleid],
                             (newvalue, project, userpost))
             except sqlite3.IntegrityError:
                 raise web.HTTPUnauthorized()
@@ -1354,6 +1410,133 @@ class PwicServer():
         post = await self._handlePost(request)
         html, _ = self._md2html(post.get('content', ''))
         return web.Response(text=html, content_type='text/plain')
+
+    async def api_document_create(self, request):
+        ''' API to create a new document '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        user = await session.getUser()
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Parse the submitted data
+        try:
+            regex_name = re.compile(r'[^file]name="([^"]+)"')
+            regex_filename = re.compile(r'filename="([^"]+)"')
+            doc = {'project': '',
+                   'page': '',
+                   'filename': '',
+                   'mime': '',
+                   'content': None}
+            multipart = MultipartReader.from_response(request)
+            while True:
+                part = await multipart.next()
+                if part is None:
+                    break
+
+                # Read the type of entry
+                disposition = part.headers.get(hdrs.CONTENT_DISPOSITION, '')
+                if disposition[:10] != 'form-data;':
+                    continue
+
+                # Read the name of the field
+                name = regex_name.search(disposition)
+                if name is None:
+                    continue
+                name = name.group(1)
+                if name not in ['project', 'page', 'content']:
+                    continue
+
+                # Read file name and mime
+                if name == 'content':
+                    fn = regex_filename.search(disposition)
+                    if fn is None:
+                        continue
+                    fn = self._safeFileName(fn.group(1))
+                    if fn[:1] == '.':  # Hidden file
+                        continue
+                    doc['filename'] = fn
+                    doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '')
+
+                # Value
+                if name == 'content':
+                    doc[name] = await part.read(decode=False)
+                else:
+                    doc[name] = await part.text()
+        except Exception:
+            raise web.HTTPBadRequest()
+        if doc['content'] is None or '' in [doc['project'], doc['page'], doc['filename'], doc['mime']]:
+            raise web.HTTPBadRequest()
+
+        # Verify that the target folder exists
+        if not os.path.isdir(PWIC_DOCUMENTS_PATH % doc['project']):
+            raise web.HTTPInternalServerError()
+
+        # Verify that there is no active maintenance message
+        sql = app['sql'].cursor()
+        sql.execute("SELECT value FROM env WHERE key = 'maintenance' AND value <> ''")
+        if sql.fetchone() is not None:
+            raise web.HTTPUnauthorized()
+
+        # Verify the maximal document size
+        row = sql.execute("SELECT value FROM env WHERE key = 'max_document_size'").fetchone()
+        maxsize = 0 if row is None else _int(row[0])
+        if len(doc['content']) > maxsize > 0:
+            raise web.HTTPBadRequest()
+
+        # Verify the consistency of the filename
+        row = sql.execute("SELECT value FROM env WHERE key = 'document_name_regex'").fetchone()
+        if row is not None:
+            try:
+                regex_doc = re.compile(row[0])
+            except:
+                raise web.HTTPInternalServerError()
+            if regex_doc.search(doc['filename']) is None:
+                raise web.HTTPBadRequest()
+
+        # Verify that the user is authorized to upload files on an existing page
+        sql.execute(''' SELECT user
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON  b.project = a.project
+                                AND b.page    = ?
+                        WHERE   a.project = ?
+                          AND   a.user    = ?
+                          AND ( a.manager = 'X'
+                             OR a.editor  = 'X' )''',
+                    (doc['page'], doc['project'], user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # Verify that the document doesn't exist yet (not related to a given page)
+        sql.execute(''' SELECT id
+                        FROM documents
+                        WHERE project  = ?
+                          AND filename = ? ''',
+                    (doc['project'], doc['filename']))
+        if sql.fetchone() is not None:
+            raise web.HTTPBadRequest()
+
+        # Upload the file on the server
+        try:
+            f = open((PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename'], 'wb')
+            f.write(doc['content'])
+            f.close()
+        except Exception:  # OSError mainly
+            raise web.HTTPInternalServerError()
+
+        # Create the document in the database
+        dt = _dt()
+        sql.execute(''' INSERT INTO documents (project, page, author, date, time, filename, mime, size)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?) ''',
+                    (doc['project'], doc['page'], user, dt['date'], dt['time'], doc['filename'], doc['mime'], len(doc['content'])))
+        pwic_audit(sql, {'author': user,
+                         'event': 'create-document',
+                         'project': doc['project'],
+                         'page': doc['page'],
+                         'string': doc['filename']},
+                   request, commit=True)
+        raise web.HTTPOk()
 
     async def api_ping(self, request):
         ''' Notify if the session is still alive '''
@@ -1412,6 +1595,7 @@ def main():
                     web.post('/api/user/change-password', app['pwic'].api_user_change_password),
                     web.post('/api/roles', app['pwic'].api_roles),
                     web.post('/api/markdown', app['pwic'].api_markdown),
+                    web.post('/api/document/create', app['pwic'].api_document_create),
                     web.get('/api/ping', app['pwic'].api_ping),
                     web.get('/special/help', app['pwic'].page_help),
                     web.get('/special/create-project', app['pwic'].page_help),
