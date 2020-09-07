@@ -32,8 +32,11 @@ PWIC_EMOJIS = {'brick': '&#x1F9F1;',
                'flag': '&#x1F3C1;',
                'glasses': '&#x1F453;',
                'globe': '&#x1F310;',
+               'green_check': '&#x2705;',
                'hammer': '&#x1F528;',
                'hourglass': '&#x23F3;',
+               'image': '&#x1F5BC;',
+               'inbox': '&#x1F4E5;',
                'key': '&#x1F511;',
                'laptop': '&#x1F4BB;',
                'left_arrow': '&#x2BC7;',
@@ -43,6 +46,7 @@ PWIC_EMOJIS = {'brick': '&#x1F9F1;',
                'plug': '&#x1F50C;',
                'printer': '&#x1F5A8;',
                'recycle': '&#x267B;',
+               'red_check': '&#x274C;',
                'right_arrow': '&#x21E5;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
@@ -93,6 +97,33 @@ def _sha256(value, salt=True):
     ''' Calculate the SHA256 as string for the given value '''
     text = (PWIC_SALT if salt else '') + value
     return sha256(text.encode()).hexdigest()
+
+
+def _safeName(name, extra='.'):
+    chars = '\\/:;*?=&#\'"<>()[]|@' + extra     # Various signs incompatible with filesystem, HTML rendering, SQL special syntax, etc...
+    for i in range(len(chars)):
+        name = name.replace(chars[i], '')
+    return name.lower().strip()
+
+
+def _safeFileName(self, name):
+    name = _safeName(name, extra='').replace(' ', '_')
+    while True:
+        curlen = len(name)
+        name = name.replace('..', '.').replace('__', '_')
+        if len(name) == curlen:
+            break
+    return name
+
+
+def _size2str(size):
+    ''' Convert a size to a readable format '''
+    units = ' kMGTPEZ'
+    for i in range(len(units)):
+        if size < 1024:
+            break
+        size /= 1024
+    return ('%.1f %sB' % (size, units[i].strip())).replace('.0 B', ' B')
 
 
 # ===================================================

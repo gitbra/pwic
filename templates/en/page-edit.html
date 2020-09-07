@@ -43,9 +43,20 @@
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
 
 				{% if not pwic.msie %}
-					<p><strong>Files:</strong></p>
-					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">Drop the files here</div>
-					<ul id="edit_files_list"></ul>
+					<p><strong>Documents:</strong></p>
+					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
+						Drop the files here + Save immediately
+					</div>
+					<table id="edit_files_list">
+						<tr>
+							<th>File name</th>
+							<th>Size</th>
+							<th>MIME</th>
+							<th>Author</th>
+							<th>Date</th>
+							<th>Time</th>
+						</tr>
+					</table>
 				{% endif %}
 
 				<p><strong>Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>

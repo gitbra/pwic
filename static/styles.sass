@@ -34,6 +34,8 @@ CODE
 	border: 1px solid gray
 	padding: 3px
 	white-space: pre-wrap
+	
+	// Highlight at the end of this file
 
 
 // --------------------------------
@@ -130,9 +132,53 @@ ARTICLE
 		padding: 5px 15px 5px 15px
 		cursor: pointer
 
-	A:not(.pwic_browser_item)
+	A
 		color: red
 		text-decoration: underline
+
+
+	// -------------------------------- Action bar
+
+	.pwic_action_bar
+		line-height: 20px
+		text-align: right
+
+		A
+			display: inline-block
+			padding: 5px 10px 5px 10px
+			margin: 5px 0px 5px 5px
+			border: 1px solid lightgrey
+			border-radius: 10px
+			background-color: #E0E0FF
+			text-decoration: none !important
+		A:hover
+			border: 1px solid black
+			border-radius: 0px
+
+
+	// -------------------------------- File gallery
+
+	.pwic_file_gallery
+		display: block
+		overflow: hidden
+		padding: 10px
+
+		A
+			float: left
+			padding: 5px 10px 5px 10px
+			margin: 5px
+			// width: 200px
+			border: 1px solid lightgrey
+			text-align: center
+			color: black
+			text-decoration: none
+
+			SPAN
+				color: red
+				text-decoration: underline
+
+		A:hover
+			border: 1px solid black
 
 
 	// -------------------------------- Progression
@@ -188,6 +234,8 @@ ARTICLE
 			display: block
 			padding: 5px
 			margin: 5px
+			color: black				// Invalidates the general A
+			text-decoration: none		// Invalidates the general A
 
 		A.pwic_browser_item_h1
 			padding-left: 10px
@@ -215,9 +263,190 @@ ARTICLE
 			background-color: lightyellow
 			font-weight: bold
 
-	// -------------------------------- Pygment
-	// Adapted from: https://github.com/richleland/pygments-css/blob/master/pastie.css
 
+// --------------------------------
+//  Template - Footer
+// --------------------------------
+
+FOOTER
+	display: block
+	width: 90%
+	margin: auto
+	margin-bottom: 10px
+	padding: 2px 20px 2px 20px
+	border: 1px solid grey
+	border-radius: 10px
+	background-color: lightgrey
+	font-size: smaller
+	text-align: center
+
+	A
+		text-decoration: underline
+
+
+// --------------------------------
+//  Popup widget
+// --------------------------------
+
+.pwic_blurcontainer
+	position: absolute
+	left: 0px
+	right: 0px
+	top: 0px
+	bottom: 0px
+	background-color: rgb(255, 255, 255, 75%)
+	backdrop-filter: blur(3px)					// Only Chrome
+
+.pwic_popup
+	position: absolute
+	left: 15%
+	right: 15%
+	top: 30%
+	bottom: auto
+	background-color: #FFFFF0
+	padding: 15px
+	box-shadow: 0px 0px 15px gray
+	border: 1px solid black
+	border-radius: 15px
+
+	P
+		text-align: center
+
+
+// --------------------------------
+//  Messages types
+// --------------------------------
+
+.pwic_error, .pwic_information, .pwic_warning
+	padding: 5px
+	border-radius: 10px
+
+.pwic_error
+	background-color: #FFE0E0
+	border: 1px solid red
+
+.pwic_information
+	background-color: #E0FFE0
+	border: 1px solid green
+
+.pwic_warning
+	background-color: lightyellow
+	border: 1px solid orange
+
+
+// --------------------------------
+//  Individual reusable styles
+// --------------------------------
+
+.pwic_bold
+	font-weight: bold
+
+.pwic_center
+	text-align: center
+
+.pwic_fill
+	width: 100%
+
+.pwic_hidden
+	display: none
+
+.pwic_spacer
+	display: inline-block
+	width: 10px
+
+
+// --------------------------------
+//  Individual elements
+// --------------------------------
+
+#page_lastmod
+	text-align: right
+	font-size: smaller
+
+#page_topofpage
+	text-align: center
+#page_topofpage:hover
+	font-weight: bold
+
+#edit_toolbar
+	INPUT[type=button]
+		padding: 5px 10px 5px 10px
+
+#edit_markdown
+	width: 100%
+	height: 75vh
+
+#edit_files_drop
+	border: 2px dashed lightgrey
+	margin-top: 10px
+	margin-bottom: 20px
+	padding: 10px
+	line-height: 20px
+	font-weight: bold
+	text-align: center
+	background-color: #F7F7F7
+
+.pwic_dragover
+	background-color: lightyellow
+
+
+// --------------------------------
+//  Mobile corrections
+// --------------------------------
+
+@media screen and (max-width: 640px)
+	.pwic_desktop
+		display: none
+
+	ARTICLE
+		TABLE
+			width: 100%
+
+
+// --------------------------------
+//  Code differences
+// --------------------------------
+
+TABLE.diff
+	width: 100%
+	TD
+		padding: 0px 5px 0px 5px
+	TD:nth-child(3)
+		width: 45%
+	TD:nth-child(6)
+		width: 45%
+
+.diff_header
+	background-color: #F0F0F0
+	text-align: right
+	font-size: 8pt
+	font-family: fixed
+
+.diff_add
+	padding: 1px 5px 1px 5px
+	display: inline-block
+	background-color: #E0FFE0
+	border: 1px solid green
+
+.diff_chg
+	padding: 1px 5px 1px 5px
+	display: inline-block
+	background-color: #FFFFE0
+	border: 1px solid yellow
+
+.diff_sub
+	padding: 1px 5px 1px 5px
+	display: inline-block
+	background-color: #FFE0E0
+	border: 1px solid red
+
+
+// --------------------------------
+//  Syntax highlight
+//		https://github.com/richleland/pygments-css/blob/master/pastie.css
+// --------------------------------
+
+ARTICLE
 	CODE
 		background: #ffffff
 		.hll
@@ -397,185 +626,3 @@ ARTICLE
 			color: #0000DD
 			font-weight: bold
 
-
-// --------------------------------
-//  Template - Footer
-// --------------------------------
-
-FOOTER
-	display: block
-	width: 90%
-	margin: auto
-	margin-bottom: 10px
-	padding: 2px 20px 2px 20px
-	border: 1px solid grey
-	border-radius: 10px
-	background-color: lightgrey
-	font-size: smaller
-	text-align: center
-
-	A
-		text-decoration: underline
-
-
-// --------------------------------
-//  Popup widget
-// --------------------------------
-
-.pwic_blurcontainer
-	position: absolute
-	left: 0px
-	right: 0px
-	top: 0px
-	bottom: 0px
-	background-color: rgb(255, 255, 255, 75%)
-	backdrop-filter: blur(3px)					// Only Chrome
-
-.pwic_popup
-	position: absolute
-	left: 15%
-	right: 15%
-	top: 30%
-	bottom: auto
-	background-color: #FFFFF0
-	padding: 15px
-	box-shadow: 0px 0px 15px gray
-	border: 1px solid black
-	border-radius: 15px
-
-	P
-		text-align: center
-
-
-// --------------------------------
-//  Messages types
-// --------------------------------
-
-.pwic_error, .pwic_information, .pwic_warning
-	padding: 5px
-	border-radius: 10px
-
-.pwic_error
-	background-color: #FFE0E0
-	border: 1px solid red
-
-.pwic_information
-	background-color: #E0FFE0
-	border: 1px solid green
-
-.pwic_warning
-	background-color: lightyellow
-	border: 1px solid orange
-
-
-// --------------------------------
-//  Individual reusable styles
-// --------------------------------
-
-.pwic_action_bar
-	line-height: 20px
-	text-align: right
-
-	A
-		display: inline-block
-		padding: 5px 10px 5px 10px
-		margin: 5px 0px 5px 5px
-		border: 1px solid lightgrey
-		border-radius: 10px
-		background-color: #E0E0FF
-		text-decoration: none !important
-	A:hover
-		border: 1px solid black
-		border-radius: 0px
-
-.pwic_center
-	text-align: center
-
-.pwic_fill
-	width: 100%
-
-.pwic_hidden
-	display: none
-
-.pwic_spacer
-	display: inline-block
-	width: 10px
-
-TABLE.diff
-	width: 100%
-	TD
-		padding: 0px 5px 0px 5px
-	TD:nth-child(3)
-		width: 45%
-	TD:nth-child(6)
-		width: 45%
-
-.diff_header
-	background-color: #F0F0F0
-	text-align: right
-	font-size: 8pt
-	font-family: fixed
-
-.diff_add
-	padding: 1px 5px 1px 5px
-	display: inline-block
-	background-color: #E0FFE0
-	border: 1px solid green
-
-.diff_chg
-	padding: 1px 5px 1px 5px
-	display: inline-block
-	background-color: #FFFFE0
-	border: 1px solid yellow
-
-.diff_sub
-	padding: 1px 5px 1px 5px
-	display: inline-block
-	background-color: #FFE0E0
-	border: 1px solid red
-
-
-// --------------------------------
-//  Individual elements
-// --------------------------------
-
-#page_lastmod
-	text-align: right
-	font-size: smaller
-
-#page_topofpage
-	text-align: center
-#page_topofpage:hover
-	font-weight: bold
-
-#edit_toolbar
-	INPUT[type=button]
-		padding: 5px 10px 5px 10px
-
-#edit_markdown
-	width: 100%
-	height: 75vh
-
-#edit_files_drop
-	border: 2px dashed lightgrey
-	padding: 10px
-	line-height: 20px
-	font-weight: bold
-	font-style: italic
-	text-align: center
-
-.pwic_dragover
-	background-color: lightyellow
-
-
-// --------------------------------
-//  Mobile corrections
-// --------------------------------
-
-@media screen and (max-width: 640px)
-	.pwic_desktop
-		display: none
-
-	ARTICLE
-		TABLE
-			width: 100%

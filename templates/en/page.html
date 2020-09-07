@@ -74,9 +74,9 @@
 						<th>Date</th>
 						<th class="pwic_desktop">Time</th>
 						<th>Page</th>
+						<th class="pwic_desktop">Author</th>
 						<th>Comment</th>
 						<th class="pwic_desktop">Milestone</th>
-						<th class="pwic_desktop">Author</th>
 					</tr>
 
 					{% for recent in pwic.recents %}
@@ -84,9 +84,9 @@
 							<td>{{recent.date}}</td>
 							<td class="pwic_desktop">{{recent.time}}</td>
 							<td><a href="/{{pwic.project|urlencode}}/{{recent.page|urlencode}}">{{recent.title|escape}}</a></td>
+							<td class="pwic_desktop"><a href="/special/user/{{recent.author|urlencode}}">{{recent.author|escape}}</a></td>
 							<td>{{recent.comment|escape}}</td>
 							<td class="pwic_desktop">{{recent.milestone|escape}}</td>
-							<td class="pwic_desktop"><a href="/special/user/{{recent.author|urlencode}}">{{recent.author|escape}}</a></td>
 						</tr>
 					{% endfor %}
 				</table>
@@ -179,6 +179,35 @@
 			{% endif %}
 
 
+			{% if pwic.documents|count > 0 %}
+				<h1>All the documents of the project</h1>
+				<table>
+					<tr>
+						<th class="pwic_desktop">Page</th>
+						<th>File name</th>
+						<th class="pwic_desktop">MIME</th>
+						<th>Size</th>
+						<th>Author</th>
+						<th class="pwic_desktop">Date</th>
+						<th class="pwic_desktop">Time</th>
+						<th><span class="pwic_desktop">Download</span></th>
+					</tr>
+					{% for doc in pwic.documents %}
+						<tr>
+							<td class="pwic_desktop"><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+							<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
+							<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+							<td>{{doc.size|escape}}</td>
+							<td><a href="/special/user/{{doc.author|urlencode}}">{{doc.author|escape}}</a></td>
+							<td class="pwic_desktop">{{doc.date|escape}}</td>
+							<td class="pwic_desktop">{{doc.time|escape}}</td>
+							<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
+						</tr>
+					{% endfor %}
+				</table>
+			{% endif %}
+
+
 			{% if pwic.audits|count > 0 %}
 				<h1 id="special_audit">Audit of the last 30 days</h1>
 				<table>
@@ -246,6 +275,32 @@
 			{% endif %}
 
 			{{pwic.html}}
+
+			{% if (pwic.images|count > 0) or (pwic.documents|count > 0) %}
+				<h1 id="page_files">Attached documents</h1>
+
+				{% if pwic.documents|count > 0 %}
+					<div class="pwic_file_gallery">
+						{% for doc in pwic.documents %}
+							<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+								<span>{{doc.filename|escape}}</span>
+								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+							</a>
+						{% endfor %}
+					</div>
+				{% endif %}
+
+				{% if pwic.images|count > 0 %}
+					<div class="pwic_file_gallery">
+						{% for doc in pwic.images %}
+							<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+								<span>{{doc.filename|escape}}</span>
+								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+							</a>
+						{% endfor %}
+					</div>
+				{% endif %}
+			{% endif %}
 
 			<p id="page_lastmod">
 				Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}

@@ -1,7 +1,11 @@
 <script>
 	function page_search(event) {
-		event = event || window.event;
+		var event = event || window.event;
 		if ((event.keyCode || event.which) == 13)
-			window.location = '/{{pwic.project|urlencode}}/special/search?q=' + encodeURI(document.getElementById('page_search').value);
+		{
+			var q = document.getElementById('page_search').value;
+			if (q.length > 0)
+				window.location = '/{{pwic.project|urlencode}}/special/search?q=' + encodeURI(q);
+		}
 	}
 </script>

@@ -5,13 +5,14 @@ import sqlite3
 from prettytable import PrettyTable
 import re
 import datetime
-from os import chmod
+import os
 from os.path import isfile
 from shutil import copyfile
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_BACKUP, PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
-    _dt, _sha256, pwic_audit
+from pwic_lib import PWIC_DB, PWIC_DB_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+    PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    _dt, _sha256, _safeName, pwic_audit
 
 
 def main():
@@ -145,6 +146,23 @@ CREATE TABLE "audit" (
     "ip" TEXT NOT NULL DEFAULT '',
     PRIMARY KEY("id" AUTOINCREMENT)
 )''')
+            # Table DOCUMENTS
+            sql.execute('''
+CREATE TABLE "documents" (
+    "id" INTEGER NOT NULL,
+    "project" TEXT NOT NULL CHECK("project" <> ''),
+    "page" TEXT NOT NULL CHECK("page" <> ''),
+    "filename" TEXT NOT NULL CHECK("filename" <> ''),
+    "mime" TEXT NOT NULL CHECK("mime" <> ''),
+    "size" INTEGER NOT NULL,
+    "author" TEXT NOT NULL CHECK("author" <> ''),
+    "date" TEXT NOT NULL CHECK("date" <> ''),
+    "time" TEXT NOT NULL CHECK("time" <> ''),
+    UNIQUE("project","filename"),
+    FOREIGN KEY("author") REFERENCES "users"("user"),
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    PRIMARY KEY("id" AUTOINCREMENT)
+)''')
             # Table ENV
             sql.execute('''
 CREATE TABLE "env" (
@@ -169,7 +187,7 @@ CREATE TABLE "pages" (
     "title" TEXT NOT NULL CHECK("title" <> ''),
     "markdown" TEXT NOT NULL DEFAULT '',
     "comment" TEXT NOT NULL CHECK("comment" <> ''),
-    "milestone"	TEXT NOT NULL DEFAULT '',
+    "milestone" TEXT NOT NULL DEFAULT '',
     "valuser" TEXT NOT NULL DEFAULT '',
     "valdate" TEXT NOT NULL DEFAULT '',
     "valtime" TEXT NOT NULL DEFAULT '',
@@ -238,8 +256,9 @@ def create_backup():
     try:
         copyfile(PWIC_DB, new, follow_symlinks=False)
         if isfile(new):
-            chmod(new, S_IREAD)
-            print('Backup created as "%s"' % new)
+            os.chmod(new, S_IREAD)
+            print('Backup of the database file created as "%s"' % new)
+            print('The uploaded documents remain in their place')
             return True
         else:
             raise FileNotFoundError('File "%s" not created' % new)
@@ -250,9 +269,9 @@ def create_backup():
 
 def create_project(project, description, admin):
     # Check the arguments
-    project = project.lower().strip()
+    project = _safeName(project)
     description = description.strip()
-    admin = admin.lower().strip()
+    admin = _safeName(admin)
     if project in ['api', 'special'] or '' in [project, description, admin]:
         print('Error: invalid arguments')
         return False
@@ -265,6 +284,14 @@ def create_project(project, description, admin):
     sql.execute('SELECT project FROM projects WHERE project = ?', (project, ))
     if sql.fetchone() is not None:
         print('Error: project already exists')
+        return False
+
+    # Create the workspace for the documents of the project
+    try:
+        path = PWIC_DOCUMENTS_PATH % project
+        os.mkdir(path)
+    except OSError:
+        print('Error: impossible to create "%s"' % path)
         return False
 
     # Add the user account if not existent. The default password is encoded in the SQLite database
@@ -318,20 +345,40 @@ def create_project(project, description, admin):
 def delete_project(project):
     # Verify that the project exists yet
     sql = db_connect()
-    project = project.lower().strip()
+    project = _safeName(project)
     if sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
         print('Error: project does not exist')
         return False
 
     # Confirm
-    print('This operation is IRREVERSIBLE.')
+    print('This operation is IRREVERSIBLE. You loose all the pages and the uploaded documents.')
     print('Type "YES" in uppercase to confirm the deletion of the project "%s": ' % project, end='')
     if input() == 'YES':
 
+        # Remove the uploaded files
+        sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
+        for row in sql.fetchall():
+            fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
+            try:
+                os.remove(fn)
+            except (OSError, FileNotFoundError):
+                if isfile(fn):
+                    print('Error: unable to delete "%s"' % fn)
+                    return False
+
+        # Remove the folder of the project used to upload files
+        try:
+            fn = PWIC_DOCUMENTS_PATH % project
+            os.rmdir(fn)
+        except OSError:
+            print('Error: unable to remove "%s". The folder may be not empty' % fn)
+            return False
+
         # Delete
-        sql.execute('DELETE FROM roles WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM pages WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM projects WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
         pwic_audit(sql, {'author': PWIC_USER,
                          'event': 'delete-project'},
                    commit=True)
@@ -343,9 +390,9 @@ def delete_project(project):
 
 
 def reset_password(user):
-    sql = db_connect()
-
     # Check if the user is administrator
+    sql = db_connect()
+    user = _safeName(user)
     sql.execute(''' SELECT COUNT(*) AS total
                     FROM roles
                     WHERE user  = ?

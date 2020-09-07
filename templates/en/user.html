@@ -22,7 +22,7 @@
 					</ul>
 				</li>
 			{% endif %}
-			<li>Own password : {{ 'no' if pwic.initial_password else 'yes' }}
+			<li>Own password : {{ pwic.emojis.red_check if pwic.initial_password else pwic.emojis.green_check }}
 				{% if pwic.user == pwic.userpage %}
 					(<a href="#" onclick="return pwic_toggle('user_password_popup')">change it</a>)
 				{% endif %}
@@ -50,6 +50,7 @@
 				</div>
 			</div>
 		{% endif %}
+
 
 		<h2>Contributions in the last 90 days</h2>
 		{% if pwic.pages|count == 0 %}
@@ -85,6 +86,36 @@
 						<td>{{page.date|escape}}</td>
 						<td class="pwic_desktop">{{page.time|escape}}</td>
 						<td class="pwic_desktop">{{page.milestone|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+
+		<h2>Uploaded documents</h2>
+		{% if pwic.documents|count == 0 %}
+			<p>The user owns no document.</p>
+		{% else%}
+			<table>
+				<tr>
+					<th class="pwic_desktop">Page</th>
+					<th>File name</th>
+					<th class="pwic_desktop">MIME</th>
+					<th>Size</th>
+					<th>Date</th>
+					<th class="pwic_desktop">Time</th>
+					<th><span class="pwic_desktop">Download</span></th>
+				</tr>
+
+				{% for doc in pwic.documents %}
+					<tr>
+						<td class="pwic_desktop">{{doc.project|escape}} / <a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
+						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td>{{doc.size|escape}}</td>
+						<td>{{doc.date|escape}}</td>
+						<td class="pwic_desktop">{{doc.time|escape}}</td>
+						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
 					</tr>
 				{% endfor %}
 			</table>

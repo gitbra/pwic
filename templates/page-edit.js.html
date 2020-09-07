@@ -160,9 +160,39 @@
 
 	// -------------------------------- File drop
 
-	function edit_refresh_files() {
-		alert('NOT IMPLEMENTED');  // BUG
+	async function edit_refresh_files() {
+		var options = {	method: 'POST',
+						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}'},
+			request, data, i, buffer;
+		try {
+			request = await fetch('/api/document/list', options);
+			if (request.ok)
+			{
+				data = await request.json();
+				buffer = '';
+				for (i=0 ; i<data.length ; i++)
+				{
+					doc = data[i];
+					buffer += '<tr>\
+									<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'</a></td>\
+									<td>'+doc['size']+'</td>\
+									<td>'+doc['mime_icon']+' '+doc['mime']+'</td>\
+									<td><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'</a></td>\
+									<td>'+doc['date']+'</td>\
+									<td>'+doc['time']+'</td>\
+								</tr>';
+				}
+				document.getElementById('edit_files_list').innerHTML = edit_files_list_initial + buffer;
+			}
+		}
+		catch (error) {
+			console.log(error);
+		}
 	}
+
+	var edit_files_list_initial = document.getElementById('edit_files_list').innerHTML;
+	edit_refresh_files();	//For the initialization
 
 	function edit_drop(event, errorUnsupported) {
 		var files, file, i, form;
@@ -185,7 +215,9 @@
 				// Request
 				fetch('/api/document/create', {method: 'POST', body: form})
 					.then(function() {
-						setTimeout(edit_refresh_files(), 2000);
+						setTimeout(function() {
+							edit_refresh_files();
+						}, 2000);
 					});
 			}
 		}
@@ -220,7 +252,7 @@
 		{
 			// First ping-pong the server to make sure that the session is still valid
 			var xhr = new XMLHttpRequest();
-			xhr.open('GET', '/api/ping');
+			xhr.open('POST', '/api/ping');
 			xhr.send();
 			xhr.onload = function() {
 				if ((xhr.status == 200) && (xhr.responseText == 'OK'))
