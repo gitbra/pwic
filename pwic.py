@@ -20,9 +20,11 @@ import time
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, \
-    PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_EMOJIS, \
+    PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, \
     _x, _xb, _int, _dt, _sha256, _safeName, _safeFileName, _size2str, \
-    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
+    pwic_checkMime, pwic_extended_syntax, pwic_audit, \
+    pwic_search_parse, pwic_search_tostring
 
 
 # ===============
@@ -38,6 +40,7 @@ from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, \
 #   - HTML5 upload :    https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
 #                       https://css-tricks.com/drag-and-drop-file-uploading/
 #                       https://docs.aiohttp.org/en/stable/multipart.html
+#   - Magic bytes :     https://en.wikipedia.org/wiki/List_of_file_signatures
 # ===============
 
 
@@ -104,6 +107,7 @@ class PwicServer():
         pwic['options'] = app['options']
         pwic['version'] = PWIC_VERSION
         pwic['emojis'] = PWIC_EMOJIS
+        pwic['constants'] = {'unsafe_chars': PWIC_CHARS_UNSAFE}
         ua = request.headers.get('User-Agent', '')
         pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browsers
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
@@ -390,10 +394,9 @@ class PwicServer():
                                                    'revision': row[8]})
 
                 # Text of the maintenance banner
-                sql.execute("SELECT value FROM env WHERE key = 'maintenance'")
+                sql.execute("SELECT value FROM env WHERE key = 'maintenance' AND value <> ''")
                 row = sql.fetchone()
-                if row is not None:
-                    pwic['maintenance'] = row[0]
+                pwic['maintenance'] = '' if row is None else row[0]
 
                 # Output
                 if not app['options']['raw_possible'] or request.rel_url.query.get('raw', None) is None:
@@ -464,6 +467,7 @@ class PwicServer():
 
         # Fetch the projects where the user can add pages
         pwic = {'title': 'Create a page',
+                'default_project': request.rel_url.query.get('project', ''),
                 'projects': []}
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.project, b.description
@@ -628,7 +632,7 @@ class PwicServer():
         terms = request.rel_url.query.get('q', '')
         query = pwic_search_parse(terms)
         if query is None:
-            raise web.HTTPBadRequest()
+            raise web.HTTPTemporaryRedirect('/%s' % project)
 
         # Fetch the pages
         sql = app['sql'].cursor()
@@ -890,8 +894,13 @@ class PwicServer():
         if user == '':
             return await self._handleLogon(request)
 
-        # Fetch the pages
+        # Verify that the export is authorized
         sql = app['sql'].cursor()
+        sql.execute("SELECT value FROM env WHERE key = 'no_export' AND value <> ''")
+        if sql.fetchone() is not None:
+            raise web.HTTPUnauthorized()
+
+        # Fetch the pages
         project = request.match_info.get('project', '')
         sql.execute(''' SELECT b.page, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
@@ -1080,7 +1089,7 @@ class PwicServer():
                             LEFT OUTER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.page    = ?
-                                AND b.final   = "X"
+                                AND b.latest  = "X"
                         WHERE a.project = ?
                           AND a.user    = ?
                           AND a.manager = "X"''',
@@ -1283,7 +1292,7 @@ class PwicServer():
         if '' in [project, page] or revision == 0:
             raise web.HTTPBadRequest()
 
-        # Verify the preconditions
+        # Verify that the deletion is possible
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
@@ -1326,18 +1335,57 @@ class PwicServer():
                               AND revision <> ?''',
                         (project, page, revision))
             row = sql.fetchone()
-            assert(row is not None)
-            if row[0] < revision:
-                sql.execute(''' UPDATE pages
-                                SET latest = "X", header = ?
-                                WHERE project  = ?
-                                  AND page     = ?
-                                  AND revision = ?''',
-                            (header, project, page, row[0]))
-        sql.execute('COMMIT')
+            if row[0] is not None:          # No revision available
+                if row[0] < revision:       # If we have already deleted the latest revision
+                    sql.execute(''' UPDATE pages
+                                    SET latest = "X",
+                                        header = ?
+                                    WHERE project  = ?
+                                      AND page     = ?
+                                      AND revision = ?''',
+                                (header, project, page, row[0]))
+
+        # Delete the attached documents when the page doesn't exist anymore
+        sql.execute(''' SELECT COUNT(revision)
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (project, page))
+        fully_deleted = sql.fetchone()[0] == 0
+        if fully_deleted:
+            # Remove the attached documents
+            docFound = False
+            sql.execute(''' SELECT filename
+                            FROM documents
+                            WHERE project = ?
+                              AND page    = ?''',
+                        (project, page))
+            for row in sql.fetchall():
+                docFound = True
+                fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
+                try:
+                    os.remove(fn)
+                except (OSError, FileNotFoundError):
+                    if os.path.isfile(fn):
+                        sql.execute('ROLLBACK')
+                        raise web.HTTPNotModified('/%s/%s?failed' % (project, page))
+
+            # Remove the index
+            if docFound:
+                sql.execute(''' DELETE FROM documents
+                                WHERE project = ?
+                                  AND page    = ?''',
+                            (project, page))
+                pwic_audit(sql, {'author': user,
+                                 'event': 'delete-document',
+                                 'project': project,
+                                 'page': page,
+                                 'string': '*'},
+                           request)
 
         # Redirection
-        if revision == 1:
+        sql.execute('COMMIT')
+        if fully_deleted:
             raise web.HTTPFound('/%s?success' % project)  # The page itself is deleted
         else:
             raise web.HTTPFound('/%s/%s?success' % (project, page))
@@ -1535,7 +1583,7 @@ class PwicServer():
         if user == '':
             raise web.HTTPUnauthorized()
 
-        # Parse the submitted data
+        # Parse the submitted multipart/form-data
         try:
             regex_name = re.compile(r'[^file]name="([^"]+)"')
             regex_filename = re.compile(r'filename="([^"]+)"')
@@ -1574,7 +1622,7 @@ class PwicServer():
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '')
 
-                # Value
+                # Assign the value
                 if name == 'content':
                     doc[name] = await part.read(decode=False)
                 else:
@@ -1588,7 +1636,7 @@ class PwicServer():
         if not os.path.isdir(PWIC_DOCUMENTS_PATH % doc['project']):
             raise web.HTTPInternalServerError()
 
-        # Verify that there is no active maintenance message
+        # Verify that there is no active maintenance message that may prevent the from being saved
         sql = app['sql'].cursor()
         sql.execute("SELECT value FROM env WHERE key = 'maintenance' AND value <> ''")
         if sql.fetchone() is not None:
@@ -1601,7 +1649,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the consistency of the filename
-        row = sql.execute("SELECT value FROM env WHERE key = 'document_name_regex'").fetchone()
+        row = sql.execute("SELECT value FROM env WHERE key = 'document_name_regex' AND value <> ''").fetchone()
         if row is not None:
             try:
                 regex_doc = re.compile(row[0])
@@ -1610,25 +1658,34 @@ class PwicServer():
             if regex_doc.search(doc['filename']) is None:
                 raise web.HTTPBadRequest()
 
+        # Verify the file type
+        sql.execute("SELECT value FROM env WHERE key = 'enforce_mime' AND value <> ''")
+        if sql.fetchone() is not None:
+            if not pwic_checkMime(doc['filename'], doc['mime'], doc['content'][:10]):
+                raise web.HTTPUnsupportedMediaType()
+
         # Verify that the user is authorized to upload files on an existing page
-        sql.execute(''' SELECT user
+        sql.execute(''' SELECT b.revision
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.page    = ?
+                                AND b.latest  = 'X'
                         WHERE   a.project = ?
                           AND   a.user    = ?
                           AND ( a.manager = 'X'
                              OR a.editor  = 'X' )''',
                     (doc['page'], doc['project'], user))
-        if sql.fetchone() is None:
+        row = sql.fetchone()
+        if row is None:
             raise web.HTTPUnauthorized()
+        current_revision = row[0]
 
         # Verify that the document doesn't exist yet (not related to a given page)
         sql.execute(''' SELECT id
                         FROM documents
                         WHERE project  = ?
-                          AND filename = ? ''',
+                          AND filename = ?''',
                     (doc['project'], doc['filename']))
         if sql.fetchone() is not None:
             raise web.HTTPBadRequest()
@@ -1644,14 +1701,16 @@ class PwicServer():
         # Create the document in the database
         dt = _dt()
         sql.execute(''' INSERT INTO documents (project, page, filename, mime, size, author, date, time)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?) ''',
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
                     (doc['project'], doc['page'],
                      doc['filename'], doc['mime'], len(doc['content']),
                      user, dt['date'], dt['time']))
+        assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': user,
                          'event': 'create-document',
                          'project': doc['project'],
                          'page': doc['page'],
+                         'revision': current_revision,
                          'string': doc['filename']},
                    request, commit=True)
         raise web.HTTPOk()

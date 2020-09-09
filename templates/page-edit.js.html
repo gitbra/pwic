@@ -177,10 +177,10 @@
 					buffer += '<tr>\
 									<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'</a></td>\
 									<td>'+doc['size']+'</td>\
-									<td>'+doc['mime_icon']+' '+doc['mime']+'</td>\
-									<td><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'</a></td>\
+									<td class="pwic_desktop">'+doc['mime_icon']+' '+doc['mime']+'</td>\
+									<td class="pwic_desktop"><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'</a></td>\
 									<td>'+doc['date']+'</td>\
-									<td>'+doc['time']+'</td>\
+									<td class="pwic_desktop">'+doc['time']+'</td>\
 								</tr>';
 				}
 				document.getElementById('edit_files_list').innerHTML = edit_files_list_initial + buffer;

@@ -24,6 +24,12 @@ def main():
 
     subparsers.add_parser('init-db', help='Initialize the database once')
 
+    parser_env = subparsers.add_parser('set-env', help='Set a global value')
+    parser_env.add_argument('name', default='', help='Name of the variable')
+    parser_env.add_argument('value', default='', help='Value of the variable')
+
+    subparsers.add_parser('show-mime', help='Show the MIME types defined on the server [Windows]')
+
     subparsers.add_parser('create-backup', help='Make a backup copy of the database')
 
     parser_newproj = subparsers.add_parser('create-project', help='Create a new project')
@@ -41,10 +47,6 @@ def main():
     parser_log.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
     parser_log.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
 
-    parser_env = subparsers.add_parser('set-env', help='Set a global value')
-    parser_env.add_argument('name', default='', help='Name of the variable')
-    parser_env.add_argument('value', default='', help='Value of the variable')
-
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
     # Parse the command line
@@ -52,7 +54,11 @@ def main():
     if args.command == 'ssl':
         return generate_ssl()
     elif args.command == 'init-db':
-        return generate_db()
+        return init_db()
+    elif args.command == 'set-env':
+        return set_env(args.name, args.value)
+    elif args.command == 'show-mime':
+        return show_mime()
     elif args.command == 'create-backup':
         return create_backup()
     elif args.command == 'create-project':
@@ -63,10 +69,11 @@ def main():
         return reset_password(args.user)
     elif args.command == 'show-log':
         return show_log(args.min, args.max)
-    elif args.command == 'set-env':
-        return set_env(args.name, args.value)
     elif args.command == 'execute-sql':
         return execute_sql()
+    else:
+        parser.print_help()
+        return False
 
 
 def db_connect():
@@ -122,7 +129,7 @@ def generate_ssl():
     return True
 
 
-def generate_db():
+def init_db():
     if isfile(PWIC_DB):
         print('Error: the database is already created')
     else:
@@ -242,6 +249,72 @@ END''')
             print('The database is created at "%s"' % PWIC_DB)
             return True
     return False
+
+
+def set_env(name, value):
+    # Check the keys
+    keys = ['document_name_regex',
+            'enforce_mime',
+            'maintenance',
+            'max_document_size',
+            'no_export']
+    if name not in keys:
+        print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
+        return False
+    value = value.strip()
+
+    # Update the variable
+    sql = db_connect()
+    if value == '':
+        sql.execute('DELETE FROM env WHERE key = ?', (name, ))
+    else:
+        sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': '%sset-%s' % ('un' if value == '' else '', name),
+                     'string': value},
+               commit=True)
+    print('Variable updated')
+    return True
+
+
+def show_mime():
+    # Load the platform-dependent library
+    try:
+        import winreg
+    except ImportError:
+        print('Error: unsupported operating system')
+        return False
+
+    # Buffer
+    tab = PrettyTable()
+    tab.field_names = ['Extension', 'MIME']
+    tab.sortby = 'Extension'
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    tab.header = True
+    tab.border = False
+
+    # Read all the file extensions
+    root = winreg.HKEY_CLASSES_ROOT
+    for i in range(winreg.QueryInfoKey(root)[0]):
+        name = winreg.EnumKey(root, i)
+        if name[:1] == '.':
+
+            # Read the declared content type
+            handle = winreg.OpenKey(root, name)
+            try:
+                value, type = winreg.QueryValueEx(handle, 'Content Type')
+            except FileNotFoundError:
+                value, type = None, None
+            winreg.CloseKey(handle)
+
+            # Consider the mime if it exists
+            if type == winreg.REG_SZ:
+                tab.add_row([name, value])
+
+    # Final output
+    print(tab.get_string())
+    return True
 
 
 def create_backup():
@@ -458,24 +531,6 @@ def show_log(dmin, dmax):
     tab.header = True
     tab.border = False
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
-    return True
-
-
-def set_env(name, value):
-    # Check the keys
-    keys = ['document_name_regex', 'maintenance', 'max_document_size']
-    if name not in keys:
-        print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
-        return False
-
-    # Update the variable
-    sql = db_connect()
-    sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
-    pwic_audit(sql, {'author': PWIC_USER,
-                     'event': '%sset-%s' % ('un' if value == '' else '', name),
-                     'string': value},
-               commit=True)
-    print('Variable updated')
     return True
 
 

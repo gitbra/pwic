@@ -41,7 +41,7 @@
 				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/special/create-page">{{pwic.emojis.sheet}} Create a page</a>
+				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} Create a page</a>
 			{% endif %}
 			{% if not pwic.special %}
 				{% if pwic.options.raw_possible %}

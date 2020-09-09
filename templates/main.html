@@ -21,6 +21,14 @@
 				if (window.location.toString().indexOf('?failed') !== -1)
 					alert(failed);
 		}
+
+		function pwic_is_safe(name) {
+			var i, chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
+			for (i=0 ; i<chars.length ; i++)
+				if (name.indexOf(chars[i]) !== -1)
+					return false;
+			return true;
+		}
 	</script>
 </head>
 <body id="top">

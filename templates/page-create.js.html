@@ -2,9 +2,13 @@
 	function create_submit(errorText) {
 		var	project = document.getElementById('create_project').value,
 			page = document.getElementById('create_page').value.trim();
-		if ((['', 'api', 'special'].indexOf(project) == -1) && (['', 'special'].indexOf(page) == -1))
-			document.getElementById('create_form').submit();
-		else
+		if (	!pwic_is_safe(project)
+			||	!pwic_is_safe(page)
+			||	(['', 'api', 'special'].indexOf(project) !== -1)
+			||	(['', 'special'].indexOf(page) !== -1)
+		)
 			alert(errorText);
+		else
+			document.getElementById('create_form').submit();
 	}
 </script>

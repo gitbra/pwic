@@ -60,6 +60,7 @@ PWIC_EMOJIS = {'brick': '&#x1F9F1;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
                'world': '&#x1F5FA;'}
+PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 
 
 # ===================================================
@@ -99,14 +100,14 @@ def _sha256(value, salt=True):
     return sha256(text.encode()).hexdigest()
 
 
-def _safeName(name, extra='.'):
-    chars = '\\/:;*?=&#\'"<>()[]|@' + extra     # Various signs incompatible with filesystem, HTML rendering, SQL special syntax, etc...
+def _safeName(name, extra='.@'):
+    chars = PWIC_CHARS_UNSAFE + extra
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
     return name.lower().strip()
 
 
-def _safeFileName(self, name):
+def _safeFileName(name):
     name = _safeName(name, extra='').replace(' ', '_')
     while True:
         curlen = len(name)
@@ -124,6 +125,130 @@ def _size2str(size):
             break
         size /= 1024
     return ('%.1f %sB' % (size, units[i].strip())).replace('.0 B', ' B')
+
+
+# ===================================================
+#  Complex functions
+# ===================================================
+
+def pwic_checkMime(filename, mime, firstbytes):
+    # Mimes and magic bytes
+    AIF = ['AIFF', 'FORM']
+    CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
+    JPG = ['\xFF\xD8\xFF']
+    GZ = ['\x1F\x8B']
+    MATROSKA = ['\x1A\x45\xDF\xA3']
+    MIDI = ['MThd']
+    MPG = ['\x00\x00\x01\xB3']
+    PE = ['MZ']
+    TIFF = ['II*\x00', 'II\x00*']
+    ZIP = ['PK']
+    MIMES = [('aac', 'audio/vnd.dlna.adts', None),
+             ('accdb', 'application/msaccess', ['\x00\x01\x00\x00Standard ACE DB']),  # NUL SOH NUL NUL
+             ('aif', 'audio/aiff', AIF),
+             ('aifc', 'audio/aiff', AIF),
+             ('aiff', 'audio/aiff', AIF),
+             ('avi', 'video/avi', ['AVI', 'RIFF']),
+             ('bmp', 'image/bmp', ['BM']),
+             ('cer', 'application/x-x509-ca-cert', None),
+             ('crt', 'application/x-x509-ca-cert', None),
+             ('css', 'text/css', None),
+             ('csv', 'application/vnd.ms-excel', None),
+             ('der', 'application/x-x509-ca-cert', None),
+             ('dll', 'application/x-msdownload', PE),
+             ('doc', 'application/msword', CFBF),
+             ('docm', 'application/vnd.ms-word.document.macroEnabled.12', ZIP),
+             ('docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ZIP),
+             ('emf', 'image/x-emf', None),
+             ('eps', 'application/postscript', None),
+             ('epub', 'application/epub+zip', ZIP),
+             ('exe', 'application/x-msdownload', PE),
+             ('flac', 'audio/x-flac', ['fLaC']),
+             ('gif', 'image/gif', ['GIF87a', 'GIF89a']),
+             ('gz', 'application/x-gzip', GZ),
+             ('htm', 'text/html', None),
+             ('html', 'text/html', None),
+             ('ico', 'image/x-icon', ['\x00\x00\x01\x00']),
+             ('ics', 'text/calendar', None),
+             ('jpeg', 'image/jpeg', JPG),
+             ('jpg', 'image/jpeg', JPG),
+             ('latex', 'application/x-latex', None),
+             ('mdb', 'application/msaccess', ['\x00\x01\x00\x00Standard Jet DB']),  # NUL SOH NUL NUL
+             ('mid', 'audio/mid', MIDI),
+             ('midi', 'audio/mid', MIDI),
+             ('mka', 'audio/x-matroska', MATROSKA),
+             ('mkv', 'video/x-matroska', MATROSKA),
+             ('mov', 'video/quicktime', None),
+             ('mp3', 'audio/mpeg', ['\xFF\xFB', '\xFF\xF3', '\xFF\xF2']),
+             ('mp4', 'video/mp4', ['ftypisom']),
+             ('mpeg', 'video/mpeg', MPG),
+             ('mpg', 'video/mpeg', MPG),
+             ('msg', None, CFBF),
+             ('odp', 'application/vnd.oasis.opendocument.presentation', ZIP),
+             ('ods', 'application/vnd.oasis.opendocument.spreadsheet', ZIP),
+             ('odt', 'application/vnd.oasis.opendocument.text', ZIP),
+             ('one', 'application/msonenote', None),
+             ('pdf', 'application/pdf', ['%PDF-']),
+             ('pdfxml', 'application/vnd.adobe.pdfxml', None),
+             ('png', 'image/png', ['‰PNG']),
+             ('pot', 'application/vnd.ms-powerpoint', CFBF),
+             ('potm', 'application/vnd.ms-powerpoint.template.macroEnabled.12', ZIP),
+             ('potx', 'application/vnd.openxmlformats-officedocument.presentationml.template', ZIP),
+             ('pps', 'application/vnd.ms-powerpoint', CFBF),
+             ('ppsm', 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12', ZIP),
+             ('ppsx', 'application/vnd.openxmlformats-officedocument.presentationml.slideshow', ZIP),
+             ('ppt', 'application/vnd.ms-powerpoint', CFBF),
+             ('pptm', 'application/vnd.ms-powerpoint.presentation.macroEnabled.12', ZIP),
+             ('pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ZIP),
+             ('ps', 'application/postscript', ['%!PS']),
+             ('pub', 'application/vnd.ms-publisher', CFBF),
+             ('rtf', 'application/msword', ['{\rtf1']),
+             ('svg', 'image/svg+xml', None),
+             ('swf', 'application/x-shockwave-flash', ['CWS', 'FWS']),
+             ('tar', 'application/x-tar', ['ustar\x0000', 'ustar  \x00']),
+             ('tgz', 'application/x-compressed', GZ),
+             ('tif', 'image/tiff', TIFF),
+             ('tiff', 'image/tiff', TIFF),
+             ('txt', 'text/plain', None),
+             ('vcf', 'text/x-vcard', None),
+             ('vsd', 'application/vnd.ms-visio.viewer', CFBF),
+             ('vsdm', 'application/vnd.ms-visio.viewer', ZIP),
+             ('vsdx', 'application/vnd.ms-visio.viewer', ZIP),
+             ('wav', 'audio/wav', ['WAV', 'RIFF']),
+             ('weba', 'audio/webm', None),
+             ('webm', 'video/webm', MATROSKA),
+             ('wma', 'audio/x-ms-wma', None),
+             ('wmf', 'image/x-wmf', None),
+             ('wmv', 'video/x-ms-wmv', None),
+             ('xaml', 'application/xaml+xml', None),
+             ('xls', 'application/vnd.ms-excel', CFBF),
+             ('xlsm', 'application/vnd.ms-excel.sheet.macroEnabled.12', ZIP),
+             ('xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ZIP),
+             ('xml', 'text/xml', None),
+             ('xsl', 'text/xml', None),
+             ('z', 'application/x-compress', ['\x1F\xA0']),
+             ('zip', 'application/x-zip-compressed', ZIP)]
+
+    # Check the applicable extension
+    if '.' not in filename:
+        return True
+    extension = filename.split('.')[-1]
+    for (ext, typ, hdr) in MIMES:
+        if ext == extension:
+
+            # Expected mime
+            if mime is not None and typ != mime:
+                return False
+
+            # Magic bytes
+            if hdr is not None:
+                for bytes in hdr:
+                    bytes = bytearray(bytes.encode())
+                    if firstbytes[:len(bytes)] == bytes:
+                        return True
+                return False
+            break
+    return True
 
 
 # ===================================================

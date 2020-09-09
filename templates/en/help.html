@@ -45,7 +45,7 @@
 
 
 		<h1 id="help_backup">Create a backup</h1>
-		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>.</p>
+		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>. Note that it disables the capability to attach documents to the pages.</p>
 		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis.</p>
 		<p>A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs.</p>
 		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic.</p>
@@ -91,10 +91,28 @@
 
 		<h1 id="help_modify">Modify a page</h1>
 		<p>A new revision is generated each time a page is modified.</p>
-		<p>Saving as draft means that you are working on a page, but the revision has no final usage yet. You can delete your own drafts.</p>
+		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
 		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft.</p>
-		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision can be deleted by an administrator only.</p>
+		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision is a milestone and can be deleted by an administrator only.</p>
 		<p>It is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code> or <code>&lt;iframe&gt;</code>.</p>
+		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
+		<p>The attribute <em>Milestone</em> of the page is an optional free comment that can be used, for example, by the manager to request a delivery date, or by the editor to announce a publishing date. You can also indicate your difficulties, the current progression, etc...</p>
+		<p>You can upload several files for a page. In case it is a picture, you can also include it in the page as a figure, else the files are listed on a gallery below the page. In any case, many rules apply in the uploading process:</p>
+			<ul>
+				<li>No revision is created when a file is created, modified or deleted. The changes are instantly considered.</li>
+				<li>You can't recover the deleted files, unless you own a backup.</li>
+				<li>The filename must be unique per project and the file is attached to a page:
+					<ul>
+						<li>The file is created if it doesn't exist yet.</li>
+						<li>The file is updated if it exists and is assigned to the current page.</li>
+						<li>The file is <ins>not</ins> updated if it exists and is assigned to another page.</li>
+					</ul>
+				</li>
+				<li>The filename must respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
+				<li>A file size limit may apply if the administrator has defined the variable <code>max_document_size</code>.</li>
+				<li>The content of the file must match with the file type if the administrator has defined the variable <code>enforce_mime</code>.</li>
+				<li>The feature is not available with the obsolete browser Microsoft Internet Explorer.</li>
+			</ul>
 
 
 		<h1 id="help_promote">Promote to the header line</h1>
@@ -127,9 +145,8 @@
 
 
 		<h1 id="help_export">Export a project</h1>
-		<p>The administrators are able to download a project as a ZIP file containing each page as a text file written in Markdown. There is no HTML rendering.</p>
-		<p>The purposes are the creation of a backup or the preparation of a migration for example.</p>
-		<p>The export is audited.</p>
+		<p>The administrators are able to download a project as a ZIP file containing all the pages and attached documents. The purposes are the creation of a backup or the preparation of a migration for example.</p>
+		<p>The export is audited and can be disabled by setting the administrative variable <code>no_export</code>.</p>
 
 
 		<h1 id="help_links">Verify the links</h1>
@@ -167,13 +184,13 @@
 
 
 		<h1 id="help_log">View the activity log</h1>
-		<p>Pwic logs few activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better overview of the situation.</p>
+		<p>Pwic logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better overview of the situation.</p>
 		<p>Online, the administrator of a project can see the events related to the project only, like the creation of a page, a deletion, a validation...</p>
 		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py show-log 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
 
 		<h1 id="help_log_user">View the activity of a user</h1>
-		<p>The user page contains a public overview of the recently modified documents over the last 30 days. It facilitates the search of the pages.</p>
+		<p>The user page contains a public overview of the recently modified pages (over the last 30 days) and the uploaded documents.</p>
 		<p>Your own user page is mentionned in the footer.</p>
 	</article>
 {% endblock %}
