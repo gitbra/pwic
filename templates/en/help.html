@@ -42,6 +42,41 @@
 		<h1 id="help_setup">Setup the server</h1>
 		<p>Refer to the file <code>README.md</code> available in the root directory of the application.</p>
 		<p>Beware that the restart of the server closes all the current sessions, which would lose all the current online work of the editors and managers.</p>
+		<p>With the command <code>python pwic_admin.py set-env --help</code>, you can define a general parameter that will influence Pwic's behavior for all the projects:</p>
+			<table>
+				<tr>
+					<th>Name</th>
+					<th>Description</th>
+				</tr>
+				<tr>
+					<td><code>document_name_regex</code></td>
+					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
+				</tr>
+				<tr>
+					<td><code>enforce_mime</code></td>
+					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its supposed content.</td>
+				</tr>
+				<tr>
+					<td><code>maintenance</code></td>
+					<td>The value is displayed on the pages to inform the users of a planned maintenance. The upload of documents is immediately disabled.</td>
+				</tr>
+				<tr>
+					<td><code>max_document_size</code></td>
+					<td>All the uploaded files must have a size lower than this limit. To disable the upload, set the value <code>-1</code>.</td>
+				</tr>
+				<tr>
+					<td><code>max_project_size</code></td>
+					<td>Define the maximal disk space allowed for all the attached documents of a project.</td>
+				</tr>
+				<tr>
+					<td><code>no_export</code></td>
+					<td>Disable the export of the project as an archive for the online administrators.</td>
+				</tr>
+				<tr>
+					<td><code>no_raw</code></td>
+					<td>Disable the online possibility to display the raw markdown code of any page.</td>
+				</tr>
+			</table>
 
 
 		<h1 id="help_backup">Create a backup</h1>

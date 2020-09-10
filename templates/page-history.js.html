@@ -1,15 +1,14 @@
 <script>
+	'use strict';
+
 	function history_compare() {
-		var	i, e, count, rev=[],
+		var rev = [],
 			elements = document.getElementsByTagName('input');
-		for (i=0 ; i<elements.length ; i++)
+		for (var i=0 ; i<elements.length ; i++)
 		{
-			e = elements[i];
+			var e = elements[i];
 			if ((e.type == "checkbox") && e.checked)
-			{
-				count++;
 				rev.push(e.dataset.revision);
-			}
 		}
 		if (rev.length > 2)
 			return false;

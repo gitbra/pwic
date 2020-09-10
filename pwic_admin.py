@@ -162,13 +162,14 @@ CREATE TABLE "documents" (
     "filename" TEXT NOT NULL CHECK("filename" <> ''),
     "mime" TEXT NOT NULL CHECK("mime" <> ''),
     "size" INTEGER NOT NULL,
+    "hash" TEXT NOT NULL DEFAULT '',
     "author" TEXT NOT NULL CHECK("author" <> ''),
     "date" TEXT NOT NULL CHECK("date" <> ''),
     "time" TEXT NOT NULL CHECK("time" <> ''),
-    UNIQUE("project","filename"),
+    PRIMARY KEY("id" AUTOINCREMENT),
     FOREIGN KEY("author") REFERENCES "users"("user"),
     FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("id" AUTOINCREMENT)
+    UNIQUE("project","filename")
 )''')
             # Table ENV
             sql.execute('''
@@ -257,7 +258,9 @@ def set_env(name, value):
             'enforce_mime',
             'maintenance',
             'max_document_size',
-            'no_export']
+            'max_project_size',
+            'no_export',
+            'no_raw']
     if name not in keys:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
         return False

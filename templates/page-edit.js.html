@@ -1,4 +1,5 @@
 <script>
+	'use strict';
 
 	// -------------------------------- Toolbar
 
@@ -39,7 +40,7 @@
 			return edit_decorate2('<', '>');
 
 		// Ask for the link
-		url = prompt(text, '');
+		var url = prompt(text, '');
 		if ((url == '') || (url == null))
 			return false;
 		url = url.trim();
@@ -62,12 +63,12 @@
 			ss, se = se, ss
 
 		// Prepend the tag
-		appended = 0;
-		for (i=se ; i>=0 ; i--)
+		var appended = 0;
+		for (var i=se ; i>=0 ; i--)
 		{
 			if ((i == 0) || (ta.value[i] == "\n"))
 			{
-				j = (i != 0 ? 1 : 0);
+				var j = (i != 0 ? 1 : 0);
 				ta.value = ta.value.substr(0, i+j) + tag + ta.value.substr(i+j);
 				appended++;
 				if (i <= ss)
@@ -90,7 +91,7 @@
 			return false;
 
 		// Prepare the associated markdown
-		var i, j, buffer = '';
+		var i, j, buffer='';
 		for (i=0 ; i<nrow ; i++)
 		{
 			buffer += '|';
@@ -163,20 +164,19 @@
 	async function edit_refresh_files() {
 		var options = {	method: 'POST',
 						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}'},
-			request, data, i, buffer;
+						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}'};
 		try {
-			request = await fetch('/api/document/list', options);
+			var request = await fetch('/api/document/list', options);
 			if (request.ok)
 			{
-				data = await request.json();
-				buffer = '';
-				for (i=0 ; i<data.length ; i++)
+				var	data = await request.json(),
+					buffer = '';
+				for (var i=0 ; i<data.length ; i++)
 				{
-					doc = data[i];
+					var doc = data[i];
 					buffer += '<tr>\
 									<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'</a></td>\
-									<td>'+doc['size']+'</td>\
+									<td title="Hash: '+doc['hash']+'">'+doc['size']+'</td>\
 									<td class="pwic_desktop">'+doc['mime_icon']+' '+doc['mime']+'</td>\
 									<td class="pwic_desktop"><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'</a></td>\
 									<td>'+doc['date']+'</td>\
@@ -195,7 +195,6 @@
 	edit_refresh_files();	//For the initialization
 
 	function edit_drop(event, errorUnsupported) {
-		var files, file, i, form;
 		document.getElementById('edit_files_drop').classList.remove('pwic_dragover');
 		if (event.dataTransfer.items)
 		{
@@ -203,11 +202,11 @@
 			event.stopPropagation();
 			
 			// Create an XHR for each file
-			files = event.dataTransfer.files;
-			for (i=0 ; i<files.length ; i++)
+			var files = event.dataTransfer.files;
+			for (var i=0 ; i<files.length ; i++)
 			{
 				// Fields
-				form = new FormData();
+				var form = new FormData();
 				form.append('project', '{{pwic.project|escape}}');
 				form.append('page', '{{pwic.page|escape}}');
 				form.append('content', files[i]);

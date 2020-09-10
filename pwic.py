@@ -21,10 +21,9 @@ import time
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, \
     PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
-    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, \
+    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
     _x, _xb, _int, _dt, _sha256, _safeName, _safeFileName, _size2str, \
-    pwic_checkMime, pwic_extended_syntax, pwic_audit, \
-    pwic_search_parse, pwic_search_tostring
+    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
 
 
 # ===============
@@ -87,7 +86,43 @@ class PwicServer():
         return pwic_extended_syntax(app['markdown'].convert(markdown))
 
     def _mime2icon(self, mime):
-        return PWIC_EMOJIS['image'] if mime[:6] == 'image/' else PWIC_EMOJIS['sheet']
+        if mime[:6] == 'image/':
+            return PWIC_EMOJIS['image']
+        elif mime[:6] == 'video/':
+            return PWIC_EMOJIS['camera']
+        elif mime[:6] == 'audio/':
+            return PWIC_EMOJIS['headphone']
+        elif mime[:12] == 'application/':
+            return PWIC_EMOJIS['server']
+        else:
+            return PWIC_EMOJIS['sheet']
+
+    def _readEnv(self, sql, name):
+        row = sql.execute("SELECT value FROM env WHERE key = ? AND value <> ''", (name, )).fetchone()
+        return None if row is None else row[0]
+
+    def _checkMime(self, obj):
+        # Check the applicable extension
+        if '.' in obj['filename']:
+            extension = obj['filename'].split('.')[-1]
+            for (mext, mtyp, mhdr) in PWIC_MIMES:
+                if extension in mext:
+
+                    # Expected mime
+                    if obj['mime'] == '':
+                        obj['mime'] = mtyp
+                    elif mtyp != obj['mime']:
+                        return False
+
+                    # Magic bytes
+                    if mhdr is not None:
+                        for bytes in mhdr:
+                            bytes = bytearray(bytes.encode())
+                            if obj['content'][:len(bytes)] == bytes:
+                                return True
+                        return False
+                    break
+        return obj['mime'] != ''
 
     async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
@@ -101,15 +136,27 @@ class PwicServer():
 
     async def _handleOutput(self, request, name, pwic):
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
-        template = app['jinja'].get_template('en/%s.html' % name)
         session = PwicSession(request)
         pwic['user'] = await session.getUser()
-        pwic['options'] = app['options']
-        pwic['version'] = PWIC_VERSION
         pwic['emojis'] = PWIC_EMOJIS
-        pwic['constants'] = {'unsafe_chars': PWIC_CHARS_UNSAFE}
+        pwic['constants'] = {'version': PWIC_VERSION,
+                             'unsafe_chars': PWIC_CHARS_UNSAFE}
         ua = request.headers.get('User-Agent', '')
-        pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browsers
+        pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browser
+
+        # Environment variables
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT key, value
+                        FROM env
+                        WHERE value <> ''
+                        ORDER BY key''')
+        pwic['env'] = {}
+        for row in sql.fetchall():
+            pwic['env'][row[0]] = row[1]
+        pwic['env']['ssl'] = app['ssl']
+
+        # Rendered template
+        template = app['jinja'].get_template('en/%s.html' % name)
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
     async def _handleLogon(self, request):
@@ -352,14 +399,21 @@ class PwicServer():
 
                     # Fetch the documents of the project
                     sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
-                                           b.author, b.date, b.time
+                                           b.hash, b.author, b.date, b.time, c.occurrence
                                     FROM roles AS a
                                         INNER JOIN documents AS b
                                             ON b.project = a.project
+                                        INNER JOIN (
+                                            SELECT hash, COUNT(hash) AS occurrence
+                                            FROM documents
+                                            GROUP BY hash
+                                            HAVING project = ?
+                                        ) AS c
+                                            ON c.hash = b.hash
                                     WHERE a.project = ?
                                       AND a.user    = ?
                                     ORDER BY filename''',
-                                (project, user))
+                                (project, project, user))
                     pwic['documents'] = []
                     for row in sql.fetchall():
                         pwic['documents'].append({'id': row[0],
@@ -369,9 +423,11 @@ class PwicServer():
                                                   'mime': row[4],
                                                   'mime_icon': self._mime2icon(row[4]),
                                                   'size': _size2str(row[5]),
-                                                  'author': row[6],
-                                                  'date': row[7],
-                                                  'time': row[8]})
+                                                  'hash': row[6],
+                                                  'author': row[7],
+                                                  'date': row[8],
+                                                  'time': row[9],
+                                                  'occurrence': row[10]})
 
                     # Audit log
                     if pwic['admin']:
@@ -393,13 +449,8 @@ class PwicServer():
                                                    'page': row[7],
                                                    'revision': row[8]})
 
-                # Text of the maintenance banner
-                sql.execute("SELECT value FROM env WHERE key = 'maintenance' AND value <> ''")
-                row = sql.fetchone()
-                pwic['maintenance'] = '' if row is None else row[0]
-
-                # Output
-                if not app['options']['raw_possible'] or request.rel_url.query.get('raw', None) is None:
+                # Render the page in HTML or Markdown
+                if self._readEnv(sql, 'no_raw') is not None or request.rel_url.query.get('raw', None) is None:
                     return await self._handleOutput(request, 'page', pwic)
                 else:
                     return web.Response(text=pwic['markdown'], content_type='text/plain')
@@ -552,11 +603,18 @@ class PwicServer():
 
         # Fetch the own documents
         sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
-                               b.author, b.date, b.time
+                               b.hash, b.author, b.date, b.time, c.occurrence
                         FROM roles AS a
                             INNER JOIN documents AS b
                                 ON  b.project = a.project
                                 AND b.author  = ?
+                            INNER JOIN (
+                                SELECT project, hash, COUNT(*) AS occurrence
+                                FROM documents
+                                GROUP BY project, hash
+                            ) AS c
+                                ON  c.project = a.project
+                                AND c.hash    = b.hash
                         WHERE a.user = ?
                         ORDER BY date DESC,
                                  time DESC''',
@@ -569,9 +627,11 @@ class PwicServer():
                                       'mime': row[4],
                                       'mime_icon': self._mime2icon(row[4]),
                                       'size': _size2str(row[5]),
-                                      'author': row[6],
-                                      'date': row[7],
-                                      'time': row[8]})
+                                      'hash': row[6],
+                                      'author': row[7],
+                                      'date': row[8],
+                                      'time': row[9],
+                                      'occurrence': row[10]})
 
         # Fetch the latest pages updated by the selected user
         dt = _dt()
@@ -896,8 +956,7 @@ class PwicServer():
 
         # Verify that the export is authorized
         sql = app['sql'].cursor()
-        sql.execute("SELECT value FROM env WHERE key = 'no_export' AND value <> ''")
-        if sql.fetchone() is not None:
+        if self._readEnv(sql, 'no_export') is not None:
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
@@ -1010,8 +1069,11 @@ class PwicServer():
 
         # Transfer the file
         filename = (PWIC_DOCUMENTS_PATH % project) + row[0]
-        with open(filename, 'rb') as f:
-            content = f.read()
+        try:
+            with open(filename, 'rb') as f:
+                content = f.read()
+        except FileNotFoundError:
+            raise web.HTTPNotFound()
         headers = {'Content-Type': row[1],
                    'Content-Length': str(row[2])}
         if request.rel_url.query.get('attachment', None) is not None:
@@ -1629,42 +1691,15 @@ class PwicServer():
                     doc[name] = await part.text()
         except Exception:
             raise web.HTTPBadRequest()
-        if doc['content'] is None or '' in [doc['project'], doc['page'], doc['filename'], doc['mime']]:
+        if doc['content'] is None or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later
             raise web.HTTPBadRequest()
 
         # Verify that the target folder exists
         if not os.path.isdir(PWIC_DOCUMENTS_PATH % doc['project']):
             raise web.HTTPInternalServerError()
 
-        # Verify that there is no active maintenance message that may prevent the from being saved
+        # Verify the authorizations
         sql = app['sql'].cursor()
-        sql.execute("SELECT value FROM env WHERE key = 'maintenance' AND value <> ''")
-        if sql.fetchone() is not None:
-            raise web.HTTPUnauthorized()
-
-        # Verify the maximal document size
-        row = sql.execute("SELECT value FROM env WHERE key = 'max_document_size'").fetchone()
-        maxsize = 0 if row is None else _int(row[0])
-        if len(doc['content']) > maxsize > 0:
-            raise web.HTTPBadRequest()
-
-        # Verify the consistency of the filename
-        row = sql.execute("SELECT value FROM env WHERE key = 'document_name_regex' AND value <> ''").fetchone()
-        if row is not None:
-            try:
-                regex_doc = re.compile(row[0])
-            except Exception:
-                raise web.HTTPInternalServerError()
-            if regex_doc.search(doc['filename']) is None:
-                raise web.HTTPBadRequest()
-
-        # Verify the file type
-        sql.execute("SELECT value FROM env WHERE key = 'enforce_mime' AND value <> ''")
-        if sql.fetchone() is not None:
-            if not pwic_checkMime(doc['filename'], doc['mime'], doc['content'][:10]):
-                raise web.HTTPUnsupportedMediaType()
-
-        # Verify that the user is authorized to upload files on an existing page
         sql.execute(''' SELECT b.revision
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -1681,14 +1716,65 @@ class PwicServer():
             raise web.HTTPUnauthorized()
         current_revision = row[0]
 
-        # Verify that the document doesn't exist yet (not related to a given page)
-        sql.execute(''' SELECT id
+        # Verify the consistency of the filename
+        row = self._readEnv(sql, 'document_name_regex')
+        if row is not None:
+            try:
+                regex_doc = re.compile(row, re.VERBOSE)
+            except Exception:
+                raise web.HTTPInternalServerError()
+            if regex_doc.search(doc['filename']) is None:
+                raise web.HTTPBadRequest()
+
+        # Verify the file type
+        if self._readEnv(sql, 'enforce_mime') is not None:
+            if not self._checkMime(doc):
+                raise web.HTTPUnsupportedMediaType()
+
+        # Verify the maximal document size
+        maxsize = _int(self._readEnv(sql, 'max_document_size'))
+        if len(doc['content']) > maxsize > 0:
+            raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
+
+        # Verify the maximal project size
+        # ... is there a check ?
+        max_project_size = self._readEnv(sql, 'max_project_size')
+        if max_project_size is not None:
+            max_project_size = _int(max_project_size)
+            # ... current size of the project
+            current_project_size = _int(sql.execute('SELECT SUM(size) FROM documents WHERE project = ?', (doc['project'], )).fetchone()[0])
+            # ... current size of the file if it exists already
+            current_file_size = _int(sql.execute('SELECT SUM(size) FROM documents WHERE project = ? AND filename = ?', (doc['project'], doc['filename'])).fetchone()[0])
+            # ... verify the size
+            if current_project_size - current_file_size + len(doc['content']) > max_project_size:
+                raise web.HTTPRequestEntityTooLarge(max_project_size - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
+
+        # Verify that there is no maintenance message that may prevent the file from being saved
+        if self._readEnv(sql, 'maintenance') is not None:
+            raise web.HTTPServiceUnavailable()
+
+        # At last, verify that the document doesn't exist yet (not related to a given page)
+        forcedId = None
+        sql.execute(''' SELECT id, page
                         FROM documents
                         WHERE project  = ?
                           AND filename = ?''',
                     (doc['project'], doc['filename']))
-        if sql.fetchone() is not None:
-            raise web.HTTPBadRequest()
+        row = sql.fetchone()
+        if row is None:
+            pass                                # New document = Create it
+        else:
+            if row[1] == doc['page']:           # Existing document = Delete + Keep same ID (replace it)
+                try:
+                    fn = (PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename']
+                    os.remove(fn)
+                except Exception:
+                    if os.path.isfile(fn):
+                        raise web.HTTPInternalServerError()
+                sql.execute('DELETE FROM documents WHERE id = ?', (row[0], ))
+                forcedId = row[0]
+            else:
+                raise web.HTTPBadRequest()      # Existing document on another page = do nothing
 
         # Upload the file on the server
         try:
@@ -1700,14 +1786,15 @@ class PwicServer():
 
         # Create the document in the database
         dt = _dt()
-        sql.execute(''' INSERT INTO documents (project, page, filename, mime, size, author, date, time)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (doc['project'], doc['page'],
-                     doc['filename'], doc['mime'], len(doc['content']),
+        sql.execute(''' INSERT INTO documents (id, project, page, filename, mime,
+                                               size, hash, author, date, time)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (forcedId, doc['project'], doc['page'], doc['filename'],
+                     doc['mime'], len(doc['content']), _sha256(doc['content'], salt=False),
                      user, dt['date'], dt['time']))
         assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': user,
-                         'event': 'create-document',
+                         'event': '%s-document' % ('create' if forcedId is None else 'replace'),
                          'project': doc['project'],
                          'page': doc['page'],
                          'revision': current_revision,
@@ -1732,7 +1819,7 @@ class PwicServer():
 
         # Read the documents
         sql = app['sql'].cursor()
-        sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.author, b.date, b.time
+        sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time
                         FROM roles AS a
                             INNER JOIN documents AS b
                                 ON  b.project = a.project
@@ -1748,9 +1835,10 @@ class PwicServer():
                            'mime': row[2],
                            'mime_icon': self._mime2icon(row[2]),
                            'size': _size2str(row[3]),
-                           'author': row[4],
-                           'date': row[5],
-                           'time': row[6]})
+                           'hash': row[4],
+                           'author': row[5],
+                           'date': row[6],
+                           'time': row[7]})
         return web.Response(text=json.dumps(result), content_type='application/json')
 
     async def api_ping(self, request):
@@ -1775,7 +1863,6 @@ def main():
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=1234, help='Listening port')
     parser.add_argument('--ssl', action='store_true', help='Enable HTTPS')
-    parser.add_argument('--no-raw', action='store_true', help='Prevent the showing of raw Markdown contents to the non-administrators to reduce the interest of downloading the projects in mass')
     args = parser.parse_args()
 
     # SSL binding
@@ -1796,8 +1883,7 @@ def main():
     app['pwic'] = PwicServer()
     app['sql'] = sqlite3.connect('./db/pwic.sqlite')
     # app['sql'].set_trace_callback(print)
-    app['options'] = {'ssl': https is not None,
-                      'raw_possible': not args.no_raw}
+    app['ssl'] = https is not None
     setup(app, EncryptedCookieStorage(base64.urlsafe_b64decode(fernet.Fernet.generate_key())))  # Storage for cookies
 
     # Routes

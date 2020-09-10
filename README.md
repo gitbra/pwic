@@ -15,6 +15,7 @@
 - Unified look and feel among all the pages
 - In-text search with inclusion, exclusion and special keywords
 - Automatic highlight of the lines of code
+- Built on Emojis
 
 **Cost effectiveness**
 

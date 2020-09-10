@@ -2,13 +2,15 @@
 <html>
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="generator" content="Pwic version {{pwic.version|escape}}">
+	<meta name="generator" content="Pwic version {{pwic.constants.version|escape}}">
 	<meta charset="utf-8">
 	<title>{{pwic.title|escape}} - Pwic</title>
 	<link rel="stylesheet" type="text/css" href="/static/styles.css" />
 	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 	<script>
+		'use strict';
+
 		function pwic_toggle(id) {
 			document.getElementById(id).classList.toggle('pwic_hidden');
 			return false;
@@ -23,8 +25,8 @@
 		}
 
 		function pwic_is_safe(name) {
-			var i, chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
-			for (i=0 ; i<chars.length ; i++)
+			var chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
+			for (var i=0 ; i<chars.length ; i++)
 				if (name.indexOf(chars[i]) !== -1)
 					return false;
 			return true;

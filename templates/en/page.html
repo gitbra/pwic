@@ -25,8 +25,8 @@
 	<article>
 		<div id="pwic_progression"></div>
 
-		{% if pwic.maintenance != '' %}
-			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.maintenance|escape}}</p>
+		{% if 'maintenance' in pwic.env %}
+			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance|escape}}</p>
 		{% endif %}
 
 		<p class="pwic_action_bar">
@@ -44,8 +44,8 @@
 				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} Create a page</a>
 			{% endif %}
 			{% if not pwic.special %}
-				{% if pwic.options.raw_possible %}
-				<a href="?raw">{{pwic.emojis.hammer}} Raw</a>
+				{% if 'no_raw' not in pwic.env %}
+					<a href="?raw">{{pwic.emojis.hammer}} Raw</a>
 				{% endif %}
 				{% if pwic.manager or (pwic.editor and not pwic.protection) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
@@ -187,6 +187,7 @@
 						<th>File name</th>
 						<th class="pwic_desktop">MIME</th>
 						<th>Size</th>
+						<th class="pwic_desktop">Hash</th>
 						<th>Author</th>
 						<th class="pwic_desktop">Date</th>
 						<th class="pwic_desktop">Time</th>
@@ -198,6 +199,12 @@
 							<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
 							<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 							<td>{{doc.size|escape}}</td>
+							<td class="pwic_desktop">
+								<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
+								{% if doc.occurrence > 1 %}
+									<span title="Duplicate file">{{pwic.emojis.gemini}}</span>
+								{% endif %}
+							</td>
 							<td><a href="/special/user/{{doc.author|urlencode}}">{{doc.author|escape}}</a></td>
 							<td class="pwic_desktop">{{doc.date|escape}}</td>
 							<td class="pwic_desktop">{{doc.time|escape}}</td>
@@ -206,6 +213,22 @@
 					{% endfor %}
 				</table>
 			{% endif %}
+
+
+			<h1 id="special_env">Environment variables</h1>
+			<table>
+				<tr>
+					<th>Key</th>
+					<th>Value</th>
+				</tr>
+
+				{% for key in pwic.env %}
+					<tr>
+						<td>{{key|escape}}</td>
+						<td>{{pwic.env[key]|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
 
 
 			{% if pwic.audits|count > 0 %}
@@ -265,19 +288,23 @@
 
 			{% if pwic.tmap|count > 0 %}
 				<div id="pwic_browser_access" title="Show/Hide the map of the article" onclick="page_tmap()">
-					{{pwic.emojis.world}}
+					{{pwic.emojis.pin}}
 				</div>
 				<div id="pwic_browser" class="pwic_hidden">
 					{% for tmap in pwic.tmap %}
 					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#p{{tmap.header|urlencode}}" onclick="page_tmap()">{{tmap.header|escape}} {{tmap.title|escape}}</a>
 					{% endfor %}
+
+					{% if (pwic.documents|count > 0) or (pwic.images|count > 0) %}
+					<a class="pwic_browser_item pwic_browser_item_h1" href="#page_documents" onclick="page_tmap()">{{pwic.emojis.scroll}} Attached documents</a>
+					{% endif %}
 				</div>
 			{% endif %}
 
 			{{pwic.html}}
 
 			{% if (pwic.images|count > 0) or (pwic.documents|count > 0) %}
-				<h1 id="page_files">Attached documents</h1>
+				<h1 id="page_documents">Attached documents</h1>
 
 				{% if pwic.documents|count > 0 %}
 					<div class="pwic_file_gallery">
@@ -304,7 +331,7 @@
 
 			<p id="page_lastmod">
 				Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
-				<br/>Hash key: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
+				<br/>Hash: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
 			</p>
 		{% endif %}
 	</article>

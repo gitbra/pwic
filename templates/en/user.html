@@ -34,7 +34,7 @@
 				<div class="pwic_popup">
 					<form id="user_password_form" action="/api/user/change-password" method="post">
 						<h3>Change your password</h3>
-						{% if not pwic.options.ssl %}
+						{% if not pwic.env.ssl %}
 						<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
 						{% endif %}
 						<table>
@@ -102,6 +102,7 @@
 					<th>File name</th>
 					<th class="pwic_desktop">MIME</th>
 					<th>Size</th>
+					<th class="pwic_desktop">Hash</th>
 					<th>Date</th>
 					<th class="pwic_desktop">Time</th>
 					<th><span class="pwic_desktop">Download</span></th>
@@ -113,6 +114,10 @@
 						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
 						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
+						<td class="pwic_desktop">
+							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
+							{% if doc.occurrence > 1 %} <span title="Duplicate file">{{pwic.emojis.gemini}}</span> {% endif %}
+						</td>
 						<td>{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>
 						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
