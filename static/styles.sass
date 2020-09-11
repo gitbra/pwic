@@ -116,10 +116,12 @@ ARTICLE
 		margin: auto
 		border-spacing: 0px
 		border-collapse: collapse
+		TR:hover:nth-child(n+2)
+			background-color: lightgreen
 
 	TABLE.pwic_zebra
 		TR:nth-child(even)
-			background: #F0F0F0
+			background-color: #F0F0F0
 
 	TH
 		text-align: left
@@ -135,6 +137,12 @@ ARTICLE
 	A
 		color: red
 		text-decoration: underline
+
+	IMG
+		vertical-align: middle
+		max-width: 100%
+		max-height: auto
+		border: 1px solid lightgrey
 
 
 	// -------------------------------- Action bar
@@ -403,6 +411,7 @@ FOOTER
 	ARTICLE
 		TABLE
 			width: 100%
+			font-size: smaller
 
 
 // --------------------------------

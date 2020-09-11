@@ -16,7 +16,7 @@
 		{% else %}
 
 			<form id="create_form" action="/api/page/create" method="post">
-				<h2>New page</h2>
+				<h1>New page</h1>
 				<p><strong>Project:</strong><br/>
 					<select id="create_project" name="create_project">
 						{% for proj in pwic.projects %}
@@ -29,7 +29,7 @@
 				<p><strong>Page name:</strong> <input id="create_page" class="pwic_fill" type="text" name="create_page" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="create_milestone" /></p>
 
-				<h2>Copy in reference to another page</h2>
+				<h1>Copy in reference to another page</h1>
 				<p><strong>Project:</strong><br/>
 					<select name="create_ref_project">
 						<option value=""></option>

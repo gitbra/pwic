@@ -31,6 +31,29 @@
 					return false;
 			return true;
 		}
+
+		function pwic_escape(value) {
+			while (true)
+			{
+				var lc = value.length;
+				value = value.replace("'", "\\'").replace('"', '\\"');
+				if (lc == value.length)
+					break;
+			}
+			return value;
+		}
+
+		function pwic_kick(value, chars) {
+			while (true)
+			{
+				var lc = value.length;
+				for (var i=0 ; i<chars.length ; i++)
+					value = value.replace(chars[i], '');
+				if (lc == value.length)
+					break;
+			}
+			return value;
+		}
 	</script>
 </head>
 <body id="top">

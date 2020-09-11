@@ -111,7 +111,7 @@
 				{% for doc in pwic.documents %}
 					<tr>
 						<td class="pwic_desktop">{{doc.project|escape}} / <a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
-						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
+						<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
 						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
 						<td class="pwic_desktop">
@@ -120,7 +120,7 @@
 						</td>
 						<td>{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>
-						<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
+						<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
 					</tr>
 				{% endfor %}
 			</table>

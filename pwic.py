@@ -432,7 +432,8 @@ class PwicServer():
                     # Audit log
                     if pwic['admin']:
                         sql.execute(''' SELECT id, date, time, author, event,
-                                               user, project, page, revision
+                                               user, project, page, revision,
+                                               string
                                         FROM audit
                                         WHERE project = ?
                                           AND date   >= ?
@@ -447,7 +448,8 @@ class PwicServer():
                                                    'user': row[5],
                                                    'project': row[6],
                                                    'page': row[7],
-                                                   'revision': row[8]})
+                                                   'revision': row[8],
+                                                   'string': row[9]})
 
                 # Render the page in HTML or Markdown
                 if self._readEnv(sql, 'no_raw') is not None or request.rel_url.query.get('raw', None) is None:
@@ -1050,34 +1052,30 @@ class PwicServer():
             return web.HTTPUnauthorized()
 
         # Read the properties of the requested document
-        project = request.match_info.get('project', '')
-        page = request.match_info.get('page', '')
-        id = request.match_info.get('id', 0)
+        id = _int(request.match_info.get('id', 0))
         sql = app['sql'].cursor()
-        sql.execute(''' SELECT b.filename, b.mime, b.size
-                        FROM roles AS a
-                            INNER JOIN documents AS b
-                                ON  b.id      = ?
-                                AND b.project = a.project
-                                AND b.page    = ?
-                        WHERE a.project = ?
-                          AND a.user    = ?''',
-                    (id, page, project, user))
+        sql.execute(''' SELECT a.project, a.filename, a.mime, a.size
+                        FROM documents AS a
+                            INNER JOIN roles AS b
+                                ON  b.project = a.project
+                                AND b.user    = ?
+                        WHERE a.id = ?''',
+                    (user, id))
         row = sql.fetchone()
         if row is None:
             return web.HTTPNotFound()
 
         # Transfer the file
-        filename = (PWIC_DOCUMENTS_PATH % project) + row[0]
+        filename = (PWIC_DOCUMENTS_PATH % row[0]) + row[1]
         try:
             with open(filename, 'rb') as f:
                 content = f.read()
         except FileNotFoundError:
             raise web.HTTPNotFound()
-        headers = {'Content-Type': row[1],
-                   'Content-Length': str(row[2])}
+        headers = {'Content-Type': row[2],
+                   'Content-Length': str(row[3])}
         if request.rel_url.query.get('attachment', None) is not None:
-            headers['Content-Disposition'] = 'attachment; filename=%s' % row[0]
+            headers['Content-Disposition'] = 'attachment; filename=%s' % row[1]
         return web.Response(body=content, headers=MultiDict(headers))
 
     async def api_logon(self, request):
@@ -1913,8 +1911,8 @@ def main():
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}', app['pwic'].page),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history}', app['pwic'].page),
-                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/document/{id:[0-9]+}/{dummy:[^\/]+}', app['pwic'].document_get),
-                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/document/{id:[0-9]+}', app['pwic'].document_get),
+                    web.get(r'/special/document/{id:[0-9]+}/{dummy:[^\/]+}', app['pwic'].document_get),
+                    web.get(r'/special/document/{id:[0-9]+}', app['pwic'].document_get),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}', app['pwic'].page),
                     web.get(r'/{project:[^\/]+}', app['pwic'].page),
                     web.get('/', app['pwic'].page)])

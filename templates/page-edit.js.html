@@ -19,7 +19,7 @@
 		// Replace the text by another one
 		if (ss == se)
 			return false;
-		ta.value = ta.value.substr(0, ss) + tagStart + ta.value.substr(ss, se-ss) + tagEnd + ta.value.substr(se);
+		ta.value = ta.value.substring(0, ss) + tagStart + ta.value.substring(ss, se-ss) + tagEnd + ta.value.substring(se);
 		ta.selectionStart = ss + tagStart.length;
 		ta.selectionEnd = se + tagEnd.length;
 		ta.focus();
@@ -36,7 +36,7 @@
 			return false;
 
 		// Check the current selection for an autolink
-		if (ta.value.substr(ss, se-ss).match('^[a-z]{3,5}:\/\/'))
+		if (ta.value.substring(ss, se-ss).match('^[a-z]{3,5}:\/\/'))
 			return edit_decorate2('<', '>');
 
 		// Ask for the link
@@ -48,7 +48,7 @@
 			url = '/{{pwic.project}}/' + url.toLowerCase();
 
 		// Replace the text by another one
-		ta.value = ta.value.substr(0, ss) + '[' + ta.value.substr(ss, se-ss) + ']('+url+')' + ta.value.substr(se);
+		ta.value = ta.value.substring(0, ss) + '[' + ta.value.substring(ss, se-ss) + ']('+url+')' + ta.value.substring(se);
 		ta.selectionStart = ss;
 		ta.selectionEnd = se + 4 + url.length;
 		ta.focus();
@@ -69,7 +69,7 @@
 			if ((i == 0) || (ta.value[i] == "\n"))
 			{
 				var j = (i != 0 ? 1 : 0);
-				ta.value = ta.value.substr(0, i+j) + tag + ta.value.substr(i+j);
+				ta.value = ta.value.substring(0, i+j) + tag + ta.value.substring(i+j);
 				appended++;
 				if (i <= ss)
 					break;
@@ -134,6 +134,38 @@
 		return true;
 	}
 
+	function edit_join_file(id, filename, mime) {
+		var buffer = '';
+
+		// Include an image
+		if (mime.substring(0, 6) == 'image/')
+		{
+			var tip = prompt('Tooltip of the image:', ''),
+				alt = prompt('Alternate text for the image:', '');
+			buffer = '![';
+			if (alt != '')
+				buffer += pwic_kick(alt, '[]');
+			buffer += '](/special/document/' + id;
+			if (tip != '')
+				buffer += ' "'+pwic_kick(tip, '"')+'"';
+			buffer += ')';
+		}
+
+		// Any other file
+		else
+			buffer = '['+filename+'](/special/document/'+id+'?attachment)'
+
+		// Set the value
+		var	ta = document.getElementById('edit_markdown'),
+			ss = ta.selectionStart,
+			se = ta.selectionEnd;
+		ta.value = ta.value.substring(0, ss) + buffer + ta.value.substring(se);
+		ta.selectionStart = ss + buffer.length;
+		ta.selectionEnd = ta.selectionStart;
+		ta.focus();
+		return false;
+	}
+
 
 	// -------------------------------- Editor
 
@@ -175,12 +207,13 @@
 				{
 					var doc = data[i];
 					buffer += '<tr>\
-									<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'</a></td>\
+									<td><a href="/special/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'</a></td>\
 									<td title="Hash: '+doc['hash']+'">'+doc['size']+'</td>\
 									<td class="pwic_desktop">'+doc['mime_icon']+' '+doc['mime']+'</td>\
 									<td class="pwic_desktop"><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'</a></td>\
 									<td>'+doc['date']+'</td>\
 									<td class="pwic_desktop">'+doc['time']+'</td>\
+									<td><a href="#" onclick="edit_join_file('+doc['id']+', \''+pwic_escape(doc['filename'])+'\', \''+pwic_escape(doc['mime'])+'\')">{{pwic.emojis.plus}}</a></td>\
 								</tr>';
 				}
 				document.getElementById('edit_files_list').innerHTML = edit_files_list_initial + buffer;

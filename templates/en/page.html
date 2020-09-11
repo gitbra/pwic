@@ -196,7 +196,7 @@
 					{% for doc in pwic.documents %}
 						<tr>
 							<td class="pwic_desktop"><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
-							<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
+							<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a></td>
 							<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 							<td>{{doc.size|escape}}</td>
 							<td class="pwic_desktop">
@@ -208,7 +208,7 @@
 							<td><a href="/special/user/{{doc.author|urlencode}}">{{doc.author|escape}}</a></td>
 							<td class="pwic_desktop">{{doc.date|escape}}</td>
 							<td class="pwic_desktop">{{doc.time|escape}}</td>
-							<td><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
+							<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
 						</tr>
 					{% endfor %}
 				</table>
@@ -243,6 +243,7 @@
 						<th class="pwic_desktop">Project</th>
 						<th>Page</th>
 						<th class="pwic_desktop">Revision</th>
+						<th class="pwic_desktop">String</th>
 					</tr>
 
 					{% for audit in pwic.audits %}
@@ -271,6 +272,7 @@
 									<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
 								{% endif %}
 							</td>
+							<td class="pwic_desktop">{{audit.string|escape}}</td>
 						</tr>
 					{% endfor %}
 				</table>
@@ -309,7 +311,7 @@
 				{% if pwic.documents|count > 0 %}
 					<div class="pwic_file_gallery">
 						{% for doc in pwic.documents %}
-							<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
 								<span>{{doc.filename|escape}}</span>
 								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
@@ -320,7 +322,7 @@
 				{% if pwic.images|count > 0 %}
 					<div class="pwic_file_gallery">
 						{% for doc in pwic.images %}
-							<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
 								<span>{{doc.filename|escape}}</span>
 								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
