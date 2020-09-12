@@ -47,10 +47,15 @@ HEADER
 	border-bottom: 1px solid black
 	box-shadow: 0px 0px 5px gray
 
-	H1,H2
+	.pwic_ph1, .pwic_ph2
+		display: block
 		margin: 0px
-		padding: 10px 0px 10px 50px
+		padding: 5px 0px 5px 50px
 		font-weight: bold
+	.pwic_ph1
+		font-size: 24pt
+	.pwic_ph2
+		font-size: 18pt
 
 	.pwic_tagbox
 		margin: 0px
@@ -116,8 +121,10 @@ ARTICLE
 		margin: auto
 		border-spacing: 0px
 		border-collapse: collapse
-		TR:hover:nth-child(n+2)
-			background-color: lightgreen
+		TR:nth-child(n+2)
+			border-bottom: 1px solid lightgrey
+		TR:hover
+			background-color: lightblue !important
 
 	TABLE.pwic_zebra
 		TR:nth-child(even)

@@ -3,7 +3,7 @@
 
 {% block content %}
 	<header>
-		<h1><a href="/">User profile</a></h1>
+		<div class="pwic_ph1"><a href="/">User profile</a></div>
 	</header>
 
 	{% include 'user.js.html' %}
@@ -43,7 +43,7 @@
 							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" name="user_password_new2" /></td></tr>
 						</table>
 						<p>
-							<input type="button" value="Submit" onclick="user_password_submit('The form is inconsistent.')"/>
+							<input type="button" value="{{pwic.emojis.locked}} Submit" onclick="user_password_submit('The form is inconsistent.')"/>
 							<input type="button" value="Cancel" onclick="pwic_toggle('user_password_popup')"/>
 						</p>
 					</form>

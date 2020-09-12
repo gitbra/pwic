@@ -3,7 +3,7 @@
 
 {% block content %}
 	<header>
-		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></div>
 	</header>
 
 	{% include 'search.js.html' %}
@@ -12,8 +12,6 @@
 		<h1>{{pwic.results|count}} results</h1>
 
 		<p>Search terms: <input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" /></p>
-
-		<p>&nbsp;<p>
 
 		{% if pwic.results|count > 0 %}
 			<table>

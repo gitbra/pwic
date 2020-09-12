@@ -3,9 +3,9 @@
 
 {% block content %}
 	<header>
-		<h1>
+		<div class="pwic_ph1">
 			<a href="/{% if pwic.page != 'home' %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a>
-		</h1>
+		</div>
 		{% if pwic.links|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
@@ -37,7 +37,7 @@
 				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% endif %}
 			{% if pwic.admin and pwic.special %}
-				<a href="/special/create-user">{{pwic.emojis.users}} Create a user</a>
+				<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
 				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
 			{% endif %}
 			{% if pwic.manager %}
@@ -239,7 +239,6 @@
 						<th>Time</th>
 						<th>Author</th>
 						<th>Event</th>
-						<th class="pwic_desktop">User</th>
 						<th class="pwic_desktop">Project</th>
 						<th>Page</th>
 						<th class="pwic_desktop">Revision</th>
@@ -252,11 +251,6 @@
 							<td>{{audit.time|escape}}</td>
 							<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
 							<td>{{audit.event|escape}}</td>
-							<td class="pwic_desktop">
-								{% if audit.user != '' %}
-									<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
-								{% endif %}
-							</td>
 							<td class="pwic_desktop">
 								{% if audit.project != '' %}
 									<a href="/{{audit.project|urlencode}}">{{audit.project|escape}}</a>
@@ -272,7 +266,13 @@
 									<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
 								{% endif %}
 							</td>
-							<td class="pwic_desktop">{{audit.string|escape}}</td>
+							<td class="pwic_desktop">
+								{% if audit.string != '' %}
+									{{audit.string|escape}}
+								{% elif audit.user != '' %}
+									<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
+								{% endif %}
+							</td>
 						</tr>
 					{% endfor %}
 				</table>

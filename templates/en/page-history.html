@@ -3,8 +3,8 @@
 
 {% block content %}
 	<header>
-		<h1><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></h1>
-		<h2><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">History of the page</a></h2>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></div>
+		<div class="pwic_ph2"><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">History of the page</a></div>
 	</header>
 
 	{% include 'page-history.js.html' %}

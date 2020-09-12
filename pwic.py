@@ -134,13 +134,18 @@ class PwicServer():
                 result[res] = result[res][0]
         return result
 
+    async def _handleLogon(self, request):
+        ''' Show the logon page '''
+        return await self._handleOutput(request, 'logon', {'title': 'Connect to Pwic'})
+
     async def _handleOutput(self, request, name, pwic):
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         session = PwicSession(request)
         pwic['user'] = await session.getUser()
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'version': PWIC_VERSION,
-                             'unsafe_chars': PWIC_CHARS_UNSAFE}
+                             'unsafe_chars': PWIC_CHARS_UNSAFE,
+                             'language': 'en'}
         ua = request.headers.get('User-Agent', '')
         pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browser
 
@@ -158,10 +163,6 @@ class PwicServer():
         # Rendered template
         template = app['jinja'].get_template('en/%s.html' % name)
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
-
-    async def _handleLogon(self, request):
-        ''' Show the logon page '''
-        return await self._handleOutput(request, 'logon', {'title': 'Connect to Pwic'})
 
     async def page(self, request):
         ''' Serve the pages '''
@@ -548,6 +549,7 @@ class PwicServer():
 
         # Fetch the projects where users can be created
         pwic = {'title': 'Create a user',
+                'default_project': request.rel_url.query.get('project', ''),
                 'projects': []}
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.project, b.description
