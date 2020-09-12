@@ -17,12 +17,14 @@ PWIC_DB = './db/pwic.sqlite'
 PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
 PWIC_DOCUMENTS_PATH = './db/documents/%s/'
 PWIC_USER = 'pwic-system'
+PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
-PWIC_EMOJIS = {'brick': '&#x1F9F1;',
+PWIC_EMOJIS = {'alien': '&#x1F47D;',
+               'brick': '&#x1F9F1;',
                'calendar': '&#x1F4C5;',
                'camera': '&#x1F3A5;',               # 1F4F9
                'chains': '&#x1F517;',

@@ -19,8 +19,8 @@ from multidict import MultiDict
 import time
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, \
-    PWIC_USER, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
     _x, _xb, _int, _dt, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
@@ -145,6 +145,7 @@ class PwicServer():
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'version': PWIC_VERSION,
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
+                             'anonymous_user': PWIC_USER_ANONYMOUS,
                              'language': 'en'}
         ua = request.headers.get('User-Agent', '')
         pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browser
@@ -1087,30 +1088,28 @@ class PwicServer():
         await session.destroy()
 
         # Fetch the submitted data
-        ok = False
+        sql = app['sql'].cursor()
         post = await self._handlePost(request)
-        if 'logon_user' in post and 'logon_password' in post:
-            user = post.get('logon_user', 'anonymous')
-            pwd = _sha256(post.get('logon_password', ''))
-            if '' not in [user, pwd]:
-                # Verify the credentials
-                sql = app['sql'].cursor()
-                sql.execute(''' SELECT count(user) AS total
-                                FROM users
-                                WHERE user     = ?
-                                  AND password = ?''',
-                            (user, pwd))
-                ok = sql.fetchone()[0] == 1
+        user = post.get('logon_user', '')
+        pwd = '' if (self._readEnv(sql, 'anonymous') is not None) and (user == PWIC_USER_ANONYMOUS) else _sha256(post.get('logon_password', ''))
 
-                # Update the session
-                if ok:
-                    data = session.getDefaultData()
-                    data['user'] = user
-                    session = await session.getSession()
-                    session['data'] = data
-                    pwic_audit(sql, {'author': user,
-                                     'event': 'logon'},
-                               request, commit=True)
+        # Logon with the credentials
+        ok = False
+        sql.execute(''' SELECT COUNT(user)
+                        FROM users
+                        WHERE user     = ?
+                          AND password = ?''',
+                    (user, pwd))
+        if sql.fetchone()[0] == 1:
+            ok = True
+            data = session.getDefaultData()
+            data['user'] = user
+            session = await session.getSession()
+            session['data'] = data
+            if user != PWIC_USER_ANONYMOUS:
+                pwic_audit(sql, {'author': user,
+                                 'event': 'logon'},
+                           request, commit=True)
 
         # Final redirection
         raise web.HTTPFound('/' if ok else '/?failed')
@@ -1121,9 +1120,10 @@ class PwicServer():
         user = await session.getUser()
         if user != '':
             await session.destroy()
-            pwic_audit(app['sql'].cursor(), {'author': user,
-                                             'event': 'logout'},
-                       request, commit=True)
+            if user != PWIC_USER_ANONYMOUS:
+                pwic_audit(app['sql'].cursor(), {'author': user,
+                                                 'event': 'logout'},
+                           request, commit=True)
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
     async def api_page_create(self, request):
@@ -1513,7 +1513,7 @@ class PwicServer():
         # Verify that the user is connected
         session = PwicSession(request)
         user = await session.getUser()
-        if user == '':
+        if user[:4] in ['', 'pwic']:
             raise web.HTTPUnauthorized()
 
         # Get the posted values
@@ -1564,7 +1564,7 @@ class PwicServer():
             drop = (roles[roleid] == 'drop')
         except ValueError:
             raise web.HTTPBadRequest()
-        if '' in [project, userpost]:
+        if '' in [project, userpost] or (userpost[:4] == 'pwic' and roles in ['admin', 'drop']):
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user

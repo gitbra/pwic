@@ -140,7 +140,7 @@
 			</ul>
 
 
-			{% if pwic.pages|count > 0 %}
+			{% if (pwic.pages|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 				<h1>All the pages of the project</h1>
 				<table>
 					<tr>
@@ -179,7 +179,7 @@
 			{% endif %}
 
 
-			{% if pwic.documents|count > 0 %}
+			{% if (pwic.documents|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 				<h1>All the documents of the project</h1>
 				<table>
 					<tr>
@@ -215,20 +215,22 @@
 			{% endif %}
 
 
-			<h1 id="special_env">Environment variables</h1>
-			<table>
-				<tr>
-					<th>Key</th>
-					<th>Value</th>
-				</tr>
-
-				{% for key in pwic.env %}
+			{% if pwic.admin %}
+				<h1 id="special_env">Environment variables</h1>
+				<table>
 					<tr>
-						<td>{{key|escape}}</td>
-						<td>{{pwic.env[key]|escape}}</td>
+						<th>Key</th>
+						<th>Value</th>
 					</tr>
-				{% endfor %}
-			</table>
+
+					{% for key in pwic.env %}
+						<tr>
+							<td>{{key|escape}}</td>
+							<td>{{pwic.env[key]|escape}}</td>
+						</tr>
+					{% endfor %}
+				</table>
+			{% endif %}
 
 
 			{% if pwic.audits|count > 0 %}

@@ -49,6 +49,10 @@
 					<th>Description</th>
 				</tr>
 				<tr>
+					<td><code>anonymous</code></td>
+					<td>Allow the anonymous logon for all the projects. The user is indirectly logged as <code>{{pwic.constants.anonymous_user|escape}}</code> with the default profile <em>Reader</em>. Any change of that profile per project is up to their administrators. Anonymous logons and logouts are not audited.</td>
+				</tr>
+				<tr>
 					<td><code>document_name_regex</code></td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 				</tr>

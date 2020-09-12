@@ -6,11 +6,16 @@
 		<div class="pwic_ph1">Connect to Pwic</div>
 	</header>
 
+	{% include 'logon.js.html' %}
+
 	<article>
-		<form action="/api/logon" method="post">
-			<p><strong>User:</strong> <input class="pwic_fill" type="text" name="logon_user" /></p>
-			<p><strong>Password:</strong> <input class="pwic_fill" type="password" name="logon_password" /></p>
-			<p><input type="submit" value="{{pwic.emojis.plug}} Log in" /></p>
+		<form id="logon_form" action="/api/logon" method="post">
+			<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" /></p>
+			<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="logon_password" name="logon_password" /></p>
+			<p>
+				<input type="submit" value="{{pwic.emojis.plug}} Log on" />
+			<input type="button" value="{{pwic.emojis.alien}} Anonymous logon" onclick="return logon_anonymous()" />
+			</p>
 		</form>
 	</article>
 {% endblock %}

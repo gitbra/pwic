@@ -11,7 +11,7 @@ from shutil import copyfile
 from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     _dt, _sha256, _safeName, pwic_audit
 
 
@@ -233,6 +233,8 @@ CREATE TABLE "users" (
     "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" = "" OR "initial" = "X"),
     PRIMARY KEY("user")
 )''')
+            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")
+            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
             # No delete on AUDIT
             sql.execute('''
 CREATE TRIGGER audit_no_delete
@@ -254,7 +256,8 @@ END''')
 
 def set_env(name, value):
     # Check the keys
-    keys = ['document_name_regex',
+    keys = ['anonymous',
+            'document_name_regex',
             'enforce_mime',
             'maintenance',
             'max_document_size',
@@ -394,6 +397,7 @@ def create_project(project, description, admin):
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
+    sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, '')", (project, PWIC_USER_ANONYMOUS))
 
     # Add a default homepage
     page = 'home'
@@ -469,6 +473,9 @@ def reset_password(user):
     # Check if the user is administrator
     sql = db_connect()
     user = _safeName(user)
+    if user[:4] == 'pwic':
+        print('Error: invalid user')
+        return False
     sql.execute(''' SELECT COUNT(*) AS total
                     FROM roles
                     WHERE user  = ?
@@ -487,7 +494,10 @@ def reset_password(user):
 
     # Reset the password with no rights takedown else some projects may loose their administrators
     ok = False
-    sql.execute('UPDATE users SET password = ?, initial = "X" WHERE user = ?',
+    sql.execute(''' UPDATE users
+                    SET password = ?,
+                        initial = "X"
+                    WHERE user = ?''',
                 (_sha256(pwd), user))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USER,

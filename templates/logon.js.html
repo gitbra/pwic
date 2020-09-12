@@ -1,0 +1,10 @@
+<script>
+	'use strict';
+
+	function logon_anonymous() {
+		document.getElementById('logon_user').value = '{{pwic.constants.anonymous_user|escape}}';
+		document.getElementById('logon_password').value = '';
+		document.getElementById('logon_form').submit();
+		return true;
+	}
+</script>
