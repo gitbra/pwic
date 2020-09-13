@@ -15,6 +15,7 @@ import os
 import json
 import re
 import base64
+from ipaddress import ip_network, ip_address
 from multidict import MultiDict
 import time
 
@@ -83,9 +84,11 @@ class PwicSession():
 
 class PwicServer():
     def _md2html(self, markdown):
+        ''' Convert the text from Markdown to HTML '''
         return pwic_extended_syntax(app['markdown'].convert(markdown))
 
     def _mime2icon(self, mime):
+        ''' Return the emojis that corresponds to the MIME '''
         if mime[:6] == 'image/':
             return PWIC_EMOJIS['image']
         elif mime[:6] == 'video/':
@@ -98,10 +101,12 @@ class PwicServer():
             return PWIC_EMOJIS['sheet']
 
     def _readEnv(self, sql, name):
+        ''' Read a variable from the table ENV '''
         row = sql.execute("SELECT value FROM env WHERE key = ? AND value <> ''", (name, )).fetchone()
         return None if row is None else row[0]
 
     def _checkMime(self, obj):
+        ''' Check the consistency of the MIME with the file signature'''
         # Check the applicable extension
         if '.' in obj['filename']:
             extension = obj['filename'].split('.')[-1]
@@ -117,12 +122,66 @@ class PwicServer():
                     # Magic bytes
                     if mhdr is not None:
                         for bytes in mhdr:
-                            bytes = bytearray(bytes.encode())
-                            if obj['content'][:len(bytes)] == bytes:
+                            # Cast to bytearray
+                            barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
+                            for i in range(len(bytes)):
+                                barr.append(ord(bytes[i]))
+                            # Check the first bytes
+                            if obj['content'][:len(bytes)] == barr:
                                 return True
                         return False
                     break
         return obj['mime'] != ''
+
+    def _checkIP(self, request, sql):
+        ''' Handle the HTTP request to check the IP address '''
+        # Initialization
+        okIncl = False
+        hasIncl = False
+        koExcl = False
+        try:
+            # Read the parameters
+            ip = request.remote
+            mask = self._readEnv(sql, 'ip_filter')
+            if mask in [None, '']:
+                return
+            list = mask.split(';')
+
+            # Filter the IP
+            for item in list:
+                item = item.strip()
+                if item == '':
+                    continue
+
+                # Negation flag
+                negate = item[:1] == '~'
+                if negate:
+                    item = item[1:]
+
+                # Condition types
+                # ... networks
+                if '/' in item:
+                    condition = ip_address(ip) in ip_network(item)
+                # ... mask for IP
+                elif '*' in item or '?' in item:
+                    regex_ip = re.compile(item.replace('.', '\\.').replace('?', '.').replace('*', '.*'))
+                    condition = regex_ip.match(ip) is not None
+                # ... raw IP
+                else:
+                    condition = (item == ip)
+
+                # Evaluation
+                if negate:
+                    koExcl = koExcl or condition
+                    if koExcl:  # Boolean accelerator
+                        break
+                else:
+                    okIncl = okIncl or condition
+                    hasIncl = True
+        except Exception:
+            raise web.HTTPInternalServerError()
+        if koExcl or (hasIncl != okIncl):
+            raise web.HTTPUnauthorized()
 
     async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
@@ -162,6 +221,7 @@ class PwicServer():
         pwic['env']['ssl'] = app['ssl']
 
         # Rendered template
+        self._checkIP(request, sql)
         template = app['jinja'].get_template('en/%s.html' % name)
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
@@ -174,11 +234,11 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Show the requested page
+        sql = app['sql'].cursor()
         project = request.match_info.get('project', '')
         page = request.match_info.get('page', 'home')
         revision = request.match_info.get('revision', None)
         action = request.match_info.get('action', 'view')
-        sql = app['sql'].cursor()
         pwic = {'title': 'Wiki',
                 'project': project,
                 'page': page,
@@ -207,7 +267,7 @@ class PwicServer():
             pwic['validator'] = _xb(row[4])
             pwic['reader'] = _xb(row[5])
 
-        # ...or ask the user to pick a project
+        # ... or ask the user to pick a project
         else:
             sql.execute(''' SELECT a.project, a.description
                             FROM projects AS a
@@ -706,18 +766,12 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Parse the query
+        sql = app['sql'].cursor()
         project = request.match_info.get('project', '')
         terms = request.rel_url.query.get('q', '')
         query = pwic_search_parse(terms)
         if query is None:
             raise web.HTTPTemporaryRedirect('/%s' % project)
-
-        # Fetch the pages
-        sql = app['sql'].cursor()
-        pwic = {'title': 'Search',
-                'project': project,
-                'terms': pwic_search_tostring(query),
-                'results': []}
 
         # Fetch the description of the project if the user has access rights
         sql.execute(''' SELECT b.description
@@ -731,7 +785,11 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPUnauthorized()
-        pwic['project_description'] = row[0]
+        pwic = {'title': 'Search',
+                'project': project,
+                'project_description': row[0],
+                'terms': pwic_search_tostring(query),
+                'results': []}
 
         # Search
         sql.execute(''' SELECT project, page, draft, final, author,
@@ -1107,8 +1165,11 @@ class PwicServer():
         session = PwicSession(request)
         await session.destroy()
 
-        # Fetch the submitted data
+        # IP check
         sql = app['sql'].cursor()
+        self._checkIP(request, sql)
+
+        # Fetch the submitted data
         post = await self._handlePost(request)
         user = post.get('logon_user', '')
         pwd = '' if (self._readEnv(sql, 'anonymous') is not None) and (user == PWIC_USER_ANONYMOUS) else _sha256(post.get('logon_password', ''))

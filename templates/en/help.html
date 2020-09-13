@@ -58,7 +58,15 @@
 				</tr>
 				<tr>
 					<td><code>enforce_mime</code></td>
-					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its supposed content.</td>
+					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
+				</tr>
+				<tr>
+					<td><code>ip_filter</code></td>
+					<td>
+						- List of IP addresses separated by <code>;</code>. The unauthorized addresses are prefixed by <code>~</code> and used as <em>AND</em> conditions, else <em>OR</em> conditions.
+						<br/>- To be fully effective, the server should be restarted when the value is changed. The current sessions will be terminated.
+						<br/>- The IP check applies to the host that connected, not with forward proxy configuration.
+					</td>
 				</tr>
 				<tr>
 					<td><code>maintenance</code></td>
@@ -116,11 +124,12 @@
 
 
 		<h1 id="help_grant">Grant the authorizations</h1>
+		<p>The rights are project-dependent. The form is accessible from the special page.</p>
 		<p>The administrators only can grant new rights to the users if they changed their password once.</p>
-		<p>The rights are project-dependent. The page is accessible from the special page.</p>
-		<p>A user must have one profile at least (ex: reader) else he cannot be part of the project team. To switch from one profile to another for a user, you should first activate the new profile, then deactivate the old profile.</p>
-		<p>The profile administrator cannot be auto-removed to ensure that there is always one administrator per project.</p>
+		<p>A user must have one profile at least (ex: reader) to be able to view the project. To switch from one profile to another for a user, you should first activate the new profile, then deactivate the old profile.</p>
+		<p>The profile administrator cannot be removed or disabled oneself to ensure that there is always one administrator per project.</p>
 		<p>The assignment of the rights is monitored. You should also consider the separation of duties: no one should be able to do everything.</p>
+		<p>The anonymous access is given by the special user account <code>{{pwic.constants.anonymous_user|escape}}</code> if the variable <code>anonymous</code> is enabled. The account cannot be removed. You can disable it or enhance its rights (excluding administrator).</p>
 
 
 		<h1 id="help_create">Create a page</h1>
@@ -136,7 +145,7 @@
 		<p>It is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code> or <code>&lt;iframe&gt;</code>.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
 		<p>The attribute <em>Milestone</em> of the page is an optional free comment that can be used, for example, by the manager to request a delivery date, or by the editor to announce a publishing date. You can also indicate your difficulties, the current progression, etc...</p>
-		<p>You can upload several files for a page. In case it is a picture, you can also include it in the page as a figure, else the files are listed on a gallery below the page. In any case, many rules apply in the uploading process:</p>
+		<p>You can upload several files for a page. In case it is a picture, you can also include it in the page as a figure, else as a link. All the files are listed on a gallery below the page. In any case, many rules apply in the uploading process:</p>
 			<ul>
 				<li>No revision is created when a file is created, modified or deleted. The changes are instantly considered.</li>
 				<li>You can't recover the deleted files, unless you own a backup.</li>
@@ -147,7 +156,7 @@
 						<li>The file is <ins>not</ins> updated if it exists and is assigned to another page.</li>
 					</ul>
 				</li>
-				<li>The filename must respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
+				<li>The filename may have to respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
 				<li>A file size limit may apply if the administrator has defined the variable <code>max_document_size</code>.</li>
 				<li>The content of the file must match with the file type if the administrator has defined the variable <code>enforce_mime</code>.</li>
 				<li>The feature is not available with the obsolete browser Microsoft Internet Explorer.</li>

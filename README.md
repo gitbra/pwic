@@ -5,17 +5,18 @@
 **Project proficiency**
 
 - Central repository for an online and up-to-date documentation
-- Ready for Unicode
-- File attachments with normalized names
+- Ready for Unicode and built on Emojis
+- New pages, broken links and orphaned pages supervised by the project managers
 - Linear and partially undoable versioning of the pages for a proper customer's validation
+- Unified look and feel among all the pages
+- Automatic highlight of the lines of code
+- Follow-up of the deliverable pages
 - Lean documents with no rainbow color or overloaded revision mark
 - Display of the differences between two versions
-- New pages, broken links and orphaned pages supervised by the project managers
-- Follow-up of the deliverable pages
-- Unified look and feel among all the pages
+- File attachments with normalized names
 - In-text search with inclusion, exclusion and special keywords
-- Automatic highlight of the lines of code
-- Built on Emojis
+- IP filtering
+
 
 **Cost effectiveness**
 
@@ -25,7 +26,7 @@
 
 **Custom use**
 
-- Internationalization: English
+- Internationalization: English for now
 - Customizable UI with Jinja2 templates
 - API to perform operations by bots or scripts
 

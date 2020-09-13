@@ -236,6 +236,13 @@ CREATE TABLE "users" (
 )''')
             sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")
             sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
+            # Index for the pages
+            sql.execute('''
+CREATE INDEX "pages_index" ON "pages" (
+    "project" ASC,
+    "page" ASC,
+    "latest" ASC
+)''')
             # No delete on AUDIT
             sql.execute('''
 CREATE TRIGGER audit_no_delete
@@ -260,6 +267,7 @@ def set_env(name, value):
     keys = ['anonymous',
             'document_name_regex',
             'enforce_mime',
+            'ip_filter',
             'maintenance',
             'max_document_size',
             'max_project_size',
