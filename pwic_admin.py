@@ -161,14 +161,14 @@ CREATE TABLE "documents" (
     "page" TEXT NOT NULL CHECK("page" <> ''),
     "filename" TEXT NOT NULL CHECK("filename" <> ''),
     "mime" TEXT NOT NULL CHECK("mime" <> ''),
-    "size" INTEGER NOT NULL,
-    "hash" TEXT NOT NULL DEFAULT '',
+    "size" INTEGER NOT NULL CHECK("size" > 0),
+    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
     "author" TEXT NOT NULL CHECK("author" <> ''),
     "date" TEXT NOT NULL CHECK("date" <> ''),
     "time" TEXT NOT NULL CHECK("time" <> ''),
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
     FOREIGN KEY("project") REFERENCES "projects"("project"),
+    FOREIGN KEY("author") REFERENCES "users"("user"),
+    PRIMARY KEY("id" AUTOINCREMENT),
     UNIQUE("project","filename")
 )''')
             # Table ENV
@@ -184,11 +184,11 @@ CREATE TABLE "pages" (
     "project" TEXT NOT NULL,
     "page" TEXT NOT NULL CHECK("page" <> ''),
     "revision" INTEGER NOT NULL CHECK("revision" > 0),
-    "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" = '' OR "latest" = 'X'),
-    "draft" TEXT NOT NULL DEFAULT '' CHECK(draft='' or draft="X"),
-    "final" TEXT NOT NULL DEFAULT '' CHECK("final" = "" OR "final" = "X"),
-    "header" TEXT NOT NULL DEFAULT '' CHECK("header" = "" OR "header" = "X"),
-    "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" = "" OR "protection" = "X"),
+    "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" IN ('', 'X')),
+    "draft" TEXT NOT NULL DEFAULT '' CHECK("draft" IN ('', 'X')),
+    "final" TEXT NOT NULL DEFAULT '' CHECK("final" IN ('', 'X')),
+    "header" TEXT NOT NULL DEFAULT '' CHECK("header" IN ('', 'X')),
+    "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" IN ('', 'X')),
     "author" TEXT NOT NULL CHECK("author" <> ''),
     "date" TEXT NOT NULL CHECK("date" <> ''),
     "time" TEXT NOT NULL CHECK("time" <> ''),
@@ -200,9 +200,9 @@ CREATE TABLE "pages" (
     "valdate" TEXT NOT NULL DEFAULT '',
     "valtime" TEXT NOT NULL DEFAULT '',
     PRIMARY KEY("project","page","revision"),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
     FOREIGN KEY("author") REFERENCES "users"("user"),
-    FOREIGN KEY("valuser") REFERENCES "users"("user")
+    FOREIGN KEY("valuser") REFERENCES "users"("user"),
+    FOREIGN KEY("project") REFERENCES "projects"("project")
 )''')
             # Table PROJECTS
             sql.execute('''
@@ -216,21 +216,22 @@ CREATE TABLE "projects" (
 CREATE TABLE "roles" (
     "project" TEXT NOT NULL,
     "user" TEXT NOT NULL,
-    "admin" TEXT NOT NULL DEFAULT '' CHECK(("admin" = "" OR "admin" = "X") AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
-    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" = "" OR "manager" = "X"),
-    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" = "" OR "editor" = "X"),
-    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" = "" OR "validator" = "X"),
-    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" = "" OR "reader" = "X"),
-    PRIMARY KEY("user","project"),
+    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X" OR "disabled" = "X")),
+    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
+    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
+    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
+    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
+    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
     FOREIGN KEY("user") REFERENCES "users"("user"),
-    FOREIGN KEY("project") REFERENCES "projects"("project")
+    PRIMARY KEY("user","project")
 )''')
             # Table USERS
             sql.execute('''
 CREATE TABLE "users" (
     "user" TEXT NOT NULL,
     "password" TEXT NOT NULL DEFAULT '',
-    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" = "" OR "initial" = "X"),
+    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
     PRIMARY KEY("user")
 )''')
             sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")

@@ -192,8 +192,9 @@ class PwicServer():
                             FROM roles AS a
                                 INNER JOIN projects AS b
                                     ON b.project = a.project
-                            WHERE a.project = ?
-                              AND a.user = ?
+                            WHERE a.project  = ?
+                              AND a.user     = ?
+                              AND a.disabled = ""
                             LIMIT 1''',
                         (project, user))
             row = sql.fetchone()
@@ -211,15 +212,19 @@ class PwicServer():
             sql.execute(''' SELECT a.project, a.description
                             FROM projects AS a
                                 INNER JOIN roles AS b
-                                    ON  b.project = a.project
-                                    AND b.user = ?
+                                    ON  b.project  = a.project
+                                    AND b.user     = ?
+                                    AND b.disabled = ""
                             ORDER BY a.description''',
                         (user, ))
             pwic['title'] = 'Select your project'
             pwic['projects'] = []
             for row in sql.fetchall():
                 pwic['projects'].append({'project': row[0], 'description': row[1]})
-            return await self._handleOutput(request, 'select-project', pwic)
+            if len(pwic['projects']) == 1:
+                raise web.HTTPTemporaryRedirect('/%s' % pwic['projects'][0]['project'])
+            else:
+                return await self._handleOutput(request, 'project-select', pwic)
 
         # Fetch the links of the header line
         sql.execute(''' SELECT a.page, a.title
@@ -329,7 +334,8 @@ class PwicServer():
                     # Fetch the team members of the project
                     sql.execute(''' SELECT user, admin, manager, editor, validator, reader
                                     FROM roles
-                                    WHERE project = ?
+                                    WHERE project   = ?
+                                      AND disabled <> 'X'
                                     ORDER BY admin     DESC,
                                              manager   DESC,
                                              editor    DESC,
@@ -368,8 +374,9 @@ class PwicServer():
                                                 GROUP BY author
                                             ) AS b
                                                 ON b.author = a.user
-                                        WHERE a.project = ?
-                                          AND b.date IS NULL
+                                        WHERE a.project  = ?
+                                          AND a.disabled = ""
+                                          AND b.date     IS NULL
                                         ORDER BY a.user''',
                                     (dt['date-30d'], project, project))
                         pwic['inactive_users'] = []
@@ -412,8 +419,9 @@ class PwicServer():
                                             HAVING project = ?
                                         ) AS c
                                             ON c.hash = b.hash
-                                    WHERE a.project = ?
-                                      AND a.user    = ?
+                                    WHERE a.project  = ?
+                                      AND a.user     = ?
+                                      AND a.disabled = ""
                                     ORDER BY filename''',
                                 (project, project, user))
                     pwic['documents'] = []
@@ -529,8 +537,9 @@ class PwicServer():
                         FROM roles AS a
                             INNER JOIN projects AS b
                                 ON b.project = a.project
-                        WHERE a.user    = ?
-                          AND a.manager = "X"
+                        WHERE a.user     = ?
+                          AND a.manager  = "X"
+                          AND a.disabled = ""
                         ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
@@ -557,8 +566,9 @@ class PwicServer():
                         FROM roles AS a
                             INNER JOIN projects AS b
                                 ON b.project = a.project
-                        WHERE a.user  = ?
-                          AND a.admin = "X"
+                        WHERE a.user     = ?
+                          AND a.admin    = "X"
+                          AND a.disabled = ""
                         ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
@@ -595,10 +605,11 @@ class PwicServer():
         sql.execute(''' SELECT a.project, c.description
                         FROM roles AS a
                             INNER JOIN roles AS b
-                                ON  b.project = a.project
-                                AND b.user    = ?
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ""
                             INNER JOIN projects AS c
-                                ON  c.project = a.project
+                                ON c.project = a.project
                         WHERE a.user = ?
                         ORDER BY c.description''',
                     (user, userpage))
@@ -620,7 +631,8 @@ class PwicServer():
                             ) AS c
                                 ON  c.project = a.project
                                 AND c.hash    = b.hash
-                        WHERE a.user = ?
+                        WHERE a.user     = ?
+                          AND a.disabled = ""
                         ORDER BY date DESC,
                                  time DESC''',
                     (userpage, user))
@@ -661,6 +673,7 @@ class PwicServer():
                             INNER JOIN roles AS r
                                 ON  r.project  = u.project
                                 AND r.user     = ?
+                                AND r.disabled = ""
                             INNER JOIN pages AS p
                                 ON  p.project  = u.project
                                 AND p.page     = u.page
@@ -711,8 +724,9 @@ class PwicServer():
                         FROM roles AS a
                             INNER JOIN projects AS b
                                 ON b.project = a.project
-                        WHERE a.project = ?
-                          AND a.user    = ?''',
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ""''',
                     (project, user))
         row = sql.fetchone()
         if row is None:
@@ -802,12 +816,13 @@ class PwicServer():
         sql = app['sql'].cursor()
         project = request.match_info.get('project', '')
         sql.execute(''' SELECT a.user, c.initial, a.admin, a.manager,
-                               a.editor, a.validator, a.reader
+                               a.editor, a.validator, a.reader, a.disabled
                         FROM roles AS a
                             INNER JOIN roles AS b
-                                ON  b.project = a.project
-                                AND b.user    = ?
-                                AND b.admin   = "X"
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.admin    = "X"
+                                AND b.disabled = ""
                             INNER JOIN users AS c
                                 ON  c.user    = a.user
                         WHERE a.project = ?
@@ -825,7 +840,8 @@ class PwicServer():
                                   'manager': _xb(row[3]),
                                   'editor': _xb(row[4]),
                                   'validator': _xb(row[5]),
-                                  'reader': _xb(row[6])})
+                                  'reader': _xb(row[6]),
+                                  'disabled': _xb(row[7])})
         if len(pwic['roles']) == 0:
             raise web.HTTPUnauthorized()        # Or project not found
         else:
@@ -847,9 +863,10 @@ class PwicServer():
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.latest  = "X"
-                        WHERE a.project = ?
-                          AND a.user    = ?
-                          AND a.manager = "X"
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.manager  = "X"
+                          AND a.disabled = ""
                         ORDER BY b.page''',
                     (project, user))
 
@@ -927,8 +944,9 @@ class PwicServer():
                                 AND c.revision = ?
                             INNER JOIN projects AS d
                                 ON  d.project  = a.project
-                        WHERE a.project = ?
-                          AND a.user    = ?''',
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ""''',
                     (page, new_revision, old_revision, project, user))
         row = sql.fetchone()
         if row is None:
@@ -971,9 +989,10 @@ class PwicServer():
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.latest  = "X"
-                        WHERE a.project = ?
-                          AND a.user    = ?
-                          AND a.admin   = "X"
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.admin    = "X"
+                          AND a.disabled = ""
                         ORDER BY b.page''',
                     (project, user))
         pages = []
@@ -1060,8 +1079,9 @@ class PwicServer():
         sql.execute(''' SELECT a.project, a.filename, a.mime, a.size
                         FROM documents AS a
                             INNER JOIN roles AS b
-                                ON  b.project = a.project
-                                AND b.user    = ?
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ""
                         WHERE a.id = ?''',
                     (user, id))
         row = sql.fetchone()
@@ -1095,12 +1115,15 @@ class PwicServer():
 
         # Logon with the credentials
         ok = False
-        sql.execute(''' SELECT COUNT(user)
-                        FROM users
-                        WHERE user     = ?
-                          AND password = ?''',
+        sql.execute(''' SELECT COUNT(a.user)
+                        FROM users AS a
+                            INNER JOIN roles AS b
+                                ON  b.user     = a.user
+                                AND b.disabled = ""
+                        WHERE a.user     = ?
+                          AND a.password = ?''',
                     (user, pwd))
-        if sql.fetchone()[0] == 1:
+        if sql.fetchone()[0] > 0:
             ok = True
             data = session.getDefaultData()
             data['user'] = user
@@ -1152,9 +1175,10 @@ class PwicServer():
                                 ON  b.project = a.project
                                 AND b.page    = ?
                                 AND b.latest  = "X"
-                        WHERE a.project = ?
-                          AND a.user    = ?
-                          AND a.manager = "X"''',
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.manager  = "X"
+                          AND a.disabled = ""''',
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
@@ -1169,8 +1193,9 @@ class PwicServer():
                                     ON  b.project = a.project
                                     AND b.page    = ?
                                     AND b.latest  = "X"
-                            WHERE a.project = ?
-                              AND a.user    = ?''',
+                            WHERE a.project  = ?
+                              AND a.user     = ?
+                              AND a.disabled = ""''',
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
@@ -1226,10 +1251,11 @@ class PwicServer():
                                 ON  b.project = a.project
                                 AND b.page    = ?
                                 AND b.latest  = "X"
-                        WHERE a.project = ?
-                          AND a.user = ?
+                        WHERE a.project   = ?
+                          AND a.user      = ?
                           AND ( a.manager = "X"
-                             OR a.editor  = "X" )''',
+                             OR a.editor  = "X" )
+                          AND a.disabled  = ""''',
                     (page, project, user))
         row = sql.fetchone()
         if row is None:
@@ -1309,17 +1335,18 @@ class PwicServer():
         sql.execute(''' SELECT b.page
                         FROM roles AS a
                             INNER JOIN pages AS b
-                                ON  b.project = a.project
-                                AND b.page = ?
+                                ON  b.project  = a.project
+                                AND b.page     = ?
                                 AND b.revision = ?
-                                AND b.final = "X"
-                                AND b.valuser = ""
+                                AND b.final    = "X"
+                                AND b.valuser  = ""
                             INNER JOIN users AS c
-                                ON  c.user = a.user
-                                AND c.initial <> "X"
-                        WHERE a.project = ?
-                          AND a.user = ?
-                          AND a.validator = "X"''',
+                                ON  c.user     = a.user
+                                AND c.initial  = ""
+                        WHERE a.project   = ?
+                          AND a.user      = ?
+                          AND a.validator = "X"
+                          AND a.disabled  = ""''',
                     (page, revision, project, user))
         row = sql.fetchone()
         if row is None:
@@ -1359,8 +1386,9 @@ class PwicServer():
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
-                                ON  b.project = a.project
-                                AND b.user    = ?
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ""
                         WHERE a.project  = ?
                           AND a.page     = ?
                           AND a.revision = ?
@@ -1471,9 +1499,10 @@ class PwicServer():
         ok = False
         sql = app['sql'].cursor()
         sql.execute(''' SELECT user FROM roles
-                        WHERE project = ?
-                          AND user    = ?
-                          AND admin   = "X"''',
+                        WHERE project   = ?
+                          AND user      = ?
+                          AND admin     = "X"
+                          AND disabled <> "X"''',
                     (project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
@@ -1558,7 +1587,7 @@ class PwicServer():
         post = await self._handlePost(request)
         project = post.get('project', '')
         userpost = post.get('user', '')
-        roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'drop']
+        roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'drop']
         try:
             roleid = roles.index(post.get('role', ''))
             drop = (roles[roleid] == 'drop')
@@ -1570,19 +1599,20 @@ class PwicServer():
         # Select the current rights of the user
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.user, a.admin, a.manager, a.editor,
-                               a.validator, a.reader, c.initial
+                               a.validator, a.reader, a.disabled, c.initial
                         FROM roles AS a
                             INNER JOIN roles AS b
-                                ON  b.project = a.project
-                                AND b.user    = ?
-                                AND b.admin   = "X"
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.admin    = "X"
+                                AND b.disabled = ""
                             INNER JOIN users AS c
                                 ON  c.user    = a.user
                         WHERE a.project = ?
                           AND a.user    = ?''',
                     (user, project, userpost))
         row = sql.fetchone()
-        if row is None or (not drop and row[6] == 'X'):
+        if row is None or (not drop and row[7] == 'X'):
             raise web.HTTPUnauthorized()
 
         # Drop a user
@@ -1691,7 +1721,7 @@ class PwicServer():
                     doc[name] = await part.text()
         except Exception:
             raise web.HTTPBadRequest()
-        if doc['content'] is None or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later
+        if doc['content'] is None or len(doc['content']) == 0 or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later \
             raise web.HTTPBadRequest()
 
         # Verify that the target folder exists
@@ -1706,10 +1736,11 @@ class PwicServer():
                                 ON  b.project = a.project
                                 AND b.page    = ?
                                 AND b.latest  = 'X'
-                        WHERE   a.project = ?
-                          AND   a.user    = ?
-                          AND ( a.manager = 'X'
-                             OR a.editor  = 'X' )''',
+                        WHERE   a.project  = ?
+                          AND   a.user     = ?
+                          AND ( a.manager  = 'X'
+                             OR a.editor   = 'X' )
+                          AND   a.disabled = ""''',
                     (doc['page'], doc['project'], user))
         row = sql.fetchone()
         if row is None:
@@ -1824,8 +1855,9 @@ class PwicServer():
                             INNER JOIN documents AS b
                                 ON  b.project = a.project
                                 AND b.page    = ?
-                        WHERE a.project = ?
-                          AND a.user    = ?
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ""
                         ORDER BY b.filename''',
                     (page, project, user))
         result = []
@@ -1899,6 +1931,7 @@ def main():
                     web.post('/api/document/create', app['pwic'].api_document_create),
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/ping', app['pwic'].api_ping),
+                    web.get('/special/logon', app['pwic']._handleLogon),
                     web.get('/special/help', app['pwic'].page_help),
                     web.get('/special/create-project', app['pwic'].page_help),
                     web.get('/special/create-page', app['pwic'].page_create),

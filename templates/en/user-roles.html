@@ -23,12 +23,13 @@
 				<th>Editor</th>
 				<th>Validator</th>
 				<th>Reader</th>
+				<th>Disabled</th>
 				<th>Drop</th>
 			</tr>
 
 			{% set u = namespace(value=0) %}
 			{% for role in pwic.roles %}
-				<tr id="roles_tag_{{u.value+6}}">
+				<tr id="roles_tag_{{u.value+7}}">
 					<td><a href="/special/user/{{role.user|urlencode}}">{{role.user|escape}}</a></td>
 					<td>
 						{% if role.user[:4] == 'pwic' %}
@@ -38,21 +39,37 @@
 						{% endif %}
 					</td>
 					<td>
-						{% if role.user[:4] != 'pwic' %}
-							<input id="roles_tag_{{u.value+1}}" type="checkbox" onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')" {% if role.admin %} checked="checked" {% endif %} />
-						{% endif %}
+						<input	id="roles_tag_{{u.value+1}}"
+								type="checkbox"
+								{% if (role.user == pwic.user) or (role.user[:4] == 'pwic') %}
+									disabled="disabled"
+								{% else %}
+									onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')"
+								{% endif %}
+								{% if role.admin %} checked="checked" {% endif %}
+						/>
 					</td>
 					<td><input id="roles_tag_{{u.value+2}}" type="checkbox" onclick="return roles_toggle({{u.value+2}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'manager')" {% if role.manager %} checked="checked" {% endif %} /></td>
 					<td><input id="roles_tag_{{u.value+3}}" type="checkbox" onclick="return roles_toggle({{u.value+3}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'editor')" {% if role.editor %} checked="checked" {% endif %} /></td>
 					<td><input id="roles_tag_{{u.value+4}}" type="checkbox" onclick="return roles_toggle({{u.value+4}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'validator')" {% if role.validator %} checked="checked" {% endif %} /></td>
 					<td><input id="roles_tag_{{u.value+5}}" type="checkbox" onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')" {% if role.reader %} checked="checked" {% endif %} /></td>
 					<td>
+						<input	id="roles_tag_{{u.value+6}}" type="checkbox"
+								{% if role.disabled %}
+									checked="checked"
+								{% else %}
+									onclick="return roles_toggle({{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'disabled')"
+								{% endif %}
+								{% if role.user == pwic.user %} disabled="disabled" {% endif %}
+						/>
+					</td>
+					<td>
 						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
-						<input type="button" onclick="return roles_drop('Are you sure to drop the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Drop {{role.user|escape}}" />
+							<input type="button" onclick="return roles_drop('Are you sure to drop the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Drop {{role.user|escape}}" />
 						{% endif %}
 					</td>
 				</tr>
-				{% set u.value = u.value + 6 %}
+				{% set u.value = u.value + 7 %}
 			{% endfor %}
 		</table>
 	</article>
