@@ -13,4 +13,28 @@
 		if (!element.classList.contains('pwic_hidden'))
 			element.focus();
 	}
+
+	function page_post_action(action, confirmText) {
+		if (confirm(confirmText))
+		{
+			fetch('/api/page/'+action, {method: 'POST',
+										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+										body:	action+'_project={{pwic.project|urlencode}}&'+
+												action+'_page={{pwic.page|urlencode}}&' +
+												action+'_revision={{pwic.revision|urlencode}}' })
+				.then(function(response) {
+					if (response.status != 200)
+						throw Error(response.status + ' ' + response.statusText);
+					else
+						window.location =	'/{{pwic.project|escape}}' +
+											'/{{pwic.page|escape}}' : '') +
+											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
+											'?success';
+				})
+				.catch(function(error) {
+					alert(error);
+				});
+		}
+		return false;
+	}
 </script>

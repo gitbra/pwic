@@ -47,19 +47,19 @@
 				{% if 'no_raw' not in pwic.env %}
 					<a href="?raw">{{pwic.emojis.hammer}} Raw</a>
 				{% endif %}
-				{% if pwic.manager or (pwic.editor and not pwic.protection) %}
+				{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 				{% endif %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 				{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
-				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/validate" onclick="return confirm('The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
+				<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
 				{% endif %}
 			{% endif %}
 			{% if pwic.manager and pwic.special %}
 				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
 			{% endif %}
 			{% if pwic.removable %}
-				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{pwic.revision}}/delete" onclick="return confirm('WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
+				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
 			{% endif %}
 			{% if pwic.admin and pwic.special %}
 				<a href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>

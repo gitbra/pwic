@@ -24,7 +24,7 @@
 				<th>Validator</th>
 				<th>Reader</th>
 				<th>Disabled</th>
-				<th>Drop</th>
+				<th>Delete</th>
 			</tr>
 
 			{% set u = namespace(value=0) %}
@@ -65,7 +65,7 @@
 					</td>
 					<td>
 						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
-							<input type="button" onclick="return roles_drop('Are you sure to drop the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Drop {{role.user|escape}}" />
+							<input type="button" onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Delete {{role.user|escape}}" />
 						{% endif %}
 					</td>
 				</tr>

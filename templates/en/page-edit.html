@@ -19,7 +19,7 @@
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" />
 					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
-					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Type the link:')" />
+					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
 					<input type="button" value="Right" title="Shift to right" onclick="edit_prepend('    ')" />
 
 					<div class="pwic_spacer"></div>
@@ -44,18 +44,19 @@
 
 				{% if not pwic.msie %}
 					<p><strong>Documents:</strong></p>
-					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
+					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
 						Drop the files here + Save immediately
 					</div>
 					<table id="edit_files_list">
 						<tr>
+							<th>Join</th>
 							<th>File name</th>
 							<th>Size</th>
 							<th class="pwic_desktop">MIME</th>
 							<th class="pwic_desktop">Author</th>
 							<th>Date</th>
 							<th class="pwic_desktop">Time</th>
-							<th>Join</th>
+							<th>Delete</th>
 						</tr>
 					</table>
 				{% endif %}

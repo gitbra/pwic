@@ -216,7 +216,7 @@ CREATE TABLE "projects" (
 CREATE TABLE "roles" (
     "project" TEXT NOT NULL,
     "user" TEXT NOT NULL,
-    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X" OR "disabled" = "X")),
+    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
     "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
     "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
     "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),

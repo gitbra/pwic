@@ -27,7 +27,7 @@
 		return false;	// The element is updated async later
 	}
 
-	function roles_drop(text, id, project, user) {
-		return confirm(text) && roles_toggle(id, project, user, 'drop');
+	function roles_delete(text, id, project, user) {
+		return confirm(text) && roles_toggle(id, project, user, 'delete');
 	}
 </script>

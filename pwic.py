@@ -1243,7 +1243,7 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
-            raise web.HTTPNotModified('/special/create-page?failed')
+            raise web.HTTPTemporaryRedirect('/special/create-page?failed')
 
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
@@ -1260,7 +1260,7 @@ class PwicServer():
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
-                raise web.HTTPNotModified('/special/create-page?failed')
+                raise web.HTTPTemporaryRedirect('/special/create-page?failed')
             default_markdown = row[0]
 
         # Handle the creation of the page
@@ -1278,7 +1278,7 @@ class PwicServer():
                    request, commit=True)
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
-    async def api_page_update(self, request):
+    async def api_page_edit(self, request):
         ''' API to update an existing page '''
         # Verify that the user is connected
         session = PwicSession(request)
@@ -1385,9 +1385,10 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Get the revision to validate
-        project = request.match_info.get('project', '')
-        page = request.match_info.get('page', '')
-        revision = _int(request.match_info.get('revision', 0))
+        post = await self._handlePost(request)
+        project = _safeName(post.get('validate_project', ''))
+        page = _safeName(post.get('validate_page', ''))
+        revision = _int(post.get('validate_revision', 0))
         if '' in [project, page] or revision == 0:
             raise web.HTTPBadRequest()
 
@@ -1425,7 +1426,7 @@ class PwicServer():
                          'page': page,
                          'revision': revision},
                    request, commit=True)
-        raise web.HTTPFound('/%s/%s/rev%d?success' % (project, page, revision))
+        raise web.HTTPOk()
 
     async def api_page_delete(self, request):
         ''' Delete a page upon administrative request '''
@@ -1436,9 +1437,10 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Get the revision to delete
-        project = request.match_info.get('project', '')
-        page = request.match_info.get('page', '')
-        revision = _int(request.match_info.get('revision', 0))
+        post = await self._handlePost(request)
+        project = _safeName(post.get('delete_project', ''))
+        page = _safeName(post.get('delete_page', ''))
+        revision = _int(post.get('delete_revision', 0))
         if '' in [project, page] or revision == 0:
             raise web.HTTPBadRequest()
 
@@ -1502,8 +1504,7 @@ class PwicServer():
                         WHERE project = ?
                           AND page    = ?''',
                     (project, page))
-        fully_deleted = sql.fetchone()[0] == 0
-        if fully_deleted:
+        if sql.fetchone()[0] == 0:
             # Remove the attached documents
             docFound = False
             sql.execute(''' SELECT filename
@@ -1519,7 +1520,7 @@ class PwicServer():
                 except (OSError, FileNotFoundError):
                     if os.path.isfile(fn):
                         sql.execute('ROLLBACK')
-                        raise web.HTTPNotModified('/%s/%s?failed' % (project, page))
+                        raise web.HTTPTemporaryRedirect('/%s/%s?failed' % (project, page))
 
             # Remove the index
             if docFound:
@@ -1534,12 +1535,9 @@ class PwicServer():
                                  'string': '*'},
                            request)
 
-        # Redirection
+        # Final
         sql.execute('COMMIT')
-        if fully_deleted:
-            raise web.HTTPFound('/%s?success' % project)  # The page itself is deleted
-        else:
-            raise web.HTTPFound('/%s/%s?success' % (project, page))
+        raise web.HTTPOk()
 
     async def api_user_create(self, request):
         ''' API to create a new user '''
@@ -1593,10 +1591,11 @@ class PwicServer():
                        request)
         sql.execute('COMMIT')
 
+        # Redirection
         if ok:
             raise web.HTTPFound('/%s/special/roles?success' % project)
         else:
-            raise web.HTTPNotModified('/%s/special/roles?failed' % project)
+            raise web.HTTPTemporaryRedirect('/%s/special/roles?failed' % project)
 
     async def api_user_change_password(self, request):
         ''' Change the password of the current user '''
@@ -1634,7 +1633,7 @@ class PwicServer():
         if ok:
             raise web.HTTPFound('/special/user/%s?success' % user)
         else:
-            raise web.HTTPNotModified('/special/user/%s?failed' % user)
+            raise web.HTTPTemporaryRedirect('/special/user/%s?failed' % user)
 
     async def api_roles(self, request):
         ''' Change the roles of a user '''
@@ -1648,13 +1647,13 @@ class PwicServer():
         post = await self._handlePost(request)
         project = post.get('project', '')
         userpost = post.get('user', '')
-        roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'drop']
+        roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
             roleid = roles.index(post.get('role', ''))
-            drop = (roles[roleid] == 'drop')
+            delete = (roles[roleid] == 'delete')
         except ValueError:
             raise web.HTTPBadRequest()
-        if '' in [project, userpost] or (userpost[:4] == 'pwic' and roles in ['admin', 'drop']):
+        if '' in [project, userpost] or (userpost[:4] == 'pwic' and roles in ['admin', 'delete']):
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
@@ -1673,11 +1672,11 @@ class PwicServer():
                           AND a.user    = ?''',
                     (user, project, userpost))
         row = sql.fetchone()
-        if row is None or (not drop and row[7] == 'X'):
+        if row is None or (not delete and row[7] == 'X'):
             raise web.HTTPUnauthorized()
 
-        # Drop a user
-        if drop:
+        # Delete a user
+        if delete:
             sql.execute(''' DELETE FROM roles
                             WHERE project = ?
                               AND user    = ?
@@ -1685,7 +1684,7 @@ class PwicServer():
                         (project, userpost, user))
             if sql.rowcount > 0:
                 pwic_audit(sql, {'author': user,
-                                 'event': 'drop-user',
+                                 'event': 'delete-user',
                                  'project': project,
                                  'user': userpost},
                            request, commit=True)
@@ -1934,6 +1933,59 @@ class PwicServer():
                            'time': row[7]})
         return web.Response(text=json.dumps(result), content_type='application/json')
 
+    async def api_document_delete(self, request):
+        ''' Delete a document '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        user = await session.getUser()
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the revision to delete
+        post = await self._handlePost(request)
+        project = _safeName(post.get('delete_project', ''))
+        page = _safeName(post.get('delete_page', ''))
+        id = _int(post.get('delete_id', 0))
+        filename = _safeFileName(post.get('delete_filename', ''))
+        if '' in [project, page, filename] or id == 0:
+            raise web.HTTPBadRequest()
+
+        # Verify that the deletion is possible
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT b.id
+                        FROM roles AS a
+                            INNER JOIN documents AS b
+                                ON  b.id 	   = ?
+                                AND b.project  = a.project
+                                AND b.page     = ?
+                                AND b.filename = ?
+                        WHERE   a.project  = ?
+                          AND   a.user     = ?
+                          AND ( a.manager  = "X"
+                             OR a.editor   = "X" )
+                          AND   a.disabled = ""''',
+                    (id, page, filename, project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()  # Or not found
+
+        # Delete the file
+        fn = (PWIC_DOCUMENTS_PATH % project) + filename
+        try:
+            os.remove(fn)
+        except (OSError, FileNotFoundError):
+            if os.path.isfile(fn):
+                raise web.HTTPInternalServerError()
+
+        # Delete the index
+        sql.execute('DELETE FROM documents WHERE id = ?', (id, ))
+        pwic_audit(sql, {'author': user,
+                         'event': 'delete-document',
+                         'project': project,
+                         'page': page,
+                         'string': filename},
+                   request, commit=True)
+        raise web.HTTPOk()
+
     async def api_ping(self, request):
         ''' Notify if the session is still alive '''
         session = PwicSession(request)
@@ -1984,13 +2036,16 @@ def main():
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
                     web.post('/api/page/create', app['pwic'].api_page_create),
-                    web.post('/api/page/update', app['pwic'].api_page_update),
+                    web.post('/api/page/update', app['pwic'].api_page_edit),
+                    web.post('/api/page/validate', app['pwic'].api_page_validate),
+                    web.post('/api/page/delete', app['pwic'].api_page_delete),
                     web.post('/api/user/create', app['pwic'].api_user_create),
-                    web.post('/api/user/change-password', app['pwic'].api_user_change_password),
+                    web.post('/api/user/password/change', app['pwic'].api_user_change_password),
                     web.post('/api/roles', app['pwic'].api_roles),
                     web.post('/api/markdown', app['pwic'].api_markdown),
                     web.post('/api/document/create', app['pwic'].api_document_create),
                     web.post('/api/document/list', app['pwic'].api_document_list),
+                    web.post('/api/document/delete', app['pwic'].api_document_delete),
                     web.post('/api/ping', app['pwic'].api_ping),
                     web.get('/special/logon', app['pwic']._handleLogon),
                     web.get('/special/help', app['pwic'].page_help),
@@ -2003,8 +2058,6 @@ def main():
                     web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
                     web.get(r'/{project:[^\/]+}/special/export', app['pwic'].project_export),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
-                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}/validate', app['pwic'].api_page_validate),
-                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}/delete', app['pwic'].api_page_delete),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}', app['pwic'].page),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history}', app['pwic'].page),
                     web.get(r'/special/document/{id:[0-9]+}/{dummy:[^\/]+}', app['pwic'].document_get),
