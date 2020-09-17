@@ -7,7 +7,7 @@
 		{
 			var q = document.getElementById('page_search').value;
 			if (q.length > 0)
-				window.location = '/{{pwic.project|urlencode}}/special/search?q=' + encodeURI(q);
+				window.location = '/{{pwic.project|urlencode}}/special/search?q=' + escape(q);
 		}
 	}
 </script>

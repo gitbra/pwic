@@ -41,9 +41,10 @@
 					<input type="button" value="Code" title="```Code```" onclick="edit_decorate2('```\n', '\n```')" />
 				</div>
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
+				<p><strong>Tags:</strong> <input id="edit_tags" class="pwic_fill" type="text" name="edit_tags" value="{{pwic.tags|escape}}" /></p>
 
 				{% if not pwic.msie %}
-					<p><strong>Documents:</strong></p>
+					<h2>Documents</h2>
 					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
 						Drop the files here + Save immediately
 					</div>
@@ -61,6 +62,7 @@
 					</table>
 				{% endif %}
 
+				<h2>Attributes</h2>
 				<p><strong>Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="edit_milestone" value="{{pwic.milestone|escape}}" /></p>
 				<p>

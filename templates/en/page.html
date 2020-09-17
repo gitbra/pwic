@@ -305,6 +305,14 @@
 				</div>
 			{% endif %}
 
+			{% if pwic.tags|count > 0 %}
+				<div class="pwic_tagbox">
+					{% for tag in pwic.tags %}
+						<a href="/{{pwic.project|urlencode}}/special/search?q=%23{{tag|urlencode}}" title="Search for related classified pages">#{{tag|escape}}</a>
+					{% endfor %}
+				</div>
+			{% endif %}
+
 			{{pwic.html}}
 
 			{% if (pwic.images|count > 0) or (pwic.documents|count > 0) %}

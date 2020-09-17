@@ -171,6 +171,28 @@ ARTICLE
 			border-radius: 0px
 
 
+	// -------------------------------- Tag box
+
+	.pwic_tagbox
+		margin: 0px
+		overflow: hidden
+
+		A
+			float: left
+			margin-right: 5px
+			padding: 3px 5px 3px 5px
+			line-height: 20px
+			border: 1px solid grey
+			border-radius: 10px
+			font-family: monospace
+			color: black
+			text-decoration: none
+		A:hover
+			background-color: lightgrey
+			border: 1px solid black
+			border-radius: 0px
+
+
 	// -------------------------------- File gallery
 
 	.pwic_file_gallery
@@ -381,8 +403,8 @@ FOOTER
 
 #page_topofpage
 	text-align: center
-#page_topofpage:hover
-	font-weight: bold
+	A:hover
+		font-weight: bold
 
 #edit_toolbar
 	INPUT[type=button]
@@ -392,12 +414,15 @@ FOOTER
 	width: 100%
 	height: 75vh
 
+#edit_tags
+	font-family: monospace
+
 #edit_files_drop
 	border: 2px dashed lightgrey
 	margin-top: 10px
 	margin-bottom: 20px
 	padding: 10px
-	line-height: 20px
+	line-height: 50px
 	font-weight: bold
 	text-align: center
 	background-color: #F7F7F7

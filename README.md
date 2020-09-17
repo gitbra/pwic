@@ -15,14 +15,17 @@
 - Display of the differences between two versions
 - File attachments with normalized names
 - In-text search with inclusion, exclusion and special keywords
-- IP filtering
 
 
-**Cost effectiveness**
+**Cost effectiveness and technicity**
 
 - Extra fast setup
 - Low technical requirements
 - Easy backup and recovery
+- Ready for TLS v1.3
+- IP filtering
+- Cross Origin Resource Sharing (CORS)
+
 
 **Custom use**
 
@@ -49,12 +52,14 @@ Copyright (C) Alexandre Bréard, 2020
 ## Install
 
 - Install Python: `apt-get install python3`
-- Install the dependencies: `pip install cryptography aiohttp aiohttp-session jinja2 sqlite3 parsimonious PrettyTable pygments`
+- Install the dependencies: `pip install aiohttp aiohttp-cors aiohttp-session jinja2 sqlite3 parsimonious PrettyTable pygments`
+	- Additionally `cryptography` is required if you want to generate your self-signed certificates
 - Generate your self-signed SSL keys: `python pwic_admin.py ssl`
 - Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Initialize the SQLite database: `python pwic_admin.py init-db`
+- Eventually refine the global variables: `python pwic_admin.py set-env --help` (refer to the online help)
 - Create a new project: `python pwic_admin.py create-project --help`
-- Run the server: `python pwic.py --ssl`
+- Run the server: `python pwic.py`
 - Open your browser at `https://localhost:1234`
 
 If you intend to change the cascading style sheets (CSS), you need SASS:

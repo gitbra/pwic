@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 import argparse
-import ssl
-from cryptography import fernet
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
@@ -14,7 +12,6 @@ import zipfile
 import os
 import json
 import re
-import base64
 from ipaddress import ip_network, ip_address
 from multidict import MultiDict
 import time
@@ -23,7 +20,7 @@ from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
-    _x, _xb, _int, _dt, _sha256, _safeName, _safeFileName, _size2str, \
+    _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
 
 
@@ -218,7 +215,6 @@ class PwicServer():
         pwic['env'] = {}
         for row in sql.fetchall():
             pwic['env'][row[0]] = row[1]
-        pwic['env']['ssl'] = app['ssl']
 
         # Rendered template
         self._checkIP(request, sql)
@@ -322,7 +318,7 @@ class PwicServer():
                 if page != 'special':
                     sql.execute(''' SELECT revision, latest, draft, final, protection,
                                            author, date, time, title, markdown,
-                                           valuser, valdate, valtime
+                                           tags, valuser, valdate, valtime
                                     FROM pages
                                     WHERE project = ?
                                       AND page    = ?
@@ -347,9 +343,10 @@ class PwicServer():
                     pwic['markdown'] = row[9]
                     pwic['html'], pwic['tmap'] = self._md2html(row[9])
                     pwic['hash'] = _sha256(row[9], salt=False)
-                    pwic['valuser'] = row[10]
-                    pwic['valdate'] = row[11]
-                    pwic['valtime'] = row[12]
+                    pwic['tags'] = [] if row[10] == '' else row[10].split(' ')
+                    pwic['valuser'] = row[11]
+                    pwic['valdate'] = row[12]
+                    pwic['valtime'] = row[13]
                     pwic['removable'] = (pwic['admin'] and not pwic['final'] and (pwic['valuser'] == '')) or ((pwic['author'] == user) and pwic['draft'])
 
                     # File gallery
@@ -529,7 +526,7 @@ class PwicServer():
 
             # Edit the requested page
             elif action == 'edit':
-                sql.execute(''' SELECT draft, final, header, protection, title, markdown, milestone
+                sql.execute(''' SELECT draft, final, header, protection, title, markdown, tags, milestone
                                 FROM pages
                                 WHERE project = ?
                                   AND page    = ?
@@ -544,7 +541,8 @@ class PwicServer():
                 pwic['protection'] = _xb(row[3])
                 pwic['title'] = row[4]
                 pwic['markdown'] = row[5]
-                pwic['milestone'] = row[6]
+                pwic['tags'] = row[6]
+                pwic['milestone'] = row[7]
                 return await self._handleOutput(request, 'page-edit', pwic)
 
             # Show the history of the page
@@ -792,30 +790,39 @@ class PwicServer():
                 'results': []}
 
         # Search
-        sql.execute(''' SELECT project, page, draft, final, author,
-                               date, time, title,
-                               LOWER(markdown) AS markdown, valuser
-                        FROM pages
-                        WHERE project = ?
-                          AND latest  = "X"
-                        ORDER BY date DESC,
-                                 time DESC''',
-                    (project, ))
+        sql.execute(''' SELECT a.project, a.page, a.draft, a.final, a.author,
+                               a.date, a.time, a.title, LOWER(a.markdown), a.tags,
+                               a.valuser, b.document_count
+                        FROM pages AS a
+                            LEFT JOIN (
+                                SELECT project, page, COUNT(id) AS document_count
+                                FROM documents
+                                GROUP BY project, page
+                                HAVING project = ?
+                            ) AS b
+                                ON  b.project = a.project
+                                AND b.page    = a.page
+                        WHERE a.project = ?
+                          AND a.latest  = "X"
+                        ORDER BY a.date DESC,
+                                 a.time DESC''',
+                    (project, project))
         for row in sql.fetchall():
+            tagList = row[9].split(' ')  # Tags
+
             # Apply the filters
             ok = True
             score = 0
             for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
-                if (q == ':draft' and row[2] == 'X')                        \
-                   or (q == ':not-draft' and row[2] == '')                  \
-                   or (q == ':final' and row[3] == 'X')                     \
-                   or (q == ':not-final' and row[3] == '')                  \
-                   or (q[:7] == 'author:' and q[7:] in row[4].lower())      \
-                   or (q[:6] == 'title:' and q[6:] in row[7].lower())       \
-                   or (q == ':not-validated' and row[9] == '')              \
-                   or (q == ':validated' and row[9] != '')                  \
-                   or (q[:10] == 'validator:' and q[10:] in row[9].lower()) \
-                   or (q == row[1].lower())                                 \
+                if (q == ':draft' and row[2] == 'X')                            \
+                   or (q == ':final' and row[3] == 'X')                         \
+                   or (q[:7] == 'author:' and q[7:] in row[4].lower())          \
+                   or (q[:6] == 'title:' and q[6:] in row[7].lower())           \
+                   or (q == ':validated' and row[10] != '')                     \
+                   or (q[:10] == 'validator:' and q[10:] in row[10].lower())    \
+                   or (q == ':document' and _int(row[11]) > 0)                  \
+                   or (q[1:] in tagList if q[:1] == '#' else False)             \
+                   or (q == row[1].lower())                                     \
                    or (q in row[8]):
                     ok = False
                     break
@@ -823,22 +830,20 @@ class PwicServer():
                 for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
                     if q == ':draft':
                         count = _int(row[2] == 'X')
-                    elif q == ':not-draft':
-                        count = _int(row[2] == '')
                     elif q == ':final':
                         count = _int(row[3] == 'X')
-                    elif q == ':not-final':
-                        count = _int(row[3] == '')
                     elif q[:7] == 'author:':
                         count = row[4].lower().count(q[7:])
                     elif q[:6] == 'title:':
                         count = row[7].lower().count(q[6:])
-                    elif q == ':not-validated':
-                        count = _int(row[9] == '')
                     elif q == ':validated':
-                        count = _int(row[9] != '')
+                        count = _int(row[10] != '')
                     elif q[:10] == 'validator:':
-                        count = _int(q[10:] in row[9].lower())
+                        count = _int(q[10:] in row[10].lower())
+                    elif q == ':document':
+                        count = _int(_int(row[11]) > 0)
+                    elif (q[1:] in tagList if q[:1] == '#' else False):
+                        count = 5               # A tag counts more
                     else:
                         count = _int(q == row[1].lower()) + row[8].count(q)
                     if count == 0:
@@ -1225,6 +1230,7 @@ class PwicServer():
         milestone = post.get('create_milestone', '').strip()
         ref_project = _safeName(post.get('create_ref_project', ''))
         ref_page = _safeName(post.get('create_ref_page', ''))
+        ref_tags = _x('create_ref_tags' in post)
         if project in ['', 'api', 'special'] or page in ['', 'special']:
             raise web.HTTPBadRequest()
 
@@ -1247,8 +1253,9 @@ class PwicServer():
 
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
+        default_tags = ''
         if ref_project != '' and ref_page != '':
-            sql.execute(''' SELECT b.markdown
+            sql.execute(''' SELECT b.markdown, b.tags
                             FROM roles AS a
                                 INNER JOIN pages AS b
                                     ON  b.project = a.project
@@ -1262,13 +1269,15 @@ class PwicServer():
             if row is None:
                 raise web.HTTPTemporaryRedirect('/special/create-page?failed')
             default_markdown = row[0]
+            if ref_tags:
+                default_tags = row[1]
 
         # Handle the creation of the page
         dt = _dt()
         revision = 1
-        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment, milestone)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, 'Initial', milestone))
+        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, tags, comment, milestone)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, default_tags, 'Initial', milestone))
         assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': user,
                          'event': 'create-page',
@@ -1292,6 +1301,7 @@ class PwicServer():
         page = _safeName(post.get('edit_page', ''))
         title = post.get('edit_title', '').strip()
         markdown = post.get('edit_markdown', '')
+        tags = post.get('edit_tags', '')
         comment = post.get('edit_comment', '').strip()
         milestone = post.get('edit_milestone', '').strip()
         draft = _x('edit_draft' in post)
@@ -1303,6 +1313,12 @@ class PwicServer():
             raise web.HTTPBadRequest()
         if final:
             draft = ''
+
+        # Reprocess the tags in alphabetical order
+        tags = _recursiveReplace(tags.replace('\t', ' ').strip().lower(), '  ', ' ')
+        tags = tags.split(' ')
+        tags.sort()
+        tags = ' '.join(tags)
 
         # Fetch the last revision of the page and the profile of the user
         sql = app['sql'].cursor()
@@ -1333,11 +1349,11 @@ class PwicServer():
         sql.execute(''' INSERT INTO pages
                             (project, page, revision, draft, final, header,
                              protection, author, date, time, title,
-                             markdown, comment, milestone)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                             markdown, tags, comment, milestone)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (project, page, revision + 1, draft, final, header,
                      protection, user, dt['date'], dt['time'], title,
-                     markdown, comment, milestone))
+                     markdown, tags, comment, milestone))
         if sql.rowcount > 0:
             pwic_audit(sql, {'author': user,
                              'event': 'update-page',
@@ -1824,7 +1840,7 @@ class PwicServer():
 
         # Verify the maximal document size
         maxsize = _int(self._readEnv(sql, 'max_document_size'))
-        if len(doc['content']) > maxsize > 0:
+        if maxsize != 0 and len(doc['content']) > maxsize:
             raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
 
         # Verify the maximal project size
@@ -2007,19 +2023,7 @@ def main():
     parser = argparse.ArgumentParser(description='Pwic Server')
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=1234, help='Listening port')
-    parser.add_argument('--ssl', action='store_true', help='Enable HTTPS')
     args = parser.parse_args()
-
-    # SSL binding
-    if args.ssl:
-        https = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        try:
-            https.load_cert_chain(PWIC_PUBLIC_KEY, PWIC_PRIVATE_KEY)
-        except FileNotFoundError:
-            print('Warning: invalid certificates. Switching to the unsecure mode')
-            https = None
-    else:
-        https = None
 
     # Modules
     app = web.Application()
@@ -2028,8 +2032,7 @@ def main():
     app['pwic'] = PwicServer()
     app['sql'] = sqlite3.connect('./db/pwic.sqlite')
     # app['sql'].set_trace_callback(print)
-    app['ssl'] = https is not None
-    setup(app, EncryptedCookieStorage(base64.urlsafe_b64decode(fernet.Fernet.generate_key())))  # Storage for cookies
+    setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
 
     # Routes
     app.router.add_static('/static/', path='./static/')
@@ -2072,9 +2075,33 @@ def main():
     pwic_audit(sql, {'author': PWIC_USER,
                      'event': 'start-server'},
                commit=True)
-    del sql
+
+    # SSL
+    if app['pwic']._readEnv(sql, 'ssl') is None:
+        https = None
+    else:
+        try:
+            import ssl
+            https = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            https.load_cert_chain(PWIC_PUBLIC_KEY, PWIC_PRIVATE_KEY)
+        except FileNotFoundError:
+            print('Error: SSL certificates not found')
+            return False
+        except Exception as e:
+            print('Error: %s' % str(e))
+            return False
+
+    # CORS
+    if app['pwic']._readEnv(sql, 'cors') is None:
+        app['cors'] = None
+    else:
+        import aiohttp_cors
+        app['cors'] = aiohttp_cors.setup(app, defaults={'*': aiohttp_cors.ResourceOptions(allow_headers='*')})  # expose_headers='*'
+        for route in list(app.router.routes()):
+            app['cors'].add(route)
 
     # Launch the server
+    del sql
     web.run_app(app, host=args.host, port=args.port, ssl_context=https)
 
 

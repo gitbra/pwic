@@ -19,7 +19,7 @@
 		{
 			fetch('/api/page/'+action, {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	action+'_project={{pwic.project|urlencode}}&'+
+										body:	action+'_project={{pwic.project|urlencode}}&' +
 												action+'_page={{pwic.page|urlencode}}&' +
 												action+'_revision={{pwic.revision|urlencode}}' })
 				.then(function(response) {
@@ -27,7 +27,7 @@
 						throw Error(response.status + ' ' + response.statusText);
 					else
 						window.location =	'/{{pwic.project|escape}}' +
-											'/{{pwic.page|escape}}' : '') +
+											'/{{pwic.page|escape}}' +
 											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
 											'?success';
 				})

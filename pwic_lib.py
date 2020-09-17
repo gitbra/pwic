@@ -230,6 +230,15 @@ def _dt():
             'time': dts[11:19]}
 
 
+def _recursiveReplace(text, search, replace):
+    while True:
+        curlen = len(text)
+        text = text.replace(search, replace)
+        if len(text) == curlen:
+            break
+    return text.strip()
+
+
 def _sha256(value, salt=True):
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:

@@ -194,6 +194,7 @@ CREATE TABLE "pages" (
     "time" TEXT NOT NULL CHECK("time" <> ''),
     "title" TEXT NOT NULL CHECK("title" <> ''),
     "markdown" TEXT NOT NULL DEFAULT '',
+    "tags" TEXT NOT NULL DEFAULT '',
     "comment" TEXT NOT NULL CHECK("comment" <> ''),
     "milestone" TEXT NOT NULL DEFAULT '',
     "valuser" TEXT NOT NULL DEFAULT '',
@@ -265,6 +266,7 @@ END''')
 def set_env(name, value):
     # Check the keys
     keys = ['anonymous',
+            'cors',
             'document_name_regex',
             'enforce_mime',
             'ip_filter',
@@ -272,7 +274,8 @@ def set_env(name, value):
             'max_document_size',
             'max_project_size',
             'no_export',
-            'no_raw']
+            'no_raw',
+            'ssl']
     if name not in keys:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
         return False

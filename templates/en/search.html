@@ -16,22 +16,22 @@
 		{% if pwic.results|count > 0 %}
 			<table>
 				<tr>
-					<th class="pwic_desktop">Page</th>
+					<th>Page</th>
 					<th>Title</th>
 					<th class="pwic_desktop">Author</th>
 					<th>Date</th>
 					<th class="pwic_desktop">Time</th>
-					<th>Score</th>
+					<th class="pwic_desktop">Score</th>
 				</tr>
 
 				{% for result in pwic.results %}
 					<tr>
-						<td class="pwic_desktop">{{result.page|escape}}</td>
+						<td>{{result.page|escape}}</td>
 						<td><a href="/{{result.project|urlencode}}/{{result.page|urlencode}}">{{result.title|escape}}</a></td>
 						<td class="pwic_desktop"><a href="/special/user/{{result.author|urlencode}}">{{result.author|escape}}</a></td>
 						<td>{{result.date|escape}}</td>
 						<td class="pwic_desktop">{{result.time|escape}}</td>
-						<td>{{result.score|escape}}</td>
+						<td class="pwic_desktop">{{result.score|escape}}</td>
 					</tr>
 				{% endfor %}
 			</table>
