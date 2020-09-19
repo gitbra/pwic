@@ -265,14 +265,14 @@ END''')
 
 def set_env(name, value):
     # Check the keys
-    keys = ['anonymous',
-            'cors',
+    keys = ['cors',
             'document_name_regex',
             'enforce_mime',
             'ip_filter',
             'maintenance',
             'max_document_size',
             'max_project_size',
+            'password_regex',
             'no_export',
             'no_raw',
             'ssl']
@@ -362,7 +362,7 @@ def create_project(project, description, admin):
     # Check the arguments
     project = _safeName(project)
     description = description.strip()
-    admin = _safeName(admin)
+    admin = _safeName(admin, extra='')
     if project in ['api', 'special'] or '' in [project, description, admin]:
         print('Error: invalid arguments')
         return False
@@ -409,7 +409,7 @@ def create_project(project, description, admin):
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
-    sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, '')", (project, PWIC_USER_ANONYMOUS))
+    sql.execute("INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')", (project, PWIC_USER_ANONYMOUS))
 
     # Add a default homepage
     page = 'home'
@@ -484,7 +484,7 @@ def delete_project(project):
 def reset_password(user):
     # Check if the user is administrator
     sql = db_connect()
-    user = _safeName(user)
+    user = _safeName(user, extra='')
     if user[:4] == 'pwic':
         print('Error: invalid user')
         return False

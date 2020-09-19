@@ -32,15 +32,9 @@
 			return true;
 		}
 
-		function pwic_escape(value) {
-			while (true)
-			{
-				var lc = value.length;
-				value = value.replace("'", "\\'").replace('"', '\\"');
-				if (lc == value.length)
-					break;
-			}
-			return value;
+		function pwic_encode(value) {
+			// https://stackoverflow.com/questions/18251399/why-doesnt-encodeuricomponent-encode-single-quotes-apostrophes
+			return encodeURIComponent(value).replace(/'/g, '%27');
 		}
 
 		function pwic_kick(value, chars) {

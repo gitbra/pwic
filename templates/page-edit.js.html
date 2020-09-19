@@ -207,14 +207,14 @@
 				{
 					var doc = data[i];
 					buffer += '<tr>\
-									<td><a href="#" onclick="edit_join_document('+doc['id']+', \''+pwic_escape(doc['filename'])+'\', \''+pwic_escape(doc['mime'])+'\')">{{pwic.emojis.plus}}<\/a><\/td>\
-									<td><a href="/special/document/'+encodeURI(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'<\/a><\/td>\
+									<td><a href="#" onclick="edit_join_document('+doc['id']+', \''+pwic_encode(doc['filename'])+'\', \''+pwic_encode(doc['mime'])+'\')">{{pwic.emojis.plus}}<\/a><\/td>\
+									<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+doc['filename']+'" target="_blank">'+doc['filename']+'<\/a><\/td>\
 									<td title="Hash: '+doc['hash']+'">'+doc['size']+'<\/td>\
 									<td class="pwic_desktop">'+doc['mime_icon']+' '+doc['mime']+'<\/td>\
-									<td class="pwic_desktop"><a href="/special/user/'+encodeURI(doc['author'])+'" target="_blank">'+doc['author']+'<\/a><\/td>\
+									<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank">'+doc['author']+'<\/a><\/td>\
 									<td>'+doc['date']+'<\/td>\
 									<td class="pwic_desktop">'+doc['time']+'<\/td>\
-									<td><input type="button" onclick="return edit_document_delete('+doc['id']+', \''+pwic_escape(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
+									<td><input type="button" onclick="return edit_document_delete('+doc['id']+', \''+pwic_encode(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
 								<\/tr>';
 				}
 				document.getElementById('edit_files_list').innerHTML = edit_files_list_initial + buffer;
@@ -285,8 +285,8 @@
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body:	'delete_project={{pwic.project|urlencode}}'+
 													'&delete_page={{pwic.page|urlencode}}' +
-													'&delete_id='+encodeURI(id) +
-													'&delete_filename='+encodeURI(filename)
+													'&delete_id='+encodeURIComponent(id) +
+													'&delete_filename='+encodeURIComponent(filename)
 										})
 				.then(function(response) {
 					if (response.status != 200)
@@ -339,7 +339,7 @@
 			se = ta.selectionEnd,
 			xhr = new XMLHttpRequest();
 		xhr.open('POST', '/api/markdown');
-		xhr.send('content='+encodeURI(ss == se ? ta.value : ta.value.substring(ss, se)));
+		xhr.send('content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)));
 		xhr.onload = function() {
 			if ((xhr.status == 200) && (xhr.responseText != ''))
 			{

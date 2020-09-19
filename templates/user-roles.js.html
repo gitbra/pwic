@@ -9,7 +9,7 @@
 
 			var xhr = new XMLHttpRequest();
 			xhr.open('POST', '/api/roles');
-			xhr.send('project='+encodeURI(project)+'&user='+encodeURI(user)+'&role='+encodeURI(role));
+			xhr.send('project='+encodeURIComponent(project)+'&user='+encodeURIComponent(user)+'&role='+encodeURIComponent(role));
 			xhr.onload = function() {
 				setTimeout(function() {
 					if ((xhr.status == 200) && (element.type == 'checkbox'))

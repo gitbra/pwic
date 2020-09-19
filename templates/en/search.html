@@ -9,11 +9,12 @@
 	{% include 'search.js.html' %}
 
 	<article>
-		<h1>{{pwic.results|count}} results</h1>
+		<h1>{{pwic.pages|count + pwic.documents|count}} results</h1>
 
 		<p>Search terms: <input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" /></p>
 
-		{% if pwic.results|count > 0 %}
+		{% if pwic.pages|count > 0 %}
+			<h2>Pages</h2>
 			<table>
 				<tr>
 					<th>Page</th>
@@ -24,14 +25,41 @@
 					<th class="pwic_desktop">Score</th>
 				</tr>
 
-				{% for result in pwic.results %}
+				{% for page in pwic.pages %}
 					<tr>
-						<td>{{result.page|escape}}</td>
-						<td><a href="/{{result.project|urlencode}}/{{result.page|urlencode}}">{{result.title|escape}}</a></td>
-						<td class="pwic_desktop"><a href="/special/user/{{result.author|urlencode}}">{{result.author|escape}}</a></td>
-						<td>{{result.date|escape}}</td>
-						<td class="pwic_desktop">{{result.time|escape}}</td>
-						<td class="pwic_desktop">{{result.score|escape}}</td>
+						<td>{{page.page|escape}}</td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td class="pwic_desktop"><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
+						<td>{{page.date|escape}}</td>
+						<td class="pwic_desktop">{{page.time|escape}}</td>
+						<td class="pwic_desktop">{{page.score|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+		{% if pwic.documents|count > 0 %}
+			<h2>Documents</h2>
+			<table>
+				<tr>
+					<th>Page</th>
+					<th>File name</th>
+					<th class="pwic_desktop">Mime</th>
+					<th>Size</th>
+					<th class="pwic_desktop">Author</th>
+					<th>Date</th>
+					<!-- <th class="pwic_desktop">Time</th> -->
+				</tr>
+
+				{% for doc in pwic.documents %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+						<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|escape}}">{{doc.filename|escape}}</a></td>
+						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td>{{doc.size|escape}}</td>
+						<td class="pwic_desktop"><a href="/special/user/{{doc.author|urlencode}}">{{doc.author|escape}}</a></td>
+						<td>{{doc.date|escape}}</td>
+						<!-- <td class="pwic_desktop">{{doc.time|escape}}</td> -->
 					</tr>
 				{% endfor %}
 			</table>

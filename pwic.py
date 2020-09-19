@@ -4,7 +4,7 @@ import argparse
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 from jinja2 import Environment, FileSystemLoader
 import sqlite3
 from difflib import HtmlDiff
@@ -250,7 +250,7 @@ class PwicServer():
                                     ON b.project = a.project
                             WHERE a.project  = ?
                               AND a.user     = ?
-                              AND a.disabled = ""
+                              AND a.disabled = ''
                             LIMIT 1''',
                         (project, user))
             row = sql.fetchone()
@@ -270,7 +270,7 @@ class PwicServer():
                                 INNER JOIN roles AS b
                                     ON  b.project  = a.project
                                     AND b.user     = ?
-                                    AND b.disabled = ""
+                                    AND b.disabled = ''
                             ORDER BY a.description''',
                         (user, ))
             pwic['title'] = 'Select your project'
@@ -286,7 +286,7 @@ class PwicServer():
         sql.execute(''' SELECT a.page, a.title
                         FROM pages AS a
                         WHERE a.project = ?
-                          AND a.header = "X"
+                          AND a.header = 'X'
                         ORDER BY a.title''',
                     (project, ))
         pwic['links'] = []
@@ -306,7 +306,7 @@ class PwicServer():
                                 FROM pages
                                 WHERE project = ?
                                   AND page    = ?
-                                  AND latest  = "X"''',
+                                  AND latest  = 'X' ''',
                             (project, page))
                 row = sql.fetchone()
                 if row is None:
@@ -374,7 +374,7 @@ class PwicServer():
                     sql.execute(''' SELECT page, author, date, time, title, comment, milestone
                                     FROM pages
                                     WHERE project = ?
-                                      AND latest  = "X"
+                                      AND latest  = 'X'
                                       AND date   >= ?
                                     ORDER BY date DESC, time DESC''',
                                 (project, dt['date-30d']))
@@ -432,7 +432,7 @@ class PwicServer():
                                             ) AS b
                                                 ON b.author = a.user
                                         WHERE a.project  = ?
-                                          AND a.disabled = ""
+                                          AND a.disabled = ''
                                           AND b.date     IS NULL
                                         ORDER BY a.user''',
                                     (dt['date-30d'], project, project))
@@ -446,7 +446,7 @@ class PwicServer():
                                            valtime
                                     FROM pages
                                     WHERE project = ?
-                                      AND latest  = "X"
+                                      AND latest  = 'X'
                                     ORDER BY page ASC, revision DESC''',
                                 (project, ))
                     pwic['pages'] = []
@@ -478,7 +478,7 @@ class PwicServer():
                                             ON c.hash = b.hash
                                     WHERE a.project  = ?
                                       AND a.user     = ?
-                                      AND a.disabled = ""
+                                      AND a.disabled = ''
                                     ORDER BY filename''',
                                 (project, project, user))
                     pwic['documents'] = []
@@ -530,7 +530,7 @@ class PwicServer():
                                 FROM pages
                                 WHERE project = ?
                                   AND page    = ?
-                                  AND latest  = "X"''',
+                                  AND latest  = 'X' ''',
                             (project, page))
                 row = sql.fetchone()
                 if row is None:
@@ -596,8 +596,8 @@ class PwicServer():
                             INNER JOIN projects AS b
                                 ON b.project = a.project
                         WHERE a.user     = ?
-                          AND a.manager  = "X"
-                          AND a.disabled = ""
+                          AND a.manager  = 'X'
+                          AND a.disabled = ''
                         ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
@@ -625,8 +625,8 @@ class PwicServer():
                             INNER JOIN projects AS b
                                 ON b.project = a.project
                         WHERE a.user     = ?
-                          AND a.admin    = "X"
-                          AND a.disabled = ""
+                          AND a.admin    = 'X'
+                          AND a.disabled = ''
                         ORDER BY b.description''',
                     (user, ))
         for row in sql.fetchall():
@@ -650,7 +650,7 @@ class PwicServer():
         sql.execute('SELECT initial FROM users WHERE user = ?', (userpage, ))
         row = sql.fetchone()
         if row is None:
-            raise web.HTTPNotFound()    # User does not exist
+            raise web.HTTPNotFound()
         pwic = {'title': 'User profile',
                 'user': user,
                 'userpage': userpage,
@@ -665,10 +665,11 @@ class PwicServer():
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
                                 AND b.user     = ?
-                                AND b.disabled = ""
+                                AND b.disabled = ''
                             INNER JOIN projects AS c
                                 ON c.project = a.project
-                        WHERE a.user = ?
+                        WHERE a.user     = ?
+                          AND a.disabled = ''
                         ORDER BY c.description''',
                     (user, userpage))
         for row in sql.fetchall():
@@ -690,7 +691,7 @@ class PwicServer():
                                 ON  c.project = a.project
                                 AND c.hash    = b.hash
                         WHERE a.user     = ?
-                          AND a.disabled = ""
+                          AND a.disabled = ''
                         ORDER BY date DESC,
                                  time DESC''',
                     (userpage, user))
@@ -718,7 +719,7 @@ class PwicServer():
                             FROM (
                                 SELECT project, page
                                 FROM pages
-                                WHERE latest   = "X"
+                                WHERE latest   = 'X'
                                   AND author   = ?
                                   AND date    >= ?
                             UNION
@@ -731,11 +732,11 @@ class PwicServer():
                             INNER JOIN roles AS r
                                 ON  r.project  = u.project
                                 AND r.user     = ?
-                                AND r.disabled = ""
+                                AND r.disabled = ''
                             INNER JOIN pages AS p
                                 ON  p.project  = u.project
                                 AND p.page     = u.page
-                                AND p.latest   = "X"
+                                AND p.latest   = 'X'
                         ORDER BY date DESC,
                                  time DESC''',
                     (userpage, dt['date-90d'], userpage, dt['date-90d'], user))
@@ -778,7 +779,7 @@ class PwicServer():
                                 ON b.project = a.project
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.disabled = ""''',
+                          AND a.disabled = '' ''',
                     (project, user))
         row = sql.fetchone()
         if row is None:
@@ -787,9 +788,10 @@ class PwicServer():
                 'project': project,
                 'project_description': row[0],
                 'terms': pwic_search_tostring(query),
-                'results': []}
+                'pages': [],
+                'documents': []}
 
-        # Search
+        # Search for a page
         sql.execute(''' SELECT a.project, a.page, a.draft, a.final, a.author,
                                a.date, a.time, a.title, LOWER(a.markdown), a.tags,
                                a.valuser, b.document_count
@@ -803,12 +805,12 @@ class PwicServer():
                                 ON  b.project = a.project
                                 AND b.page    = a.page
                         WHERE a.project = ?
-                          AND a.latest  = "X"
+                          AND a.latest  = 'X'
                         ORDER BY a.date DESC,
                                  a.time DESC''',
                     (project, project))
         for row in sql.fetchall():
-            tagList = row[9].split(' ')  # Tags
+            tagList = row[9].split(' ')         # Tags
 
             # Apply the filters
             ok = True
@@ -855,16 +857,53 @@ class PwicServer():
                 continue
 
             # Save the found result
-            pwic['results'].append({'project': row[0],
-                                    'page': row[1],
-                                    'author': row[4],
-                                    'date': row[5],
-                                    'time': row[6],
-                                    'title': row[7],
-                                    'score': score})
+            pwic['pages'].append({'project': row[0],
+                                  'page': row[1],
+                                  'author': row[4],
+                                  'date': row[5],
+                                  'time': row[6],
+                                  'title': row[7],
+                                  'score': score})
+
+        # Search for documents
+        sql.execute(''' SELECT id, project, page, filename, mime, size, author, date, time
+                        FROM documents
+                        WHERE project = ?
+                        ORDER BY filename''',
+                    (project, ))
+        for row in sql.fetchall():
+            # Apply the filters
+            ok = True
+            for q in query['excluded']:
+                if ':' in q:
+                    continue
+                if q in row[2] or q in row[3] or q in row[4]:
+                    ok = False
+                    break
+            if ok:
+                for q in query['included']:
+                    if ':' in q:
+                        continue
+                    if q not in row[2] and q not in row[3] and q not in row[4]:
+                        ok = False
+                        break
+            if not ok:
+                continue
+
+            # Save the found document
+            pwic['documents'].append({'id': row[0],
+                                      'project': row[1],
+                                      'page': row[2],
+                                      'filename': row[3],
+                                      'mime': row[4],
+                                      'mime_icon': self._mime2icon(row[4]),
+                                      'size': _size2str(row[5]),
+                                      'author': row[6],
+                                      'date': row[7],
+                                      'time': row[8]})
 
         # Show the page
-        pwic['results'].sort(key=lambda x: x['score'], reverse=True)
+        pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
         return await self._handleOutput(request, 'search', pwic=pwic)
 
     async def page_roles(self, request):
@@ -884,8 +923,8 @@ class PwicServer():
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
                                 AND b.user     = ?
-                                AND b.admin    = "X"
-                                AND b.disabled = ""
+                                AND b.admin    = 'X'
+                                AND b.disabled = ''
                             INNER JOIN users AS c
                                 ON  c.user    = a.user
                         WHERE a.project = ?
@@ -925,11 +964,11 @@ class PwicServer():
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
-                                AND b.latest  = "X"
+                                AND b.latest  = 'X'
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.manager  = "X"
-                          AND a.disabled = ""
+                          AND a.manager  = 'X'
+                          AND a.disabled = ''
                         ORDER BY b.page''',
                     (project, user))
 
@@ -944,7 +983,7 @@ class PwicServer():
                 linkmap[page] = []
 
             # Generate a fake link at the home page for all the bookmarked pages
-            if row[1] == "X" and page not in linkmap['home']:
+            if row[1] == 'X' and page not in linkmap['home']:
                 linkmap['home'].append(page)
 
             # Find the links to the other pages
@@ -1009,7 +1048,7 @@ class PwicServer():
                                 ON  d.project  = a.project
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.disabled = ""''',
+                          AND a.disabled = '' ''',
                     (page, new_revision, old_revision, project, user))
         row = sql.fetchone()
         if row is None:
@@ -1047,15 +1086,14 @@ class PwicServer():
 
         # Fetch the pages
         project = request.match_info.get('project', '')
-        sql.execute(''' SELECT b.page, b.author, b.date, b.time, b.title, b.markdown
+        sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
-                                AND b.latest  = "X"
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.admin    = "X"
-                          AND a.disabled = ""
+                          AND a.admin    = 'X'
+                          AND a.disabled = ''
                         ORDER BY b.page''',
                     (project, user))
         pages = []
@@ -1065,6 +1103,7 @@ class PwicServer():
         # Build the zip file
         if len(pages) == 0:
             raise web.HTTPUnauthorized()
+        folder_rev = 'revisions/'
         try:
             zipname = PWIC_DB + '.zip'
             zip = zipfile.ZipFile(zipname, mode='w', compression=zipfile.ZIP_DEFLATED)
@@ -1072,7 +1111,9 @@ class PwicServer():
             # Pages of the project
             for page in pages:
                 # Raw markdown
-                zip.writestr('%s.md' % page[0], page[5])
+                zip.writestr('%s%s.rev%d.md' % (folder_rev, page[0], page[1]), page[7])
+                if page[2] == 'X':
+                    zip.writestr('%s.md' % page[0], page[7])
 
                 # HTML
                 html = '''<!DOCTYPE html>
@@ -1088,19 +1129,22 @@ class PwicServer():
     <article>%s</article>
 </body>
 </html>'''
-                html = html % (page[1].replace('"', '&quote;'),
-                               page[2],
-                               page[3],
+                html = html % (page[3].replace('"', '&quote;'),
+                               page[4],
+                               page[5],
                                page[0].replace('<', '&lt;').replace('>', '&gt;'),
-                               page[4].replace('<', '&lt;').replace('>', '&gt;'),
-                               self._md2html(page[5])[0])
-                zip.writestr('%s.html' % page[0], html)
+                               page[6].replace('<', '&lt;').replace('>', '&gt;'),
+                               self._md2html(page[7])[0])
+                zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
+                if page[2] == 'X':
+                    zip.writestr('%s.html' % page[0], html)
 
             # Dependent files for the pages
             fn = 'static/styles.css'
             with open(fn, 'rb') as f:
                 content = f.read()
             zip.writestr(fn, content)
+            zip.writestr(folder_rev + fn, content)
 
             # Attached documents
             sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
@@ -1144,7 +1188,7 @@ class PwicServer():
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
                                 AND b.user     = ?
-                                AND b.disabled = ""
+                                AND b.disabled = ''
                         WHERE a.id = ?''',
                     (user, id))
         row = sql.fetchone()
@@ -1176,8 +1220,8 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handlePost(request)
-        user = post.get('logon_user', '')
-        pwd = '' if (self._readEnv(sql, 'anonymous') is not None) and (user == PWIC_USER_ANONYMOUS) else _sha256(post.get('logon_password', ''))
+        user = _safeName(post.get('logon_user', ''), extra='')
+        pwd = '' if user == PWIC_USER_ANONYMOUS else _sha256(post.get('logon_password', ''))
 
         # Logon with the credentials
         ok = False
@@ -1185,7 +1229,7 @@ class PwicServer():
                         FROM users AS a
                             INNER JOIN roles AS b
                                 ON  b.user     = a.user
-                                AND b.disabled = ""
+                                AND b.disabled = ''
                         WHERE a.user     = ?
                           AND a.password = ?''',
                     (user, pwd))
@@ -1215,6 +1259,77 @@ class PwicServer():
                            request, commit=True)
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
+    async def api_project_info(self, request):
+        ''' API to fetch the metadata of the project '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        user = await session.getUser()
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the submitted data
+        post = await self._handlePost(request)
+        project = _safeName(post.get('create_project', ''))
+        if project == '':
+            raise web.HTTPBadRequest()
+        data = {}
+
+        # Fetch the pages
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT b.page, b.revision, b.latest, b.draft, b.final,
+                               b.header, b.protection, b.author, b.date, b.time,
+                               b.title, b.tags, b.comment, b.milestone, b.valuser,
+                               b.valdate, b.valtime
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON b.project = a.project
+                        WHERE a.project   = ?
+                          AND a.user      = ?
+                          AND a.validator = 'X'
+                          AND a.disabled  = ''
+                        ORDER BY b.page, b.revision''',
+                    (project, user))
+        for row in sql.fetchall():
+            if row[0] not in data:
+                data[row[0]] = {'revisions': [], 'documents': []}
+            item = {}
+            for i, field in enumerate(['revision', 'latest', 'draft', 'final', 'header', 'protection', 'author', 'date', 'time', 'title', 'tags', 'comment', 'milestone', 'valuser', 'valdate', 'valtime']):
+                i += 1
+                if not isinstance(row[i], str) or row[i] != '':
+                    item[field] = row[i]
+            item['url'] = '/%s/%s/rev%d' % (quote(project), quote(row[0]), row[1])
+            data[row[0]]['revisions'].append(item)
+
+        # Fetch the documents
+        sql.execute(''' SELECT b.id, b.page, b.filename, b.mime, b.size,
+                               b.hash, b.author, b.date, b.time
+                        FROM roles AS a
+                            INNER JOIN documents AS b
+                                ON b.project = a.project
+                            INNER JOIN pages AS c
+                                ON  c.project = a.project
+                                AND c.page    = b.page
+                                AND c.latest  = 'X'
+                        WHERE a.project   = ?
+                          AND a.user      = ?
+                          AND a.validator = 'X'
+                          AND a.disabled  = ''
+                        ORDER BY b.page, b.filename''',
+                    (project, user))
+        for row in sql.fetchall():
+            data[row[1]]['documents'].append({'id': row[0],
+                                              'filename': row[2],
+                                              'mime': row[3],
+                                              'size': row[4],
+                                              'hash': row[5],
+                                              'author': row[6],
+                                              'date': row[7],
+                                              'time': row[8],
+                                              'url': '/special/document/%d/%s?attachment' % (row[0], quote(row[1]))})
+
+        # Final result
+        return web.Response(text=json.dumps(data), content_type='application/json')
+
     async def api_page_create(self, request):
         ''' API to create a new page '''
         # Verify that the user is connected
@@ -1241,11 +1356,11 @@ class PwicServer():
                             LEFT OUTER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.page    = ?
-                                AND b.latest  = "X"
+                                AND b.latest  = 'X'
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.manager  = "X"
-                          AND a.disabled = ""''',
+                          AND a.manager  = 'X'
+                          AND a.disabled = '' ''',
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
@@ -1260,10 +1375,10 @@ class PwicServer():
                                 INNER JOIN pages AS b
                                     ON  b.project = a.project
                                     AND b.page    = ?
-                                    AND b.latest  = "X"
+                                    AND b.latest  = 'X'
                             WHERE a.project  = ?
                               AND a.user     = ?
-                              AND a.disabled = ""''',
+                              AND a.disabled = '' ''',
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
@@ -1327,12 +1442,12 @@ class PwicServer():
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND b.page    = ?
-                                AND b.latest  = "X"
+                                AND b.latest  = 'X'
                         WHERE a.project   = ?
                           AND a.user      = ?
-                          AND ( a.manager = "X"
-                             OR a.editor  = "X" )
-                          AND a.disabled  = ""''',
+                          AND ( a.manager = 'X'
+                             OR a.editor  = 'X' )
+                          AND a.disabled  = '' ''',
                     (page, project, user))
         row = sql.fetchone()
         if row is None:
@@ -1369,9 +1484,9 @@ class PwicServer():
                                   AND page      = ?
                                   AND revision <= ?
                                   AND author    = ?
-                                  AND draft     = "X"
-                                  AND final     = ""
-                                  AND valuser   = ""''',
+                                  AND draft     = 'X'
+                                  AND final     = ''
+                                  AND valuser   = '' ''',
                             (project, page, revision, user))
                 if sql.rowcount > 0:
                     pwic_audit(sql, {'author': user,
@@ -1383,8 +1498,8 @@ class PwicServer():
 
             # Purge the old flags
             sql.execute(''' UPDATE pages
-                            SET header = "",
-                                latest = ""
+                            SET header = '',
+                                latest = ''
                             WHERE project   = ?
                               AND page      = ?
                               AND revision <= ?''',
@@ -1416,15 +1531,15 @@ class PwicServer():
                                 ON  b.project  = a.project
                                 AND b.page     = ?
                                 AND b.revision = ?
-                                AND b.final    = "X"
-                                AND b.valuser  = ""
+                                AND b.final    = 'X'
+                                AND b.valuser  = ''
                             INNER JOIN users AS c
                                 ON  c.user     = a.user
-                                AND c.initial  = ""
+                                AND c.initial  = ''
                         WHERE a.project   = ?
                           AND a.user      = ?
-                          AND a.validator = "X"
-                          AND a.disabled  = ""''',
+                          AND a.validator = 'X'
+                          AND a.disabled  = '' ''',
                     (page, revision, project, user))
         row = sql.fetchone()
         if row is None:
@@ -1461,21 +1576,23 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
+        if (page == 'home') and (revision == 1):
+            raise web.HTTPUnauthorized()    # Deleting the first page when a project is freshly created may stuck the user at the error 404
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
                                 AND b.user     = ?
-                                AND b.disabled = ""
+                                AND b.disabled = ''
                         WHERE a.project  = ?
                           AND a.page     = ?
                           AND a.revision = ?
-                          AND ((    b.admin   = "X"
-                                AND a.final   = ""
-                                AND a.valuser = ""
+                          AND ((    b.admin   = 'X'
+                                AND a.final   = ''
+                                AND a.valuser = ''
                             ) OR (  b.user    = a.author
-                                AND a.draft   = "X"
+                                AND a.draft   = 'X'
                             ))''',
                     (user, project, page, revision))
         row = sql.fetchone()
@@ -1507,7 +1624,7 @@ class PwicServer():
             if row[0] is not None:          # No revision available
                 if row[0] < revision:       # If we have already deleted the latest revision
                     sql.execute(''' UPDATE pages
-                                    SET latest = "X",
+                                    SET latest = 'X',
                                         header = ?
                                     WHERE project  = ?
                                       AND page     = ?
@@ -1576,8 +1693,8 @@ class PwicServer():
         sql.execute(''' SELECT user FROM roles
                         WHERE project   = ?
                           AND user      = ?
-                          AND admin     = "X"
-                          AND disabled <> "X"''',
+                          AND admin     = 'X'
+                          AND disabled <> 'X' ''',
                     (project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
@@ -1627,16 +1744,25 @@ class PwicServer():
         current = post.get('user_password_current', '')
         new1 = post.get('user_password_new1', '')
         new2 = post.get('user_password_new2', '')
-        if '' not in [current, new1, new2] and (new1 == new2):
+        if '' not in [current, new1, new2] and (new1 == new2) and (new1 != current):
+
+            # Verify the format of the new password
+            sql = app['sql'].cursor()
+            mask = self._readEnv('password_regex', '')
+            if mask != '':
+                try:
+                    if re.compile(mask).match(new1) is None:
+                        raise web.HTTPBadRequest()
+                except Exception:
+                    raise web.HTTPInternalServerError()
 
             # Verify the current password
-            sql = app['sql'].cursor()
             sql.execute(''' SELECT user FROM users
                             WHERE user = ? AND password = ?''',
                         (user, _sha256(current)))
             if sql.fetchone() is not None:
                 # Update the password
-                sql.execute('UPDATE users SET initial = "", password = ? WHERE user = ?', (_sha256(new1), user))
+                sql.execute("UPDATE users SET initial = '', password = ? WHERE user = ?", (_sha256(new1), user))
                 if sql.rowcount > 0:
                     pwic_audit(sql, {'author': user,
                                      'event': 'change-password',
@@ -1680,10 +1806,13 @@ class PwicServer():
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
                                 AND b.user     = ?
-                                AND b.admin    = "X"
-                                AND b.disabled = ""
-                            INNER JOIN users AS c
-                                ON  c.user    = a.user
+                                AND b.admin    = 'X'
+                                AND b.disabled = ''
+                            INNER JOIN users AS c           -- The modified user
+                                ON  c.user     = a.user
+                            INNER JOIN users AS d           -- The administrator must have changed its password already
+                                ON  d.user     = b.user
+                                AND d.initial  = ''
                         WHERE a.project = ?
                           AND a.user    = ?''',
                     (user, project, userpost))
@@ -1816,7 +1945,7 @@ class PwicServer():
                           AND   a.user     = ?
                           AND ( a.manager  = 'X'
                              OR a.editor   = 'X' )
-                          AND   a.disabled = ""''',
+                          AND   a.disabled = '' ''',
                     (doc['page'], doc['project'], user))
         row = sql.fetchone()
         if row is None:
@@ -1933,7 +2062,7 @@ class PwicServer():
                                 AND b.page    = ?
                         WHERE a.project  = ?
                           AND a.user     = ?
-                          AND a.disabled = ""
+                          AND a.disabled = ''
                         ORDER BY b.filename''',
                     (page, project, user))
         result = []
@@ -1977,9 +2106,9 @@ class PwicServer():
                                 AND b.filename = ?
                         WHERE   a.project  = ?
                           AND   a.user     = ?
-                          AND ( a.manager  = "X"
-                             OR a.editor   = "X" )
-                          AND   a.disabled = ""''',
+                          AND ( a.manager  = 'X'
+                             OR a.editor   = 'X' )
+                          AND   a.disabled = '' ''',
                     (id, page, filename, project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()  # Or not found
@@ -2038,6 +2167,7 @@ def main():
     app.router.add_static('/static/', path='./static/')
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
+                    web.get('/api/project/info', app['pwic'].api_project_info),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/update', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),

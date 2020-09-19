@@ -34,6 +34,7 @@
 			<tr><td><a href="#help_export">{{pwic.emojis.glasses}}</a></td><td>Export a project</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_search">{{pwic.emojis.glasses}}</a></td><td>Search across the pages</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
+			<tr><td><a href="#help_searchdoc">{{pwic.emojis.glasses}}</a></td><td>Search across the documents</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_log_user">{{pwic.emojis.glasses}}</a></td><td>View the activity of a user</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 		</table>
@@ -47,10 +48,6 @@
 				<tr>
 					<th>Name</th>
 					<th>Description</th>
-				</tr>
-				<tr>
-					<td><code>anonymous</code></td>
-					<td>Allow the anonymous logon for all the projects. The user is indirectly logged as <code>{{pwic.constants.anonymous_user|escape}}</code> with the default profile <em>Reader</em>. Any change of that profile per project is up to their administrators. Anonymous logons and logouts are not audited.</td>
 				</tr>
 				<tr>
 					<td><code>cors</code></td>
@@ -91,6 +88,10 @@
 				<tr>
 					<td><code>no_raw</code></td>
 					<td>Disable the online possibility to display the raw markdown code of any page.</td>
+				</tr>
+				<tr>
+					<td><code>password_regex</code></td>
+					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150/">here</a>. The option does not apply when you reset the password from the console.</td>
 				</tr>
 				<tr>
 					<td><code>ssl</code></td>
@@ -137,7 +138,7 @@
 		<p>A user must have one profile at least (ex: reader) to be able to view the project. To switch from one profile to another for a user, you should first activate the new profile, then deactivate the old profile.</p>
 		<p>The profile administrator cannot be removed or disabled oneself to ensure that there is always one administrator per project.</p>
 		<p>The assignment of the rights is monitored. You should also consider the separation of duties: no one should be able to do everything.</p>
-		<p>The anonymous access is given by the special user account <code>{{pwic.constants.anonymous_user|escape}}</code> if the variable <code>anonymous</code> is enabled. The account cannot be removed. You can disable it or enhance its rights (excluding administrator).</p>
+		<p>The anonymous access is given by the special user account <code>{{pwic.constants.anonymous_user|escape}}</code>. The account cannot be removed. You can disable it or enhance its rights (excluding administrator).</p>
 
 
 		<h1 id="help_create">Create a page</h1>
@@ -237,6 +238,12 @@
 		<p>At the end, the pages are sorted by the number of occurrences of the search terms. Each term that is not negated contribute to the score as a sum. Because of that, your search terms should be at least 3- or 4-character long.</p>
 		<p>The search is case-insensitive.</p>
 		<p>Searching in the old revisions is not possible.</p>
+
+
+		<h1 id="help_searchdoc">Search across the documents</h1>
+		<p>The search applies on the name of the page, the file name and the mime of the file.</p>
+		<p>The syntax of the terms is similar to the <a href="#help_search">one used for the pages</a>. You can use inclusive and exclusive keywords, but not the special ones that contain <code>:</code>.</p>
+		<p>It is not possible to search within the content of the files.</p>
 
 
 		<h1 id="help_log">View the activity log</h1>

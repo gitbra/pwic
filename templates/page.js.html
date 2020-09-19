@@ -14,7 +14,13 @@
 			element.focus();
 	}
 
-	function page_post_action(action, confirmText) {
+	function page_post_action(action, confirmText, notAvailableText) {
+		{% if (pwic.page == 'home') and (pwic.revision == 1) %}
+			if (action == 'delete')
+				alert(notAvailableText);
+			else
+		{% endif %}
+
 		if (confirm(confirmText))
 		{
 			fetch('/api/page/'+action, {method: 'POST',

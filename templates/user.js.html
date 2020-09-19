@@ -5,7 +5,7 @@
 		var	cur  = document.getElementById('user_password_current').value,
 			new1 = document.getElementById('user_password_new1').value,
 			new2 = document.getElementById('user_password_new2').value;
-		if (([cur, new1, new2].indexOf('') !== -1) || (new1 != new2))
+		if (([cur, new1, new2].indexOf('') !== -1) || (new1 != new2) || (new1 == cur))
 			alert(errorText);
 		else
 			document.getElementById('user_password_form').submit();
