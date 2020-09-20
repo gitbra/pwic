@@ -12,7 +12,7 @@ from parsimonious.nodes import NodeVisitor
 #  Constants
 # ===================================================
 
-PWIC_VERSION = '0.9'
+PWIC_VERSION = '1.0-rc1'
 PWIC_DB = './db/pwic.sqlite'
 PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
 PWIC_DOCUMENTS_PATH = './db/documents/%s/'
