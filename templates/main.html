@@ -11,6 +11,42 @@
 	<script>
 		'use strict';
 
+		function pwic_entities(value) {
+			while (true)
+			{
+				var curlen = value.length;
+				value = value.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quote');
+				if (value.length == curlen)
+					break;
+			}
+			return value;
+		}
+
+		function pwic_is_safe(name) {
+			var chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
+			for (var i=0 ; i<chars.length ; i++)
+				if (name.indexOf(chars[i]) !== -1)
+					return false;
+			return true;
+		}
+
+		function pwic_kick(value, chars) {
+			while (true)
+			{
+				var curlen = value.length;
+				for (var i=0 ; i<chars.length ; i++)
+					value = value.replace(chars[i], '');
+				if (value.length == curlen)
+					break;
+			}
+			return value;
+		}
+
+		function pwic_slash(value) {
+			// https://stackoverflow.com/questions/18251399/why-doesnt-encodeuricomponent-encode-single-quotes-apostrophes
+			return value.split("'").join("\\'").split('"').join('\\"');
+		}
+
 		function pwic_toggle(id) {
 			document.getElementById(id).classList.toggle('pwic_hidden');
 			return false;
@@ -22,31 +58,6 @@
 			else
 				if (window.location.toString().indexOf('?failed') !== -1)
 					alert(failed);
-		}
-
-		function pwic_is_safe(name) {
-			var chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
-			for (var i=0 ; i<chars.length ; i++)
-				if (name.indexOf(chars[i]) !== -1)
-					return false;
-			return true;
-		}
-
-		function pwic_encode(value) {
-			// https://stackoverflow.com/questions/18251399/why-doesnt-encodeuricomponent-encode-single-quotes-apostrophes
-			return encodeURIComponent(value).replace(/'/g, '%27');
-		}
-
-		function pwic_kick(value, chars) {
-			while (true)
-			{
-				var lc = value.length;
-				for (var i=0 ; i<chars.length ; i++)
-					value = value.replace(chars[i], '');
-				if (lc == value.length)
-					break;
-			}
-			return value;
 		}
 	</script>
 </head>

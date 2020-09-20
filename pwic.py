@@ -957,9 +957,17 @@ class PwicServer():
         if user == '':
             return await self._handleLogon(request)
 
-        # Fetch the pages
-        sql = app['sql'].cursor()
+        # Fetch the parameters
         project = request.match_info.get('project', '')
+        sql = app['sql'].cursor()
+
+        # Fetch the documents of the project
+        sql.execute('SELECT id FROM documents ORDER BY id')
+        docids = []
+        for row in sql.fetchall():
+            docids.append(str(row[0]))
+
+        # Fetch the pages
         sql.execute(''' SELECT b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -974,8 +982,10 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        regex_page = re.compile(r'\]\(\/([^\/#]+)\/([^\/#]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)', re.IGNORECASE)
+        regex_page = re.compile(r'\]\(\/([^\/#]+)\/([^\/#]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)')
+        regex_document = re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)')
         linkmap = {'home': []}
+        broken_docs = {}
         for row in sql.fetchall():
             ok = True
             page = row[0]
@@ -992,6 +1002,15 @@ class PwicServer():
                 for sp in subpages:
                     if (sp[0] == project) and (sp[1] not in linkmap[page]):
                         linkmap[page].append(sp[1])
+
+            # Looks for the linked documents
+            subdocs = regex_document.findall(row[2])
+            if subdocs is not None:
+                for sd in subdocs:
+                    if sd[0] not in docids:
+                        if page not in broken_docs:
+                            broken_docs[page] = []
+                        broken_docs[page].append(_int(sd[0]))
         if not ok:
             raise web.HTTPUnauthorized()
 
@@ -1014,7 +1033,8 @@ class PwicServer():
                 'project': project,
                 'project_description': sql.fetchone()[0],
                 'orphans': orphans,
-                'broken': broken}
+                'broken': broken,
+                'broken_docs': broken_docs}
         return await self._handleOutput(request, 'page-links', pwic=pwic)
 
     async def page_compare(self, request):

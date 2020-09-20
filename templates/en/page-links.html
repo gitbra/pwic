@@ -7,7 +7,7 @@
 	</header>
 
 	<article>
-		<h1>List of the orphaned pages</h1>
+		<h1>Orphaned pages</h1>
 		{% if pwic.orphans|count == 0 %}
 			<p>You have no orphaned page.</p>
 		{% else %}
@@ -19,12 +19,13 @@
 			</ul>
 		{% endif %}
 
-		<h1>List of the broken links</h1>
+
+		<h1>Broken links to a page</h1>
 		{% if pwic.broken|count == 0 %}
-			<p>You have no broken link among the project "{{pwic.project|escape}}".</p>
+			<p>You have no broken link to a page among the project <code>{{pwic.project|escape}}</code>.</p>
 		{% else %}
-			<p>A broken link displays the error 404 because the targetted page does not exist. The reader is then interrupted in his reading.</p>
-			<p>The following table does not check the links to other projects.</p>
+			<p>A broken link displays the error 404 because the targetted page does not exist.</p>
+			<p>Note that the following table does not check the links to other projects.</p>
 			<table class="pwic_fit">
 				<tr>
 					<th>Page</th>
@@ -38,6 +39,27 @@
 				{% endfor %}
 			</table>
 		{% endif %}
+
+
+		<h1>Broken links to a document</h1>
+		{% if pwic.broken_docs|count == 0 %}
+			<p>You have no broken link to a document.</p>
+		{% else %}
+			<p>Managing the files without updating the pages may result in invalid links.</p>
+			<table class="pwic_fit">
+				<tr>
+					<th>Page</th>
+					<th>Non-existent document</th>
+				</tr>
+				{% for page in pwic.broken_docs %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></td>
+						<td>{{pwic.broken_docs[page]|sort|join(', ')|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
 	</article>
 {% endblock %}
 
