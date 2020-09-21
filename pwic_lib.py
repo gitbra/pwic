@@ -280,14 +280,51 @@ def _size2str(size):
 #  Editor
 # ===================================================
 
-def pwic_extended_syntax(markdown):
+def pwic_extended_syntax(markdown, mask):
     ''' Automatic numbering of the MD headers '''
+
+    def _numeric(value):
+        return str(value)
+
+    def _roman(value):
+        if value < 1 or value > 4999:
+            return '0'
+        buffer = ''
+        for letter, threshold in (('M', 1000), ('CM', 900), ('D', 500), ('CD', 400), ('C', 100), ('XC', 90), ('L', 50), ('XL', 40), ('X', 10), ('IX', 9), ('V', 5), ('IV', 4), ('I', 1)):
+            while value >= threshold:
+                buffer += letter
+                value -= threshold
+        return buffer
+
+    def _letter(value, mask):
+        # https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
+        def _divmod(n, base):
+            a, b = divmod(n, base)
+            if b == 0:
+                return a - 1, b + base
+            return a, b
+
+        if value <= 0:
+            return '0'
+        buffer = []
+        while value > 0:
+            value, d = _divmod(value, len(mask))
+            buffer.append(mask[d - 1])
+        return ''.join(reversed(buffer))
+
+    def _letterMin(value):
+        return _letter(value, 'abcdefghijklmnopqrstuvwxyz')
+
+    def _letterMaj(value):
+        return _letter(value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+
     # Initialisation
     reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)
     lines = markdown.replace('\r', '').split('\n')
     numbering = []
     last_depth = 0
     tmap = []
+    tmask = {'1': _numeric, 'I': _roman, 'A': _letterMaj, 'a': _letterMin}
 
     # For each line
     for i in range(len(lines)):
@@ -309,14 +346,24 @@ def pwic_extended_syntax(markdown):
             numbering[depth - 1] += 1
 
             # Build the readable identifier of the paragraph
-            ss = ''
-            for n in numbering:
-                ss += '%d.' % n
+            sdisp = ''
+            stag = ''
+            for n in range(len(numbering)):
+                try:
+                    snum = tmask[mask[2 * n]](numbering[n])
+                except (KeyError, IndexError):
+                    snum = _numeric(numbering[n])
+                try:
+                    ssep = mask[2 * n + 1]
+                except (KeyError, IndexError):
+                    ssep = '.'
+                sdisp += '%s%s' % (snum, ssep)
+                stag += '%s.' % snum.lower()
 
             # Adapt the line
-            lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], ss, ss, ss, line[4:])
-            tmap.append({'header': ss,
-                         'level': ss.count('.'),
+            lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+            tmap.append({'header': sdisp,
+                         'level': len(stag),
                          'title': line.strip()[4:-5]})
 
     # Final formatting

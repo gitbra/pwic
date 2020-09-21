@@ -58,16 +58,16 @@
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 				</tr>
 				<tr>
-					<td><code>enforce_mime</code></td>
-					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
-				</tr>
-				<tr>
 					<td><code>ip_filter</code></td>
 					<td>
-						- List of IP addresses separated by <code>;</code>. The unauthorized addresses are prefixed by <code>~</code> and used as <em>AND</em> conditions, else <em>OR</em> conditions.
+						- List of IP addresses separated by <code>;</code>. The unauthorized addresses are prefixed by <code>~</code> and used as <em>AND</em> conditions, else as <em>OR</em> conditions.
 						<br/>- To be fully effective, the server should be restarted when the value is changed. The current sessions will be terminated.
 						<br/>- The IP check applies to the host that connected, not with forward proxy configuration.
 					</td>
+				</tr>
+				<tr>
+					<td><code>heading_mask</code></td>
+					<td>Codify the headers according to a given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 (<code>I</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
 				</tr>
 				<tr>
 					<td><code>maintenance</code></td>
@@ -82,6 +82,14 @@
 					<td>Define the maximal disk space allowed for all the attached documents of a project.</td>
 				</tr>
 				<tr>
+					<td><code>mde</code></td>
+					<td>Activate the visual <em>wysiwyg</em> Markdown editor.</td>
+				</tr>
+				<tr>
+					<td><code>mime_enforcement</code></td>
+					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
+				</tr>
+				<tr>
 					<td><code>no_export</code></td>
 					<td>Disable the export of the project as an archive for the online administrators.</td>
 				</tr>
@@ -92,6 +100,10 @@
 				<tr>
 					<td><code>password_regex</code></td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150/">here</a>. The option does not apply when you reset the password from the console.</td>
+				</tr>
+				<tr>
+					<td><code>safe_mode</code></td>
+					<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues.</td>
 				</tr>
 				<tr>
 					<td><code>ssl</code></td>

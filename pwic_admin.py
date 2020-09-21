@@ -178,6 +178,7 @@ CREATE TABLE "env" (
     "value" TEXT NOT NULL,
     PRIMARY KEY("key")
 )''')
+            sql.execute("INSERT INTO env (key, value) VALUES ('safe_mode', 'X')")
             # Table PAGES
             sql.execute('''
 CREATE TABLE "pages" (
@@ -267,14 +268,17 @@ def set_env(name, value):
     # Check the keys
     keys = ['cors',
             'document_name_regex',
-            'enforce_mime',
             'ip_filter',
+            'heading_mask',
             'maintenance',
             'max_document_size',
             'max_project_size',
+            'mde',
+            'mime_enforcement',
             'password_regex',
             'no_export',
             'no_raw',
+            'safe_mode',
             'ssl']
     if name not in keys:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))

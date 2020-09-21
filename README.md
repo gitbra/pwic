@@ -39,14 +39,16 @@
 Proprietary software
 Copyright (C) Alexandre Bréard, 2020
 
-- SQLite is released in the public domain
-- Jinja2 is released under 3-Clause BSD License
-- Markdown2 is released under MIT license
-	- PwicMarkdown is a modified version to consider all the links as valid
-- Parsimonious is released under MIT license
-- PrettyTable is released under BSD license
-- FavIcon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
-- Baloo 2 is released under Open Font License
+- [SQLite](https://www.sqlite.org/index.html) is released in the public domain
+- [Jinja2](https://github.com/pallets/jinja) is released under 3-Clause BSD License
+- [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT license
+	- Pwic implements a modified version to support some types of link when the safe mode is activated
+- [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT license
+- [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD license
+- [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT license
+	- The file version 2.11 is patched against the issue #217
+- [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
+- Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 
 
 ## Install

@@ -15,12 +15,12 @@
 			<form id="edit_form" action="/api/page/update" method="post">
 				<p><input id="edit_title" name="edit_title" class="pwic_fill" type="text" value="{{pwic.title|escape}}" /></p>
 
-				<div id="edit_toolbar">
+				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" />
 					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
 					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
-					<input type="button" value="Right" title="Shift to right" onclick="edit_prepend('    ')" />
+					<input type="button" value="Right" title="Shift to the right" onclick="edit_prepend('    ')" />
 
 					<div class="pwic_spacer"></div>
 
@@ -40,7 +40,13 @@
 					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`')" />
 					<input type="button" value="Code" title="```Code```" onclick="edit_decorate2('```\n', '\n```')" />
 				</div>
+
 				<textarea id="edit_markdown" name="edit_markdown">{{pwic.markdown|escape}}</textarea>
+
+				{% if pwic.env.mde %}
+					{% include 'page-edit-easymde.js.html' %}
+				{% endif %}
+
 				<p><strong>Tags:</strong> <input id="edit_tags" class="pwic_fill" type="text" name="edit_tags" value="{{pwic.tags|escape}}" /></p>
 
 				{% if not pwic.msie %}

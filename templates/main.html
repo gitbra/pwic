@@ -8,6 +8,12 @@
 	<link rel="stylesheet" type="text/css" href="/static/styles.css" />
 	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
+
+	{% if pwic.env.mde %}
+		<link rel="stylesheet" href="/static/easymde.min.css" />
+		<script src="/static/easymde.min.js"></script>
+	{% endif %}
+
 	<script>
 		'use strict';
 

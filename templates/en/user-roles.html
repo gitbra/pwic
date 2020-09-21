@@ -55,12 +55,12 @@
 					<td><input id="roles_tag_{{u.value+5}}" type="checkbox" onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')" {% if role.reader %} checked="checked" {% endif %} /></td>
 					<td>
 						<input	id="roles_tag_{{u.value+6}}" type="checkbox"
-								{% if role.disabled %}
-									checked="checked"
+								{% if role.user == pwic.user %}
+									disabled="disabled"
 								{% else %}
 									onclick="return roles_toggle({{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'disabled')"
 								{% endif %}
-								{% if role.user == pwic.user %} disabled="disabled" {% endif %}
+								{% if role.disabled %} checked="checked" {% endif %}
 						/>
 					</td>
 					<td>

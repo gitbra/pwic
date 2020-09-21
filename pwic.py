@@ -80,9 +80,12 @@ class PwicSession():
 # ===================================================
 
 class PwicServer():
-    def _md2html(self, markdown):
+    def _md2html(self, sql, markdown):
         ''' Convert the text from Markdown to HTML '''
-        return pwic_extended_syntax(app['markdown'].convert(markdown))
+        mask = self._readEnv(sql, 'heading_mask')
+        if mask is None:
+            mask = '1.1.1.1.1.1.'
+        return pwic_extended_syntax(app['markdown'].convert(markdown), mask)
 
     def _mime2icon(self, mime):
         ''' Return the emojis that corresponds to the MIME '''
@@ -99,6 +102,8 @@ class PwicServer():
 
     def _readEnv(self, sql, name):
         ''' Read a variable from the table ENV '''
+        if sql is None:
+            return None
         row = sql.execute("SELECT value FROM env WHERE key = ? AND value <> ''", (name, )).fetchone()
         return None if row is None else row[0]
 
@@ -341,7 +346,7 @@ class PwicServer():
                     pwic['time'] = row[7]
                     pwic['title'] = row[8]
                     pwic['markdown'] = row[9]
-                    pwic['html'], pwic['tmap'] = self._md2html(row[9])
+                    pwic['html'], pwic['tmap'] = self._md2html(sql, row[9])
                     pwic['hash'] = _sha256(row[9], salt=False)
                     pwic['tags'] = [] if row[10] == '' else row[10].split(' ')
                     pwic['valuser'] = row[11]
@@ -1154,7 +1159,7 @@ class PwicServer():
                                page[5],
                                page[0].replace('<', '&lt;').replace('>', '&gt;'),
                                page[6].replace('<', '&lt;').replace('>', '&gt;'),
-                               self._md2html(page[7])[0])
+                               self._md2html(sql, page[7])[0])
                 zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
                 if page[2] == 'X':
                     zip.writestr('%s.html' % page[0], html)
@@ -1889,7 +1894,7 @@ class PwicServer():
 
         # Return the converted output
         post = await self._handlePost(request)
-        html, _ = self._md2html(post.get('content', ''))
+        html, _ = self._md2html(app['sql'].cursor(), post.get('content', ''))
         return web.Response(text=html, content_type='text/plain')
 
     async def api_document_create(self, request):
@@ -1983,7 +1988,7 @@ class PwicServer():
                 raise web.HTTPBadRequest()
 
         # Verify the file type
-        if self._readEnv(sql, 'enforce_mime') is not None:
+        if self._readEnv(sql, 'mime_enforcement') is not None:
             if not self._checkMime(doc):
                 raise web.HTTPUnsupportedMediaType()
 
@@ -2176,12 +2181,22 @@ def main():
 
     # Modules
     app = web.Application()
+    # ... templates
     app['jinja'] = Environment(loader=FileSystemLoader('./templates/'))
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks'], safe_mode=True)
-    app['pwic'] = PwicServer()
-    app['sql'] = sqlite3.connect('./db/pwic.sqlite')
+    # ... SQLite
+    app['sql'] = sqlite3.connect(PWIC_DB)
     # app['sql'].set_trace_callback(print)
+    sql = app['sql'].cursor()
+    sql.execute('PRAGMA optimize')
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': 'start-server'},
+               commit=True)
+    # ... PWIC
+    app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
+    # ... Markdown parser
+    safe_mode = app['pwic']._readEnv(sql, 'safe_mode') is not None
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks'], safe_mode=safe_mode)
 
     # Routes
     app.router.add_static('/static/', path='./static/')
@@ -2218,13 +2233,6 @@ def main():
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}', app['pwic'].page),
                     web.get(r'/{project:[^\/]+}', app['pwic'].page),
                     web.get('/', app['pwic'].page)])
-
-    # Initialization
-    sql = app['sql'].cursor()
-    sql.execute('PRAGMA optimize')
-    pwic_audit(sql, {'author': PWIC_USER,
-                     'event': 'start-server'},
-               commit=True)
 
     # SSL
     if app['pwic']._readEnv(sql, 'ssl') is None:

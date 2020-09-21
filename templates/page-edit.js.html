@@ -86,7 +86,7 @@
 		var ncol = parseInt(prompt(textCol, 0));
 		if (isNaN(ncol) || (ncol < 1))
 			return false;
-		var nrow = parseInt(prompt(textRow, 0));
+		var nrow = parseInt(prompt(textRow, 0)) + 1;
 		if (isNaN(nrow) || (nrow < 1))
 			return false;
 
@@ -108,9 +108,17 @@
 		}
 
 		// Apply the text
-		var	ta = document.getElementById('edit_markdown'),
-			se = ta.selectionEnd;
-		ta.value = ta.value.substring(0, se) + buffer + ta.value.substring(se);
+		if (easyMDE)
+		{
+			easyMDE.codemirror.replaceSelection(buffer);
+			easyMDE.codemirror.focus();
+		}
+		else
+		{
+			var	ta = document.getElementById('edit_markdown'),
+				se = ta.selectionEnd;
+			ta.value = ta.value.substring(0, se) + buffer + ta.value.substring(se);
+		}
 		return true;
 	}
 
@@ -156,13 +164,21 @@
 			buffer = '['+filename+'](/special/document/'+id+'?attachment)'
 
 		// Set the value
-		var	ta = document.getElementById('edit_markdown'),
-			ss = ta.selectionStart,
-			se = ta.selectionEnd;
-		ta.value = ta.value.substring(0, ss) + buffer + ta.value.substring(se);
-		ta.selectionStart = ss + buffer.length;
-		ta.selectionEnd = ta.selectionStart;
-		ta.focus();
+		if (easyMDE)
+		{
+			easyMDE.codemirror.replaceSelection(buffer);
+			easyMDE.codemirror.focus();
+		}
+		else
+		{
+			var	ta = document.getElementById('edit_markdown'),
+				ss = ta.selectionStart,
+				se = ta.selectionEnd;
+			ta.value = ta.value.substring(0, ss) + buffer + ta.value.substring(se);
+			ta.selectionStart = ss + buffer.length;
+			ta.selectionEnd = ta.selectionStart;
+			ta.focus();
+		}
 		return false;
 	}
 
