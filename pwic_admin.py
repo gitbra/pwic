@@ -236,7 +236,7 @@ CREATE TABLE "users" (
     "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
     PRIMARY KEY("user")
 )''')
-            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")
+            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")  # Empty pages.valuser
             sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
             # Index for the pages
             sql.execute('''
@@ -367,7 +367,7 @@ def create_project(project, description, admin):
     project = _safeName(project)
     description = description.strip()
     admin = _safeName(admin, extra='')
-    if project in ['api', 'special'] or '' in [project, description, admin]:
+    if project in ['api', 'special'] or '' in [project, description, admin] or admin[:4] == 'pwic':
         print('Error: invalid arguments')
         return False
 

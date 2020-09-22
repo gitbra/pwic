@@ -363,7 +363,7 @@ def pwic_extended_syntax(markdown, mask):
             # Adapt the line
             lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
             tmap.append({'header': sdisp,
-                         'level': len(stag),
+                         'level': stag.count('.'),
                          'title': line.strip()[4:-5]})
 
     # Final formatting

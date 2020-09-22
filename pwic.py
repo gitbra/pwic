@@ -82,10 +82,8 @@ class PwicSession():
 class PwicServer():
     def _md2html(self, sql, markdown):
         ''' Convert the text from Markdown to HTML '''
-        mask = self._readEnv(sql, 'heading_mask')
-        if mask is None:
-            mask = '1.1.1.1.1.1.'
-        return pwic_extended_syntax(app['markdown'].convert(markdown), mask)
+        return pwic_extended_syntax(app['markdown'].convert(markdown),
+                                    self._readEnv(sql, 'heading_mask', default='1.1.1.1.1.1.'))
 
     def _mime2icon(self, mime):
         ''' Return the emojis that corresponds to the MIME '''
@@ -100,12 +98,12 @@ class PwicServer():
         else:
             return PWIC_EMOJIS['sheet']
 
-    def _readEnv(self, sql, name):
+    def _readEnv(self, sql, name, default=None):
         ''' Read a variable from the table ENV '''
         if sql is None:
             return None
         row = sql.execute("SELECT value FROM env WHERE key = ? AND value <> ''", (name, )).fetchone()
-        return None if row is None else row[0]
+        return default if row is None else row[0]
 
     def _checkMime(self, obj):
         ''' Check the consistency of the MIME with the file signature'''
@@ -394,11 +392,11 @@ class PwicServer():
                                                 'milestone': row[6]})
 
                     # Fetch the team members of the project
-                    sql.execute(''' SELECT user, admin, manager, editor, validator, reader
+                    sql.execute(''' SELECT user, admin, manager, editor, validator, reader, disabled
                                     FROM roles
-                                    WHERE project   = ?
-                                      AND disabled <> 'X'
-                                    ORDER BY admin     DESC,
+                                    WHERE project = ?
+                                    ORDER BY disabled  DESC,
+                                             admin     DESC,
                                              manager   DESC,
                                              editor    DESC,
                                              validator DESC,
@@ -410,17 +408,21 @@ class PwicServer():
                     pwic['editors'] = []
                     pwic['validators'] = []
                     pwic['readers'] = []
+                    pwic['disabled_users'] = []
                     for row in sql.fetchall():
-                        if _xb(row[1]):
-                            pwic['admins'].append(row[0])
-                        if _xb(row[2]):
-                            pwic['managers'].append(row[0])
-                        if _xb(row[3]):
-                            pwic['editors'].append(row[0])
-                        if _xb(row[4]):
-                            pwic['validators'].append(row[0])
-                        if _xb(row[5]):
-                            pwic['readers'].append(row[0])
+                        if _xb(row[6]):
+                            pwic['disabled_users'].append(row[0])
+                        else:
+                            if _xb(row[1]):
+                                pwic['admins'].append(row[0])
+                            if _xb(row[2]):
+                                pwic['managers'].append(row[0])
+                            if _xb(row[3]):
+                                pwic['editors'].append(row[0])
+                            if _xb(row[4]):
+                                pwic['validators'].append(row[0])
+                            if _xb(row[5]):
+                                pwic['readers'].append(row[0])
 
                     # Fetch the inactive users
                     if pwic['admin']:
@@ -1303,8 +1305,8 @@ class PwicServer():
         sql = app['sql'].cursor()
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.draft, b.final,
                                b.header, b.protection, b.author, b.date, b.time,
-                               b.title, b.tags, b.comment, b.milestone, b.valuser,
-                               b.valdate, b.valtime
+                               b.title, b.markdown, b.tags, b.comment, b.milestone,
+                               b.valuser, b.valdate, b.valtime
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON b.project = a.project
@@ -1318,10 +1320,13 @@ class PwicServer():
             if row[0] not in data:
                 data[row[0]] = {'revisions': [], 'documents': []}
             item = {}
-            for i, field in enumerate(['revision', 'latest', 'draft', 'final', 'header', 'protection', 'author', 'date', 'time', 'title', 'tags', 'comment', 'milestone', 'valuser', 'valdate', 'valtime']):
+            for i, field in enumerate(['revision', 'latest', 'draft', 'final', 'header', 'protection', 'author', 'date', 'time', 'title', 'markdown', 'tags', 'comment', 'milestone', 'valuser', 'valdate', 'valtime']):
                 i += 1
-                if not isinstance(row[i], str) or row[i] != '':
-                    item[field] = row[i]
+                if field == 'markdown':
+                    item['hash'] = _sha256(row[i], salt=False)          # The content is not exposed but the corresponding hash
+                else:
+                    if not isinstance(row[i], str) or row[i] != '':
+                        item[field] = row[i]
             item['url'] = '/%s/%s/rev%d' % (quote(project), quote(row[0]), row[1])
             data[row[0]]['revisions'].append(item)
 
@@ -1456,9 +1461,7 @@ class PwicServer():
 
         # Reprocess the tags in alphabetical order
         tags = _recursiveReplace(tags.replace('\t', ' ').strip().lower(), '  ', ' ')
-        tags = tags.split(' ')
-        tags.sort()
-        tags = ' '.join(tags)
+        tags = ' '.join(sorted(list(set(tags.split(' ')))))
 
         # Fetch the last revision of the page and the profile of the user
         sql = app['sql'].cursor()
@@ -2195,8 +2198,8 @@ def main():
     app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
     # ... Markdown parser
-    safe_mode = app['pwic']._readEnv(sql, 'safe_mode') is not None
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks'], safe_mode=safe_mode)
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks'],
+                               safe_mode=app['pwic']._readEnv(sql, 'safe_mode') is not None)
 
     # Routes
     app.router.add_static('/static/', path='./static/')

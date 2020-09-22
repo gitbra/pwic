@@ -94,50 +94,63 @@
 
 
 			<h1>Team members</h1>
+			<p>By active profile:</p>
 			<ul>
-			{% if pwic.admins|count > 0 %}
-				<li><strong>Administrators :</strong>
-					{% for admin in pwic.admins %}
-					<a href="/special/user/{{admin|urlencode}}">{{admin|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.managers|count > 0 %}
-				<li><strong>Managers :</strong>
-					{% for manager in pwic.managers %}
-					<a href="/special/user/{{manager|urlencode}}">{{manager|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.editors|count > 0 %}
-				<li><strong>Editors :</strong>
-					{% for editor in pwic.editors %}
-					<a href="/special/user/{{editor|urlencode}}">{{editor|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.validators|count > 0 %}
-				<li><strong>Validators :</strong>
-					{% for validator in pwic.validators %}
-					<a href="/special/user/{{validator|urlencode}}">{{validator|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.readers|count > 0 %}
-				<li><strong>Readers :</strong>
-					{% for reader in pwic.readers %}
-					<a href="/special/user/{{reader|urlencode}}">{{reader|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.inactive_users|count > 0 %}
-				<li><strong>Inactive users :</strong>
-					{% for user in pwic.inactive_users %}
-					<a href="/special/user/{{user|urlencode}}">{{user|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
+				{% if pwic.admins|count > 0 %}
+					<li><strong>Administrators:</strong>
+						{% for admin in pwic.admins %}
+						<a href="/special/user/{{admin|urlencode}}">{{admin|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.managers|count > 0 %}
+					<li><strong>Managers:</strong>
+						{% for manager in pwic.managers %}
+						<a href="/special/user/{{manager|urlencode}}">{{manager|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.editors|count > 0 %}
+					<li><strong>Editors:</strong>
+						{% for editor in pwic.editors %}
+						<a href="/special/user/{{editor|urlencode}}">{{editor|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.validators|count > 0 %}
+					<li><strong>Validators:</strong>
+						{% for validator in pwic.validators %}
+						<a href="/special/user/{{validator|urlencode}}">{{validator|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.readers|count > 0 %}
+					<li><strong>Readers:</strong>
+						{% for reader in pwic.readers %}
+						<a href="/special/user/{{reader|urlencode}}">{{reader|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
 			</ul>
+			{% if pwic.disabled_users|count > 0 or pwic.inactive_users|count > 0 %}
+				<p>By status:</p>
+				<ul>
+					{% if pwic.disabled_users|count > 0 %}
+						<li><strong>Disabled users:</strong>
+							{% for user in pwic.disabled_users %}
+							<a href="/special/user/{{user|urlencode}}">{{user|escape}}</a>
+							{% endfor %}
+						</li>
+					{% endif %}
+					{% if pwic.inactive_users|count > 0 %}
+						<li><strong>Inactive users:</strong>
+							{% for user in pwic.inactive_users %}
+							<a href="/special/user/{{user|urlencode}}">{{user|escape}}</a>
+							{% endfor %}
+						</li>
+					{% endif %}
+				</ul>
+			{% endif %}
 
 
 			{% if (pwic.pages|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
