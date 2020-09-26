@@ -1,0 +1,21 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.project_description|escape}}</a></div>
+	</header>
+
+	<article>
+		<h1>Map of the links</h1>
+		<p><input type="button" value="{{pwic.emojis.inbox}} Download as a file" onclick="graph_get_data('download')"></p>
+		<div id="graph_viz"></div>
+
+		{% include "page-graph.js.html" %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

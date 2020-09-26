@@ -11,7 +11,8 @@ from shutil import copyfile
 from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
+    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     _dt, _sha256, _safeName, pwic_audit
 
 
@@ -416,15 +417,14 @@ def create_project(project, description, admin):
     sql.execute("INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')", (project, PWIC_USER_ANONYMOUS))
 
     # Add a default homepage
-    page = 'home'
     sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
                     VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")''',
-                (project, page, admin, dt['date'], dt['time']))
+                (project, PWIC_DEFAULT_PAGE, admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USER,
                      'event': 'create-page',
                      'project': project,
-                     'page': page,
+                     'page': PWIC_DEFAULT_PAGE,
                      'revision': 1})
 
     # Finalization

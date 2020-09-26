@@ -58,6 +58,9 @@
 			{% if pwic.manager and pwic.special %}
 				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
 			{% endif %}
+			{% if pwic.manager and pwic.special %}
+				<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
+			{% endif %}
 			{% if pwic.removable %}
 				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?', 'Function not available.')">{{pwic.emojis.recycle}} Delete</a>
 			{% endif %}

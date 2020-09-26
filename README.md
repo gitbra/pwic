@@ -1,17 +1,17 @@
 # PWIC - Python Wiki Information Center
 
-**Pwic** is an easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has some advantages for a professional use.
+**Pwic** is an easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has many advantages for a professional use.
 
 **Project proficiency**
 
 - Central repository for an online and up-to-date documentation
 - Ready for Unicode and built on Emojis
-- New pages, broken links and orphaned pages supervised by the project managers
+- New pages, broken links, orphaned pages and graph supervised by the project managers
 - Linear and partially undoable versioning of the pages for a proper customer's validation
 - Unified look and feel among all the pages
 - Automatic highlight of the lines of code
 - Follow-up of the deliverable pages
-- Lean documents with no rainbow color or overloaded revision mark
+- Lean pages with no rainbow color or overloaded revision mark
 - Display of the differences between two versions
 - File attachments with normalized names
 - In-text search with inclusion, exclusion and special keywords
@@ -40,16 +40,18 @@ Proprietary software
 Copyright (C) Alexandre Bréard, 2020
 
 - [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
-- [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT license
+- [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
 	- The file is version 2.11 and patched against the issue #217
 - Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 - [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)
 - [Jinja2](https://github.com/pallets/jinja) is released under 3-Clause BSD License
-- [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT license
+- [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
 	- Pwic implements a modified version to support some types of link when the safe mode is activated
-- [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT license
-- [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD license
+- [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
+- [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [SQLite](https://www.sqlite.org/index.html) is released in the public domain
+- [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License
+- [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
 
 
 ## Install

@@ -33,6 +33,7 @@
 			<tr><td><a href="#help_validate">{{pwic.emojis.glasses}}</a></td><td>Validate a revision</td><td></td><td></td><td></td><td>{{pwic.emojis.check}}</td><td></td></tr>
 			<tr><td><a href="#help_export">{{pwic.emojis.glasses}}</a></td><td>Export a project</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
+			<tr><td><a href="#help_graph">{{pwic.emojis.glasses}}</a></td><td>Graph of the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_search">{{pwic.emojis.glasses}}</a></td><td>Search across the pages</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_searchdoc">{{pwic.emojis.glasses}}</a></td><td>Search across the documents</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
@@ -227,6 +228,13 @@
 			</ul>
 		<p>The checks apply within a given project. The links to other projects are neither reported as orphan, nor as broken.</p>
 		<p>The feature serves as a general monitoring tool for the documentation.</p>
+
+
+		<h1 id="help_graph">Graph of the links</h1>
+		<p>The directed graph is a visual representation of the links between the pages. It is possible to detect the pages of high importance and the ones that are insufficiently put into the light.</p>
+		<p>In case you link to another project, only the targeted pages are displayed. The title of the page is hidden if you don't have access to the project.</p>
+		<p>The pages in red correspond to broken links.</p>
+		<p>You can download the graph as a file. After you installed GraphViz, you can regenerate the picture with the command: <code>dot -Tsvg input.gv -o output.svg</code>.</p>
 
 
 		<h1 id="help_search">Search across the pages</h1>

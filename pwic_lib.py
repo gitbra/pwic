@@ -19,9 +19,13 @@ PWIC_DOCUMENTS_PATH = './db/documents/%s/'
 PWIC_USER = 'pwic-system'
 PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_DEFAULT_PASSWORD = 'initial'
+PWIC_DEFAULT_PAGE = 'home'
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
+
+PWIC_REGEX_PAGE = r'\]\(\/([^\/#]+)\/([^\/#]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'
+PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
@@ -73,6 +77,7 @@ PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible
 
 # ===================================================
 #  MIMES
+#  https://www.iana.org/assignments/media-types/media-types.xhtml
 # ===================================================
 
 ZIP = ['PK']
