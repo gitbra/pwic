@@ -39,17 +39,20 @@
 Proprietary software
 Copyright (C) Alexandre Bréard, 2020
 
+- [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
 - [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
 	- The file is version 2.11 and patched against the issue #217
 - Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 - [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)
-- [Jinja2](https://github.com/pallets/jinja) is released under 3-Clause BSD License
+- [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
 	- Pwic implements a modified version to support some types of link when the safe mode is activated
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
-- [SQLite](https://www.sqlite.org/index.html) is released in the public domain
+- [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
+- [Python](https://github.com/python/cpython/) is released under Python Software Foundation License
+- [SQLite](https://www.sqlite.org) is released in the public domain
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
 

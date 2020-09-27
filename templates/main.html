@@ -9,6 +9,13 @@
 	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 
+	{% if pwic.env.css %}
+		{% set list = pwic.env.css.split(';') %}
+		{% for css in list %}
+			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" />
+		{% endfor %}
+	{% endif %}
+
 	{% if pwic.env.mde %}
 		<link rel="stylesheet" href="/static/easymde.min.css" />
 		<script src="/static/easymde.min.js"></script>

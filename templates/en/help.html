@@ -55,6 +55,10 @@
 					<td>Enable <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> that adds the HTTP header <code>Access-Control-Allow-Origin</code>.</td>
 				</tr>
 				<tr>
+					<td><code>css</code></td>
+					<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>.</td>
+				</tr>
+				<tr>
 					<td><code>document_name_regex</code></td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 				</tr>
@@ -68,7 +72,7 @@
 				</tr>
 				<tr>
 					<td><code>heading_mask</code></td>
-					<td>Codify the headers according to a given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 (<code>I</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
+					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 (<code>I</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
 				</tr>
 				<tr>
 					<td><code>maintenance</code></td>
@@ -275,6 +279,94 @@
 		<h1 id="help_log_user">View the activity of a user</h1>
 		<p>The user page contains a public overview of the recently modified pages (over the last 30 days) and the uploaded documents.</p>
 		<p>Your own user page is mentionned in the footer.</p>
+
+
+		<h1 id="help_licenses">Licenses</h1>
+		<p>Pwic relies on several external resources whose license is summarized in the following table:</p>
+		<table>
+			<tr>
+				<th>Name</th>
+				<th>Type</th>
+				<th>License</th>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/aio-libs/aiohttp">aiohttp</a></td>
+				<td>HTTP server</td>
+				<td>Apache 2.0 License</td>
+			</tr>
+			<tr>
+				<td><a href="https://fonts.google.com/specimen/Baloo+2">Baloo 2</a></td>
+				<td>Font</td>
+				<td>Open Font License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/Ionaru/easy-markdown-editor">EasyMDE</a></td>
+				<td>Library for JavaScript</td>
+				<td>MIT License</td>
+				<!-- The file is version 2.11 and patched against the issue #217 -->
+			</tr>
+			<tr>
+				<td><a href="https://www.flaticon.com/free-icon/verify_2910756">Favorite icon</a></td>
+				<td>Picture</td>
+				<td>by Pixel Perfect</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/FortAwesome/Font-Awesome">FontAwesome</a></td>
+				<td>Font</td>
+				<td>SIL OFL 1.1</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/FortAwesome/Font-Awesome">FontAwesome</a></td>
+				<td>Cascading style sheets (CSS)</td>
+				<td>MIT License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/pallets/jinja">Jinja2</a></td>
+				<td>Library for Python</td>
+				<td>BSD-3-Clause License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/trentm/python-markdown2">Markdown2</a></td>
+				<td>Library for Python</td>
+				<td>MIT License</td>
+				<!-- Pwic implements a modified version to support some types of link when the safe mode is activated -->
+			</tr>
+			<tr>
+				<td><a href="https://github.com/erikrose/parsimonious">Parsimonious</a></td>
+				<td>Library for Python</td>
+				<td>MIT License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/jazzband/prettytable">PrettyTable</a></td>
+				<td>Library for Python</td>
+				<td>BSD License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/pygments/pygments">pygments</a></td>
+				<td>Library for Python</td>
+				<td>BSD-2-Clause License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/python/cpython/">Python</a></td>
+				<td>Programming language</td>
+				<td>Python Software Foundation License</td>
+			</tr>
+			<tr>
+				<td><a href="https://www.sqlite.org">SQLite</a></td>
+				<td>Database engine</td>
+				<td>Public domain</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/ariutta/svg-pan-zoom">SVG pan &amp; zoom</a></td>
+				<td>Library for JavaScript</td>
+				<td>BSD-2-Clause License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/mdaines/viz.js">Viz.js</a></td>
+				<td>Library for JavaScript</td>
+				<td>MIT License</td>
+			</tr>
+		</table>
 	</article>
 {% endblock %}
 
