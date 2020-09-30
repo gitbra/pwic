@@ -15,6 +15,7 @@
 - Display of the differences between two versions
 - File attachments with normalized names
 - In-text search with inclusion, exclusion and special keywords
+- Export to OpenDocument (ODT)
 
 
 **Cost effectiveness and technicity**

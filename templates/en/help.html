@@ -51,6 +51,10 @@
 					<th>Description</th>
 				</tr>
 				<tr>
+					<td><code>base_url</code></td>
+					<td>Define the base HTTP address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>.</td>
+				</tr>
+				<tr>
 					<td><code>cors</code></td>
 					<td>Enable <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> that adds the HTTP header <code>Access-Control-Allow-Origin</code>.</td>
 				</tr>
@@ -95,12 +99,12 @@
 					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
 				</tr>
 				<tr>
-					<td><code>no_export</code></td>
-					<td>Disable the export of the project as an archive for the online administrators.</td>
+					<td><code>no_export_page</code></td>
+					<td>Disable the export of a page.</td>
 				</tr>
 				<tr>
-					<td><code>no_raw</code></td>
-					<td>Disable the online possibility to display the raw markdown code of any page.</td>
+					<td><code>no_export_project</code></td>
+					<td>Disable the export of the project as an archive for the online administrators.</td>
 				</tr>
 				<tr>
 					<td><code>password_regex</code></td>
@@ -221,7 +225,7 @@
 
 		<h1 id="help_export">Export a project</h1>
 		<p>The administrators are able to download a project as a ZIP file containing all the pages and attached documents. The purposes are the creation of a backup or the preparation of a migration for example.</p>
-		<p>The export is audited and can be disabled by setting the administrative variable <code>no_export</code>.</p>
+		<p>The export is audited and can be disabled by setting the administrative variable <code>no_export_project</code>.</p>
 
 
 		<h1 id="help_links">Verify the links</h1>

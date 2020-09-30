@@ -10,7 +10,7 @@ from os.path import isfile
 from shutil import copyfile
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+from pwic_lib import PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     _dt, _sha256, _safeName, pwic_audit
@@ -78,7 +78,7 @@ def main():
 
 
 def db_connect():
-    return sqlite3.connect(PWIC_DB).cursor()
+    return sqlite3.connect(PWIC_DB_SQLITE).cursor()
 
 
 def generate_ssl():
@@ -131,7 +131,7 @@ def generate_ssl():
 
 
 def init_db():
-    if isfile(PWIC_DB):
+    if isfile(PWIC_DB_SQLITE):
         print('Error: the database is already created')
     else:
         sql = db_connect()
@@ -260,25 +260,26 @@ BEFORE UPDATE ON audit
 BEGIN
     SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
 END''')
-            print('The database is created at "%s"' % PWIC_DB)
+            print('The database is created at "%s"' % PWIC_DB_SQLITE)
             return True
     return False
 
 
 def set_env(name, value):
     # Check the keys
-    keys = ['cors',
+    keys = ['base_url',
+            'cors',
             'document_name_regex',
-            'ip_filter',
             'heading_mask',
+            'ip_filter',
             'maintenance',
             'max_document_size',
             'max_project_size',
             'mde',
             'mime_enforcement',
+            'no_export_page',
+            'no_export_project',
             'password_regex',
-            'no_export',
-            'no_raw',
             'safe_mode',
             'ssl']
     if name not in keys:
@@ -342,15 +343,15 @@ def show_mime():
 
 def create_backup():
     # Check
-    if not isfile(PWIC_DB):
+    if not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
         return False
 
     # Prepare the new file name
     dt = _dt()
-    new = PWIC_DB_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
+    new = PWIC_DB_SQLITE_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
     try:
-        copyfile(PWIC_DB, new, follow_symlinks=False)
+        copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
         if isfile(new):
             os.chmod(new, S_IREAD)
             print('Backup of the database file created as "%s"' % new)

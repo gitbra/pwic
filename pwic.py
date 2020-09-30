@@ -15,31 +15,34 @@ import re
 from ipaddress import ip_network, ip_address
 from bisect import insort, bisect_left
 from multidict import MultiDict
+from html import escape
 import time
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
-    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring
+    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
+from pwic_styles import pwic_styles_html, pwic_styles_odt
 
 
 # ===============
 #  Documentation
-#   - Jinja2 :          http://zetcode.com/python/jinja/
-#   - Markdown :        https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
-#   - HTTP codes :      https://docs.aiohttp.org/en/latest/web_exceptions.html
+#   - Jinja2            http://zetcode.com/python/jinja/
+#   - Markdown          https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+#   - HTTP codes        https://docs.aiohttp.org/en/latest/web_exceptions.html
 #                       https://docs.pylonsproject.org/projects/pyramid/en/latest/api/httpexceptions.html
-#   - SSL :             https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
-#   - PyParsing :       https://github.com/pyparsing/pyparsing/blob/master/examples/searchparser.py
-#   - Parsimonious :    https://github.com/erikrose/parsimonious
+#   - SSL               https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
+#   - PyParsing         https://github.com/pyparsing/pyparsing/blob/master/examples/searchparser.py
+#   - Parsimonious      https://github.com/erikrose/parsimonious
 #                       http://zderadicka.eu/writing-simple-parser-in-python/
-#   - HTML5 upload :    https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
+#   - HTML5 upload      https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
 #                       https://css-tricks.com/drag-and-drop-file-uploading/
 #                       https://docs.aiohttp.org/en/stable/multipart.html
-#   - Magic bytes :     https://en.wikipedia.org/wiki/List_of_file_signatures
+#   - Magic bytes       https://en.wikipedia.org/wiki/List_of_file_signatures
+#   - ODT               https://odfvalidator.org
 # ===============
 
 
@@ -238,7 +241,7 @@ class PwicServer():
         sql = app['sql'].cursor()
         project = request.match_info.get('project', '')
         page = request.match_info.get('page', PWIC_DEFAULT_PAGE)
-        revision = request.match_info.get('revision', None)
+        revision = _int(request.match_info.get('revision', 0))
         action = request.match_info.get('action', 'view')
         pwic = {'title': 'Wiki',
                 'project': project,
@@ -325,16 +328,15 @@ class PwicServer():
                                            author, date, time, title, markdown,
                                            tags, valuser, valdate, valtime
                                     FROM pages
-                                    WHERE project = ?
-                                      AND page    = ?
-                                    ORDER BY revision DESC''',
-                                (project, page))
-                    found = False
-                    for row in sql.fetchall():
-                        if revision is None or _int(row[0]) == _int(revision):
-                            found = True
-                            break
-                    if not found:
+                                    WHERE   project  = ?
+                                      AND   page     = ?
+                                      AND ( revision = ?
+                                       OR ( 0 = ?
+                                        AND latest   = 'X' )
+                                      )''',
+                                (project, page, revision, revision))
+                    row = sql.fetchone()
+                    if row is None:
                         raise web.HTTPNotFound()  # Revision not found
                     pwic['revision'] = row[0]
                     pwic['latest'] = _xb(row[1])
@@ -528,10 +530,7 @@ class PwicServer():
                                                    'string': row[9]})
 
                 # Render the page in HTML or Markdown
-                if self._readEnv(sql, 'no_raw') is not None or request.rel_url.query.get('raw', None) is None:
-                    return await self._handleOutput(request, 'page', pwic)
-                else:
-                    return web.Response(text=pwic['markdown'], content_type='text/plain')
+                return await self._handleOutput(request, 'page', pwic)
 
             # Edit the requested page
             elif action == 'edit':
@@ -556,10 +555,12 @@ class PwicServer():
 
             # Show the history of the page
             elif action == 'history':
-                sql.execute(''' SELECT revision, latest, draft, final, author, date, time,
-                                       title, comment, milestone, valuser, valdate, valtime
+                sql.execute(''' SELECT revision, latest, draft, final, author,
+                                       date, time, title, comment, milestone,
+                                       valuser, valdate, valtime
                                 FROM pages
-                                WHERE project = ? AND page = ?
+                                WHERE project = ?
+                                  AND page = ?
                                 ORDER BY revision DESC''',
                             (project, page))
                 pwic['revisions'] = []
@@ -1138,7 +1139,7 @@ class PwicServer():
 
         # Verify that the export is authorized
         sql = app['sql'].cursor()
-        if self._readEnv(sql, 'no_export') is not None:
+        if self._readEnv(sql, 'no_export_project') is not None:
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
@@ -1161,8 +1162,9 @@ class PwicServer():
         if len(pages) == 0:
             raise web.HTTPUnauthorized()
         folder_rev = 'revisions/'
+        htmlStyles = pwic_styles_html()
         try:
-            zipname = PWIC_DB + '.zip'
+            zipname = PWIC_DB_SQLITE + '.zip'
             zip = zipfile.ZipFile(zipname, mode='w', compression=zipfile.ZIP_DEFLATED)
 
             # Pages of the project
@@ -1173,41 +1175,30 @@ class PwicServer():
                     zip.writestr('%s.md' % page[0], page[7])
 
                 # HTML
-                html = '''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="author" content="%s">
-    <meta name="last-modified" content="%s %s">
-    <title>%s %s</title>
-    <link rel="stylesheet" type="text/css" href="static/styles.css" />
-</head>
-<body>
-    <article>%s</article>
-</body>
-</html>'''
-                html = html % (page[3].replace('"', '&quote;'),
-                               page[4],
-                               page[5],
-                               page[0].replace('<', '&lt;').replace('>', '&gt;'),
-                               page[6].replace('<', '&lt;').replace('>', '&gt;'),
-                               self._md2html(sql, page[7])[0])
+                html = htmlStyles.html % (page[3].replace('"', '&quote;'),
+                                          page[4],
+                                          page[5],
+                                          page[0].replace('<', '&lt;').replace('>', '&gt;'),
+                                          page[6].replace('<', '&lt;').replace('>', '&gt;'),
+                                          htmlStyles.getCss(rel=True),
+                                          self._md2html(sql, page[7])[0])
                 zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
                 if page[2] == 'X':
                     zip.writestr('%s.html' % page[0], html)
 
             # Dependent files for the pages
-            fn = 'static/styles.css'
-            with open(fn, 'rb') as f:
+            content = ''
+            with open(htmlStyles.css, 'rb') as f:
                 content = f.read()
-            zip.writestr(fn, content)
-            zip.writestr(folder_rev + fn, content)
+            zip.writestr(htmlStyles.css, content)
+            zip.writestr(folder_rev + htmlStyles.css, content)
 
             # Attached documents
             sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
             for row in sql.fetchall():
                 fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
                 if os.path.isfile(fn):
+                    content = ''
                     with open(fn, 'rb') as f:
                         content = f.read()
                     zip.writestr('documents/%s' % row[0], content)
@@ -1224,6 +1215,7 @@ class PwicServer():
                    request, commit=True)
 
         # Return the file
+        content = ''
         with open(zipname, 'rb') as f:
             content = f.read()
         os.remove(zipname)
@@ -1730,6 +1722,112 @@ class PwicServer():
         sql.execute('COMMIT')
         raise web.HTTPOk()
 
+    async def api_page_export(self, request):
+        ''' API to export a page '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        user = await session.getUser()
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Read the parameters
+        post = await self._handlePost(request)
+        project = _safeName(post.get('download_project', ''))
+        page = _safeName(post.get('download_page', ''))
+        revision = _int(post.get('download_revision', 0))
+        format = post.get('download_format', '').lower()
+        if '' in [project, page, format]:
+            raise web.HTTPBadRequest()
+
+        # Read the selected revision
+        sql = app['sql'].cursor()
+        if self._readEnv(sql, 'no_export_page') is not None:
+            raise web.HTTPUnauthorized()
+        sql.execute(''' SELECT b.revision, b.latest, b.author, b.date, b.time,
+                               b.title, b.markdown, b.tags
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON    b.project  = a.project
+                                AND   b.page     = ?
+                                AND ( b.revision = ?
+                                 OR ( 0 = ?
+                                  AND b.latest   = 'X' )
+                                )
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = '' ''',
+                    (page, revision, revision, project, user))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPNotFound()
+
+        # Initialization
+        dt = _dt()
+        baseUrl = self._readEnv(sql, 'base_url', '')
+        tmpname = PWIC_DB + '/' + _sha256('%s%s%s%s%s%s' % (project, page, user, dt['date'], dt['time'], str(os.urandom(16))), salt=False)[:16] + '.' + format
+        endname = '%s_%s_rev%d.%s' % (project, page, row[0], format)
+
+        # Format MD
+        if format == 'md':
+            return web.Response(body=row[6], headers=MultiDict({'Content-Type': 'text/markdown',
+                                                                'Content-Disposition': 'Attachment;filename=%s' % endname}))
+
+        # Format HTML
+        elif format == 'html':
+            htmlStyles = pwic_styles_html()
+            html = htmlStyles.html % (row[2].replace('"', '&quote;'),
+                                      row[3],
+                                      row[4],
+                                      page.replace('<', '&lt;').replace('>', '&gt;'),
+                                      row[5].replace('<', '&lt;').replace('>', '&gt;'),
+                                      htmlStyles.getCss(rel=False),
+                                      self._md2html(sql, row[6])[0])
+            html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
+            return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
+                                                              'Content-Disposition': 'Attachment;filename=%s' % endname}))
+
+        # Format ODT
+        elif format == 'odt':
+            # MD --> HTML --> ODT
+            odtStyles = pwic_styles_odt()
+            html = self._md2html(sql, row[6])[0]
+            html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
+            html = html.replace('</code></pre></div>', '</blockcode>')
+            try:
+                odtGenerator = pwic_html2odt(baseUrl, project, page)
+                odtGenerator.feed(html)
+            except Exception:
+                raise web.HTTPInternalServerError()
+
+            # Create the temporary ODT file
+            odt = zipfile.ZipFile(tmpname, mode='w', compression=zipfile.ZIP_DEFLATED)
+            odt.writestr('mimetype', odtStyles.mime, compress_type=zipfile.ZIP_STORED, compresslevel=0)  # Must be the first file of the ZIP and not compressed
+            odt.writestr('META-INF/manifest.xml', odtStyles.manifest)
+            odt.writestr('meta.xml', odtStyles.meta % (PWIC_VERSION,
+                                                       escape(row[5]),
+                                                       escape(project), escape(page),
+                                                       ('<dc:keyword>%s</dc:keyword>' % escape(row[7])) if row[7] != '' else '',
+                                                       escape(row[2]),
+                                                       escape(row[3]), escape(row[4]),
+                                                       escape(user),
+                                                       escape(dt['date']), escape(dt['time']),
+                                                       row[0]))
+            odt.writestr('styles.xml', odtStyles.styles.replace('##', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
+            odt.writestr('content.xml', odtStyles.content % odtGenerator.odt)
+
+            # Return the file
+            odt.close()
+            buffer = ''
+            with open(tmpname, 'rb') as f:
+                buffer = f.read()
+            os.remove(tmpname)
+            return web.Response(body=buffer, headers=MultiDict({'Content-Type': odtStyles.mime,
+                                                                'Content-Disposition': 'Attachment;filename=%s' % endname}))
+
+        # Other format
+        else:
+            raise web.HTTPUnsupportedMediaType()
+
     async def api_user_create(self, request):
         ''' API to create a new user '''
         # Verify that the user is connected
@@ -1972,7 +2070,7 @@ class PwicServer():
             if (fromProject, fromPage) != (toProject, toPage):
                 tuple = (toProject, toPage, fromProject, fromPage)
                 pos = bisect_left(maps, tuple)
-                if (pos >= len(maps)) or (maps[pos] != tuple):
+                if pos >= len(maps) or maps[pos] != tuple:
                     insort(maps, tuple)
 
         def _getNodeID(project, page):
@@ -2290,7 +2388,7 @@ class PwicServer():
         sql.execute(''' SELECT b.id
                         FROM roles AS a
                             INNER JOIN documents AS b
-                                ON  b.id 	   = ?
+                                ON  b.id       = ?
                                 AND b.project  = a.project
                                 AND b.page     = ?
                                 AND b.filename = ?
@@ -2349,7 +2447,7 @@ def main():
     # ... templates
     app['jinja'] = Environment(loader=FileSystemLoader('./templates/'))
     # ... SQLite
-    app['sql'] = sqlite3.connect(PWIC_DB)
+    app['sql'] = sqlite3.connect(PWIC_DB_SQLITE)
     # app['sql'].set_trace_callback(print)
     sql = app['sql'].cursor()
     sql.execute('PRAGMA optimize')
@@ -2360,7 +2458,7 @@ def main():
     app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
     # ... Markdown parser
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks'],
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike'],
                                safe_mode=app['pwic']._readEnv(sql, 'safe_mode') is not None)
 
     # Routes
@@ -2372,6 +2470,7 @@ def main():
                     web.post('/api/page/update', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),
                     web.post('/api/page/delete', app['pwic'].api_page_delete),
+                    web.post('/api/page/export', app['pwic'].api_page_export),
                     web.post('/api/user/create', app['pwic'].api_user_create),
                     web.post('/api/user/password/change', app['pwic'].api_user_change_password),
                     web.post('/api/roles', app['pwic'].api_roles),

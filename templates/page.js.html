@@ -43,4 +43,32 @@
 		}
 		return false;
 	}
+
+	function page_download(format) {
+		fetch('/api/page/export', {	method: 'POST',
+									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+									body:	'download_project={{pwic.project|urlencode}}&' +
+											'download_page={{pwic.page|urlencode}}&' +
+											'download_revision={{pwic.revision|urlencode}}&'+
+											'download_format=' + encodeURIComponent(format) })
+			.then(function(response) {
+				if (response.status != 200)
+					throw Error(response.status + ' ' + response.statusText);
+				else
+				{
+					var filename = response.headers.get('Content-Disposition').split(';filename=')[1];
+					response.blob().then(function (blob) {
+						var dl = document.createElement('a');
+						dl.href = window.URL.createObjectURL(new Blob([blob], {type: blob.type}));
+						dl.download = filename;
+						dl.click();
+						return true;
+					});
+				}
+			})
+			.catch(function(error) {
+				alert(error);
+			});
+		return false;
+	}
 </script>

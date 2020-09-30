@@ -3,7 +3,8 @@
 import re
 import datetime
 from hashlib import sha256
-
+from html import escape
+from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
@@ -13,13 +14,15 @@ from parsimonious.nodes import NodeVisitor
 # ===================================================
 
 PWIC_VERSION = '1.0-rc1'
-PWIC_DB = './db/pwic.sqlite'
-PWIC_DB_BACKUP = './db/pwic_%s.sqlite'
-PWIC_DOCUMENTS_PATH = './db/documents/%s/'
+PWIC_DB = './db'
+PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
+PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
+PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
 PWIC_USER = 'pwic-system'
 PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_DEFAULT_PAGE = 'home'
+
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
@@ -29,6 +32,7 @@ PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
+               'bug': '&#x1F41B;',
                'calendar': '&#x1F4C5;',
                'camera': '&#x1F3A5;',               # 1F4F9
                'chains': '&#x1F517;',
@@ -50,6 +54,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'laptop': '&#x1F4BB;',
                'left_arrow': '&#x2BC7;',
                'locked': '&#x1F512;',
+               'memo': '&#x1F4DD;',
                'notes': '&#x1F4CB;',
                'padlock': '&#x1F510;',
                'pin': '&#x1F4CC;',
@@ -295,7 +300,19 @@ def pwic_extended_syntax(markdown, mask):
         if value < 1 or value > 4999:
             return '0'
         buffer = ''
-        for letter, threshold in (('M', 1000), ('CM', 900), ('D', 500), ('CD', 400), ('C', 100), ('XC', 90), ('L', 50), ('XL', 40), ('X', 10), ('IX', 9), ('V', 5), ('IV', 4), ('I', 1)):
+        for letter, threshold in (('M', 1000),
+                                  ('CM', 900),
+                                  ('D', 500),
+                                  ('CD', 400),
+                                  ('C', 100),
+                                  ('XC', 90),
+                                  ('L', 50),
+                                  ('XL', 40),
+                                  ('X', 10),
+                                  ('IX', 9),
+                                  ('V', 5),
+                                  ('IV', 4),
+                                  ('I', 1)):
             while value >= threshold:
                 buffer += letter
                 value -= threshold
@@ -479,3 +496,222 @@ def pwic_search_tostring(query):
         quote = '"' if ' ' in q else ''
         result += ' -%s%s%s' % (quote, q, quote)
     return result.strip()
+
+
+# ===================================================
+#  html2odt
+# ===================================================
+
+class pwic_html2odt(HTMLParser):
+    def __init__(self, baseUrl, project, page):
+        HTMLParser.__init__(self)
+        self.baseUrl = baseUrl
+        self.project = project
+        self.page = page
+        self.maps = {'a': 'text:a',
+                     'blockquote': None,
+                     'blockcode': 'text:p',
+                     'br': 'text:line-break',
+                     'code': 'text:span',
+                     'div': None,
+                     'em': 'text:span',
+                     'h1': 'text:h',
+                     'h2': 'text:h',
+                     'h3': 'text:h',
+                     'h4': 'text:h',
+                     'h5': 'text:h',
+                     'h6': 'text:h',
+                     'hr': 'text:p',
+                     'inf': 'text:span',
+                     'li': 'text:list-item',
+                     'ol': 'text:list',
+                     'p': 'text:p',
+                     'span': 'text:span',
+                     'strike': 'text:span',
+                     'strong': 'text:span',
+                     'sup': 'text:span',
+                     'table': 'table:table',
+                     'tbody': None,
+                     'td': 'table:table-cell',
+                     'th': 'table:table-cell',
+                     'thead': None,
+                     'tr': 'table:table-row',
+                     'ul': 'text:list'}
+        self.attributes = {'a': {'xlink:href': '#href',
+                                 'xlink:type': 'simple'},
+                           'blockcode': {'text:style-name': 'CodeBlock'},
+                           'code': {'text:style-name': 'Code'},
+                           'em': {'text:style-name': 'Italic'},
+                           'h1': {'text:style-name': 'H1',
+                                  'text:outline-level': '1'},
+                           'h2': {'text:style-name': 'H2',
+                                  'text:outline-level': '2'},
+                           'h3': {'text:style-name': 'H3',
+                                  'text:outline-level': '3'},
+                           'h4': {'text:style-name': 'H4',
+                                  'text:outline-level': '4'},
+                           'h5': {'text:style-name': 'H5',
+                                  'text:outline-level': '5'},
+                           'h6': {'text:style-name': 'H6',
+                                  'text:outline-level': '6'},
+                           'hr': {'text:style-name': 'HR'},
+                           'inf': {'text:style-name': 'Inf'},
+                           'ol': {'text:style-name': 'ListStructureNumeric',
+                                  'text:continue-numbering': 'true'},
+                           'p': {'text:style-name': '#'},
+                           'span': {'text:style-name': '#class'},
+                           'strike': {'text:style-name': 'Strike'},
+                           'strong': {'text:style-name': 'Bold'},
+                           'sup': {'text:style-name': 'Sup'},
+                           'table': {'table:style-name': 'Table'},
+                           'td': {'table:style-name': 'TableCell'},
+                           'th': {'table:style-name': 'TableCell'},
+                           'ul': {'text:style-name': 'ListStructure',
+                                  'text:continue-numbering': 'true'}}
+        self.noclosing = ['br', 'hr']
+        self.extras = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
+                       'td': ('<text:p>', '</text:p>'),
+                       'th': ('<text:p>', '</text:p>')}
+        self.tag_path = []
+        self.table_descriptors = []
+        self.blockquote_on = False
+        self.blockcode_on = False
+        self.has_code = False
+        self.odt = ''
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+
+        # Rules
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        # ... no imbricated paragraphs
+        if tag == lastTag == 'p':
+            return
+        # ... list item should be enclosed by <p>
+        elif tag != 'p' and lastTag == 'li':
+            self.tag_path.append('p')
+            self.odt += '<%s>' % self.maps['p']
+        # ... subitems should close <p>
+        elif tag in ['ul', 'ol'] and lastTag == 'p':
+            self.tag_path.pop()
+            self.odt += '</%s>' % self.maps['p']
+        del lastTag
+
+        # Identify the new tag
+        self.tag_path.append(tag)
+        if tag == 'blockquote':
+            self.blockquote_on = True
+        if tag == 'blockcode':
+            self.blockcode_on = True
+            self.has_code = True
+
+        # Mapping of the tag
+        if tag not in self.maps:
+            self.odt += '<text:p text:style-name="Error">Unknown tag \'%s\'</text:p>' % tag
+        else:
+            if self.maps[tag] is not None:
+                self.odt += '<' + self.maps[tag]
+                if tag in self.attributes:
+                    for property in self.attributes[tag]:
+                        property_value = self.attributes[tag][property]
+                        if property_value[:1] != '#':
+                            self.odt += ' %s="%s"' % (property, escape(property_value))
+                        else:
+                            property_value = property_value[1:]
+                            if tag == 'p':
+                                if self.blockquote_on:
+                                    self.odt += ' text:style-name="Blockquote"'
+                                    break
+                            else:
+                                for key, value in attrs:
+                                    if key == property_value:
+                                        # Fix the base URL for the links
+                                        if tag == 'a':
+                                            if value[:1] in ['/']:
+                                                value = self.baseUrl + value
+                                            elif value[:1] in ['?', '#', '.']:
+                                                value = '%s/%s/%s%s' % (self.baseUrl, self.project, self.page, value)
+                                            elif value[:2] == './' or value[:3] == '../':
+                                                value = '%s/%s/%s/%s' % (self.baseUrl, self.project, self.page, value)
+
+                                        # Fix the class name for the syntax highlight
+                                        if tag == 'span' and self.blockcode_on and key == 'class':
+                                            value = 'Code_' + value
+
+                                        self.odt += ' %s="%s"' % (property, escape(value))
+                                        break
+                if tag in self.noclosing:
+                    self.odt += '/'
+                self.odt += '>'
+
+                # Handle the column descriptors of the tables
+                if tag == 'table':
+                    self.table_descriptors.append({'cursor': len(self.odt),
+                                                   'count': 0,
+                                                   'max': 0})
+                if tag in ['th', 'td']:
+                    self.table_descriptors[-1]['count'] += 1
+
+        # Append the extras markups
+        if tag in self.extras:
+            self.odt += self.extras[tag][0]
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+
+        # Rules
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        # ... no imbricated paragraphs
+        if tag == 'p' and lastTag != 'p':
+            return
+        # ... list item should be enclosed by <p>
+        elif tag == 'li' and lastTag == 'p':
+            self.tag_path.pop()
+            self.odt += '</%s>' % self.maps['p']
+        del lastTag
+
+        # Identify the tag
+        assert(self.tag_path[-1] == tag)
+        self.tag_path.pop()
+
+        # Automatic extra tags
+        if tag in self.extras:
+            self.odt += self.extras[tag][1]
+
+        # Final mapping
+        if tag in self.maps:
+            if tag not in self.noclosing:
+                if tag == 'blockquote':
+                    self.blockquote_on = False
+                if tag == 'blockcode':
+                    self.blockcode_on = False
+                if self.maps[tag] is not None:
+                    self.odt += '</%s>' % self.maps[tag]
+
+                    # Handle the descriptors of the tables
+                    if tag == 'tr':
+                        self.table_descriptors[-1]['max'] = max(self.table_descriptors[-1]['count'],
+                                                                self.table_descriptors[-1]['max'])
+                        self.table_descriptors[-1]['count'] = 0
+                    if tag == 'table':
+                        cursor = self.table_descriptors[-1]['cursor']
+                        self.odt = (self.odt[:cursor]
+                                    + '<table:table-columns>'
+                                    + ''.join(['<table:table-column/>' for _ in range(self.table_descriptors[-1]['max'])])
+                                    + '</table:table-columns>'
+                                    + self.odt[cursor:])
+                        self.table_descriptors.pop()
+
+    def handle_data(self, data):
+        # List item should be enclosed by <p>
+        if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
+            self.tag_path.append('p')
+            self.odt += '<%s>' % self.maps['p']
+        # Text alignment for the code
+        if self.blockcode_on:
+            data = data.replace('\r', '')
+            data = data.replace('\n', '<text:line-break/>')
+            data = data.replace('\t', '<text:tab/>')
+            data = data.replace(' ', '<text:s/>')
+        # Default behavior
+        self.odt += data

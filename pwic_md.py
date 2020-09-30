@@ -1441,7 +1441,7 @@ class Markdown(object):
                         curr_pos = start_idx + len(result)
                         text = text[:start_idx] + result + text[url_end_idx:]
                     elif start_idx >= anchor_allowed_pos:
-                        # --
+                        # -- PWIC
                         # safe_link = self._safe_protocols.match(url) or url.startswith('#')
                         # ++
                         safe_link = True
