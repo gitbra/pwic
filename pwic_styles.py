@@ -1,4 +1,8 @@
 
+# ===============================
+#  Helper for the export to HTML
+# ===============================
+
 class pwic_styles_html:
     def __init__(self):
         self.mime = 'text/html'
@@ -26,6 +30,10 @@ class pwic_styles_html:
                 content = f.read()
             return '<style>%s</style>' % content
 
+
+# =======================================
+#  Helper for the export to OpenDocument
+# =======================================
 
 class pwic_styles_odt:
     def __init__(self):
@@ -58,7 +66,7 @@ class pwic_styles_odt:
 </office:meta>
 </office:document-meta>'''
 
-        # Warning: column strings matter
+        # Warning: column position matters
         self.styles_code = ['<style:style style:name="Code_hll" style:display-name="Code HLL" style:family="text" style:parent-style-name="Normal"><style:text-properties fo:background-color="#ffffcc"/></style:style>',
                             '<style:style style:name="Code_c"   style:display-name="Code C"   style:family="text" style:parent-style-name="Normal"><style:text-properties fo:color="#888888"/></style:style>',
                             '<style:style style:name="Code_err" style:display-name="Code ERR" style:family="text" style:parent-style-name="Normal"><style:text-properties fo:color="#a61717" fo:background-color="#e3d2d2"/></style:style>',
@@ -187,7 +195,8 @@ class pwic_styles_odt:
                      style:default-outline-level="1">
             <style:paragraph-properties fo:break-before="page"
                                         fo:margin-top="12pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="0cm"/>
             <style:text-properties fo:font-size="24pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -198,7 +207,8 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="2">
             <style:paragraph-properties fo:margin-top="9pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="1cm"/>
             <style:text-properties fo:font-size="20pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -209,7 +219,8 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="3">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="2cm"/>
             <style:text-properties fo:font-size="16pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -220,7 +231,8 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="4">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="3cm"/>
             <style:text-properties fo:font-size="12pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -231,7 +243,8 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="5">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="4cm"/>
             <style:text-properties fo:font-size="12pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -242,7 +255,8 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="6">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt"
+                                        fo:margin-left="5cm"/>
             <style:text-properties fo:font-size="12pt"
                                    fo:font-weight="bold"/>
         </style:style>

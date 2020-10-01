@@ -6,11 +6,11 @@ from prettytable import PrettyTable
 import re
 import datetime
 import os
-from os.path import isfile
+from os.path import isdir, isfile
 from shutil import copyfile
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     _dt, _sha256, _safeName, pwic_audit
@@ -78,11 +78,23 @@ def main():
 
 
 def db_connect():
-    return sqlite3.connect(PWIC_DB_SQLITE).cursor()
+    if not isfile(PWIC_DB_SQLITE):
+        print('Error: the database is not created yet')
+        return None
+    try:
+        return sqlite3.connect(PWIC_DB_SQLITE).cursor()
+    except sqlite3.OperationalError:
+        print('Error: the database cannot be opened')
+        return None
 
 
 def generate_ssl():
     # Ownership by https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
+
+    # Check the database
+    if not isdir(PWIC_DB):
+        print('Error: the database is not created yet')
+        return False
 
     # Imports
     from cryptography.hazmat.backends import default_backend
@@ -131,6 +143,8 @@ def generate_ssl():
 
 
 def init_db():
+    if not isdir(PWIC_DB):
+        os.mkdir(PWIC_DB)
     if isfile(PWIC_DB_SQLITE):
         print('Error: the database is already created')
     else:
@@ -289,6 +303,8 @@ def set_env(name, value):
 
     # Update the variable
     sql = db_connect()
+    if sql is None:
+        return False
     if value == '':
         sql.execute('DELETE FROM env WHERE key = ?', (name, ))
     else:
@@ -342,7 +358,7 @@ def show_mime():
 
 
 def create_backup():
-    # Check
+    # Check the database
     if not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
         return False
@@ -375,6 +391,8 @@ def create_project(project, description, admin):
 
     # Connect to the database
     sql = db_connect()
+    if sql is None:
+        return False
     dt = _dt()
 
     # Verify that the project does not exist yet
@@ -442,6 +460,8 @@ def create_project(project, description, admin):
 def delete_project(project):
     # Verify that the project exists yet
     sql = db_connect()
+    if sql is None:
+        return False
     project = _safeName(project)
     if sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
         print('Error: project does not exist')
@@ -489,6 +509,8 @@ def delete_project(project):
 def reset_password(user):
     # Check if the user is administrator
     sql = db_connect()
+    if sql is None:
+        return False
     user = _safeName(user, extra='')
     if user[:4] == 'pwic':
         print('Error: invalid user')
@@ -543,6 +565,8 @@ def show_log(dmin, dmax):
 
     # Select the data
     sql = db_connect()
+    if sql is None:
+        return False
     sql.execute(''' SELECT id, date, time, author, event, user,
                            project, page, revision, count, ip, string
                     FROM audit
@@ -581,6 +605,8 @@ def execute_sql():
 
                 # Execute
                 sql = db_connect()
+                if sql is None:
+                    return False
                 rownone = sql.execute(query).fetchone() is None
                 rowcount = sql.rowcount
                 pwic_audit(sql, {'author': PWIC_USER,

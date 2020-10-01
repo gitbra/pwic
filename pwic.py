@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader
 import sqlite3
 from difflib import HtmlDiff
 import zipfile
+from io import BytesIO
 import os
 import json
 import re
@@ -19,7 +20,7 @@ from html import escape
 import time
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
@@ -239,8 +240,8 @@ class PwicServer():
 
         # Show the requested page
         sql = app['sql'].cursor()
-        project = request.match_info.get('project', '')
-        page = request.match_info.get('page', PWIC_DEFAULT_PAGE)
+        project = _safeName(request.match_info.get('project', ''))
+        page = _safeName(request.match_info.get('page', PWIC_DEFAULT_PAGE))
         revision = _int(request.match_info.get('revision', 0))
         action = request.match_info.get('action', 'view')
         pwic = {'title': 'Wiki',
@@ -656,7 +657,7 @@ class PwicServer():
 
         # Fetch the information of the user
         sql = app['sql'].cursor()
-        userpage = request.match_info.get('userpage', None)
+        userpage = _safeName(request.match_info.get('userpage', None), extra='')
         sql.execute('SELECT initial FROM users WHERE user = ?', (userpage, ))
         row = sql.fetchone()
         if row is None:
@@ -776,7 +777,7 @@ class PwicServer():
 
         # Parse the query
         sql = app['sql'].cursor()
-        project = request.match_info.get('project', '')
+        project = _safeName(request.match_info.get('project', ''))
         terms = request.rel_url.query.get('q', '')
         query = pwic_search_parse(terms)
         if query is None:
@@ -926,7 +927,7 @@ class PwicServer():
 
         # Fetch the roles
         sql = app['sql'].cursor()
-        project = request.match_info.get('project', '')
+        project = _safeName(request.match_info.get('project', ''))
         sql.execute(''' SELECT a.user, c.initial, a.admin, a.manager,
                                a.editor, a.validator, a.reader, a.disabled
                         FROM roles AS a
@@ -968,7 +969,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Fetch the parameters
-        project = request.match_info.get('project', '')
+        project = _safeName(request.match_info.get('project', ''))
         sql = app['sql'].cursor()
 
         # Fetch the documents of the project
@@ -1056,7 +1057,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Check the authorizations
-        project = request.match_info.get('project', '')
+        project = _safeName(request.match_info.get('project', ''))
         sql = app['sql'].cursor()
         sql.execute(''' SELECT user
                         FROM roles
@@ -1085,8 +1086,8 @@ class PwicServer():
 
         # Fetch the pages
         sql = app['sql'].cursor()
-        project = request.match_info.get('project', '')
-        page = request.match_info.get('page', '')
+        project = _safeName(request.match_info.get('project', ''))
+        page = _safeName(request.match_info.get('page', ''))
         new_revision = _int(request.match_info.get('new_revision', ''))
         old_revision = _int(request.match_info.get('old_revision', ''))
         sql.execute(''' SELECT d.description,
@@ -1143,7 +1144,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
-        project = request.match_info.get('project', '')
+        project = _safeName(request.match_info.get('project', ''))
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -1164,8 +1165,8 @@ class PwicServer():
         folder_rev = 'revisions/'
         htmlStyles = pwic_styles_html()
         try:
-            zipname = PWIC_DB_SQLITE + '.zip'
-            zip = zipfile.ZipFile(zipname, mode='w', compression=zipfile.ZIP_DEFLATED)
+            inmemory = BytesIO()
+            zip = zipfile.ZipFile(inmemory, mode='w', compression=zipfile.ZIP_DEFLATED)
 
             # Pages of the project
             for page in pages:
@@ -1215,10 +1216,8 @@ class PwicServer():
                    request, commit=True)
 
         # Return the file
-        content = ''
-        with open(zipname, 'rb') as f:
-            content = f.read()
-        os.remove(zipname)
+        content = inmemory.getvalue()
+        inmemory.close()
         return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'Attachment;filename=%s.zip' % project}))
 
     async def document_get(self, request):
@@ -1764,7 +1763,6 @@ class PwicServer():
         # Initialization
         dt = _dt()
         baseUrl = self._readEnv(sql, 'base_url', '')
-        tmpname = PWIC_DB + '/' + _sha256('%s%s%s%s%s%s' % (project, page, user, dt['date'], dt['time'], str(os.urandom(16))), salt=False)[:16] + '.' + format
         endname = '%s_%s_rev%d.%s' % (project, page, row[0], format)
 
         # Format MD
@@ -1799,8 +1797,9 @@ class PwicServer():
             except Exception:
                 raise web.HTTPInternalServerError()
 
-            # Create the temporary ODT file
-            odt = zipfile.ZipFile(tmpname, mode='w', compression=zipfile.ZIP_DEFLATED)
+            # Create the ODT file in the memory
+            inmemory = BytesIO()
+            odt = zipfile.ZipFile(inmemory, mode='w', compression=zipfile.ZIP_DEFLATED)
             odt.writestr('mimetype', odtStyles.mime, compress_type=zipfile.ZIP_STORED, compresslevel=0)  # Must be the first file of the ZIP and not compressed
             odt.writestr('META-INF/manifest.xml', odtStyles.manifest)
             odt.writestr('meta.xml', odtStyles.meta % (PWIC_VERSION,
@@ -1814,13 +1813,11 @@ class PwicServer():
                                                        row[0]))
             odt.writestr('styles.xml', odtStyles.styles.replace('##', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
             odt.writestr('content.xml', odtStyles.content % odtGenerator.odt)
+            odt.close()
 
             # Return the file
-            odt.close()
-            buffer = ''
-            with open(tmpname, 'rb') as f:
-                buffer = f.read()
-            os.remove(tmpname)
+            buffer = inmemory.getvalue()
+            inmemory.close()
             return web.Response(body=buffer, headers=MultiDict({'Content-Type': odtStyles.mime,
                                                                 'Content-Disposition': 'Attachment;filename=%s' % endname}))
 
@@ -1838,7 +1835,7 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handlePost(request)
-        project = post.get('create_project', '')
+        project = _safeName(post.get('create_project', ''))
         newuser = _safeName(post.get('create_user', ''), extra='')
         if '' in [project, newuser] or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
@@ -1943,7 +1940,7 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handlePost(request)
-        project = post.get('project', '')
+        project = _safeName(post.get('project', ''))
         userpost = post.get('user', '')
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
@@ -2042,7 +2039,7 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handlePost(request)
-        project = post.get('project', '')
+        project = _safeName(post.get('project', ''))
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -2336,8 +2333,8 @@ class PwicServer():
 
         # Read the parameters
         post = await self._handlePost(request)
-        project = post.get('project', '')
-        page = post.get('page', '')
+        project = _safeName(post.get('project', ''))
+        page = _safeName(post.get('page', ''))
         if '' in [project, page]:
             raise web.HTTPBadRequest()
 
