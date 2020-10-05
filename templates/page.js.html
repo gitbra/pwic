@@ -27,7 +27,8 @@
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 										body:	action+'_project={{pwic.project|urlencode}}&' +
 												action+'_page={{pwic.page|urlencode}}&' +
-												action+'_revision={{pwic.revision|urlencode}}' })
+												action+'_revision={{pwic.revision|urlencode}}',
+										credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
 						throw Error(response.status + ' ' + response.statusText);
@@ -50,7 +51,8 @@
 									body:	'download_project={{pwic.project|urlencode}}&' +
 											'download_page={{pwic.page|urlencode}}&' +
 											'download_revision={{pwic.revision|urlencode}}&'+
-											'download_format=' + encodeURIComponent(format) })
+											'download_format=' + encodeURIComponent(format),
+									credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);
@@ -61,7 +63,10 @@
 						var dl = document.createElement('a');
 						dl.href = window.URL.createObjectURL(new Blob([blob], {type: blob.type}));
 						dl.download = filename;
+						document.body.appendChild(dl);	// Firefox
 						dl.click();
+						document.body.removeChild(dl);
+						window.URL.revokeObjectURL(dl.href);
 						return true;
 					});
 				}

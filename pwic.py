@@ -86,6 +86,9 @@ class PwicSession():
 # ===================================================
 
 class PwicServer():
+    def _commit(self):
+        app['sql'].commit()
+
     def _md2html(self, sql, markdown):
         ''' Convert the text from Markdown to HTML '''
         return pwic_extended_syntax(app['markdown'].convert(markdown),
@@ -1213,7 +1216,8 @@ class PwicServer():
         pwic_audit(sql, {'author': user,
                          'event': 'export-project',
                          'project': project},
-                   request, commit=True)
+                   request)
+        self._commit()
 
         # Return the file
         content = inmemory.getvalue()
@@ -1290,7 +1294,8 @@ class PwicServer():
             if user != PWIC_USER_ANONYMOUS:
                 pwic_audit(sql, {'author': user,
                                  'event': 'logon'},
-                           request, commit=True)
+                           request)
+                self._commit()
 
         # Final redirection
         raise web.HTTPFound('/' if ok else '/?failed')
@@ -1304,7 +1309,8 @@ class PwicServer():
             if user != PWIC_USER_ANONYMOUS:
                 pwic_audit(app['sql'].cursor(), {'author': user,
                                                  'event': 'logout'},
-                           request, commit=True)
+                           request)
+                self._commit()
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
     async def api_project_info(self, request):
@@ -1450,7 +1456,8 @@ class PwicServer():
                          'project': project,
                          'page': page,
                          'revision': revision},
-                   request, commit=True)
+                   request)
+        self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
     async def api_page_edit(self, request):
@@ -1553,7 +1560,7 @@ class PwicServer():
                               AND page      = ?
                               AND revision <= ?''',
                         (project, page, revision))
-            sql.execute('COMMIT')
+            self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
     async def api_page_validate(self, request):
@@ -1605,7 +1612,8 @@ class PwicServer():
                          'project': project,
                          'page': page,
                          'revision': revision},
-                   request, commit=True)
+                   request)
+        self._commit()
         raise web.HTTPOk()
 
     async def api_page_delete(self, request):
@@ -1718,7 +1726,7 @@ class PwicServer():
                            request)
 
         # Final
-        sql.execute('COMMIT')
+        self._commit()
         raise web.HTTPOk()
 
     async def api_page_export(self, request):
@@ -1791,6 +1799,8 @@ class PwicServer():
             html = self._md2html(sql, row[6])[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
             html = html.replace('</code></pre></div>', '</blockcode>')
+            html = html.replace('<pre><code>', '<blockcode>')
+            html = html.replace('</code></pre>', '</blockcode>')
             try:
                 odtGenerator = pwic_html2odt(baseUrl, project, page)
                 odtGenerator.feed(html)
@@ -1875,7 +1885,7 @@ class PwicServer():
                              'project': project,
                              'user': newuser},
                        request)
-        sql.execute('COMMIT')
+        self._commit()
 
         # Redirection
         if ok:
@@ -1921,7 +1931,7 @@ class PwicServer():
                                      'event': 'change-password',
                                      'user': user},
                                request)
-                sql.execute('COMMIT')
+                self._commit()
                 ok = True
 
         # Redirection
@@ -1985,7 +1995,8 @@ class PwicServer():
                                  'event': 'delete-user',
                                  'project': project,
                                  'user': userpost},
-                           request, commit=True)
+                           request)
+                self._commit()
                 return web.Response(text='OK', content_type='text/plain')
             else:
                 raise web.HTTPBadRequest()
@@ -2010,7 +2021,8 @@ class PwicServer():
                                  'event': '%s-%s' % ('grant' if newvalue == 'X' else 'ungrant', roles[roleid]),
                                  'project': project,
                                  'user': userpost},
-                           request, commit=True)
+                           request)
+                self._commit()
                 return web.Response(text=newvalue, content_type='text/plain')
 
     async def api_markdown(self, request):
@@ -2320,7 +2332,8 @@ class PwicServer():
                          'page': doc['page'],
                          'revision': current_revision,
                          'string': doc['filename']},
-                   request, commit=True)
+                   request)
+        self._commit()
         raise web.HTTPOk()
 
     async def api_document_list(self, request):
@@ -2413,7 +2426,8 @@ class PwicServer():
                          'project': project,
                          'page': page,
                          'string': filename},
-                   request, commit=True)
+                   request)
+        self._commit()
         raise web.HTTPOk()
 
     async def api_ping(self, request):
@@ -2449,8 +2463,8 @@ def main():
     sql = app['sql'].cursor()
     sql.execute('PRAGMA optimize')
     pwic_audit(sql, {'author': PWIC_USER,
-                     'event': 'start-server'},
-               commit=True)
+                     'event': 'start-server'})
+    app['sql'].commit()
     # ... PWIC
     app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies

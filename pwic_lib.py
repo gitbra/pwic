@@ -27,7 +27,7 @@ PWIC_SALT = ''    # Random string to secure the generated hashes for the passwor
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
-PWIC_REGEX_PAGE = r'\]\(\/([^\/#]+)\/([^\/#]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'
+PWIC_REGEX_PAGE = r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'
 PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
@@ -396,7 +396,7 @@ def pwic_extended_syntax(markdown, mask):
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql, object, request=None, commit=False):
+def pwic_audit(sql, object, request=None):
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = _dt()
@@ -416,8 +416,6 @@ def pwic_audit(sql, object, request=None, commit=False):
         tuple += (object[key], )
     sql.execute("INSERT INTO audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
     if sql.rowcount == 1:
-        if commit:
-            sql.execute('COMMIT')
         return True
     else:
         assert(False)

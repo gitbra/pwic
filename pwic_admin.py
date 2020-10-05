@@ -16,6 +16,9 @@ from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUME
     _dt, _sha256, _safeName, pwic_audit
 
 
+db = None
+
+
 def main():
     # Prepare the command line
     parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console')
@@ -78,14 +81,22 @@ def main():
 
 
 def db_connect():
+    global db
     if not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
         return None
     try:
-        return sqlite3.connect(PWIC_DB_SQLITE).cursor()
+        db = sqlite3.connect(PWIC_DB_SQLITE)
+        return db.cursor()
     except sqlite3.OperationalError:
         print('Error: the database cannot be opened')
         return None
+
+
+def db_commit():
+    global db
+    if db is not None:
+        db.commit()
 
 
 def generate_ssl():
@@ -134,8 +145,8 @@ def generate_ssl():
 
     # Final output
     pwic_audit(db_connect(), {'author': PWIC_USER,
-                              'event': 'ssl-regen'},
-               commit=True)
+                              'event': 'ssl-regen'})
+    db_commit()
     print('The certificates are generated:')
     print('- ' + PWIC_PRIVATE_KEY)
     print('- ' + PWIC_PUBLIC_KEY)
@@ -311,8 +322,8 @@ def set_env(name, value):
         sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
     pwic_audit(sql, {'author': PWIC_USER,
                      'event': '%sset-%s' % ('un' if value == '' else '', name),
-                     'string': value},
-               commit=True)
+                     'string': value})
+    db_commit()
     print('Variable updated')
     return True
 
@@ -447,7 +458,7 @@ def create_project(project, description, admin):
                      'revision': 1})
 
     # Finalization
-    sql.execute('COMMIT')
+    db_commit()
     print('The project is created:')
     print('- Project       : %s' % project)
     print('- Administrator : %s' % admin)
@@ -497,8 +508,8 @@ def delete_project(project):
         sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
         pwic_audit(sql, {'author': PWIC_USER,
-                         'event': 'delete-project'},
-                   commit=True)
+                         'event': 'delete-project'})
+        db_commit()
         print('Project "%s" is deleted' % project)
         return True
     else:
@@ -541,8 +552,8 @@ def reset_password(user):
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USER,
                          'event': 'reset-password',
-                         'user': user},
-                   commit=True)
+                         'user': user})
+        db_commit()
         ok = True
     if not ok:
         print('Error: unknown user')
@@ -611,8 +622,8 @@ def execute_sql():
                 rowcount = sql.rowcount
                 pwic_audit(sql, {'author': PWIC_USER,
                                  'event': 'execute-sql',
-                                 'string': query},
-                           commit=True)
+                                 'string': query})
+                db_commit()
                 print('\nFirst row is null = %s' % str(rownone))
                 print('Affected rows = %d' % rowcount)
                 return True

@@ -3,6 +3,7 @@
 #  Helper for the export to HTML
 # ===============================
 
+
 class pwic_styles_html:
     def __init__(self):
         self.mime = 'text/html'
@@ -34,6 +35,7 @@ class pwic_styles_html:
 # =======================================
 #  Helper for the export to OpenDocument
 # =======================================
+
 
 class pwic_styles_odt:
     def __init__(self):

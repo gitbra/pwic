@@ -212,7 +212,8 @@
 	async function edit_refresh_documents() {
 		var options = {	method: 'POST',
 						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}'};
+						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}',
+						credentials: 'same-origin' };
 		try {
 			var request = await fetch('/api/document/list', options);
 			if (request.ok)
@@ -262,7 +263,9 @@
 				form.append('content', files[i]);
 
 				// Request
-				fetch('/api/document/create', {method: 'POST', body: form})
+				fetch('/api/document/create', {	method: 'POST',
+												body: form,
+												credentials: 'same-origin' })
 					.then(function(response) {
 						if (response.status != 200)
 							throw Error(response.status + ' ' + response.statusText);
@@ -302,8 +305,8 @@
 											body:	'delete_project={{pwic.project|urlencode}}'+
 													'&delete_page={{pwic.page|urlencode}}' +
 													'&delete_id='+encodeURIComponent(id) +
-													'&delete_filename='+encodeURIComponent(filename)
-										})
+													'&delete_filename='+encodeURIComponent(filename),
+											credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
 						throw Error(response.status + ' ' + response.statusText);
