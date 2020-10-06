@@ -6,10 +6,10 @@
 		<div class="pwic_ph1">Connect to Pwic</div>
 	</header>
 
-	{% include 'logon.js.html' %}
-
 	<article>
-		<form id="logon_form" action="/api/logon" method="post">
+		<p class="pwic_error" id="logon_js">{{pwic.emojis.red_check}} Your browser is incompatible.</p>
+
+		<form id="logon_form" action="/api/logon?redirect" method="post">
 			<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" /></p>
 			<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="logon_password" name="logon_password" /></p>
 			<p>
@@ -18,6 +18,8 @@
 			</p>
 		</form>
 	</article>
+
+	{% include 'logon.js.html' %}
 {% endblock %}
 
 

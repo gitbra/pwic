@@ -306,7 +306,10 @@ def set_env(name, value):
             'no_export_project',
             'password_regex',
             'safe_mode',
-            'ssl']
+            'ssl',
+            'support_email',
+            'support_phone',
+            'support_url']
     if name not in keys:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
         return False

@@ -17,6 +17,7 @@ from ipaddress import ip_network, ip_address
 from bisect import insort, bisect_left
 from multidict import MultiDict
 from html import escape
+from base64 import b64encode
 import time
 
 from pwic_md import Markdown
@@ -89,6 +90,9 @@ class PwicServer():
     def _commit(self):
         app['sql'].commit()
 
+    def _rollback(self):
+        app['sql'].rollback()
+
     def _md2html(self, sql, markdown):
         ''' Convert the text from Markdown to HTML '''
         return pwic_extended_syntax(app['markdown'].convert(markdown),
@@ -106,6 +110,9 @@ class PwicServer():
             return PWIC_EMOJIS['server']
         else:
             return PWIC_EMOJIS['sheet']
+
+    def _attachmentName(self, name):
+        return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
     def _readEnv(self, sql, name, default=None):
         ''' Read a variable from the table ENV '''
@@ -215,8 +222,6 @@ class PwicServer():
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'anonymous_user': PWIC_USER_ANONYMOUS,
                              'language': 'en'}
-        ua = request.headers.get('User-Agent', '')
-        pwic['msie'] = 'Trident' in ua or 'MSIE' in ua  # Some JavaScript is not written for this obsolete web-browser
 
         # Environment variables
         sql = app['sql'].cursor()
@@ -1222,7 +1227,7 @@ class PwicServer():
         # Return the file
         content = inmemory.getvalue()
         inmemory.close()
-        return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'Attachment;filename=%s.zip' % project}))
+        return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'attachment; filename="%s"' % self._attachmentName(project + '.zip')}))
 
     async def document_get(self, request):
         ''' Download a document '''
@@ -1257,7 +1262,7 @@ class PwicServer():
         headers = {'Content-Type': row[2],
                    'Content-Length': str(row[3])}
         if request.rel_url.query.get('attachment', None) is not None:
-            headers['Content-Disposition'] = 'attachment; filename=%s' % row[1]
+            headers['Content-Disposition'] = 'attachment; filename="%s"' % self._attachmentName(row[1])
         return web.Response(body=content, headers=MultiDict(headers))
 
     async def api_logon(self, request):
@@ -1298,7 +1303,10 @@ class PwicServer():
                 self._commit()
 
         # Final redirection
-        raise web.HTTPFound('/' if ok else '/?failed')
+        if request.rel_url.query.get('redirect', None) is not None:
+            raise web.HTTPFound('/' if ok else '/?failed')
+        else:
+            raise web.HTTPOk() if ok else web.HTTPUnauthorized()
 
     async def api_logout(self, request):
         ''' API to log out '''
@@ -1323,7 +1331,7 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handlePost(request)
-        project = _safeName(post.get('create_project', ''))
+        project = _safeName(post.get('info_project', ''))
         if project == '':
             raise web.HTTPBadRequest()
         data = {}
@@ -1337,10 +1345,9 @@ class PwicServer():
                         FROM roles AS a
                             INNER JOIN pages AS b
                                 ON b.project = a.project
-                        WHERE a.project   = ?
-                          AND a.user      = ?
-                          AND a.validator = 'X'
-                          AND a.disabled  = ''
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ''
                         ORDER BY b.page, b.revision''',
                     (project, user))
         for row in sql.fetchall():
@@ -1482,7 +1489,7 @@ class PwicServer():
         protection = _x('edit_protection' in post)
         header = _x('edit_header' in post)
         dt = _dt()
-        if '' in [user, project, page, title]:
+        if '' in [user, project, page, title, comment]:
             raise web.HTTPBadRequest()
         if final:
             draft = ''
@@ -1709,7 +1716,7 @@ class PwicServer():
                     os.remove(fn)
                 except (OSError, FileNotFoundError):
                     if os.path.isfile(fn):
-                        sql.execute('ROLLBACK')
+                        self._rollback()
                         raise web.HTTPTemporaryRedirect('/%s/%s?failed' % (project, page))
 
             # Remove the index
@@ -1739,17 +1746,17 @@ class PwicServer():
 
         # Read the parameters
         post = await self._handlePost(request)
-        project = _safeName(post.get('download_project', ''))
-        page = _safeName(post.get('download_page', ''))
-        revision = _int(post.get('download_revision', 0))
-        format = post.get('download_format', '').lower()
+        project = _safeName(post.get('export_project', ''))
+        page = _safeName(post.get('export_page', ''))
+        revision = _int(post.get('export_revision', 0))
+        format = post.get('export_format', '').lower()
         if '' in [project, page, format]:
             raise web.HTTPBadRequest()
 
         # Read the selected revision
         sql = app['sql'].cursor()
         if self._readEnv(sql, 'no_export_page') is not None:
-            raise web.HTTPUnauthorized()
+            raise web.HTTPForbidden()
         sql.execute(''' SELECT b.revision, b.latest, b.author, b.date, b.time,
                                b.title, b.markdown, b.tags
                         FROM roles AS a
@@ -1766,17 +1773,17 @@ class PwicServer():
                     (page, revision, revision, project, user))
         row = sql.fetchone()
         if row is None:
-            raise web.HTTPNotFound()
+            raise web.HTTPUnauthorized()
 
         # Initialization
         dt = _dt()
         baseUrl = self._readEnv(sql, 'base_url', '')
-        endname = '%s_%s_rev%d.%s' % (project, page, row[0], format)
+        endname = self._attachmentName('%s_%s_rev%d.%s' % (project, page, row[0], format))
 
         # Format MD
         if format == 'md':
             return web.Response(body=row[6], headers=MultiDict({'Content-Type': 'text/markdown',
-                                                                'Content-Disposition': 'Attachment;filename=%s' % endname}))
+                                                                'Content-Disposition': 'attachment; filename="%s"' % endname}))
 
         # Format HTML
         elif format == 'html':
@@ -1790,7 +1797,7 @@ class PwicServer():
                                       self._md2html(sql, row[6])[0])
             html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
-                                                              'Content-Disposition': 'Attachment;filename=%s' % endname}))
+                                                              'Content-Disposition': 'attachment; filename="%s"' % endname}))
 
         # Format ODT
         elif format == 'odt':
@@ -1815,7 +1822,7 @@ class PwicServer():
             odt.writestr('meta.xml', odtStyles.meta % (PWIC_VERSION,
                                                        escape(row[5]),
                                                        escape(project), escape(page),
-                                                       ('<dc:keyword>%s</dc:keyword>' % escape(row[7])) if row[7] != '' else '',
+                                                       ('<meta:keyword>%s</meta:keyword>' % escape(row[7])) if row[7] != '' else '',
                                                        escape(row[2]),
                                                        escape(row[3]), escape(row[4]),
                                                        escape(user),
@@ -1829,7 +1836,7 @@ class PwicServer():
             buffer = inmemory.getvalue()
             inmemory.close()
             return web.Response(body=buffer, headers=MultiDict({'Content-Type': odtStyles.mime,
-                                                                'Content-Disposition': 'Attachment;filename=%s' % endname}))
+                                                                'Content-Disposition': 'attachment; filename="%s"' % endname}))
 
         # Other format
         else:
@@ -1950,11 +1957,11 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handlePost(request)
-        project = _safeName(post.get('project', ''))
-        userpost = post.get('user', '')
+        project = _safeName(post.get('user_project', ''))
+        userpost = post.get('user_name', '')
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
-            roleid = roles.index(post.get('role', ''))
+            roleid = roles.index(post.get('user_role', ''))
             delete = (roles[roleid] == 'delete')
         except ValueError:
             raise web.HTTPBadRequest()
@@ -2034,7 +2041,7 @@ class PwicServer():
 
         # Return the converted output
         post = await self._handlePost(request)
-        html, _ = self._md2html(app['sql'].cursor(), post.get('content', ''))
+        html, _ = self._md2html(app['sql'].cursor(), post.get('markdown_content', ''))
         return web.Response(text=html, content_type='text/plain')
 
     async def api_graph(self, request):
@@ -2047,11 +2054,11 @@ class PwicServer():
         session = PwicSession(request)
         user = await session.getUser()
         if user == '':
-            return await self._handleLogon(request)
+            raise web.HTTPUnauthorized()
 
         # Get the posted values
         post = await self._handlePost(request)
-        project = _safeName(post.get('project', ''))
+        project = _safeName(post.get('graph_project', ''))
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -2202,6 +2209,8 @@ class PwicServer():
                 if name is None:
                     continue
                 name = name.group(1)
+                if name[:9] == 'document_':
+                    name = name[9:]
                 if name not in ['project', 'page', 'content']:
                     continue
 
@@ -2346,8 +2355,8 @@ class PwicServer():
 
         # Read the parameters
         post = await self._handlePost(request)
-        project = _safeName(post.get('project', ''))
-        page = _safeName(post.get('page', ''))
+        project = _safeName(post.get('document_project', ''))
+        page = _safeName(post.get('document_page', ''))
         if '' in [project, page]:
             raise web.HTTPBadRequest()
 
@@ -2386,10 +2395,10 @@ class PwicServer():
 
         # Get the revision to delete
         post = await self._handlePost(request)
-        project = _safeName(post.get('delete_project', ''))
-        page = _safeName(post.get('delete_page', ''))
-        id = _int(post.get('delete_id', 0))
-        filename = _safeFileName(post.get('delete_filename', ''))
+        project = _safeName(post.get('document_project', ''))
+        page = _safeName(post.get('document_page', ''))
+        id = _int(post.get('document_id', 0))
+        filename = _safeFileName(post.get('document_filename', ''))
         if '' in [project, page, filename] or id == 0:
             raise web.HTTPBadRequest()
 
@@ -2433,8 +2442,14 @@ class PwicServer():
     async def api_ping(self, request):
         ''' Notify if the session is still alive '''
         session = PwicSession(request)
-        text = 'KO' if await session.getUser() == '' else 'OK'
-        return web.Response(text=text, content_type='text/plain')
+        if await session.getUser() == '':
+            raise web.HTTPUnauthorized()
+        else:
+            return web.Response(text='OK', content_type='text/plain')
+
+    async def api_swagger(self, request):
+        ''' Display the features of the API '''
+        return await self._handleOutput(request, 'page-swagger', {'title': 'API specification'})
 
 
 # ====================
@@ -2476,9 +2491,9 @@ def main():
     app.router.add_static('/static/', path='./static/')
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
-                    web.get('/api/project/info', app['pwic'].api_project_info),
+                    web.post('/api/project/info', app['pwic'].api_project_info),
                     web.post('/api/page/create', app['pwic'].api_page_create),
-                    web.post('/api/page/update', app['pwic'].api_page_edit),
+                    web.post('/api/page/edit', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),
                     web.post('/api/page/delete', app['pwic'].api_page_delete),
                     web.post('/api/page/export', app['pwic'].api_page_export),
@@ -2491,6 +2506,7 @@ def main():
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
                     web.post('/api/ping', app['pwic'].api_ping),
+                    web.get('/api', app['pwic'].api_swagger),
                     web.get('/special/logon', app['pwic']._handleLogon),
                     web.get('/special/help', app['pwic'].page_help),
                     web.get('/special/create-project', app['pwic'].page_help),

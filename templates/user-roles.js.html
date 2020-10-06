@@ -5,24 +5,30 @@
 		var element = document.getElementById('roles_tag_' + id);
 		if (element != null)
 		{
-			element.classList.toggle('pwic_hidden');			// Hide until the request is completed
-
-			var xhr = new XMLHttpRequest();
-			xhr.open('POST', '/api/roles');
-			xhr.send('project='+encodeURIComponent(project)+'&user='+encodeURIComponent(user)+'&role='+encodeURIComponent(role));
-			xhr.onload = function() {
-				setTimeout(function() {
-					if ((xhr.status == 200) && (element.type == 'checkbox'))
-						element.checked = (xhr.responseText == 'X');
-					if (xhr.responseText != 'OK')
-						element.classList.toggle('pwic_hidden');
-				}, 2000);
-			};
-			xhr.onerror = function() {
-				setTimeout(function() {
-					element.classList.toggle('pwic_hidden');	// Restore the visibility of the element
-				}, 2000);
-			};
+			element.classList.toggle('pwic_hidden');				// Hide until the request is completed
+			fetch('/api/roles', {	method: 'POST',
+									body:	'user_project='+encodeURIComponent(project) +
+											'&user_name='+encodeURIComponent(user) +
+											'&user_role='+encodeURIComponent(role),
+									credentials: 'same-origin' })
+				.then(function(response) {
+					if (response.status != 200)
+						throw Error(response.status + ' ' + response.statusText);
+					else
+						response.text().then(function (text) {
+							setTimeout(function() {
+								if (element.type == 'checkbox')
+									element.checked = (text == 'X');
+								if (text != 'OK')
+									element.classList.toggle('pwic_hidden');
+							}, 2000);
+						});
+				})
+				.catch(function(error) {
+					setTimeout(function() {
+						element.classList.toggle('pwic_hidden');	// Restore the visibility of the element
+					}, 2000);
+				});
 		}
 		return false;	// The element is updated async later
 	}

@@ -11,6 +11,22 @@
 			<span title="The page is protected">{{pwic.emojis.padlock}}</span>
 		</p>
 
+		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url %}
+			<h1>Support from your internal organization</h1>
+			<p>Your administrator has defined some possibilities to contact the support team. Please use them in priority:</p>
+			<ul>
+				{% if pwic.env.support_email %}
+				<li>By email: <a href="mailto:{{pwic.env.support_email|urlencode}}">{{pwic.env.support_email|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_phone %}
+				<li>By phone: <a href="tel:{{pwic.env.support_phone|urlencode}}">{{pwic.env.support_phone|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_url %}
+				<li>On a portal: <a href="{{pwic.env.support_url|urlencode}}">{{pwic.env.support_url|escape}}</a></li>
+				{% endif %}
+			</ul>
+			<p>Below is a generic explanation of all the features of Pwic.</p>
+		{% endif %}
 
 		<h1>Matrix of the authorizations</h1>
 		<table class="pwic_zebra">
@@ -38,6 +54,7 @@
 			<tr><td><a href="#help_searchdoc">{{pwic.emojis.glasses}}</a></td><td>Search across the documents</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_log_user">{{pwic.emojis.glasses}}</a></td><td>View the activity of a user</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
+			<tr><td><a href="#help_automate">{{pwic.emojis.glasses}}</a></td><td>Automate Pwic</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
 		</table>
 
 
@@ -117,6 +134,18 @@
 				<tr>
 					<td><code>ssl</code></td>
 					<td>Enable HTTPS for Pwic provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
+				</tr>
+				<tr>
+					<td><code>support_email</code></td>
+					<td>A user can write to this email address to get support.</td>
+				</tr>
+				<tr>
+					<td><code>support_phone</code></td>
+					<td>A user can call this phone number to get support.</td>
+				</tr>
+				<tr>
+					<td><code>support_url</code></td>
+					<td>Portal address that a user can use to find an extended help.</td>
 				</tr>
 			</table>
 
@@ -285,6 +314,11 @@
 		<p>Your own user page is mentionned in the footer.</p>
 
 
+		<h1 id="help_automate">Automate Pwic</h1>
+		<p>The web interface communicates with Pwic through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
+		<p>You can develop external robots in the limit of your permitted authorizations.</p>
+
+
 		<h1 id="help_licenses">Licenses</h1>
 		<p>Pwic relies on several external resources whose license is summarized in the following table:</p>
 		<table>
@@ -364,6 +398,11 @@
 				<td><a href="https://github.com/ariutta/svg-pan-zoom">SVG pan &amp; zoom</a></td>
 				<td>Library for JavaScript</td>
 				<td>BSD-2-Clause License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/swagger-api/swagger-ui">Swagger UI</a></td>
+				<td>Library for JavaScript</td>
+				<td>Apache-2.0 License</td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/mdaines/viz.js">Viz.js</a></td>

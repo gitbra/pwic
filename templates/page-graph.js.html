@@ -13,7 +13,7 @@
 		// Else first download
 		fetch('/api/graph', {	method: 'POST',
 								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-								body: 'project={{pwic.project|urlencode}}',
+								body: 'graph_project={{pwic.project|urlencode}}',
 								credentials: 'same-origin' })
 		.then(function(response) {
 			if (response.status != 200)
@@ -39,8 +39,8 @@
 		if (graph_cache == null)
 			return false;
 		var dl = document.createElement('a');
-		dl.href = 'data:text/vnd.graphviz;base64,' + btoa(graph_cache);
-		dl.download = '{{pwic.project|urlencode}}.gv';
+		dl.href = 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache)));
+		dl.download = '{{pwic.project|escape}}.gv';
 		document.body.appendChild(dl);	// Firefox
 		dl.click();
 		document.body.removeChild(dl);

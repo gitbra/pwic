@@ -191,7 +191,6 @@
 			var	ta = document.getElementById('edit_markdown'),
 				ss = ta.selectionStart,
 				se = ta.selectionEnd;
-
 			if (ss == se)
 			{
 				ta.value = ta.value.substring(0, ss) + "\t" + ta.value.substring(ss);
@@ -212,7 +211,7 @@
 	async function edit_refresh_documents() {
 		var options = {	method: 'POST',
 						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-						body: 'project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}',
+						body: 'document_project={{pwic.project|urlencode}}&document_page={{pwic.page|urlencode}}',
 						credentials: 'same-origin' };
 		try {
 			var request = await fetch('/api/document/list', options);
@@ -258,9 +257,9 @@
 			{
 				// Fields
 				var form = new FormData();
-				form.append('project', '{{pwic.project|escape}}');
-				form.append('page', '{{pwic.page|escape}}');
-				form.append('content', files[i]);
+				form.append('document_project', '{{pwic.project|escape}}');
+				form.append('document_page', '{{pwic.page|escape}}');
+				form.append('document_content', files[i]);
 
 				// Request
 				fetch('/api/document/create', {	method: 'POST',
@@ -272,7 +271,7 @@
 						else {
 							setTimeout(function() {
 								edit_refresh_documents();
-							}, 1000);
+							}, 2000);
 							alert(successText);
 						}
 					})
@@ -302,10 +301,10 @@
 		{
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body:	'delete_project={{pwic.project|urlencode}}'+
-													'&delete_page={{pwic.page|urlencode}}' +
-													'&delete_id='+encodeURIComponent(id) +
-													'&delete_filename='+encodeURIComponent(filename),
+											body:	'document_project={{pwic.project|urlencode}}'+
+													'&document_page={{pwic.page|urlencode}}' +
+													'&document_id='+encodeURIComponent(id) +
+													'&document_filename='+encodeURIComponent(filename),
 											credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
@@ -327,7 +326,7 @@
 
 	var edit_submittable = false;
 
-	function edit_submit(errorText, errorShutdown, errorPing) {
+	function edit_submit(errorText, errorPing) {
 		// Check the current values
 		edit_submittable = (document.getElementById('edit_title').value != '')
 						&& (document.getElementById('edit_comment').value != '');
@@ -336,35 +335,42 @@
 		else
 		{
 			// First ping-pong the server to make sure that the session is still valid
-			var xhr = new XMLHttpRequest();
-			xhr.open('POST', '/api/ping');
-			xhr.send();
-			xhr.onload = function() {
-				if ((xhr.status == 200) && (xhr.responseText == 'OK'))
-					// OK let's submit the modification to not lose the current work in progress
-					document.getElementById('edit_form').submit();
-				else
+			fetch('/api/ping', {method: 'POST',
+								credentials: 'same-origin' })
+				.then(function(response) {
+					if (response.status != 200)
+						throw Error(errorPing + ' ['+response.status+']');
+					else
+						response.text().then(function (text) {
+							if (text == 'OK')
+								// OK let's submit the modification to not lose the current work in progress
+								document.getElementById('edit_form').submit();
+							else
+								alert(errorPing);
+						});
+				})
+				.catch(function(error) {
 					alert(errorPing);
-			};
-			xhr.onerror = function() {
-				alert(errorShutdown);
-			};
+				});
 		}
 	}
 
 	function edit_preview(pageTitle, buttonTitle) {
 		var	ta = document.getElementById('edit_markdown'),
 			ss = ta.selectionStart,
-			se = ta.selectionEnd,
-			xhr = new XMLHttpRequest();
-		xhr.open('POST', '/api/markdown');
-		xhr.send('content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)));
-		xhr.onload = function() {
-			if ((xhr.status == 200) && (xhr.responseText != ''))
-			{
-				var page = window.open('');
-				page.document.title = pageTitle;
-				page.document.body.innerHTML = '\
+			se = ta.selectionEnd;
+		fetch('/api/markdown', {method: 'POST',
+								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+								body: 'markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+								credentials: 'same-origin' })
+			.then(function(response) {
+				if (response.status != 200)
+					throw Error(response.status + ' ' + response.statusText);
+				else
+					response.text().then(function (text) {
+						var page = window.open('');
+						page.document.title = pageTitle;
+						page.document.body.innerHTML = '\
 <html>\
 <head>\
 	<link rel="stylesheet" type="text/css" href="'+window.location.protocol+'//'+window.location.host+'/static/styles.css" />\
@@ -374,12 +380,15 @@
 		<p style="position:fixed; top:0px; right:0px; padding:15px">\
 			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" />\
 		<\/p>\
-		' + xhr.responseText + '\
+		' + text + '\
 	<\/article>\
 <\/body>\
 <\/html>';
-			}
-		};
+					});
+			})
+			.catch(function(error) {
+				alert(error);
+			});
 	}
 
 

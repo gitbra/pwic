@@ -49,8 +49,8 @@
 				{% endif %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 				{% if 'no_export_page' not in pwic.env %}
-					<a href="#" onclick="return page_download('md')">{{pwic.emojis.hammer}} MarkDown</a>
-					<a href="#" onclick="return page_download('odt')">{{pwic.emojis.memo}} OpenDocument</a>
+					<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} MarkDown</a>
+					<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} OpenDocument</a>
 				{% endif %}
 				{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
 					<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?', 'Function not available.')">{{pwic.emojis.validate}} Validate</a>

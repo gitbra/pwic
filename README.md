@@ -55,6 +55,7 @@ Copyright (C) Alexandre Bréard, 2020
 - [Python](https://github.com/python/cpython/) is released under Python Software Foundation License
 - [SQLite](https://www.sqlite.org) is released in the public domain
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License
+- [Swagger UI](https://github.com/swagger-api/swagger-ui) is released under Apache 2.0 License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
 
 

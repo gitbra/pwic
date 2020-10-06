@@ -1,0 +1,586 @@
+swagger: "2.0"
+info:
+  title: Pwic API reference
+  version: "1.0"
+  description:
+    The page lists all the available interfaces to interact with Pwic.
+    The authentication is managed through a cookie.
+tags:
+  - name: connection
+    description: Connection to the API
+  - name: document
+    description: Management of the documents
+  - name: page
+    description: Management of the pages
+  - name: project
+    description: Management of the project
+  - name: users
+    description: Management of the users
+paths:
+  /api/logon:
+    post:
+      summary: Connect to the server
+      tags:
+        - connection
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/html
+      parameters:
+        - in: query
+          name: redirect
+          type: string
+          description: Always redirect to the next screen
+          required: false
+        - in: formData
+          name: logon_user
+          type: string
+          description: Name of the user
+          required: true
+        - in: formData
+          name: logon_password
+          type: string
+          description: Password of the user
+          required: false
+      responses:
+        200:
+          description: Successful operation if no body, else redirected page from 302
+        302:
+          description: Redirection with the parameter ?failed if the credentials were
+        401:
+          description: Unsufficient authorizations rejected
+  /api/logout:
+    get:
+      summary: Disconnect from the server
+      description: The data of the session is contained in the cookie in an encrypted format. There is no real need to disconnect from the API if you destroy the identifier of your cookie.
+      tags:
+        - connection
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/html
+      responses:
+        200:
+          description: Resulting page
+  /api/document/create:
+    post:
+      summary: Attach a document to a page
+      tags:
+        - document
+      consumes:
+        # https://swagger.io/docs/specification/describing-request-body/multipart-requests/
+        - multipart/form-data
+      parameters:
+        # https://swagger.io/docs/specification/2-0/file-upload/
+        - in: formData
+          name: document_project
+          type: string
+          required: true
+        - in: formData
+          name: document_page
+          type: string
+          required: true
+        - in: formData
+          name: document_mime
+          type: string
+          required: false
+        - in: formData
+          name: document_content
+          type: file
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        413:
+          description: File size limits exceeded
+        415:
+          description: Failed MIME verification
+        500:
+          description: File incorrectly managed on the server (open a support ticket)
+        503:
+          description: Server maintenance ongoing, retry later
+  /api/document/delete:
+    post:
+      summary: Delete a document attached to a page
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: document_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: document_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: document_id
+          type: integer
+          description: Identifier of the document
+          required: true
+        - in: formData
+          name: document_filename
+          type: string
+          description: File name of the document to make sure that you delete the right document
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        500:
+          description: File incorrectly managed on the server (open a support ticket)
+  /api/document/list:
+    post:
+      summary: List the files attached to a page
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: document_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: document_page
+          type: string
+          description: Name of the page
+          required: true
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                filename:
+                  type: string
+                mime:
+                  type: string
+                mime_icon:
+                  type: string
+                size:
+                  type: string
+                hash:
+                  type: string
+                author:
+                  type: string
+                date:
+                  type: string
+                time:
+                  type: string
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/graph:
+    post:
+      summary: Generate the graph of a project
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/vnd.graphviz
+      parameters:
+        - in: formData
+          name: graph_project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/markdown:
+    post:
+      summary: Convert Markdown to HTML
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      parameters:
+        - in: formData
+          name: markdown_content
+          type: string
+          description: Content written in Markdown
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        401:
+          description: Unsufficient authorizations
+  /api/ping:
+    post:
+      summary: Ping the server to verify that it is up and not restarted
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      responses:
+        200:
+          description: Session still alive
+        401:
+          description: Session not active
+  /api/page/create:
+    post:
+      summary: Create a new page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: create_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: create_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: create_milestone
+          type: string
+          description: Planned milestone for the new page
+          required: false
+        - in: formData
+          name: create_ref_project
+          type: string
+          description: Reference project
+          required: false
+        - in: formData
+          name: create_ref_page
+          type: string
+          description: Reference page
+          required: false
+        - in: formData
+          name: create_ref_tags
+          type: string
+          description: Copy the tags of the reference page
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Incorrect processing
+        400:
+          description: Invalid parameters
+  /api/page/delete:
+    post:
+      summary: Delete the revision of a page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: delete_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: delete_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: delete_revision
+          type: integer
+          description: Revision of the page
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Internal error during the deletion of the attached documents
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or not found
+  /api/page/edit:
+    post:
+      summary: Create a new revision of a page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: edit_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: edit_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: edit_title
+          type: string
+          description: Title of the page
+          required: true
+        - in: formData
+          name: edit_markdown
+          type: string
+          description: Content of the page
+          required: false
+        - in: formData
+          name: edit_tags
+          type: string
+          description: Tags separated by a space
+          required: false
+        - in: formData
+          name: edit_comment
+          type: string
+          description: Explanation of the modification
+          required: true
+        - in: formData
+          name: edit_milestone
+          type: string
+          description: Planned milestone
+          required: false
+        - in: formData
+          name: edit_draft
+          type: string
+          description: Save as draft
+          required: false
+        - in: formData
+          name: edit_final
+          type: string
+          description: Save as final
+          required: false
+        - in: formData
+          name: edit_protection
+          type: string
+          description: Protect the page
+          required: false
+        - in: formData
+          name: edit_header
+          type: string
+          description: Attach the page to the headers
+          required: false
+      responses:
+        200:
+          description: OK with redirection
+        302:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/page/export:
+    post:
+      summary: Export a page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: export_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: export_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: export_revision
+          type: integer
+          description: Revision of the page
+          required: false
+        - in: formData
+          name: export_format
+          type: string
+          enum: [html, md, odt]
+          description: Format of the export
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or not found
+        403:
+          description: Disabled feature
+        415:
+          description: Invalid file format
+        500:
+          description: Failed export (open a support ticket)
+  /api/page/validate:
+    post:
+      summary: Validate the revision of a page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: validate_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: validate_page
+          type: string
+          description: Name of the page
+          required: true
+        - in: formData
+          name: validate_revision
+          type: integer
+          description: Revision of the page
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or not found
+  /api/project/info:
+    post:
+      summary: Details about the project
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: info_project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+  /api/roles:
+    post:
+      summary: Toggle or drop the role of a user for a project
+      tags:
+        - users
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      parameters:
+        - in: formData
+          name: user_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: user_name
+          type: string
+          description: Name of the user
+          required: true
+        - in: formData
+          name: user_role
+          type: string
+          enum: [admin, manager, editor, validator, reader, disabled, delete]
+          description: Role to toggle
+          required: true
+      responses:
+        200:
+          description: Successful operation, followed by the new value
+          schema:
+            type: string
+            enum: ["", "X", "OK"]
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/user/create:
+    post:
+      summary: Creation of a user
+      tags:
+        - users
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: create_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: create_user
+          type: string
+          description: Name of the user
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Failure of the operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/user/password/change:
+    post:
+      summary: Change the password of the logged user
+      tags:
+        - users
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: user_password_current
+          type: string
+          description: Current password
+          required: true
+        - in: formData
+          name: user_password_new1
+          type: string
+          description: New password
+          required: true
+        - in: formData
+          name: user_password_new2
+          type: string
+          description: New password (confirmation)
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Failure of the operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        500:
+          description: Invalid configuration of the server
