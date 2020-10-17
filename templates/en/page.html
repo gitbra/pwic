@@ -6,17 +6,15 @@
 		<div class="pwic_ph1">
 			<a href="/{% if pwic.page != 'home' %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a>
 		</div>
-		{% if pwic.links|count > 0 %}
-			<div class="pwic_tagbox">
-				{% for link in pwic.links %}
-					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
-				{% endfor %}
-				<div class="pwic_searchbox">
-					{{pwic.emojis.search}}
-					<input type="text" id="page_search" onkeypress="page_search()" />
-				</div>
+		<div class="pwic_tagbox">
+			{% for link in pwic.links %}
+				<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+			{% endfor %}
+			<div class="pwic_searchbox">
+				{{pwic.emojis.search}}
+				<input type="text" id="page_search" onkeypress="page_search()" />
 			</div>
-		{% endif %}
+		</div>
 	</header>
 
 	{% include 'page.js.html' %}
