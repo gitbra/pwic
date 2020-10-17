@@ -14,8 +14,10 @@ tags:
     description: Management of the pages
   - name: project
     description: Management of the project
-  - name: users
-    description: Management of the users
+  - name: server
+    description: Management of the server
+  - name: user
+    description: Management of the user
 paths:
   /api/logon:
     post:
@@ -46,9 +48,9 @@ paths:
         200:
           description: Successful operation if no body, else redirected page from 302
         302:
-          description: Redirection with the parameter ?failed if the credentials were
+          description: Redirection with the parameter ?failed if the credentials were rejected
         401:
-          description: Unsufficient authorizations rejected
+          description: Unsufficient authorizations
   /api/logout:
     get:
       summary: Disconnect from the server
@@ -190,62 +192,6 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/graph:
-    post:
-      summary: Generate the graph of a project
-      tags:
-        - page
-      consumes:
-        - application/x-www-form-urlencoded
-      produces:
-        - text/vnd.graphviz
-      parameters:
-        - in: formData
-          name: graph_project
-          type: string
-          description: Name of the project
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations
-  /api/markdown:
-    post:
-      summary: Convert Markdown to HTML
-      tags:
-        - page
-      consumes:
-        - application/x-www-form-urlencoded
-      produces:
-        - text/plain
-      parameters:
-        - in: formData
-          name: markdown_content
-          type: string
-          description: Content written in Markdown
-          required: false
-      responses:
-        200:
-          description: Successful operation
-        401:
-          description: Unsufficient authorizations
-  /api/ping:
-    post:
-      summary: Ping the server to verify that it is up and not restarted
-      tags:
-        - page
-      consumes:
-        - application/x-www-form-urlencoded
-      produces:
-        - text/plain
-      responses:
-        200:
-          description: Session still alive
-        401:
-          description: Session not active
   /api/page/create:
     post:
       summary: Create a new page
@@ -437,6 +383,26 @@ paths:
           description: Invalid file format
         500:
           description: Failed export (open a support ticket)
+  /api/page/markdown:
+    post:
+      summary: Convert Markdown to HTML
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      parameters:
+        - in: formData
+          name: markdown_content
+          type: string
+          description: Content written in Markdown
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        401:
+          description: Unsufficient authorizations
   /api/page/validate:
     post:
       summary: Validate the revision of a page
@@ -487,11 +453,120 @@ paths:
           description: Successful operation
         400:
           description: Invalid parameters
-  /api/roles:
+  /api/project/graph:
+    post:
+      summary: Generate the graph of a project
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/vnd.graphviz
+      parameters:
+        - in: formData
+          name: graph_project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/server/env:
+    post:
+      summary: Details about the environment variables
+      tags:
+        - server
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Successful operation
+        401:
+          description: Session not active
+  /api/server/ping:
+    post:
+      summary: Ping the server to verify that it is up and not restarted
+      tags:
+        - server
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      responses:
+        200:
+          description: Session still alive
+        401:
+          description: Session not active
+  /api/user/create:
+    post:
+      summary: Creation of a user
+      tags:
+        - user
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: create_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: create_user
+          type: string
+          description: Name of the user
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Failure of the operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/user/password/change:
+    post:
+      summary: Change the password of the logged user
+      tags:
+        - user
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: user_password_current
+          type: string
+          description: Current password
+          required: true
+        - in: formData
+          name: user_password_new1
+          type: string
+          description: New password
+          required: true
+        - in: formData
+          name: user_password_new2
+          type: string
+          description: New password (confirmation)
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        307:
+          description: Failure of the operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        500:
+          description: Invalid configuration of the server
+  /api/user/roles:
     post:
       summary: Toggle or drop the role of a user for a project
       tags:
-        - users
+        - user
       consumes:
         - application/x-www-form-urlencoded
       produces:
@@ -523,64 +598,3 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/user/create:
-    post:
-      summary: Creation of a user
-      tags:
-        - users
-      consumes:
-        - application/x-www-form-urlencoded
-      parameters:
-        - in: formData
-          name: create_project
-          type: string
-          description: Name of the project
-          required: true
-        - in: formData
-          name: create_user
-          type: string
-          description: Name of the user
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        307:
-          description: Failure of the operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations
-  /api/user/password/change:
-    post:
-      summary: Change the password of the logged user
-      tags:
-        - users
-      consumes:
-        - application/x-www-form-urlencoded
-      parameters:
-        - in: formData
-          name: user_password_current
-          type: string
-          description: Current password
-          required: true
-        - in: formData
-          name: user_password_new1
-          type: string
-          description: New password
-          required: true
-        - in: formData
-          name: user_password_new2
-          type: string
-          description: New password (confirmation)
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        307:
-          description: Failure of the operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations
-        500:
-          description: Invalid configuration of the server

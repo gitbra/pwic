@@ -335,8 +335,8 @@
 		else
 		{
 			// First ping-pong the server to make sure that the session is still valid
-			fetch('/api/ping', {method: 'POST',
-								credentials: 'same-origin' })
+			fetch('/api/server/ping', {	method: 'POST',
+										credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
 						throw Error(errorPing + ' ['+response.status+']');
@@ -359,10 +359,10 @@
 		var	ta = document.getElementById('edit_markdown'),
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
-		fetch('/api/markdown', {method: 'POST',
-								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-								body: 'markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
-								credentials: 'same-origin' })
+		fetch('/api/page/markdown', {	method: 'POST',
+										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+										body: 'markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+										credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);

@@ -88,9 +88,11 @@ class PwicSession():
 
 class PwicServer():
     def _commit(self):
+        ''' Commit the current transactions '''
         app['sql'].commit()
 
     def _rollback(self):
+        ''' Rollback the current transactions '''
         app['sql'].rollback()
 
     def _md2html(self, sql, markdown):
@@ -112,6 +114,7 @@ class PwicServer():
             return PWIC_EMOJIS['sheet']
 
     def _attachmentName(self, name):
+        ''' Return the file name for a proper download '''
         return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
     def _readEnv(self, sql, name, default=None):
@@ -232,10 +235,14 @@ class PwicServer():
         pwic['env'] = {}
         for row in sql.fetchall():
             pwic['env'][row[0]] = row[1]
+            if row[0] == 'max_document_size':
+                pwic['env']['max_document_size_str'] = _size2str(_int(row[1]))
+            if row[0] == 'max_project_size':
+                pwic['env']['max_project_size_str'] = _size2str(_int(row[1]))
 
         # Rendered template
         self._checkIP(request, sql)
-        template = app['jinja'].get_template('en/%s.html' % name)
+        template = app['jinja'].get_template('%s/%s.html' % (pwic['constants']['language'], name))
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
     async def page(self, request):
@@ -1321,6 +1328,33 @@ class PwicServer():
                 self._commit()
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
+    async def api_server_env(self, request):
+        ''' API to return the defined environment variables '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        if await session.getUser() == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the variables
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT key, value
+                        FROM env
+                        ORDER BY key''')
+        data = {}
+        for row in sql.fetchall():
+            data[row[0]] = row[1]
+
+        # Final result
+        return web.Response(text=json.dumps(data), content_type='application/json')
+
+    async def api_server_ping(self, request):
+        ''' Notify if the session is still alive '''
+        session = PwicSession(request)
+        if await session.getUser() == '':
+            raise web.HTTPUnauthorized()
+        else:
+            return web.Response(text='OK', content_type='text/plain')
+
     async def api_project_info(self, request):
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
@@ -1393,6 +1427,138 @@ class PwicServer():
 
         # Final result
         return web.Response(text=json.dumps(data), content_type='application/json')
+
+    async def api_project_graph(self, request):
+        ''' Draw the directed graph of the project
+            http://graphviz.org/pdf/dotguide.pdf
+            http://graphviz.org/Gallery/directed/go-package.html
+            http://viz-js.com
+        '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        user = await session.getUser()
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the posted values
+        post = await self._handlePost(request)
+        project = _safeName(post.get('graph_project', ''))
+        if project == '':
+            raise web.HTTPBadRequest()
+
+        # Fetch the pages
+        regex_page = re.compile(PWIC_REGEX_PAGE)
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON  b.project = a.project
+                                AND b.latest  = 'X'
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.manager  = 'X'
+                          AND a.disabled = ''
+                        ORDER BY b.project,
+                                 b.page''',
+                    (project, user, ))
+
+        # Map the pages
+        pages = []
+        maps = []
+
+        def _makeLink(fromProject, fromPage, toProject, toPage):
+            if (fromProject, fromPage) != (toProject, toPage):
+                tuple = (toProject, toPage, fromProject, fromPage)
+                pos = bisect_left(maps, tuple)
+                if pos >= len(maps) or maps[pos] != tuple:
+                    insort(maps, tuple)
+
+        def _getNodeID(project, page):
+            tuple = (project, page)
+            pos = bisect_left(pages, tuple)
+            if (pos >= len(pages)) or (pages[pos] != tuple):
+                insort(pages, tuple)
+                return _getNodeID(project, page)
+            else:
+                return 'n%d' % (pos + 1)
+
+        def _getNodeTitle(sql, project, page):
+            # TODO Possible technical improvement here to avoid selects in loops
+            sql.execute(''' SELECT title
+                            FROM pages
+                            WHERE project = ?
+                              AND page    = ?
+                              AND latest  = 'X' ''',
+                        (project, page))
+            row = sql.fetchone()
+            return '' if row is None else row[0]
+
+        for row in sql.fetchall():
+            # Reference the processed page
+            _getNodeID(row[0], row[1])
+            _makeLink('', '', row[0], row[1])
+
+            # Assign the bookmarks to the home page
+            if row[2] == 'X':
+                _makeLink(row[0], PWIC_DEFAULT_PAGE, row[0], row[1])
+
+            # Find the links to the other pages
+            subpages = regex_page.findall(row[3])
+            if subpages is not None:
+                for sp in subpages:
+                    _getNodeID(sp[0], sp[1])
+                    _makeLink(row[0], row[1], sp[0], sp[1])
+        if len(maps) == 0:
+            raise web.HTTPUnauthorized()
+
+        # Authorized projects of the user
+        sql.execute(''' SELECT project
+                        FROM roles
+                        WHERE user     = ?
+                          AND disabled = '' ''',
+                    (user, ))
+        authorized_projects = []
+        for row in sql.fetchall():
+            authorized_projects.append(row[0])
+
+        # Build the file for GraphViz
+        viz = 'digraph PWIC {\n'
+        lastProject = ''
+        for toProject, toPage, fromProject, fromPage in maps:
+            # Detection of a new project
+            changedProject = (toProject != lastProject)
+            if changedProject:
+                if lastProject != '':
+                    viz += '}\n'
+                lastProject = toProject
+                viz += 'subgraph cluster_%s {\n' % toProject
+                viz += 'label="%s";\n' % toProject.replace('"', '\\"')
+                if toProject in authorized_projects:
+                    viz += 'URL="/%s";\n' % toProject.replace('"', '\\"')
+
+                # Define all the nodes of the cluster
+                for project, page in pages:
+                    if project == toProject:
+                        title = _getNodeTitle(sql, project, page)
+                        if title != '' and project not in authorized_projects:
+                            title = '[No authorization]'
+                        viz += '%s [label="%s"; tooltip="%s"%s%s];\n' % \
+                               (_getNodeID(project, page),
+                                page.replace('"', '\\"'),
+                                title.replace('"', '\\"') if title != '' else '[The page does not exist]',
+                                ('; URL="/%s/%s"' % (project, page) if project in authorized_projects and title != '' else ''),
+                                ('; color=red' if title == '' else ''))
+
+            # Create the links in the cluster of the targeted node (else there is no box)
+            if '' not in [fromProject, fromPage]:
+                viz += '%s -> %s;\n' % (_getNodeID(fromProject, fromPage),
+                                        _getNodeID(toProject, toPage))
+
+        # Final output
+        if len(maps) > 0:
+            viz += '}\n'
+        viz += '}'
+        return web.Response(text=viz, content_type='text/vnd.graphviz')
 
     async def api_page_create(self, request):
         ''' API to create a new page '''
@@ -1569,6 +1735,18 @@ class PwicServer():
                         (project, page, revision))
             self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
+
+    async def api_page_markdown(self, request):
+        ''' Return the HTML corresponding to the posted Markdown '''
+        # Verify that the user is connected
+        session = PwicSession(request)
+        if await session.getUser() == '':
+            raise web.HTTPUnauthorized()
+
+        # Return the converted output
+        post = await self._handlePost(request)
+        html, _ = self._md2html(app['sql'].cursor(), post.get('markdown_content', ''))
+        return web.Response(text=html, content_type='text/plain')
 
     async def api_page_validate(self, request):
         ''' Validate the pages '''
@@ -1947,7 +2125,7 @@ class PwicServer():
         else:
             raise web.HTTPTemporaryRedirect('/special/user/%s?failed' % user)
 
-    async def api_roles(self, request):
+    async def api_user_roles(self, request):
         ''' Change the roles of a user '''
         # Verify that the user is connected
         session = PwicSession(request)
@@ -2031,150 +2209,6 @@ class PwicServer():
                            request)
                 self._commit()
                 return web.Response(text=newvalue, content_type='text/plain')
-
-    async def api_markdown(self, request):
-        ''' Return the HTML corresponding to the posted Markdown '''
-        # Verify that the user is connected
-        session = PwicSession(request)
-        if await session.getUser() == '':
-            raise web.HTTPUnauthorized()
-
-        # Return the converted output
-        post = await self._handlePost(request)
-        html, _ = self._md2html(app['sql'].cursor(), post.get('markdown_content', ''))
-        return web.Response(text=html, content_type='text/plain')
-
-    async def api_graph(self, request):
-        ''' Draw the directed graph of the project
-            http://graphviz.org/pdf/dotguide.pdf
-            http://graphviz.org/Gallery/directed/go-package.html
-            http://viz-js.com
-        '''
-        # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
-        if user == '':
-            raise web.HTTPUnauthorized()
-
-        # Get the posted values
-        post = await self._handlePost(request)
-        project = _safeName(post.get('graph_project', ''))
-        if project == '':
-            raise web.HTTPBadRequest()
-
-        # Fetch the pages
-        regex_page = re.compile(PWIC_REGEX_PAGE)
-        sql = app['sql'].cursor()
-        sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
-                        FROM roles AS a
-                            INNER JOIN pages AS b
-                                ON  b.project = a.project
-                                AND b.latest  = 'X'
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.manager  = 'X'
-                          AND a.disabled = ''
-                        ORDER BY b.project,
-                                 b.page''',
-                    (project, user, ))
-
-        # Map the pages
-        pages = []
-        maps = []
-
-        def _makeLink(fromProject, fromPage, toProject, toPage):
-            if (fromProject, fromPage) != (toProject, toPage):
-                tuple = (toProject, toPage, fromProject, fromPage)
-                pos = bisect_left(maps, tuple)
-                if pos >= len(maps) or maps[pos] != tuple:
-                    insort(maps, tuple)
-
-        def _getNodeID(project, page):
-            tuple = (project, page)
-            pos = bisect_left(pages, tuple)
-            if (pos >= len(pages)) or (pages[pos] != tuple):
-                insort(pages, tuple)
-                return _getNodeID(project, page)
-            else:
-                return 'n%d' % (pos + 1)
-
-        def _getNodeTitle(sql, project, page):
-            # TODO Possible technical improvement here to avoid selects in loops
-            sql.execute(''' SELECT title
-                            FROM pages
-                            WHERE project = ?
-                              AND page    = ?
-                              AND latest  = 'X' ''',
-                        (project, page))
-            row = sql.fetchone()
-            return '' if row is None else row[0]
-
-        for row in sql.fetchall():
-            # Reference the processed page
-            _getNodeID(row[0], row[1])
-            _makeLink('', '', row[0], row[1])
-
-            # Assign the bookmarks to the home page
-            if row[2] == 'X':
-                _makeLink(row[0], PWIC_DEFAULT_PAGE, row[0], row[1])
-
-            # Find the links to the other pages
-            subpages = regex_page.findall(row[3])
-            if subpages is not None:
-                for sp in subpages:
-                    _getNodeID(sp[0], sp[1])
-                    _makeLink(row[0], row[1], sp[0], sp[1])
-        if len(maps) == 0:
-            raise web.HTTPUnauthorized()
-
-        # Authorized projects of the user
-        sql.execute(''' SELECT project
-                        FROM roles
-                        WHERE user     = ?
-                          AND disabled = '' ''',
-                    (user, ))
-        authorized_projects = []
-        for row in sql.fetchall():
-            authorized_projects.append(row[0])
-
-        # Build the file for GraphViz
-        viz = 'digraph PWIC {\n'
-        lastProject = ''
-        for toProject, toPage, fromProject, fromPage in maps:
-            # Detection of a new project
-            changedProject = (toProject != lastProject)
-            if changedProject:
-                if lastProject != '':
-                    viz += '}\n'
-                lastProject = toProject
-                viz += 'subgraph cluster_%s {\n' % toProject
-                viz += 'label="%s";\n' % toProject.replace('"', '\\"')
-                if toProject in authorized_projects:
-                    viz += 'URL="/%s";\n' % toProject.replace('"', '\\"')
-
-                # Define all the nodes of the cluster
-                for project, page in pages:
-                    if project == toProject:
-                        title = _getNodeTitle(sql, project, page)
-                        if title != '' and project not in authorized_projects:
-                            title = '[No authorization]'
-                        viz += '%s [label="%s"; tooltip="%s"%s%s];\n' % \
-                               (_getNodeID(project, page),
-                                page.replace('"', '\\"'),
-                                title.replace('"', '\\"') if title != '' else '[The page does not exist]',
-                                ('; URL="/%s/%s"' % (project, page) if project in authorized_projects and title != '' else ''),
-                                ('; color=red' if title == '' else ''))
-
-            # Create the links in the cluster of the targeted node (else there is no box)
-            if '' not in [fromProject, fromPage]:
-                viz += '%s -> %s;\n' % (_getNodeID(fromProject, fromPage),
-                                        _getNodeID(toProject, toPage))
-
-        # Final output
-        if len(maps) > 0:
-            viz += '}\n'
-        viz += '}'
-        return web.Response(text=viz, content_type='text/vnd.graphviz')
 
     async def api_document_create(self, request):
         ''' API to create a new document '''
@@ -2439,14 +2473,6 @@ class PwicServer():
         self._commit()
         raise web.HTTPOk()
 
-    async def api_ping(self, request):
-        ''' Notify if the session is still alive '''
-        session = PwicSession(request)
-        if await session.getUser() == '':
-            raise web.HTTPUnauthorized()
-        else:
-            return web.Response(text='OK', content_type='text/plain')
-
     async def api_swagger(self, request):
         ''' Display the features of the API '''
         return await self._handleOutput(request, 'page-swagger', {'title': 'API specification'})
@@ -2491,21 +2517,22 @@ def main():
     app.router.add_static('/static/', path='./static/')
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
+                    web.post('/api/server/env', app['pwic'].api_server_env),
+                    web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/project/info', app['pwic'].api_project_info),
+                    web.post('/api/project/graph', app['pwic'].api_project_graph),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
+                    web.post('/api/page/markdown', app['pwic'].api_page_markdown),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),
                     web.post('/api/page/delete', app['pwic'].api_page_delete),
                     web.post('/api/page/export', app['pwic'].api_page_export),
                     web.post('/api/user/create', app['pwic'].api_user_create),
                     web.post('/api/user/password/change', app['pwic'].api_user_change_password),
-                    web.post('/api/roles', app['pwic'].api_roles),
-                    web.post('/api/markdown', app['pwic'].api_markdown),
-                    web.post('/api/graph', app['pwic'].api_graph),
+                    web.post('/api/user/roles', app['pwic'].api_user_roles),
                     web.post('/api/document/create', app['pwic'].api_document_create),
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
-                    web.post('/api/ping', app['pwic'].api_ping),
                     web.get('/api', app['pwic'].api_swagger),
                     web.get('/special/logon', app['pwic']._handleLogon),
                     web.get('/special/help', app['pwic'].page_help),

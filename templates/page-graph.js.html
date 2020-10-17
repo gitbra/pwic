@@ -11,10 +11,10 @@
 			return graph_download();
 
 		// Else first download
-		fetch('/api/graph', {	method: 'POST',
-								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-								body: 'graph_project={{pwic.project|urlencode}}',
-								credentials: 'same-origin' })
+		fetch('/api/project/graph', {	method: 'POST',
+										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+										body: 'graph_project={{pwic.project|urlencode}}',
+										credentials: 'same-origin' })
 		.then(function(response) {
 			if (response.status != 200)
 				throw Error(response.status + ' ' + response.statusText);

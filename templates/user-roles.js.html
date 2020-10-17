@@ -6,11 +6,11 @@
 		if (element != null)
 		{
 			element.classList.toggle('pwic_hidden');				// Hide until the request is completed
-			fetch('/api/roles', {	method: 'POST',
-									body:	'user_project='+encodeURIComponent(project) +
-											'&user_name='+encodeURIComponent(user) +
-											'&user_role='+encodeURIComponent(role),
-									credentials: 'same-origin' })
+			fetch('/api/user/roles', {	method: 'POST',
+										body:	'user_project='+encodeURIComponent(project) +
+												'&user_name='+encodeURIComponent(user) +
+												'&user_role='+encodeURIComponent(role),
+										credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
 						throw Error(response.status + ' ' + response.statusText);
