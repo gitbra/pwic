@@ -28,7 +28,8 @@ def main():
 
     subparsers.add_parser('init-db', help='Initialize the database once')
 
-    parser_env = subparsers.add_parser('set-env', help='Set a global value')
+    parser_env = subparsers.add_parser('set-env', help='Set a variable of configuration')
+    parser_env.add_argument('--project', default='', help='Name of the project (if project-dependent)')
     parser_env.add_argument('name', default='', help='Name of the variable')
     parser_env.add_argument('value', default='', help='Value of the variable')
 
@@ -60,7 +61,7 @@ def main():
     elif args.command == 'init-db':
         return init_db()
     elif args.command == 'set-env':
-        return set_env(args.name, args.value)
+        return set_env(args.project, args.name, args.value)
     elif args.command == 'show-mime':
         return show_mime()
     elif args.command == 'create-backup':
@@ -80,9 +81,9 @@ def main():
         return False
 
 
-def db_connect():
+def db_connect(init=False):
     global db
-    if not isfile(PWIC_DB_SQLITE):
+    if not init and not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
         return None
     try:
@@ -159,52 +160,53 @@ def init_db():
     if isfile(PWIC_DB_SQLITE):
         print('Error: the database is already created')
     else:
-        sql = db_connect()
+        sql = db_connect(init=True)
         if sql is None:
             print('Error: cannot create the database')
         else:
-            # Table AUDIT
+            # Table PROJECTS
             sql.execute('''
-CREATE TABLE "audit" (
-    "id" INTEGER NOT NULL,
-    "date" TEXT NOT NULL,
-    "time" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "event" TEXT NOT NULL,
-    "user" TEXT NOT NULL DEFAULT '',
-    "project" TEXT NOT NULL DEFAULT '',
-    "page" TEXT NOT NULL DEFAULT '',
-    "revision" INTEGER NOT NULL DEFAULT 0,
-    "string" TEXT NOT NULL DEFAULT '',
-    "ip" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("id" AUTOINCREMENT)
+CREATE TABLE "projects" (
+    "project" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    PRIMARY KEY("project")
 )''')
-            # Table DOCUMENTS
-            sql.execute('''
-CREATE TABLE "documents" (
-    "id" INTEGER NOT NULL,
-    "project" TEXT NOT NULL CHECK("project" <> ''),
-    "page" TEXT NOT NULL CHECK("page" <> ''),
-    "filename" TEXT NOT NULL CHECK("filename" <> ''),
-    "mime" TEXT NOT NULL CHECK("mime" <> ''),
-    "size" INTEGER NOT NULL CHECK("size" > 0),
-    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
-    "author" TEXT NOT NULL CHECK("author" <> ''),
-    "date" TEXT NOT NULL CHECK("date" <> ''),
-    "time" TEXT NOT NULL CHECK("time" <> ''),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
-    PRIMARY KEY("id" AUTOINCREMENT),
-    UNIQUE("project","filename")
-)''')
+            sql.execute("INSERT INTO projects (project, description) VALUES ('', '')")  # Empty projects.project
             # Table ENV
             sql.execute('''
 CREATE TABLE "env" (
+    "project" TEXT NOT NULL,    -- Don't default to '' else there is a unicity key for 'key'
     "key" TEXT NOT NULL,
     "value" TEXT NOT NULL,
-    PRIMARY KEY("key")
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    PRIMARY KEY("key","project")
 )''')
-            sql.execute("INSERT INTO env (key, value) VALUES ('safe_mode', 'X')")
+            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
+            # Table USERS
+            sql.execute('''
+CREATE TABLE "users" (
+    "user" TEXT NOT NULL,
+    "password" TEXT NOT NULL DEFAULT '',
+    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
+    PRIMARY KEY("user")
+)''')
+            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")  # Empty pages.valuser
+            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
+            # Table ROLES
+            sql.execute('''
+CREATE TABLE "roles" (
+    "project" TEXT NOT NULL,
+    "user" TEXT NOT NULL,
+    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
+    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
+    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
+    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
+    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
+    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    FOREIGN KEY("user") REFERENCES "users"("user"),
+    PRIMARY KEY("user","project")
+)''')
             # Table PAGES
             sql.execute('''
 CREATE TABLE "pages" (
@@ -232,44 +234,46 @@ CREATE TABLE "pages" (
     FOREIGN KEY("valuser") REFERENCES "users"("user"),
     FOREIGN KEY("project") REFERENCES "projects"("project")
 )''')
-            # Table PROJECTS
-            sql.execute('''
-CREATE TABLE "projects" (
-    "project" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    PRIMARY KEY("project")
-)''')
-            # Table ROLES
-            sql.execute('''
-CREATE TABLE "roles" (
-    "project" TEXT NOT NULL,
-    "user" TEXT NOT NULL,
-    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
-    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
-    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
-    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
-    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
-    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("user") REFERENCES "users"("user"),
-    PRIMARY KEY("user","project")
-)''')
-            # Table USERS
-            sql.execute('''
-CREATE TABLE "users" (
-    "user" TEXT NOT NULL,
-    "password" TEXT NOT NULL DEFAULT '',
-    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
-    PRIMARY KEY("user")
-)''')
-            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")  # Empty pages.valuser
-            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
             # Index for the pages
             sql.execute('''
 CREATE INDEX "pages_index" ON "pages" (
     "project" ASC,
     "page" ASC,
     "latest" ASC
+)''')
+            # Table DOCUMENTS
+            sql.execute('''
+CREATE TABLE "documents" (
+    "id" INTEGER NOT NULL,
+    "project" TEXT NOT NULL CHECK("project" <> ''),
+    "page" TEXT NOT NULL CHECK("page" <> ''),
+    "filename" TEXT NOT NULL CHECK("filename" <> ''),
+    "mime" TEXT NOT NULL CHECK("mime" <> ''),
+    "size" INTEGER NOT NULL CHECK("size" > 0),
+    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
+    "author" TEXT NOT NULL CHECK("author" <> ''),
+    "date" TEXT NOT NULL CHECK("date" <> ''),
+    "time" TEXT NOT NULL CHECK("time" <> ''),
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    FOREIGN KEY("author") REFERENCES "users"("user"),
+    PRIMARY KEY("id" AUTOINCREMENT),
+    UNIQUE("project","filename")
+)''')
+            # Table AUDIT
+            sql.execute('''
+CREATE TABLE "audit" (
+    "id" INTEGER NOT NULL,
+    "date" TEXT NOT NULL,
+    "time" TEXT NOT NULL,
+    "author" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "user" TEXT NOT NULL DEFAULT '',
+    "project" TEXT NOT NULL DEFAULT '',
+    "page" TEXT NOT NULL DEFAULT '',
+    "revision" INTEGER NOT NULL DEFAULT 0,
+    "string" TEXT NOT NULL DEFAULT '',
+    "ip" TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY("id" AUTOINCREMENT)
 )''')
             # No delete on AUDIT
             sql.execute('''
@@ -285,33 +289,44 @@ BEFORE UPDATE ON audit
 BEGIN
     SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
 END''')
+
+            # Trace
+            pwic_audit(sql, {'author': PWIC_USER,
+                             'event': 'init-db'})
+            db_commit()
             print('The database is created at "%s"' % PWIC_DB_SQLITE)
             return True
     return False
 
 
-def set_env(name, value):
+def set_env(project, name, value):
     # Check the keys
-    keys = ['base_url',
-            'cors',
-            'document_name_regex',
-            'heading_mask',
-            'ip_filter',
-            'maintenance',
-            'max_document_size',
-            'max_project_size',
-            'mde',
-            'mime_enforcement',
-            'no_export_page',
-            'no_export_project',
-            'password_regex',
-            'safe_mode',
-            'ssl',
-            'support_email',
-            'support_phone',
-            'support_url']
-    if name not in keys:
-        print('Error: the name of the variable must be one of "%s"' % ', '.join(keys))
+    project_independent = ['base_url',
+                           'cors',
+                           'ip_filter',
+                           'maintenance',
+                           'mime_enforcement',
+                           'password_regex',
+                           'safe_mode',
+                           'ssl']
+    project_dependent = ['css',
+                         'document_name_regex',
+                         'heading_mask',
+                         'mathjax',
+                         'max_document_size',
+                         'max_project_size',
+                         'mde',
+                         'no_export_page',
+                         'no_export_project',
+                         'support_email',
+                         'support_phone',
+                         'support_url']
+    merged = sorted(project_independent + project_dependent)
+    if name not in merged:
+        print('Error: the name of the variable must be one of "%s"' % ', '.join(merged))
+        return False
+    if project != '' and name in project_independent:
+        print('Error: this parameter is project-independent')
         return False
     value = value.strip()
 
@@ -320,14 +335,18 @@ def set_env(name, value):
     if sql is None:
         return False
     if value == '':
-        sql.execute('DELETE FROM env WHERE key = ?', (name, ))
+        sql.execute(''' DELETE FROM env
+                        WHERE project = ?
+                          AND key     = ?''',
+                    (project, name, ))
     else:
-        sql.execute('INSERT OR REPLACE INTO env (key, value) VALUES (?, ?)', (name, value))
+        sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, name, value))
     pwic_audit(sql, {'author': PWIC_USER,
                      'event': '%sset-%s' % ('un' if value == '' else '', name),
+                     'project': project,
                      'string': value})
     db_commit()
-    print('Variable updated')
+    print('Variable updated for the project "%s"' % project)
     return True
 
 
@@ -388,7 +407,7 @@ def create_backup():
             print('The uploaded documents remain in their place')
             return True
         else:
-            raise FileNotFoundError('File "%s" not created' % new)
+            raise FileNotFoundError('Error: file "%s" not created' % new)
     except Exception as e:
         print(str(e))
         return False
@@ -399,7 +418,7 @@ def create_project(project, description, admin):
     project = _safeName(project)
     description = description.strip()
     admin = _safeName(admin, extra='')
-    if project in ['api', 'special'] or '' in [project, description, admin] or admin[:4] == 'pwic':
+    if project in ['api', 'special'] or '' in [project, description, admin] or project[:4] == 'pwic' or admin[:4] == 'pwic':
         print('Error: invalid arguments')
         return False
 
@@ -412,7 +431,7 @@ def create_project(project, description, admin):
     # Verify that the project does not exist yet
     sql.execute('SELECT project FROM projects WHERE project = ?', (project, ))
     if sql.fetchone() is not None:
-        print('Error: project already exists')
+        print('Error: the project already exists')
         return False
 
     # Create the workspace for the documents of the project
@@ -477,8 +496,8 @@ def delete_project(project):
     if sql is None:
         return False
     project = _safeName(project)
-    if sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
-        print('Error: project does not exist')
+    if project == '' or sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
+        print('Error: the project "%s" does not exist' % project)
         return False
 
     # Confirm
@@ -506,6 +525,7 @@ def delete_project(project):
             return False
 
         # Delete
+        sql.execute('DELETE FROM env       WHERE project = ?', (project, ))
         sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
         sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
@@ -514,6 +534,7 @@ def delete_project(project):
                          'event': 'delete-project'})
         db_commit()
         print('Project "%s" is deleted' % project)
+        print('Warning: the file structure is now inconsistent with the old backups (if any)')
         return True
     else:
         print('Aborted')

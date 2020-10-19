@@ -220,7 +220,7 @@ def _x(value):
 
 def _xb(value):
     ''' Convert 'X' to a boolean '''
-    return True if value == 'X' else False
+    return value == 'X'
 
 
 def _int(value):

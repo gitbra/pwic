@@ -394,6 +394,10 @@ paths:
         - text/plain
       parameters:
         - in: formData
+          name: markdown_project
+          type: string
+          required: true
+        - in: formData
           name: markdown_content
           type: string
           description: Content written in Markdown

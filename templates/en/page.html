@@ -23,8 +23,8 @@
 	<article>
 		<div id="pwic_progression"></div>
 
-		{% if 'maintenance' in pwic.env %}
-			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance|escape}}</p>
+		{% if pwic.env.maintenance %}
+			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</p>
 		{% endif %}
 
 		<p class="pwic_action_bar">
@@ -46,7 +46,7 @@
 					<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 				{% endif %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
-				{% if 'no_export_page' not in pwic.env %}
+				{% if not pwic.env.no_export_page %}
 					<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} MarkDown</a>
 					<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} OpenDocument</a>
 				{% endif %}
@@ -233,13 +233,21 @@
 				<table>
 					<tr>
 						<th><a href="/special/help#help_setup">Key</a></th>
+						<th>Scope</th>
 						<th>Value</th>
 					</tr>
 
 					{% for key in pwic.env %}
 						<tr>
 							<td>{{key|escape}}</td>
-							<td>{{pwic.env[key]|escape}}</td>
+							<td>
+								{% if pwic.env[key].global %}
+									<span title="Global">{{pwic.emojis.globe}}</span>
+								{% else %}
+									<span title="Project-dependent">{{pwic.emojis.hammer}}</span>
+								{% endif %}
+							</td>
+							<td>{{pwic.env[key].value|escape}}</td>
 						</tr>
 					{% endfor %}
 				</table>

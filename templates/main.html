@@ -10,15 +10,32 @@
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 
 	{% if pwic.env.css %}
-		{% set list = pwic.env.css.split(';') %}
+		{% set list = pwic.env.css.value.split(';') %}
 		{% for css in list %}
 			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" />
 		{% endfor %}
 	{% endif %}
 
-	{% if pwic.env.mde %}
-		<link rel="stylesheet" href="/static/easymde.min.css" />
-		<script src="/static/easymde.min.js"></script>
+	{% if pwic.project != 'special' and pwic.page != 'help' %}
+		{% if pwic.env.mde %}
+			<link rel="stylesheet" href="/static/easymde.min.css" />
+			<script src="/static/easymde.min.js"></script>
+		{% endif %}
+
+		{% if pwic.env.mathjax %}
+			<script>
+				window.MathJax = {
+					tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+					svg: { fontCache: 'global' }
+				};
+				(function () {
+					var mathjax = document.createElement('script');
+					mathjax.src = '/static/mathjax.min.js';
+					mathjax.async = true;
+					document.head.appendChild(mathjax);
+				})();
+			</script>
+		{% endif %}
 	{% endif %}
 
 	<script>

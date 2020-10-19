@@ -52,8 +52,8 @@
 				<h2>Documents</h2>
 				<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
 					Drop the files here
-					{% if 'max_document_size_str' in pwic.env %}
-						(max: {{pwic.env.max_document_size_str}})
+					{% if pwic.env.max_document_size_str %}
+						(max: {{pwic.env.max_document_size_str.value}})
 					{% endif %}
 					and save immediately
 				</div>

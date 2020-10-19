@@ -49,6 +49,7 @@ Copyright (C) Alexandre Bréard, 2020
 - [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
 	- Pwic implements a modified version to support some types of link when the safe mode is activated
+- [MathJax](https://github.com/mathjax/MathJax-src) is released under Apache 2.0 License
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License

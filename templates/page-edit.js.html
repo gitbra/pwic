@@ -361,7 +361,8 @@
 			se = ta.selectionEnd;
 		fetch('/api/page/markdown', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: 'markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+										body:	'markdown_project={{pwic.project|urlencode}}'+
+												'markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
 										credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)

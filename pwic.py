@@ -95,10 +95,10 @@ class PwicServer():
         ''' Rollback the current transactions '''
         app['sql'].rollback()
 
-    def _md2html(self, sql, markdown):
+    def _md2html(self, sql, project, markdown):
         ''' Convert the text from Markdown to HTML '''
         return pwic_extended_syntax(app['markdown'].convert(markdown),
-                                    self._readEnv(sql, 'heading_mask', default='1.1.1.1.1.1.'))
+                                    self._readEnv(sql, project, 'heading_mask', default='1.1.1.1.1.1.'))
 
     def _mime2icon(self, mime):
         ''' Return the emojis that corresponds to the MIME '''
@@ -117,11 +117,16 @@ class PwicServer():
         ''' Return the file name for a proper download '''
         return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
-    def _readEnv(self, sql, name, default=None):
+    def _readEnv(self, sql, project, name, default=None):
         ''' Read a variable from the table ENV '''
         if sql is None:
             return None
-        row = sql.execute("SELECT value FROM env WHERE key = ? AND value <> ''", (name, )).fetchone()
+        query = "SELECT value FROM env WHERE project = ? AND key = ? AND value <> ''"
+        row = None
+        if project != '':
+            row = sql.execute(query, (project, name, )).fetchone()
+        if row is None:
+            row = sql.execute(query, ('', name, )).fetchone()
         return default if row is None else row[0]
 
     def _checkMime(self, obj):
@@ -161,7 +166,7 @@ class PwicServer():
         try:
             # Read the parameters
             ip = request.remote
-            mask = self._readEnv(sql, 'ip_filter')
+            mask = self._readEnv(sql, '', 'ip_filter')
             if mask in [None, '']:
                 return
             list = mask.split(';')
@@ -226,22 +231,30 @@ class PwicServer():
                              'anonymous_user': PWIC_USER_ANONYMOUS,
                              'language': 'en'}
 
-        # Environment variables
+        # Check the access by IP
         sql = app['sql'].cursor()
-        sql.execute(''' SELECT key, value
+        self._checkIP(request, sql)
+
+        # The project-dependent variables have the priority
+        sql.execute(''' SELECT project, key, value
                         FROM env
                         WHERE value <> ''
-                        ORDER BY key''')
+                          AND ( project = ?
+                             OR project = '' )
+                        ORDER BY key ASC,
+                                 project DESC''',
+                    (pwic.get('project', ''), ))
         pwic['env'] = {}
         for row in sql.fetchall():
-            pwic['env'][row[0]] = row[1]
-            if row[0] == 'max_document_size':
-                pwic['env']['max_document_size_str'] = _size2str(_int(row[1]))
-            if row[0] == 'max_project_size':
-                pwic['env']['max_project_size_str'] = _size2str(_int(row[1]))
+            (global_, key, value) = (row[0] == '', row[1], row[2])
+            if key not in pwic['env']:
+                pwic['env'][key] = {'value': value,
+                                    'global': global_}
+                if key in ['max_document_size', 'max_project_size']:
+                    pwic['env'][key + '_str'] = {'value': _size2str(_int(value)),
+                                                 'global': global_}
 
-        # Rendered template
-        self._checkIP(request, sql)
+        # Render the template
         template = app['jinja'].get_template('%s/%s.html' % (pwic['constants']['language'], name))
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
@@ -364,7 +377,7 @@ class PwicServer():
                     pwic['time'] = row[7]
                     pwic['title'] = row[8]
                     pwic['markdown'] = row[9]
-                    pwic['html'], pwic['tmap'] = self._md2html(sql, row[9])
+                    pwic['html'], pwic['tmap'] = self._md2html(sql, project, row[9])
                     pwic['hash'] = _sha256(row[9], salt=False)
                     pwic['tags'] = [] if row[10] == '' else row[10].split(' ')
                     pwic['valuser'] = row[11]
@@ -602,7 +615,10 @@ class PwicServer():
 
     async def page_help(self, request):
         ''' Serve the help page to any user '''
-        return await self._handleOutput(request, 'help', {'title': 'Help for Pwic'})
+        pwic = {'project': 'special',
+                'page': 'help',
+                'title': 'Help for Pwic'}
+        return await self._handleOutput(request, 'help', pwic)
 
     async def page_create(self, request):
         ''' Serve the page to create a new page '''
@@ -1155,11 +1171,11 @@ class PwicServer():
 
         # Verify that the export is authorized
         sql = app['sql'].cursor()
-        if self._readEnv(sql, 'no_export_project') is not None:
+        project = _safeName(request.match_info.get('project', ''))
+        if self._readEnv(sql, project, 'no_export_project') is not None:
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
-        project = _safeName(request.match_info.get('project', ''))
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -1197,7 +1213,7 @@ class PwicServer():
                                           page[0].replace('<', '&lt;').replace('>', '&gt;'),
                                           page[6].replace('<', '&lt;').replace('>', '&gt;'),
                                           htmlStyles.getCss(rel=True),
-                                          self._md2html(sql, page[7])[0])
+                                          self._md2html(sql, project, page[7])[0])
                 zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
                 if page[2] == 'X':
                     zip.writestr('%s.html' % page[0], html)
@@ -1743,9 +1759,15 @@ class PwicServer():
         if await session.getUser() == '':
             raise web.HTTPUnauthorized()
 
-        # Return the converted output
+        # Get the parameters
         post = await self._handlePost(request)
-        html, _ = self._md2html(app['sql'].cursor(), post.get('markdown_content', ''))
+        project = _safeName(post.get('markdown_project', ''))
+        content = post.get('markdown_content', '')
+        if project == '':
+            raise web.HTTPBadRequest()
+
+        # Return the converted output
+        html, _ = self._md2html(app['sql'].cursor(), project, content)
         return web.Response(text=html, content_type='text/plain')
 
     async def api_page_validate(self, request):
@@ -1933,7 +1955,7 @@ class PwicServer():
 
         # Read the selected revision
         sql = app['sql'].cursor()
-        if self._readEnv(sql, 'no_export_page') is not None:
+        if self._readEnv(sql, project, 'no_export_page') is not None:
             raise web.HTTPForbidden()
         sql.execute(''' SELECT b.revision, b.latest, b.author, b.date, b.time,
                                b.title, b.markdown, b.tags
@@ -1955,7 +1977,7 @@ class PwicServer():
 
         # Initialization
         dt = _dt()
-        baseUrl = self._readEnv(sql, 'base_url', '')
+        baseUrl = self._readEnv(sql, '', 'base_url', '')
         endname = self._attachmentName('%s_%s_rev%d.%s' % (project, page, row[0], format))
 
         # Format MD
@@ -1972,7 +1994,7 @@ class PwicServer():
                                       page.replace('<', '&lt;').replace('>', '&gt;'),
                                       row[5].replace('<', '&lt;').replace('>', '&gt;'),
                                       htmlStyles.getCss(rel=False),
-                                      self._md2html(sql, row[6])[0])
+                                      self._md2html(sql, project, row[6])[0])
             html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
                                                               'Content-Disposition': 'attachment; filename="%s"' % endname}))
@@ -1981,7 +2003,7 @@ class PwicServer():
         elif format == 'odt':
             # MD --> HTML --> ODT
             odtStyles = pwic_styles_odt()
-            html = self._md2html(sql, row[6])[0]
+            html = self._md2html(sql, project, row[6])[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
             html = html.replace('</code></pre></div>', '</blockcode>')
             html = html.replace('<pre><code>', '<blockcode>')
@@ -2096,7 +2118,7 @@ class PwicServer():
 
             # Verify the format of the new password
             sql = app['sql'].cursor()
-            mask = self._readEnv('password_regex', '')
+            mask = self._readEnv(sql, '', 'password_regex', '')
             if mask != '':
                 try:
                     if re.compile(mask).match(new1) is None:
@@ -2293,7 +2315,7 @@ class PwicServer():
         current_revision = row[0]
 
         # Verify the consistency of the filename
-        row = self._readEnv(sql, 'document_name_regex')
+        row = self._readEnv(sql, doc['project'], 'document_name_regex')
         if row is not None:
             try:
                 regex_doc = re.compile(row, re.VERBOSE)
@@ -2303,18 +2325,18 @@ class PwicServer():
                 raise web.HTTPBadRequest()
 
         # Verify the file type
-        if self._readEnv(sql, 'mime_enforcement') is not None:
+        if self._readEnv(sql, '', 'mime_enforcement') is not None:
             if not self._checkMime(doc):
                 raise web.HTTPUnsupportedMediaType()
 
         # Verify the maximal document size
-        maxsize = _int(self._readEnv(sql, 'max_document_size'))
+        maxsize = _int(self._readEnv(sql, doc['project'], 'max_document_size'))
         if maxsize != 0 and len(doc['content']) > maxsize:
             raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
 
         # Verify the maximal project size
         # ... is there a check ?
-        max_project_size = self._readEnv(sql, 'max_project_size')
+        max_project_size = self._readEnv(sql, doc['project'], 'max_project_size')
         if max_project_size is not None:
             max_project_size = _int(max_project_size)
             # ... current size of the project
@@ -2326,7 +2348,7 @@ class PwicServer():
                 raise web.HTTPRequestEntityTooLarge(max_project_size - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
 
         # Verify that there is no maintenance message that may prevent the file from being saved
-        if self._readEnv(sql, 'maintenance') is not None:
+        if self._readEnv(sql, '', 'maintenance') is not None:
             raise web.HTTPServiceUnavailable()
 
         # At last, verify that the document doesn't exist yet (not related to a given page)
@@ -2511,7 +2533,7 @@ def main():
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
     # ... Markdown parser
     app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike'],
-                               safe_mode=app['pwic']._readEnv(sql, 'safe_mode') is not None)
+                               safe_mode=app['pwic']._readEnv(sql, '', 'safe_mode') is not None)
 
     # Routes
     app.router.add_static('/static/', path='./static/')
@@ -2555,7 +2577,7 @@ def main():
                     web.get('/', app['pwic'].page)])
 
     # SSL
-    if app['pwic']._readEnv(sql, 'ssl') is None:
+    if app['pwic']._readEnv(sql, '', 'ssl') is None:
         https = None
     else:
         try:
@@ -2570,7 +2592,7 @@ def main():
             return False
 
     # CORS
-    if app['pwic']._readEnv(sql, 'cors') is None:
+    if app['pwic']._readEnv(sql, '', 'cors') is None:
         app['cors'] = None
     else:
         import aiohttp_cors
