@@ -18,7 +18,8 @@
 				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" />
-					<input type="button" value="S" title="~~ Stroke out ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
+					<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--')" />
+					<input type="button" value="S" title="~~ Strikethrough ~~" style="text-decoration: line-through" onclick="edit_decorate('~~')" />
 					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
 					<input type="button" value="Right" title="Shift to the right" onclick="edit_prepend('    ')" />
 

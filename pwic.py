@@ -2028,7 +2028,7 @@ class PwicServer():
                                                        escape(user),
                                                        escape(dt['date']), escape(dt['time']),
                                                        row[0]))
-            odt.writestr('styles.xml', odtStyles.styles.replace('##', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
+            odt.writestr('styles.xml', odtStyles.styles.replace('#styles-code#', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
             odt.writestr('content.xml', odtStyles.content % odtGenerator.odt)
             odt.close()
 
@@ -2532,7 +2532,7 @@ def main():
     app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
     # ... Markdown parser
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike'],
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'],
                                safe_mode=app['pwic']._readEnv(sql, '', 'safe_mode') is not None)
 
     # Routes

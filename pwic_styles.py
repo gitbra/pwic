@@ -360,8 +360,18 @@ class pwic_styles_odt:
                                          fo:padding-right="0.075in"
                                          fo:border="1px solid #000000"/>
         </style:style>
+        <style:style style:name="Underline"
+                     style:display-name="Underline"
+                     style:family="text"
+                     style:parent-style-name="Normal">
+            <style:text-properties style:text-underline-color="font-color"
+                                   style:text-underline-style="solid"
+                                   style:text-underline-mode="continuous"
+                                   style:text-underline-type="single"
+                                   style:text-underline-width="auto" />
+        </style:style>
 
-        ##
+        #styles-code#
 
         <text:list-style style:name="ListStructure"
                          style:display-name="List structure">
