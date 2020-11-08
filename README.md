@@ -41,6 +41,8 @@ Proprietary software
 Copyright (C) Alexandre Bréard, 2020
 
 - [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
+- [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License
+- [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
 - [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
 	- The file is version 2.11 and patched against the issue #217
@@ -63,8 +65,7 @@ Copyright (C) Alexandre Bréard, 2020
 ## Install
 
 - Install Python: `apt-get install python3`
-- Install the dependencies: `pip install aiohttp aiohttp-cors aiohttp-session jinja2 sqlite3 parsimonious PrettyTable pygments`
-	- Additionally `cryptography` is required if you want to generate your self-signed certificates
+- Install the dependencies: `pip install aiohttp aiohttp-cors aiohttp-session cryptography jinja2 parsimonious PrettyTable pygments`
 - Generate your self-signed SSL keys: `python pwic_admin.py ssl`
 - Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Initialize the SQLite database: `python pwic_admin.py init-db`

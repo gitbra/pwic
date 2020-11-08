@@ -199,7 +199,7 @@ class pwic_styles_odt:
                                         fo:margin-top="12pt"
                                         fo:margin-bottom="6pt"
                                         fo:margin-left="0cm"/>
-            <style:text-properties fo:font-size="24pt"
+            <style:text-properties fo:font-size="22pt"
                                    fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="H2"
@@ -223,7 +223,7 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt"
                                         fo:margin-left="2cm"/>
-            <style:text-properties fo:font-size="16pt"
+            <style:text-properties fo:font-size="18pt"
                                    fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="H4"
@@ -235,7 +235,7 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt"
                                         fo:margin-left="3cm"/>
-            <style:text-properties fo:font-size="12pt"
+            <style:text-properties fo:font-size="16pt"
                                    fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="H5"
@@ -247,7 +247,7 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt"
                                         fo:margin-left="4cm"/>
-            <style:text-properties fo:font-size="12pt"
+            <style:text-properties fo:font-size="14pt"
                                    fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="H6"
@@ -259,7 +259,7 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt"
                                         fo:margin-left="5cm"/>
-            <style:text-properties fo:font-size="12pt"
+            <style:text-properties fo:font-size="14pt"
                                    fo:font-weight="bold"/>
         </style:style>
 
@@ -349,6 +349,7 @@ class pwic_styles_odt:
                      style:display-name="Table"
                      style:family="table">
             <style:table-properties table:border-model="collapsing"
+                                    style:rel-width="100%"
                                     table:align="center"/>
         </style:style>
         <style:style style:name="TableCell"
@@ -359,6 +360,13 @@ class pwic_styles_odt:
                                          fo:padding-bottom="0in"
                                          fo:padding-right="0.075in"
                                          fo:border="1px solid #000000"/>
+        </style:style>
+        <style:style style:name="TableCellHeader"
+                     style:display-name="Table Cell Header"
+                     style:family="table-cell"
+                     style:parent-style-name="TableCell">
+            <style:table-cell-properties fo:background-color="#f0f0f0"/>
+            <style:text-properties fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="Underline"
                      style:display-name="Underline"

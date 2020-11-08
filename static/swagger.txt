@@ -452,6 +452,11 @@ paths:
           type: string
           description: Name of the project
           required: true
+        - in: formData
+          name: info_all
+          type: string
+          description: Include the old versions of a given page
+          required: false
       responses:
         200:
           description: Successful operation

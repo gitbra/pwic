@@ -9,6 +9,7 @@ import os
 from os.path import isdir, isfile
 from shutil import copyfile
 from stat import S_IREAD
+from importlib.metadata import PackageNotFoundError, version
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
@@ -27,6 +28,8 @@ def main():
     subparsers.add_parser('ssl', help='Generate self-signed certificates')
 
     subparsers.add_parser('init-db', help='Initialize the database once')
+
+    subparsers.add_parser('show-env', help='Show the current configuration')
 
     parser_env = subparsers.add_parser('set-env', help='Set a variable of configuration')
     parser_env.add_argument('--project', default='', help='Name of the project (if project-dependent)')
@@ -60,6 +63,8 @@ def main():
         return generate_ssl()
     elif args.command == 'init-db':
         return init_db()
+    elif args.command == 'show-env':
+        return show_env()
     elif args.command == 'set-env':
         return set_env(args.project, args.name, args.value)
     elif args.command == 'show-mime':
@@ -299,6 +304,42 @@ END''')
     return False
 
 
+def show_env():
+    # Package info
+    print('Python packages:\n')
+    tab = PrettyTable()
+    tab.field_names = ['Package', 'Version']
+    tab.align[tab.field_names[0]] = 'l'
+    tab.align[tab.field_names[1]] = 'r'
+    tab.header = True
+    tab.border = True
+    for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
+        try:
+            tab.add_row([package, version(package)])
+        except PackageNotFoundError:
+            pass
+    print(tab.get_string())
+
+    # Environment variables
+    print('\nProject-dependent Pwic variables:\n')
+    sql = db_connect()
+    if sql is None:
+        return False
+    sql.execute(''' SELECT project, key, value
+                    FROM env
+                    ORDER BY project, key''')
+    tab = PrettyTable()
+    tab.field_names = ['Project', 'Key', 'Value']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    tab.header = True
+    tab.border = True
+    for row in sql.fetchall():
+        tab.add_row([row[0], row[1], row[2]])
+    print(tab.get_string())
+    return True
+
+
 def set_env(project, name, value):
     # Check the keys
     project_independent = ['base_url',
@@ -309,7 +350,8 @@ def set_env(project, name, value):
                            'password_regex',
                            'safe_mode',
                            'ssl']
-    project_dependent = ['css',
+    project_dependent = ['api_expose_markdown',
+                         'css',
                          'document_name_regex',
                          'heading_mask',
                          'mathjax',

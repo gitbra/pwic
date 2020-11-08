@@ -168,7 +168,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['ps'], 'application/postscript', ['%!PS']),
               (['psd'], 'image/vnd.adobe.photoshop', None),
               (['pub'], 'application/vnd.ms-publisher', CFBF),
-              (['rar'], 'application/x-rar-compressed', None),
+              (['rar'], 'application/x-rar-compressed', ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01']),
               (['rss'], 'application/rss+xml', None),
               (['rtf'], 'application/msword', ['{\rtf1']),
               (['sti'], 'application/vnd.sun.xml.impress.template', None),
@@ -462,7 +462,7 @@ def pwic_search_parse(query):
         return None
     try:
         ast = Grammar(
-            r"""
+            r'''
             decl        = term*
             term        = space negate space comb
             comb        = individual / quoted
@@ -471,7 +471,7 @@ def pwic_search_parse(query):
             negate      = ~r"-?"
             individual  = ~r'[^\"|^\s]+'
             quoted      = ~r'\"[^\"]+\"'
-            """
+            '''
         ).parse(query.strip())
 
         # Extract the keywords
@@ -568,7 +568,7 @@ class pwic_html2odt(HTMLParser):
                            'sup': {'text:style-name': 'Sup'},
                            'table': {'table:style-name': 'Table'},
                            'td': {'table:style-name': 'TableCell'},
-                           'th': {'table:style-name': 'TableCell'},
+                           'th': {'table:style-name': 'TableCellHeader'},
                            'u': {'text:style-name': 'Underline'},
                            'ul': {'text:style-name': 'ListStructure',
                                   'text:continue-numbering': 'true'}}

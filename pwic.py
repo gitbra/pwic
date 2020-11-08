@@ -2,7 +2,7 @@
 
 import argparse
 from aiohttp import web, MultipartReader, hdrs
-from aiohttp_session import setup, get_session
+from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from urllib.parse import parse_qs, quote
 from jinja2 import Environment, FileSystemLoader
@@ -18,7 +18,6 @@ from bisect import insort, bisect_left
 from multidict import MultiDict
 from html import escape
 from base64 import b64encode
-import time
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
@@ -45,41 +44,8 @@ from pwic_styles import pwic_styles_html, pwic_styles_odt
 #                       https://docs.aiohttp.org/en/stable/multipart.html
 #   - Magic bytes       https://en.wikipedia.org/wiki/List_of_file_signatures
 #   - ODT               https://odfvalidator.org
+#   - Colors            https://www.w3schools.com/colors/colors_picker.asp
 # ===============
-
-
-# ===========================================================
-#  This class handles everything related to the HTTP session
-# ===========================================================
-
-class PwicSession():
-    def __init__(self, request):
-        ''' Constructor '''
-        self.request = request
-
-    async def destroy(self):
-        ''' Destroy the content of the session '''
-        session = await get_session(self.request)
-        if session is not None and 'data' in session:
-            del session['data']
-
-    def getDefaultData(self):
-        ''' Provide the default structure of the session '''
-        return {'user': '',
-                'stamp': time.time()}
-
-    async def getSession(self):
-        ''' Retrieve the data of the current session and initializes it by default if needed '''
-        session = await get_session(self.request)
-        assert(session is not None)
-        if 'data' not in session:
-            session['data'] = self.getDefaultData()
-        return session
-
-    async def getUser(self):
-        ''' Retrieve the logged user '''
-        session = await self.getSession()
-        return session['data']['user'] if session is not None else ''
 
 
 # ===================================================
@@ -207,6 +173,11 @@ class PwicServer():
         if koExcl or (hasIncl != okIncl):
             raise web.HTTPUnauthorized()
 
+    async def _suser(self, request):
+        ''' Retrieve the logged user '''
+        session = await get_session(request)
+        return session.get('user', '')
+
     async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
         result = {}
@@ -223,8 +194,7 @@ class PwicServer():
 
     async def _handleOutput(self, request, name, pwic):
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
-        session = PwicSession(request)
-        pwic['user'] = await session.getUser()
+        pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'version': PWIC_VERSION,
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
@@ -261,8 +231,7 @@ class PwicServer():
     async def page(self, request):
         ''' Serve the pages '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -623,8 +592,7 @@ class PwicServer():
     async def page_create(self, request):
         ''' Serve the page to create a new page '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -652,8 +620,7 @@ class PwicServer():
     async def user_create(self, request):
         ''' Serve the page to create a new user '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -681,8 +648,7 @@ class PwicServer():
     async def page_user(self, request):
         ''' Serve the page to view the profile of a user '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -801,8 +767,7 @@ class PwicServer():
     async def page_search(self, request):
         ''' Serve the search engine '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -951,8 +916,7 @@ class PwicServer():
     async def page_roles(self, request):
         ''' Serve the search engine '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -994,8 +958,7 @@ class PwicServer():
     async def page_links(self, request):
         ''' Serve the check of the links '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -1082,8 +1045,7 @@ class PwicServer():
     async def page_graph(self, request):
         ''' Serve the check of the links '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -1110,8 +1072,7 @@ class PwicServer():
     async def page_compare(self, request):
         ''' Serve the page that compare two revisions '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -1164,8 +1125,7 @@ class PwicServer():
     async def project_export(self, request):
         ''' Download the project as a zip file '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -1255,8 +1215,7 @@ class PwicServer():
     async def document_get(self, request):
         ''' Download a document '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return web.HTTPUnauthorized()
 
@@ -1290,10 +1249,6 @@ class PwicServer():
 
     async def api_logon(self, request):
         ''' API to log on people '''
-        # Destroy the current session
-        session = PwicSession(request)
-        await session.destroy()
-
         # IP check
         sql = app['sql'].cursor()
         self._checkIP(request, sql)
@@ -1315,40 +1270,43 @@ class PwicServer():
                     (user, pwd))
         if sql.fetchone()[0] > 0:
             ok = True
-            data = session.getDefaultData()
-            data['user'] = user
-            session = await session.getSession()
-            session['data'] = data
+            session = await new_session(request)
+            session['user'] = user
             if user != PWIC_USER_ANONYMOUS:
                 pwic_audit(sql, {'author': user,
                                  'event': 'logon'},
                            request)
                 self._commit()
 
-        # Final redirection
+        # Final redirection (do not use "raise")
         if request.rel_url.query.get('redirect', None) is not None:
-            raise web.HTTPFound('/' if ok else '/?failed')
+            return web.HTTPFound('/' if ok else '/?failed')
         else:
-            raise web.HTTPOk() if ok else web.HTTPUnauthorized()
+            return web.HTTPOk() if ok else web.HTTPUnauthorized()
 
     async def api_logout(self, request):
         ''' API to log out '''
-        session = PwicSession(request)
-        user = await session.getUser()
-        if user != '':
-            await session.destroy()
-            if user != PWIC_USER_ANONYMOUS:
-                pwic_audit(app['sql'].cursor(), {'author': user,
-                                                 'event': 'logout'},
-                           request)
-                self._commit()
+        # Logging the disconnection (not visible online) aims to not report a reader as inactive.
+        # Knowing that the session is encrypted in the cookie, the event does NOT guarantee that
+        # it is effectively destroyed by the user (his web browser generally does it). The session
+        # is fully lost upon server restart because a new key is generated.
+        user = await self._suser(request)
+        if user not in ['', PWIC_USER_ANONYMOUS]:
+            pwic_audit(app['sql'].cursor(), {'author': user,
+                                             'event': 'logout'},
+                       request)
+            self._commit()
+
+        # Destroy the session
+        session = await get_session(request)
+        session.invalidate()
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
     async def api_server_env(self, request):
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        if await session.getUser() == '':
+        user = await self._suser(request)
+        if user == '':
             raise web.HTTPUnauthorized()
 
         # Fetch the variables
@@ -1365,8 +1323,8 @@ class PwicServer():
 
     async def api_server_ping(self, request):
         ''' Notify if the session is still alive '''
-        session = PwicSession(request)
-        if await session.getUser() == '':
+        user = await self._suser(request)
+        if user == '':
             raise web.HTTPUnauthorized()
         else:
             return web.Response(text='OK', content_type='text/plain')
@@ -1374,8 +1332,7 @@ class PwicServer():
     async def api_project_info(self, request):
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1384,30 +1341,43 @@ class PwicServer():
         project = _safeName(post.get('info_project', ''))
         if project == '':
             raise web.HTTPBadRequest()
+        all = post.get('info_all', '') != ''
         data = {}
 
         # Fetch the pages
         sql = app['sql'].cursor()
+        exposeMD = self._readEnv(sql, project, 'api_expose_markdown', None) is not None
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.draft, b.final,
                                b.header, b.protection, b.author, b.date, b.time,
                                b.title, b.markdown, b.tags, b.comment, b.milestone,
                                b.valuser, b.valdate, b.valtime
                         FROM roles AS a
                             INNER JOIN pages AS b
-                                ON b.project = a.project
+                                ON  b.project = a.project
+                                AND b.latest IN ("%sX")
                         WHERE a.project  = ?
                           AND a.user     = ?
                           AND a.disabled = ''
-                        ORDER BY b.page, b.revision''',
+                        ORDER BY b.page ASC,
+                                 b.revision DESC''' % ('","' if all else '', ),
                     (project, user))
         for row in sql.fetchall():
             if row[0] not in data:
-                data[row[0]] = {'revisions': [], 'documents': []}
+                data[row[0]] = {'revisions': [],
+                                'documents': []}
             item = {}
-            for i, field in enumerate(['revision', 'latest', 'draft', 'final', 'header', 'protection', 'author', 'date', 'time', 'title', 'markdown', 'tags', 'comment', 'milestone', 'valuser', 'valdate', 'valtime']):
+            for i, field in enumerate(['revision', 'latest', 'draft', 'final', 'header',
+                                       'protection', 'author', 'date', 'time', 'title',
+                                       'markdown', 'tags', 'comment', 'milestone', 'valuser',
+                                       'valdate', 'valtime']):
                 i += 1
                 if field == 'markdown':
-                    item['hash'] = _sha256(row[i], salt=False)          # The content is not exposed but the corresponding hash
+                    if exposeMD:
+                        item[field] = row[i]
+                    item['hash'] = _sha256(row[i], salt=False)
+                elif field == 'tags':
+                    if row[i] != '':
+                        item[field] = row[i].split(' ')
                 else:
                     if not isinstance(row[i], str) or row[i] != '':
                         item[field] = row[i]
@@ -1451,8 +1421,7 @@ class PwicServer():
             http://viz-js.com
         '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1579,8 +1548,7 @@ class PwicServer():
     async def api_page_create(self, request):
         ''' API to create a new page '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1652,8 +1620,7 @@ class PwicServer():
     async def api_page_edit(self, request):
         ''' API to update an existing page '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1755,8 +1722,8 @@ class PwicServer():
     async def api_page_markdown(self, request):
         ''' Return the HTML corresponding to the posted Markdown '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        if await session.getUser() == '':
+        user = await self._suser(request)
+        if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the parameters
@@ -1773,8 +1740,7 @@ class PwicServer():
     async def api_page_validate(self, request):
         ''' Validate the pages '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1826,8 +1792,7 @@ class PwicServer():
     async def api_page_delete(self, request):
         ''' Delete a page upon administrative request '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -1939,8 +1904,7 @@ class PwicServer():
     async def api_page_export(self, request):
         ''' API to export a page '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -2045,8 +2009,7 @@ class PwicServer():
     async def api_user_create(self, request):
         ''' API to create a new user '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             return await self._handleLogon(request)
 
@@ -2103,8 +2066,7 @@ class PwicServer():
     async def api_user_change_password(self, request):
         ''' Change the password of the current user '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user[:4] in ['', 'pwic']:
             raise web.HTTPUnauthorized()
 
@@ -2150,8 +2112,7 @@ class PwicServer():
     async def api_user_roles(self, request):
         ''' Change the roles of a user '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -2235,8 +2196,7 @@ class PwicServer():
     async def api_document_create(self, request):
         ''' API to create a new document '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -2404,8 +2364,7 @@ class PwicServer():
     async def api_document_list(self, request):
         ''' Return the list of the attached documents '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
@@ -2444,8 +2403,7 @@ class PwicServer():
     async def api_document_delete(self, request):
         ''' Delete a document '''
         # Verify that the user is connected
-        session = PwicSession(request)
-        user = await session.getUser()
+        user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
