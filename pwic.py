@@ -491,7 +491,9 @@ class PwicServer():
                                     ORDER BY filename''',
                                 (project, project, user))
                     pwic['documents'] = []
+                    used_size = 0
                     for row in sql.fetchall():
+                        used_size += row[5]
                         pwic['documents'].append({'id': row[0],
                                                   'project': row[1],
                                                   'page': row[2],
@@ -504,6 +506,12 @@ class PwicServer():
                                                   'date': row[8],
                                                   'time': row[9],
                                                   'occurrence': row[10]})
+                    pmax = _int(self._readEnv(sql, project, 'max_project_size', 0))
+                    pwic['disk_space'] = {'used': used_size,
+                                          'used_str': _size2str(used_size),
+                                          'project_max': pmax,
+                                          'project_max_str': _size2str(pmax),
+                                          'percentage': min(100, float('%.2f' % (0 if pmax == 0 else 100. * used_size / pmax)))}
 
                     # Audit log
                     if pwic['admin']:
@@ -2248,7 +2256,7 @@ class PwicServer():
                     doc[name] = await part.text()
         except Exception:
             raise web.HTTPBadRequest()
-        if doc['content'] is None or len(doc['content']) == 0 or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later \
+        if doc['content'] is None or len(doc['content']) == 0 or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later
             raise web.HTTPBadRequest()
 
         # Verify that the target folder exists

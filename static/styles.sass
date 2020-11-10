@@ -395,6 +395,28 @@ FOOTER
 	border: 1px solid orange
 
 
+// --------------
+//  Progress bar
+// --------------
+
+SPAN.pwic_progressbar
+	display: inline-block
+	width: 50%
+	height: 12px
+	line-height: 12px
+	margin-left: 10px
+	margin-right: 10px
+	padding: 0px
+	border: 1px solid black
+	box-shadow: inset -1px -1px grey
+	text-align: left
+
+	> SPAN
+		display: inline-block
+		height: 100%
+		background-color: teal
+
+
 // --------------------------------
 //  Individual reusable styles
 // --------------------------------
@@ -410,6 +432,9 @@ FOOTER
 
 .pwic_hidden
 	display: none
+
+.pwic_nowrap
+	white-space: pre
 
 .pwic_spacer
 	display: inline-block

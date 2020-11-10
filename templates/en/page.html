@@ -194,6 +194,17 @@
 
 			{% if (pwic.documents|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 				<h1>All the documents of the project</h1>
+				<p class="pwic_center"><strong>Disk usage :</strong>
+					{% if pwic.disk_space.project_max <= 0 %}
+						<em>Unrestricted by the administrator</em>
+					{% else %}
+						<span class="pwic_progressbar">
+							<span style="width:{{pwic.disk_space.percentage}}%"></span>
+						</span>
+						<span class="pwic_nowrap">{{pwic.disk_space.used_str}} / {{pwic.disk_space.project_max_str}} ({{pwic.disk_space.percentage}} %)</span>
+					{% endif %}
+				</p>
+
 				<table>
 					<tr>
 						<th class="pwic_desktop">Page</th>
