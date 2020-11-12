@@ -13,7 +13,7 @@
 			<p class="pwic_error">{{pwic.emojis.padlock}} You are not authorized to edit the page.</p>
 		{% else %}
 			<form id="edit_form" action="/api/page/edit" method="post">
-				<p><input id="edit_title" name="edit_title" class="pwic_fill" type="text" value="{{pwic.title|escape}}" /></p>
+				<p><strong><span class="pwic_red">*</span> Title:</strong> <input id="edit_title" name="edit_title" class="pwic_fill" type="text" value="{{pwic.title|escape}}" /></p>
 
 				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
@@ -72,7 +72,7 @@
 				</table>
 
 				<h2>Attributes</h2>
-				<p><strong>Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
+				<p><strong><span class="pwic_red">*</span> Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="edit_milestone" value="{{pwic.milestone|escape}}" /></p>
 				<p>
 					<input type="checkbox" id="edit_draft" name="edit_draft" {% if pwic.draft %}checked="checked"{% endif %} onclick="edit_uncheck('edit_final')" /> <label for="edit_draft">Save as draft</label>

@@ -47,6 +47,7 @@ class pwic_styles_odt:
     <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
     <manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>
     <manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>
+    <!-- attachments -->
 </manifest:manifest>'''
 
         self.meta = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -379,7 +380,7 @@ class pwic_styles_odt:
                                    style:text-underline-width="auto" />
         </style:style>
 
-        #styles-code#
+        <!-- styles-code -->
 
         <text:list-style style:name="ListStructure"
                          style:display-name="List structure">

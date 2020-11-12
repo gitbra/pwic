@@ -1,6 +1,6 @@
 # PWIC - Python Wiki Information Center
 
-**Pwic** is an easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has many advantages for a professional use.
+**Pwic** is a stable easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has many advantages for a professional use.
 
 **Project proficiency**
 
@@ -45,12 +45,11 @@ Copyright (C) Alexandre Bréard, 2020
 - [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
 - [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
-	- The file is version 2.11 and patched against the issue #217
 - Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 - [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)
+- [ImageSize](https://github.com/shibukawa/imagesize_py) is released under MIT License
 - [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
-	- Pwic implements a modified version to support some types of link when the safe mode is activated
 - [MathJax](https://github.com/mathjax/MathJax-src) is released under Apache 2.0 License
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
@@ -60,6 +59,8 @@ Copyright (C) Alexandre Bréard, 2020
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License
 - [Swagger UI](https://github.com/swagger-api/swagger-ui) is released under Apache 2.0 License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
+
+Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic.
 
 
 ## Install

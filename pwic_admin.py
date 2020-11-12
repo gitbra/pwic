@@ -9,7 +9,6 @@ import os
 from os.path import isdir, isfile
 from shutil import copyfile
 from stat import S_IREAD
-from importlib.metadata import PackageNotFoundError, version
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
@@ -306,19 +305,23 @@ END''')
 
 def show_env():
     # Package info
-    print('Python packages:\n')
-    tab = PrettyTable()
-    tab.field_names = ['Package', 'Version']
-    tab.align[tab.field_names[0]] = 'l'
-    tab.align[tab.field_names[1]] = 'r'
-    tab.header = True
-    tab.border = True
-    for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
-        try:
-            tab.add_row([package, version(package)])
-        except PackageNotFoundError:
-            pass
-    print(tab.get_string())
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        print('Python packages:\n')
+        tab = PrettyTable()
+        tab.field_names = ['Package', 'Version']
+        tab.align[tab.field_names[0]] = 'l'
+        tab.align[tab.field_names[1]] = 'r'
+        tab.header = True
+        tab.border = True
+        for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize', 'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
+            try:
+                tab.add_row([package, version(package)])
+            except PackageNotFoundError:
+                pass
+        print(tab.get_string())
+    except ImportError:
+        pass
 
     # Environment variables
     print('\nProject-dependent Pwic variables:\n')
@@ -352,14 +355,16 @@ def set_env(project, name, value):
                            'ssl']
     project_dependent = ['api_expose_markdown',
                          'css',
+                         'disabled_formats',
                          'document_name_regex',
                          'heading_mask',
                          'mathjax',
                          'max_document_size',
                          'max_project_size',
                          'mde',
-                         'no_export_page',
                          'no_export_project',
+                         'no_printing',
+                         'no_text_selection',
                          'support_email',
                          'support_phone',
                          'support_url']

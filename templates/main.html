@@ -16,6 +16,12 @@
 		{% endfor %}
 	{% endif %}
 
+	{% if pwic.env.no_printing %}
+		<style media="print">
+			BODY { display: none }
+		</style>
+	{% endif %}
+
 	{% if pwic.project != 'special' and pwic.page != 'help' %}
 		{% if pwic.env.mde %}
 			<link rel="stylesheet" href="/static/easymde.min.css" />

@@ -28,7 +28,7 @@
 			<p>Below is a generic explanation of all the features of Pwic.</p>
 		{% endif %}
 
-		<h1>Matrix of the authorizations</h1>
+		<h1 id="help_top">Matrix of the authorizations</h1>
 		<table class="pwic_zebra">
 			<tr><th>Doc</th><th>Action</th><th>Admin</th><th>Manager</th><th>Editor</th><th>Validator</th><th>Reader</th></tr>
 			<tr><td><a href="#help_setup">{{pwic.emojis.glasses}}</a></td><td>Setup the server</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
@@ -45,9 +45,9 @@
 			<tr><td><a href="#help_delete">{{pwic.emojis.glasses}}</a></td><td>Delete a revision</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td></td><td></td></tr>
 			<tr><td><a href="#help_read">{{pwic.emojis.glasses}}</a></td><td>Read a page</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td>&nbsp;</td><td>View the history of a page</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
-			<tr><td><a href="#help_print">{{pwic.emojis.glasses}}</a></td><td>Print to PDF</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
+			<tr><td><a href="#help_export">{{pwic.emojis.glasses}}</a></td><td>Export a page</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
 			<tr><td><a href="#help_validate">{{pwic.emojis.glasses}}</a></td><td>Validate a revision</td><td></td><td></td><td></td><td>{{pwic.emojis.check}}</td><td></td></tr>
-			<tr><td><a href="#help_export">{{pwic.emojis.glasses}}</a></td><td>Export a project</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
+			<tr><td><a href="#help_export_project">{{pwic.emojis.glasses}}</a></td><td>Export a project</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_links">{{pwic.emojis.glasses}}</a></td><td>Verify the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_graph">{{pwic.emojis.glasses}}</a></td><td>Graph of the links</td><td></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_search">{{pwic.emojis.glasses}}</a></td><td>Search across the pages</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
@@ -55,10 +55,11 @@
 			<tr><td><a href="#help_log">{{pwic.emojis.glasses}}</a></td><td>View the activity log</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_log_user">{{pwic.emojis.glasses}}</a></td><td>View the activity of a user</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_automate">{{pwic.emojis.glasses}}</a></td><td>Automate Pwic</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
+			<tr><td><a href="#help_licenses">{{pwic.emojis.glasses}}</a></td><td>Read the licences</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 		</table>
 
 
-		<h1 id="help_setup">Setup the server</h1>
+		<h1 id="help_setup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Setup the server</h1>
 		<p>Refer to the file <code>README.md</code> available in the root directory of the application to know more about the default setup.</p>
 		<p>With the command <code>python pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior:</p>
 			<table>
@@ -86,6 +87,11 @@
 					<td><code>css</code></td>
 					<td>Yes</td>
 					<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>.</td>
+				</tr>
+				<tr>
+					<td><code>disabled_formats</code></td>
+					<td>Yes</td>
+					<td>List of the file extensions separated with a space that cannot be used to export a page. The value <code>*</code> is possible.</td>
 				</tr>
 				<tr>
 					<td><code>document_name_regex</code></td>
@@ -137,14 +143,19 @@
 					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
 				</tr>
 				<tr>
-					<td><code>no_export_page</code></td>
-					<td>Yes</td>
-					<td>Disable the export of a page.</td>
-				</tr>
-				<tr>
 					<td><code>no_export_project</code></td>
 					<td>Yes</td>
 					<td>Disable the export of the project as an archive for the online administrators.</td>
+				</tr>
+				<tr>
+					<td><code>no_printing</code></td>
+					<td>Yes</td>
+					<td>To save some trees, enable a basic protection to prevent the printing of a page. It also disables the export to PDF through a virtual printer.</td>
+				</tr>
+				<tr>
+					<td><code>no_text_selection</code></td>
+					<td>Yes</td>
+					<td>Enable a basic protection to prevent the user from playing around with his web browser to copy the text of the main page. It also forces the readers to focus on reading the page.</td>
 				</tr>
 				<tr>
 					<td><code>password_regex</code></td>
@@ -180,38 +191,38 @@
 		<p>The project-independent variables generally require a restart of the server. Beware that doing that closes all the current sessions. The users will have to reconnect from another tab when the server is back in order to be able to save their work in progress.</p>
 
 
-		<h1 id="help_backup">Create a backup</h1>
+		<h1 id="help_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
 		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
 		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
 		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic.</p>
 
 
-		<h1 id="help_project">Create a project</h1>
+		<h1 id="help_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a project</h1>
 		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python pwic_admin.py create-project --help</code> for further details.</p>
 		<p>By default, you cannot create new pages. You must expand your rights, or add new dedicated users having the right profile. Refer to the matrix above for the feasible actions per profile.</p>
 
 
-		<h1 id="help_delete_project">Delete a project</h1>
+		<h1 id="help_delete_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a project</h1>
 		<p>Deleting a project cannot be undone. The action is done in the console only through the following command: <code>python pwic_admin.py delete-project --help</code></p>
 
 
-		<h1 id="help_user">Create a user account</h1>
+		<h1 id="help_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a user account</h1>
 		<p>The users are created by default as readers. The default password is predetermined by the general configuration.</p>
 		<p>The users must change their password before you can change their authorizations.</p>
 
 
-		<h1 id="help_pass1">Change own password</h1>
+		<h1 id="help_pass1"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change own password</h1>
 		{% if pwic.user != '' %}
 			<p>The form is available in your <a href="/special/user/{{pwic.user|urlencode}}">profile page</a>.</p>
 		{% endif %}
 		<p>It is recommended to setup Pwic with SSL support so that the new passwords cannot be intercepted in clear format.</p>
 
 
-		<h1 id="help_pass2">Change the password of another user</h1>
+		<h1 id="help_pass2"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change the password of another user</h1>
 		<p>The recovery of the lost passwords is an administrative task since Pwic handles neither emails, nor personal information. Run the command <code>python pwic_admin.py reset-password --help</code> for further details.</p>
 
 
-		<h1 id="help_grant">Grant the authorizations</h1>
+		<h1 id="help_grant"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Grant the authorizations</h1>
 		<p>The rights are project-dependent. The form is accessible from the special page.</p>
 		<p>The administrators only can grant new rights to the users if they changed their password once.</p>
 		<p>A user must have one profile at least (ex: reader) to be able to view the project. To switch from one profile to another for a user, you should first activate the new profile, then deactivate the old profile.</p>
@@ -220,12 +231,12 @@
 		<p>The anonymous access is given by the special user account <code>{{pwic.constants.anonymous_user|escape}}</code>. The account cannot be removed. You can disable it or enhance its rights (excluding administrator).</p>
 
 
-		<h1 id="help_create">Create a page</h1>
+		<h1 id="help_create"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a page</h1>
 		<p>The creation of new pages is restricted to the managers in order to monitor the documentation efficiently. Each page is codified with an external identifier that can be listed alphabetically in each project overview.</p>
 		<p>If a page is created in reference to another page, its content is copied by default. In that way, you can dedicate a project for containing the default templates. It is not possible to refer to a page that doesn't exist or for which you have no access rights.</p>
 
 
-		<h1 id="help_modify">Modify a page</h1>
+		<h1 id="help_modify"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Modify a page</h1>
 		<p>A new revision is generated each time a page is modified.</p>
 		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
 		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft.</p>
@@ -253,27 +264,44 @@
 			</ul>
 
 
-		<h1 id="help_promote">Promote to the header line</h1>
+		<h1 id="help_promote"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Promote to the header line</h1>
 		<p>The header line of the project allows a quick access to the pages that link to other thematic pages.</p>
 		<p>There is no limitation in the number of header items, but it is recommended to not exceed 10 items.</p>
 
 
-		<h1 id="help_delete">Delete a revision</h1>
+		<h1 id="help_delete"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a revision</h1>
 		<p>A page is not deleted, but a given revision. When all the revisions are deleted, the page is then fully deleted. However, not all the revisions can be deleted because of the required traceability.</p>
 		<p>A manager or an editor can delete his/her own drafts. An administrator can delete a revision that is neither final, nor validated.</p>
 		<p>A deleted revision may be reallocated later because the numbering is done in a sequential order.</p>
 
 
-		<h1 id="help_read">Read a page</h1>
+		<h1 id="help_read"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Read a page</h1>
 		<p>You must have an account to be able to read the documentation.</p>
 
 
-		<h1 id="help_print">Print to PDF</h1>
-		<p>A dedicated layout is suitable for the conversion to PDF through the function "Print" of your web browser.</p>
-		<p>You should install a separate virtual printer to convert to PDF. To use the one from Microsoft, execute the command <code>%windir%\System32\OptionalFeatures.exe</code>.</p>
+		<h1 id="help_export"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Export a page</h1>
+		<p>A page is usually read online but you can export it on your desktop in several file formats.</p>
+
+			<h2>html - Web page</h2>
+			<p>The export to HTML is a single file that can be opened in your web browser. However, it does not embed the images and the attachments.</p>
+			<p>By using the feature "<em>Save as</em>" of your web browser, you can save the page and the loaded pictures, without the attachments.</p>
+
+			<h2>md - Markdown</h2>
+			<p>This format is the basic content used by Pwic.</p>
+			<p>The file can be edited further with a classical raw text editor, but it needs a dedicated application to be rendered nicely.</p>
+
+			<h2>odt - OpenDocument</h2>
+			<p>This file format is public but it is not a DOCX document. The file can be edited in MS Word, LibreOffice and more.</p>
+			<p>The export is designed to be as lean as possible, which may cause slight differences of layout.</p>
+			<p>The exported document aims to be equivalent to a copy-paste of the page in your favorite text editor.</p>
+
+			<h2>pdf - Desktop PDF</h2>
+			<p>This format is not supported by Pwic, so it cannot be disabled in the options.</p>
+			<p>By using the feature "<em>Print</em>" of your web browser, select a virtual printer to produce the final PDF file. When doing so, Pwic hides some useless elements of the page.</p>
+			<p>On Windows, you can enable the PDF printer by executing the command <code>%windir%\System32\OptionalFeatures.exe</code>.</p>
 
 
-		<h1 id="help_validate">Validate a revision</h1>
+		<h1 id="help_validate"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Validate a revision</h1>
 		<p>Several conditions are required to validate a page:</p>
 			<ul>
 				<li>You have the role "validator" on the project.</li>
@@ -282,12 +310,12 @@
 			</ul>
 
 
-		<h1 id="help_export">Export a project</h1>
+		<h1 id="help_export_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Export a project</h1>
 		<p>The administrators are able to download a project as a ZIP file containing all the pages and attached documents. The purposes are the creation of a backup or the preparation of a migration for example.</p>
 		<p>The export is audited and can be disabled by setting the administrative variable <code>no_export_project</code>.</p>
 
 
-		<h1 id="help_links">Verify the links</h1>
+		<h1 id="help_links"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Verify the links</h1>
 		<p>Pwic can verify the internal links of the pages to ensure that:</p>
 			<ul>
 				<li>Each page is linked to another one at least (check for orphans).</li>
@@ -297,14 +325,14 @@
 		<p>The feature serves as a general monitoring tool for the documentation.</p>
 
 
-		<h1 id="help_graph">Graph of the links</h1>
+		<h1 id="help_graph"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Graph of the links</h1>
 		<p>The directed graph is a visual representation of the links between the pages. It is possible to detect the pages of high importance and the ones that are insufficiently put into the light.</p>
 		<p>In case you link to another project, only the targeted pages are displayed. The title of the page is hidden if you don't have access to the project.</p>
 		<p>The pages in red correspond to broken links.</p>
 		<p>You can download the graph as a file. After you installed GraphViz, you can regenerate the picture with the command: <code>dot -Tsvg input.gv -o output.svg</code>.</p>
 
 
-		<h1 id="help_search">Search across the pages</h1>
+		<h1 id="help_search"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Search across the pages</h1>
 		<p>The search works with exact literals. If you are looking for the word <code>excellent</code> but the page contains the word <code>exellent</code> (without the <code>c</code>), you won't find any result. Consequently, writing without mistake is a main objective not only for search purposes, but also for the general quality of the documentation.</p>
 		<p>The search engine doesn't build an index of words. It means that you are able to search within a word. For example, <code>document</code> will match with both <code>document</code> and <code>documents</code>, but <code>documents</code> will match with itself only. Consequently, you should avoid the plural forms to maximize the number of results. This feature is also very important to be able to search for partial technical keywords if the documentation contains lines of code.</p>
 		<p>You can search for individual words, but also for sentences if you use double quotes. For exemple, <code>"my documentation"</code> will not match with <code>my last documentation</code>. However, <code>my documentation</code> would match with it because there is no quote (<code>my</code> and <code>documentation</code> are processed separately).</p>
@@ -327,29 +355,29 @@
 		<p>Searching in the old revisions is not possible.</p>
 
 
-		<h1 id="help_searchdoc">Search across the documents</h1>
+		<h1 id="help_searchdoc"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Search across the documents</h1>
 		<p>The search applies on the name of the page, the file name and the mime of the file.</p>
 		<p>The syntax of the terms is similar to the <a href="#help_search">one used for the pages</a>. You can use inclusive and exclusive keywords, but not the special ones that contain <code>:</code>.</p>
 		<p>It is not possible to search within the content of the files.</p>
 
 
-		<h1 id="help_log">View the activity log</h1>
+		<h1 id="help_log"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity log</h1>
 		<p>Pwic logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better overview of the situation.</p>
 		<p>Online, the administrator of a project can see the events related to the project only, like the creation of a page, a deletion, a validation...</p>
 		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py show-log 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
 
-		<h1 id="help_log_user">View the activity of a user</h1>
+		<h1 id="help_log_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity of a user</h1>
 		<p>The user page contains a public overview of the recently modified pages (over the last 30 days) and the uploaded documents.</p>
 		<p>Your own user page is mentionned in the footer.</p>
 
 
-		<h1 id="help_automate">Automate Pwic</h1>
+		<h1 id="help_automate"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Automate Pwic</h1>
 		<p>The web interface communicates with Pwic through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
 		<p>You can develop external robots in the limit of your permitted authorizations. A simple example is <a href="/static/api-example.py">available here</a>.</p>
 
 
-		<h1 id="help_licenses">Licenses</h1>
+		<h1 id="help_licenses"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Read the licenses</h1>
 		<p>Pwic relies on several external resources whose licenses are summarized in the following table:</p>
 		<table>
 			<tr>
@@ -404,6 +432,12 @@
 				<td><a href="https://github.com/FortAwesome/Font-Awesome">FontAwesome</a></td>
 				<td>5</td>
 				<td class="pwic_desktop">Cascading style sheets (CSS)</td>
+				<td>MIT License</td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/shibukawa/imagesize_py">ImageSize</a></td>
+				<td>1.2.0</td>
+				<td class="pwic_desktop">Library for Python</td>
 				<td>MIT License</td>
 			</tr>
 			<tr>

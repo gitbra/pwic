@@ -27,8 +27,10 @@ PWIC_SALT = ''    # Random string to secure the generated hashes for the passwor
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 
-PWIC_REGEX_PAGE = r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'
-PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'
+PWIC_REGEX_PAGE = r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'       # Find a page in Markdown
+PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'  # Find a document in Markdown
+PWIC_REGEX_DOCUMENT_IMGSRC = r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'             # Find the picture ID in IMG.SRC
+PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                          # Check the format of the mime
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
@@ -40,6 +42,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'clamp': '&#x1F5DC;',
                'door': '&#x1F6AA;',
                'eye': '&#x1F441;',
+               'finger_up': '&#x261D;',
                'flag': '&#x1F3C1;',
                'gemini': '&#x264A;',
                'glasses': '&#x1F453;',
@@ -88,6 +91,8 @@ PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
+MIME_BMP = 'image/bmp'
+MIME_SVG = 'image/svg+xml'
 PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['aac'], 'audio/vnd.dlna.adts', None),
               (['abw'], 'application/x-abiword', None),
@@ -96,7 +101,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['apk'], 'application/vnd.android.package-archive', ZIP),
               (['avi'], 'video/avi', ['AVI', 'RIFF']),
               (['bin'], 'application/octet-stream', None),
-              (['bmp'], 'image/bmp', ['BM']),
+              (['bmp'], MIME_BMP, ['BM']),
               (['bz', 'bz2'], 'application/x-bzip2', ['BZ']),
               (['cer'], 'application/x-x509-ca-cert', None),
               (['chm'], 'application/vnd.ms-htmlhelp', ['ITSM']),
@@ -172,7 +177,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['rss'], 'application/rss+xml', None),
               (['rtf'], 'application/msword', ['{\rtf1']),
               (['sti'], 'application/vnd.sun.xml.impress.template', None),
-              (['svg'], 'image/svg+xml', None),
+              (['svg'], MIME_SVG, None),
               (['swf'], 'application/x-shockwave-flash', ['CWS', 'FWS']),
               (['sxc'], 'application/vnd.sun.xml.calc', None),
               (['sxd'], 'application/vnd.sun.xml.draw', None),
@@ -501,12 +506,19 @@ def pwic_search_tostring(query):
 # ===================================================
 
 class pwic_html2odt(HTMLParser):
-    def __init__(self, baseUrl, project, page):
+    def __init__(self, baseUrl, project, page, pictMeta=None):
+        # The parser can be feeded only once
         HTMLParser.__init__(self)
+
+        # External parameters
         self.baseUrl = baseUrl
         self.project = project
         self.page = page
+        self.pictMeta = pictMeta
+
+        # Mappings
         self.maps = {'a': 'text:a',
+                     'b': 'text:span',
                      'blockquote': None,
                      'blockcode': 'text:p',
                      'br': 'text:line-break',
@@ -521,6 +533,8 @@ class pwic_html2odt(HTMLParser):
                      'h5': 'text:h',
                      'h6': 'text:h',
                      'hr': 'text:p',
+                     'i': 'text:span',
+                     'img': 'draw:image',
                      'inf': 'text:span',
                      'ins': 'text:span',
                      'li': 'text:list-item',
@@ -540,6 +554,7 @@ class pwic_html2odt(HTMLParser):
                      'ul': 'text:list'}
         self.attributes = {'a': {'xlink:href': '#href',
                                  'xlink:type': 'simple'},
+                           'b': {'text:style-name': 'Bold'},
                            'blockcode': {'text:style-name': 'CodeBlock'},
                            'code': {'text:style-name': 'Code'},
                            'del': {'text:style-name': 'Strike'},
@@ -557,6 +572,13 @@ class pwic_html2odt(HTMLParser):
                            'h6': {'text:style-name': 'H6',
                                   'text:outline-level': '6'},
                            'hr': {'text:style-name': 'HR'},
+                           'i': {'text:style-name': 'Italic'},
+                           'img': {'xlink:href': '#src',
+                                   'xlink:type': 'simple',
+                                   'xlink:show': 'embed',
+                                   'xlink:actuate': 'onLoad',
+                                   'dummy:alt': '#alt',
+                                   'dummy:title': '#title'},
                            'inf': {'text:style-name': 'Inf'},
                            'ins': {'text:style-name': 'Underline'},
                            'ol': {'text:style-name': 'ListStructureNumeric',
@@ -573,15 +595,28 @@ class pwic_html2odt(HTMLParser):
                            'ul': {'text:style-name': 'ListStructure',
                                   'text:continue-numbering': 'true'}}
         self.noclosing = ['br', 'hr']
-        self.extras = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
-                       'td': ('<text:p>', '</text:p>'),
-                       'th': ('<text:p>', '</text:p>')}
+        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}px" svg:height="{$h}px" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
+        self.extrasAfter = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
+                            'td': ('<text:p>', '</text:p>'),
+                            'th': ('<text:p>', '</text:p>')}
+
+        # Processing
+        self.regex_imgsrc = re.compile(PWIC_REGEX_DOCUMENT_IMGSRC)
         self.tag_path = []
         self.table_descriptors = []
         self.blockquote_on = False
         self.blockcode_on = False
         self.has_code = False
+        self.lastIMGalt = ''
+        self.lastIMGtitle = ''
+
+        # Output
         self.odt = ''
+
+    def _replace_marker(self, joker, content):
+        pos = self.odt.rfind(joker)
+        if pos != -1:
+            self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
@@ -614,12 +649,18 @@ class pwic_html2odt(HTMLParser):
             self.odt += '<text:p text:style-name="Error">Unknown tag \'%s\'</text:p>' % tag
         else:
             if self.maps[tag] is not None:
+                # Automatic extra tags
+                if tag in self.extrasBefore:
+                    self.odt += self.extrasBefore[tag][0]
+
+                # Tag itself
                 self.odt += '<' + self.maps[tag]
                 if tag in self.attributes:
                     for property in self.attributes[tag]:
                         property_value = self.attributes[tag][property]
                         if property_value[:1] != '#':
-                            self.odt += ' %s="%s"' % (property, escape(property_value))
+                            if property[:5] != 'dummy':
+                                self.odt += ' %s="%s"' % (property, escape(property_value))
                         else:
                             property_value = property_value[1:]
                             if tag == 'p':
@@ -630,7 +671,7 @@ class pwic_html2odt(HTMLParser):
                                 for key, value in attrs:
                                     if key == property_value:
                                         # Fix the base URL for the links
-                                        if tag == 'a':
+                                        if tag == 'a' and key == 'href':
                                             if value[:1] in ['/']:
                                                 value = self.baseUrl + value
                                             elif value[:1] in ['?', '#', '.']:
@@ -638,11 +679,29 @@ class pwic_html2odt(HTMLParser):
                                             elif value[:2] == './' or value[:3] == '../':
                                                 value = '%s/%s/%s/%s' % (self.baseUrl, self.project, self.page, value)
 
+                                        # Fix the attributes for the pictures
+                                        if tag == 'img':
+                                            if key == 'alt':
+                                                self.lastIMGalt = value
+                                            elif key == 'title':
+                                                self.lastIMGtitle = value
+                                            elif key == 'src':
+                                                if value[:1] == '/':
+                                                    value = value[1:]
+                                                if self.pictMeta is not None:
+                                                    docid = self.regex_imgsrc.match(value)
+                                                    if docid is not None:
+                                                        docid = _int(docid.group(1))
+                                                        if docid in self.pictMeta:
+                                                            self._replace_marker('{$w}', self.pictMeta[docid]['width'])
+                                                            self._replace_marker('{$h}', self.pictMeta[docid]['height'])
+
                                         # Fix the class name for the syntax highlight
                                         if tag == 'span' and self.blockcode_on and key == 'class':
                                             value = 'Code_' + value
 
-                                        self.odt += ' %s="%s"' % (property, escape(value))
+                                        if property[:5] != 'dummy':
+                                            self.odt += ' %s="%s"' % (property, escape(value))
                                         break
                 if tag in self.noclosing:
                     self.odt += '/'
@@ -656,9 +715,9 @@ class pwic_html2odt(HTMLParser):
                 if tag in ['th', 'td']:
                     self.table_descriptors[-1]['count'] += 1
 
-        # Append the extras markups
-        if tag in self.extras:
-            self.odt += self.extras[tag][0]
+        # Automatic extra tags
+        if tag in self.extrasAfter:
+            self.odt += self.extrasAfter[tag][0]
 
     def handle_endtag(self, tag):
         tag = tag.lower()
@@ -679,8 +738,8 @@ class pwic_html2odt(HTMLParser):
         self.tag_path.pop()
 
         # Automatic extra tags
-        if tag in self.extras:
-            self.odt += self.extras[tag][1]
+        if tag in self.extrasAfter:
+            self.odt += self.extrasAfter[tag][1]
 
         # Final mapping
         if tag in self.maps:
@@ -705,6 +764,19 @@ class pwic_html2odt(HTMLParser):
                                     + '</table:table-columns>'
                                     + self.odt[cursor:])
                         self.table_descriptors.pop()
+
+        # Dynamic replacement text for a picture
+        if tag == 'img':
+            if self.lastIMGalt != '':
+                self.odt += '<svg:title>%s</svg:title>' % escape(self.lastIMGalt)
+                self.lastIMGalt = ''
+            if self.lastIMGtitle != '':
+                self.odt += '<svg:desc>%s</svg:desc>' % escape(self.lastIMGtitle)
+                self.lastIMGtitle = ''
+
+        # Automatic extra tags
+        if tag in self.extrasBefore:
+            self.odt += self.extrasBefore[tag][1]
 
     def handle_data(self, data):
         # List item should be enclosed by <p>

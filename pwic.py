@@ -13,6 +13,7 @@ from io import BytesIO
 import os
 import json
 import re
+import imagesize
 from ipaddress import ip_network, ip_address
 from bisect import insort, bisect_left
 from multidict import MultiDict
@@ -21,9 +22,9 @@ from base64 import b64encode
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
-    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, \
-    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MIMES, \
+    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, \
+    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_SVG, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_styles import pwic_styles_html, pwic_styles_odt
@@ -1192,6 +1193,7 @@ class PwicServer():
                 content = f.read()
             zip.writestr(htmlStyles.css, content)
             zip.writestr(folder_rev + htmlStyles.css, content)
+            del content
 
             # Attached documents
             sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
@@ -1202,6 +1204,7 @@ class PwicServer():
                     with open(fn, 'rb') as f:
                         content = f.read()
                     zip.writestr('documents/%s' % row[0], content)
+                    del content
 
             # Close the archive
             zip.close()
@@ -1927,7 +1930,8 @@ class PwicServer():
 
         # Read the selected revision
         sql = app['sql'].cursor()
-        if self._readEnv(sql, project, 'no_export_page') is not None:
+        disabled_formats = self._readEnv(sql, project, 'disabled_formats', '').split(' ')
+        if format in disabled_formats or '*' in disabled_formats:
             raise web.HTTPForbidden()
         sql.execute(''' SELECT b.revision, b.latest, b.author, b.date, b.time,
                                b.title, b.markdown, b.tags
@@ -1974,23 +1978,83 @@ class PwicServer():
         # Format ODT
         elif format == 'odt':
             # MD --> HTML --> ODT
-            odtStyles = pwic_styles_odt()
             html = self._md2html(sql, project, row[6])[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
             html = html.replace('</code></pre></div>', '</blockcode>')
             html = html.replace('<pre><code>', '<blockcode>')
             html = html.replace('</code></pre>', '</blockcode>')
+
+            # Extract the meta-informations of the embedded pictures
+            docids = ['0']
+            subdocs = re.compile(PWIC_REGEX_DOCUMENT).findall(row[6])
+            if subdocs is not None:
+                for sd in subdocs:
+                    sd = str(_int(sd[0]))
+                    if sd not in docids:
+                        docids.append(sd)
+            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime
+                        FROM documents AS a
+                            INNER JOIN roles AS b
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ''
+                        WHERE a.id   IN (%s)
+                          AND a.mime LIKE 'image/%%' '''
+            sql.execute(query % ','.join(docids), (user, ))
+            pictMeta = {}
+            for rowdoc in sql.fetchall():
+                fn = (PWIC_DOCUMENTS_PATH % project) + rowdoc[3]
+                if os.path.isfile(fn):
+                    try:
+                        w, h = imagesize.get(fn)
+
+                        # Optimize the maximal size
+                        MAX_W = 600  # px
+                        MAX_H = 900  # px
+                        if w > MAX_W:
+                            h *= MAX_W / w
+                            w = MAX_W
+                        if h > MAX_H:
+                            w *= MAX_H / h
+                            h = MAX_H
+                    except ValueError:
+                        w, h = 50, 50  # Default area
+                    pictMeta[rowdoc[0]] = {'filename': fn,
+                                           'link': 'special/document/%d' % rowdoc[0],
+                                           'uncompressed': rowdoc[4] in [MIME_BMP, MIME_SVG],
+                                           'manifest': '<manifest:file-entry manifest:full-path="special/document/%d" manifest:media-type="%s" />' % (rowdoc[0], rowdoc[4]),
+                                           'width': _int(w),
+                                           'height': _int(h)}
+
+            # Convert to ODT
+            odtStyles = pwic_styles_odt()
             try:
-                odtGenerator = pwic_html2odt(baseUrl, project, page)
+                odtGenerator = pwic_html2odt(baseUrl, project, page, pictMeta=pictMeta)
                 odtGenerator.feed(html)
             except Exception:
                 raise web.HTTPInternalServerError()
 
-            # Create the ODT file in the memory
+            # Prepare the ODT file in the memory
             inmemory = BytesIO()
             odt = zipfile.ZipFile(inmemory, mode='w', compression=zipfile.ZIP_DEFLATED)
             odt.writestr('mimetype', odtStyles.mime, compress_type=zipfile.ZIP_STORED, compresslevel=0)  # Must be the first file of the ZIP and not compressed
-            odt.writestr('META-INF/manifest.xml', odtStyles.manifest)
+
+            # Manifest
+            attachments = ''
+            for meta in pictMeta:
+                meta = pictMeta[meta]
+                content = ''
+                with open(meta['filename'], 'rb') as f:
+                    content = f.read()
+                if meta['uncompressed']:
+                    odt.writestr(meta['link'], content)
+                else:
+                    odt.writestr(meta['link'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
+                del content
+                attachments += '%s\n' % meta['manifest']
+            odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', attachments))
+
+            # Content-related ODT data
             odt.writestr('meta.xml', odtStyles.meta % (PWIC_VERSION,
                                                        escape(row[5]),
                                                        escape(project), escape(page),
@@ -2000,7 +2064,7 @@ class PwicServer():
                                                        escape(user),
                                                        escape(dt['date']), escape(dt['time']),
                                                        row[0]))
-            odt.writestr('styles.xml', odtStyles.styles.replace('#styles-code#', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
+            odt.writestr('styles.xml', odtStyles.styles.replace('<!-- styles-code -->', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
             odt.writestr('content.xml', odtStyles.content % odtGenerator.odt)
             odt.close()
 
@@ -2296,6 +2360,8 @@ class PwicServer():
         if self._readEnv(sql, '', 'mime_enforcement') is not None:
             if not self._checkMime(doc):
                 raise web.HTTPUnsupportedMediaType()
+        if re.compile(PWIC_REGEX_MIME).match(doc['mime']) is None:
+            raise web.HTTPBadRequest()
 
         # Verify the maximal document size
         maxsize = _int(self._readEnv(sql, doc['project'], 'max_document_size'))

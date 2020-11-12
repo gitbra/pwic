@@ -17,6 +17,9 @@
 		</div>
 	</header>
 
+	{% if pwic.env.no_text_selection %}
+		{% include 'page-nosel.js.html' %}
+	{% endif %}
 	{% include 'page.js.html' %}
 	{% include 'search.js.html' %}
 
@@ -46,10 +49,17 @@
 					<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 				{% endif %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
-				{% if not pwic.env.no_export_page %}
-					<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} MarkDown</a>
-					<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} OpenDocument</a>
+
+				{% set formats = pwic.env.get('disabled_formats', {'value': ''}).value.split(' ') %}
+				{% if '*' not in formats %}
+					{% if 'md' not in formats %}
+						<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} MarkDown</a>
+					{% endif %}
+					{% if 'odt' not in formats %}
+						<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} OpenDocument</a>
+					{% endif %}
 				{% endif %}
+
 				{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
 					<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?', 'Function not available.')">{{pwic.emojis.validate}} Validate</a>
 				{% endif %}
