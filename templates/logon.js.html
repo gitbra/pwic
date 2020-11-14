@@ -2,12 +2,12 @@
 	'use strict';
 
 	function logon_anonymous() {
-		document.getElementById('logon_user').value = '{{pwic.constants.anonymous_user|escape}}';
-		document.getElementById('logon_password').value = '';
-		document.getElementById('logon_form').submit();
+		$('#logon_user').val('{{pwic.constants.anonymous_user|escape}}');
+		$('#logon_password').val('');
+		$('#logon_form')[0].submit();
 		return true;
 	}
 
 	if (window.fetch)
-		document.getElementById('logon_js').classList.add('pwic_hidden');
+		$('#logon_js').addClass('pwic_hidden');
 </script>

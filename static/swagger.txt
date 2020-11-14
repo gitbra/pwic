@@ -49,6 +49,8 @@ paths:
           description: Successful operation if no body, else redirected page from 302
         302:
           description: Redirection with the parameter ?failed if the credentials were rejected
+        400:
+          description: Logon is disabled
         401:
           description: Unsufficient authorizations
   /api/logout:
@@ -233,10 +235,14 @@ paths:
       responses:
         200:
           description: Successful operation
+        302:
+          description: Successful operation
         307:
           description: Incorrect processing
         400:
           description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
   /api/page/delete:
     post:
       summary: Delete the revision of a page
@@ -405,6 +411,8 @@ paths:
       responses:
         200:
           description: Successful operation
+        400:
+          description: Invalid parameters
         401:
           description: Unsufficient authorizations
   /api/page/validate:
@@ -462,6 +470,35 @@ paths:
           description: Successful operation
         400:
           description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/project/progress:
+    post:
+      summary: Show the current progress of the project by tag
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: progress_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: progress_tags
+          type: string
+          description: List of the tags separated with a space
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
   /api/project/graph:
     post:
       summary: Generate the graph of a project
@@ -489,13 +526,21 @@ paths:
       summary: Details about the environment variables
       tags:
         - server
+      consumes:
+        - application/x-www-form-urlencoded
       produces:
         - application/json
+      parameters:
+        - in: formData
+          name: env_project
+          type: string
+          description: Name of the project
+          required: false
       responses:
         200:
           description: Successful operation
         401:
-          description: Session not active
+          description: Unsufficient authorizations, or not found
   /api/server/ping:
     post:
       summary: Ping the server to verify that it is up and not restarted
@@ -531,12 +576,16 @@ paths:
       responses:
         200:
           description: Successful operation
+        302:
+          description: Successful operation
         307:
           description: Failure of the operation
         400:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        405:
+          description: Invalid characters
   /api/user/password/change:
     post:
       summary: Change the password of the logged user
@@ -562,6 +611,8 @@ paths:
           required: true
       responses:
         200:
+          description: Successful operation
+        302:
           description: Successful operation
         307:
           description: Failure of the operation

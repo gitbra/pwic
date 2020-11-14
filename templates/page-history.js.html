@@ -2,14 +2,12 @@
 	'use strict';
 
 	function history_compare() {
-		var rev = [],
-			elements = document.getElementsByTagName('input');
-		for (var i=0 ; i<elements.length ; i++)
-		{
-			var e = elements[i];
-			if ((e.type == "checkbox") && e.checked)
-				rev.push(e.dataset.revision);
-		}
+		var rev = [];
+		$('input').each(function(index, element) {
+			element = $(element);
+			if ((element.attr('type') == 'checkbox') && element.prop('checked'))
+				rev.push(element.data('revision'));
+		});
 		if (rev.length > 2)
 			return false;
 		else

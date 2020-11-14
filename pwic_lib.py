@@ -92,7 +92,10 @@ ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
 MIME_BMP = 'image/bmp'
+MIME_JSON = 'application/json'
+MIME_GENERIC = 'application/octet-stream'
 MIME_SVG = 'image/svg+xml'
+MIME_TEXT = 'text/plain'
 PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['aac'], 'audio/vnd.dlna.adts', None),
               (['abw'], 'application/x-abiword', None),
@@ -100,7 +103,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['aif', 'aifc', 'aiff'], 'audio/aiff', ['AIFF', 'FORM']),
               (['apk'], 'application/vnd.android.package-archive', ZIP),
               (['avi'], 'video/avi', ['AVI', 'RIFF']),
-              (['bin'], 'application/octet-stream', None),
+              (['bin'], MIME_GENERIC, None),
               (['bmp'], MIME_BMP, ['BM']),
               (['bz', 'bz2'], 'application/x-bzip2', ['BZ']),
               (['cer'], 'application/x-x509-ca-cert', None),
@@ -268,7 +271,7 @@ def _safeName(name, extra='.@'):
     chars = PWIC_CHARS_UNSAFE + extra
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
-    return name.lower().strip()
+    return name.strip().lower()
 
 
 def _safeFileName(name):

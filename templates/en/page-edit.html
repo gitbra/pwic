@@ -75,8 +75,8 @@
 				<p><strong><span class="pwic_red">*</span> Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" name="edit_comment" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="edit_milestone" value="{{pwic.milestone|escape}}" /></p>
 				<p>
-					<input type="checkbox" id="edit_draft" name="edit_draft" {% if pwic.draft %}checked="checked"{% endif %} onclick="edit_uncheck('edit_final')" /> <label for="edit_draft">Save as draft</label>
-					<br/><input type="checkbox" id="edit_final" name="edit_final" onclick="edit_uncheck('edit_draft')" /> <label for="edit_final">Final version</label>
+					<input type="checkbox" id="edit_draft" name="edit_draft" {% if pwic.draft %}checked="checked"{% endif %} onclick="$('#edit_final').prop('checked', false)" /> <label for="edit_draft">Save as draft</label>
+					<br/><input type="checkbox" id="edit_final" name="edit_final" onclick="$('#edit_draft').prop('checked', false)" /> <label for="edit_final">Final version</label>
 					<br/><input type="checkbox" id="edit_protection" name="edit_protection" {% if pwic.protection %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_protection">Protected page *</label>
 					<br/><input type="checkbox" id="edit_header" name="edit_header" {% if pwic.header %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_header">Header line *</label>
 				</p>

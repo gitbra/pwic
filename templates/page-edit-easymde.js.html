@@ -18,7 +18,7 @@
 				action: function (editor) {
 					if (confirm('Are you sure to switch back to the basic editor ?'))
 					{
-						document.getElementById('edit_toolbar').classList.remove('pwic_hidden');
+						$('#edit_toolbar').removeClass('pwic_hidden');
 						easyMDE.toTextArea();
 						easyMDE = null;
 					}
@@ -27,7 +27,7 @@
 				title: 'Switch to the classical editor',
 			}
 		];
-	var easyMDE = new EasyMDE({	element: document.getElementById('edit_markdown'),
+	var easyMDE = new EasyMDE({	element: $('#edit_markdown')[0],
 								forceSync: true,
 								indentWithTabs: false,
 								lineWrapping: false,

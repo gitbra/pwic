@@ -1,13 +1,18 @@
 <script>
 	'use strict';
 
+	function user_password_popup() {
+		$('#user_password_popup').toggleClass('pwic_hidden');
+		return false;
+	}
+
 	function user_password_submit(errorText) {
-		var	cur  = document.getElementById('user_password_current').value,
-			new1 = document.getElementById('user_password_new1').value,
-			new2 = document.getElementById('user_password_new2').value;
+		var	cur  = $('#user_password_current').val(),
+			new1 = $('#user_password_new1').val(),
+			new2 = $('#user_password_new2').val();
 		if (([cur, new1, new2].indexOf('') !== -1) || (new1 != new2) || (new1 == cur))
 			alert(errorText);
 		else
-			document.getElementById('user_password_form').submit();
+			$('#user_password_form')[0].submit();
 	}
 </script>

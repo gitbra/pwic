@@ -2,8 +2,8 @@
 	'use strict';
 
 	function create_submit(errorText) {
-		var	project = document.getElementById('create_project').value,
-			page = document.getElementById('create_page').value.trim();
+		var	project = $('#create_project').val(),
+			page = $('#create_page').val().trim();
 		if (	!pwic_is_safe(project)
 			||	!pwic_is_safe(page)
 			||	(['', 'api', 'special'].indexOf(project) !== -1)
@@ -11,6 +11,6 @@
 		)
 			alert(errorText);
 		else
-			document.getElementById('create_form').submit();
+			$('#create_form')[0].submit();
 	}
 </script>

@@ -38,12 +38,12 @@
 	function graph_download() {
 		if (graph_cache == null)
 			return false;
-		var dl = document.createElement('a');
-		dl.href = 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache)));
-		dl.download = '{{pwic.project|escape}}.gv';
-		document.body.appendChild(dl);	// Firefox
-		dl.click();
-		document.body.removeChild(dl);
+		var dl = $(document.createElement('a'))
+					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
+					.attr('download', '{{pwic.project|escape}}.gv')
+					.appendTo('body')	// Firefox
+					.trigger('click');
+		$('body').remove(dl);
 		return true;
 	}
 
@@ -52,7 +52,7 @@
 		var worker = new Worker('/static/viz.js');
 		worker.onmessage = function(e) {
 			// Render SVG
-			var graph = document.querySelector('#graph_viz');
+			var graph = $('#graph_viz')[0];
 			var svg = (new DOMParser()).parseFromString(e.data, 'image/svg+xml').documentElement;
 			graph.appendChild(svg);
 

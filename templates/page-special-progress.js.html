@@ -1,0 +1,66 @@
+<script>
+	(function() {
+		var	list_initial = null,
+			timeout = null;
+
+		$('#page_progress_tags > A').on('click', function() {
+			$(this).toggleClass('pwic_selected');
+			clearTimeout(timeout);
+			timeout = setTimeout(function() { page_progress_refresh(); }, 2000);
+			return false;
+		});
+
+		async function page_progress_refresh() {
+			function _pc(a, b) {
+				return (b == 0 ? '' : Math.floor(100 * a / b) + ' %');
+			}
+
+			// Get the selected tags
+			var tags = '';
+			$('#page_progress_tags > A').each(function(index, element) {
+				if ($(element).hasClass('pwic_selected'))
+					tags += ' ' + $(element).text().substring(1);
+			});
+			tags = tags.trim();
+
+			// Calculate the progress
+			var buffer = '';
+			if (tags.length > 0)
+			{
+				var options = {	method: 'POST',
+								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+								body: 'progress_project={{pwic.project|urlencode}}&progress_tags='+encodeURIComponent(tags),
+								credentials: 'same-origin' };
+				try {
+					var request = await fetch('/api/project/progress', options);
+					if (request.ok)
+					{
+						var data = await request.json();
+						for (var tag in data)
+						{
+							var item = data[tag];
+							buffer += '<tr>\
+											<td><a href="/{{pwic.project|urlencode}}/special/search?q=%23'+encodeURIComponent(tag)+'">'+tag+'<\/a><\/td>\
+											<td>'+item['draft']+'<\/td>\
+											<td>'+_pc(item['draft'], item['total'])+'<\/td>\
+											<td>'+item['step']+'<\/td>\
+											<td>'+_pc(item['step'], item['total'])+'<\/td>\
+											<td>'+item['final']+'<\/td>\
+											<td>'+_pc(item['final'], item['total'])+'<\/td>\
+											<td>'+item['validated']+'<\/td>\
+											<td>'+_pc(item['validated'], item['total'])+'<\/td>\
+										<\/tr>';
+						}
+					}
+				}
+				catch (error) {
+					console.log(error);
+				}
+			}
+
+			// Display the result
+			var e = $('#page_progress_list');
+			e.html((list_initial ||= e.html()) + buffer);
+		}
+	}())
+</script>

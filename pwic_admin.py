@@ -350,6 +350,7 @@ def set_env(project, name, value):
                            'ip_filter',
                            'maintenance',
                            'mime_enforcement',
+                           'no_logon',
                            'password_regex',
                            'safe_mode',
                            'ssl']

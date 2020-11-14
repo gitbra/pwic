@@ -2,10 +2,10 @@
 	'use strict';
 
 	function roles_toggle(id, project, user, role) {
-		var element = document.getElementById('roles_tag_' + id);
-		if (element != null)
+		var element = $('#roles_tag_' + id);
+		if (element.length > 0)
 		{
-			element.classList.toggle('pwic_hidden');				// Hide until the request is completed
+			element.toggleClass('pwic_hidden');				// Hide until the request is completed
 			fetch('/api/user/roles', {	method: 'POST',
 										body:	'user_project='+encodeURIComponent(project) +
 												'&user_name='+encodeURIComponent(user) +
@@ -15,18 +15,18 @@
 					if (response.status != 200)
 						throw Error(response.status + ' ' + response.statusText);
 					else
-						response.text().then(function (text) {
+						response.text().then(function(text) {
 							setTimeout(function() {
-								if (element.type == 'checkbox')
-									element.checked = (text == 'X');
+								if (element.attr('type') == 'checkbox')
+									element.prop('checked', text == 'X');
 								if (text != 'OK')
-									element.classList.toggle('pwic_hidden');
+									element.toggleClass('pwic_hidden');
 							}, 2000);
 						});
 				})
 				.catch(function(error) {
 					setTimeout(function() {
-						element.classList.toggle('pwic_hidden');	// Restore the visibility of the element
+						element.toggleClass('pwic_hidden');	// Restore the visibility of the element
 					}, 2000);
 				});
 		}

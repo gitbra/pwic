@@ -3,16 +3,12 @@
 
 	// -------------------------------- Toolbar
 
-	function edit_uncheck(name) {
-		document.getElementById(name).checked = false;
-	}
-
 	function edit_decorate(tag) {
 		return edit_decorate2(tag, tag);
 	}
 
 	function edit_decorate2(tagStart, tagEnd) {
-		var	ta = document.getElementById('edit_markdown'),
+		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 
@@ -27,7 +23,7 @@
 	}
 
 	function edit_link(text) {
-		var	ta = document.getElementById('edit_markdown'),
+		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 
@@ -56,7 +52,7 @@
 	}
 
 	function edit_prepend(tag) {
-		var	ta = document.getElementById('edit_markdown'),
+		var	ta = $('edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 		if (ss > se)
@@ -115,7 +111,7 @@
 		}
 		else
 		{
-			var	ta = document.getElementById('edit_markdown'),
+			var	ta = $('#edit_markdown')[0],
 				se = ta.selectionEnd;
 			ta.value = ta.value.substring(0, se) + buffer + ta.value.substring(se);
 		}
@@ -123,7 +119,7 @@
 	}
 
 	function edit_footnote() {
-		var	ta = document.getElementById('edit_markdown'),
+		var	ta = $('#edit_markdown')[0],
 			se = ta.selectionEnd;
 
 		// Search for the highest current footnote
@@ -171,7 +167,7 @@
 		}
 		else
 		{
-			var	ta = document.getElementById('edit_markdown'),
+			var	ta = $('#edit_markdown')[0],
 				ss = ta.selectionStart,
 				se = ta.selectionEnd;
 			ta.value = ta.value.substring(0, ss) + buffer + ta.value.substring(se);
@@ -185,10 +181,10 @@
 
 	// -------------------------------- Editor
 
-	document.getElementById('edit_markdown').onkeydown = function (event) {
+	$('#edit_markdown').on('keydown', function(event) {
 		if (event.keyCode == 9)
 		{
-			var	ta = document.getElementById('edit_markdown'),
+			var	ta = $('#edit_markdown')[0],
 				ss = ta.selectionStart,
 				se = ta.selectionEnd;
 			if (ss == se)
@@ -203,7 +199,7 @@
 		}
 		else
 			return true;
-	};
+	});
 
 
 	// -------------------------------- File drop
@@ -233,7 +229,7 @@
 									<td><input type="button" onclick="return edit_document_delete('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
 								<\/tr>';
 				}
-				document.getElementById('edit_files_list').innerHTML = edit_files_list_initial + buffer;
+				$('#edit_files_list').html(edit_files_list_initial + buffer);
 			}
 		}
 		catch (error) {
@@ -241,11 +237,11 @@
 		}
 	}
 
-	var edit_files_list_initial = document.getElementById('edit_files_list').innerHTML;
+	var edit_files_list_initial = $('#edit_files_list').html();
 	edit_refresh_documents();	// For the initialization
 
 	function edit_drop(event, errorUnsupported, successText) {
-		document.getElementById('edit_files_drop').classList.remove('pwic_dragover');
+		$('#edit_files_drop').removeClass('pwic_dragover');
 		if (event.dataTransfer.items)
 		{
 			event.preventDefault();
@@ -285,13 +281,13 @@
 	}
 
 	function edit_dragover(event) {
-		document.getElementById('edit_files_drop').classList.add('pwic_dragover');
+		$('#edit_files_drop').addClass('pwic_dragover');
 		event.preventDefault();
 		event.stopPropagation();
 	}
 
 	function edit_dragleave(event) {
-		document.getElementById('edit_files_drop').classList.remove('pwic_dragover');
+		$('#edit_files_drop').removeClass('pwic_dragover');
 		event.preventDefault();
 		event.stopPropagation();
 	}
@@ -328,8 +324,8 @@
 
 	function edit_submit(errorText, errorPing) {
 		// Check the current values
-		edit_submittable = (document.getElementById('edit_title').value != '')
-						&& (document.getElementById('edit_comment').value != '');
+		edit_submittable = ($('#edit_title').val() != '')
+						&& ($('#edit_comment').val() != '');
 		if (!edit_submittable)
 			alert(errorText);
 		else
@@ -344,7 +340,7 @@
 						response.text().then(function (text) {
 							if (text == 'OK')
 								// OK let's submit the modification to not lose the current work in progress
-								document.getElementById('edit_form').submit();
+								$('#edit_form')[0].submit();
 							else
 								alert(errorPing);
 						});
@@ -356,7 +352,7 @@
 	}
 
 	function edit_preview(pageTitle, buttonTitle) {
-		var	ta = document.getElementById('edit_markdown'),
+		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 		fetch('/api/page/markdown', {	method: 'POST',

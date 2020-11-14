@@ -44,6 +44,7 @@ Copyright (C) Alexandre Bréard, 2020
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License
 - [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
 - [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
+- [cash.js](https://github.com/fabiospampinato/cash) is released under MIT License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
 - Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 - [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)

@@ -18,13 +18,13 @@
 	</header>
 
 	{% if pwic.env.no_text_selection %}
-		{% include 'page-nosel.js.html' %}
+		{% include 'page-special-nosel.js.html' %}
 	{% endif %}
 	{% include 'page.js.html' %}
 	{% include 'search.js.html' %}
 
 	<article>
-		<div id="pwic_progression"></div>
+		<div id="pwic_progress"></div>
 
 		{% if pwic.env.maintenance %}
 			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</p>
@@ -142,7 +142,7 @@
 					</li>
 				{% endif %}
 			</ul>
-			{% if pwic.disabled_users|count > 0 or pwic.inactive_users|count > 0 %}
+			{% if (pwic.admin or pwic.manager) and (pwic.disabled_users|count > 0 or pwic.inactive_users|count > 0) %}
 				<p>By status:</p>
 				<ul>
 					{% if pwic.disabled_users|count > 0 %}
@@ -199,6 +199,28 @@
 					</tr>
 				{% endfor %}
 				</table>
+			{% endif %}
+
+
+			{% if pwic.tags|count > 0 %}
+				<h1>Progress by tag</h1>
+				<div id="page_progress_tags" class="pwic_tagbox">
+					{% for tag in pwic.tags %}
+						<a href="#" title="Un/Select this tag">#{{tag|escape}}</a>
+					{% endfor %}
+				</div>
+
+				<table id="page_progress_list">
+					<tr>
+						<th>Tag</th>
+						<th colspan="2">Draft</th>
+						<th colspan="2">Step</th>
+						<th colspan="2">Final</th>
+						<th colspan="2">Validated</th>
+					</tr>
+				</table>
+
+				{% include 'page-special-progress.js.html' %}
 			{% endif %}
 
 

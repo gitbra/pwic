@@ -2,10 +2,10 @@
 	'use strict';
 
 	function page_search(event) {
-		var event = event || window.event;
+		event ||= window.event;
 		if ((event.keyCode || event.which) == 13)
 		{
-			var q = document.getElementById('page_search').value;
+			var q = $('#page_search').val();
 			if (q.length > 0)
 				window.location = '/{{pwic.project|urlencode}}/special/search?q='+encodeURIComponent(q);
 		}

@@ -25,7 +25,7 @@
 			{% if pwic.userpage != pwic.constants.anonymous_user %}
 				<li>Own password : {{ pwic.emojis.red_check if pwic.initial_password else pwic.emojis.green_check }}
 					{% if pwic.user == pwic.userpage %}
-						(<a href="#" onclick="return pwic_toggle('user_password_popup')">change it</a>)
+						(<a href="#" onclick="return user_password_popup()">change it</a>)
 					{% endif %}
 				</li>
 			{% endif %}
@@ -46,7 +46,7 @@
 						</table>
 						<p>
 							<input type="button" value="{{pwic.emojis.locked}} Submit" onclick="user_password_submit('The form is inconsistent.')"/>
-							<input type="button" value="Cancel" onclick="pwic_toggle('user_password_popup')"/>
+							<input type="button" value="Cancel" onclick="user_password_popup()"/>
 						</p>
 					</form>
 				</div>

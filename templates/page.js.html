@@ -4,14 +4,14 @@
 	window.onscroll = function() {
 		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-		document.getElementById('pwic_progression').style.height = ((scroll / height) * 100).toString() + 'vh';
+		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
 	}
 
 	function page_tmap() {
-		var element = document.getElementById('pwic_browser');
-		element.classList.toggle('pwic_hidden');
-		if (!element.classList.contains('pwic_hidden'))
-			element.focus();
+		var element = $('#pwic_browser');
+		element.toggleClass('pwic_hidden');
+		if (!element.hasClass('pwic_hidden'))
+			element[0].focus();
 	}
 
 	function page_post_action(action, confirmText, notAvailableText) {
@@ -62,12 +62,12 @@
 					filename = filename.substring(10,filename.length-2);
 					filename = decodeURIComponent(escape(atob(filename)))
 					response.blob().then(function (blob) {
-						var dl = document.createElement('a');
-						dl.href = window.URL.createObjectURL(new Blob([blob], {type: blob.type}));
-						dl.download = filename;
-						document.body.appendChild(dl);	// Firefox
-						dl.click();
-						document.body.removeChild(dl);
+						var dl = $(document.createElement('a'))
+									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
+									.attr('download', filename)
+									.appendTo('body')  // Firefox
+									.trigger('click');
+						$('body').remove(dl);
 						window.URL.revokeObjectURL(dl.href);
 						return true;
 					});

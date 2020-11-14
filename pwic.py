@@ -21,10 +21,10 @@ from html import escape
 from base64 import b64encode
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, \
-    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_SVG, PWIC_MIMES, \
+    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_styles import pwic_styles_html, pwic_styles_odt
@@ -91,15 +91,15 @@ class PwicServer():
         query = "SELECT value FROM env WHERE project = ? AND key = ? AND value <> ''"
         row = None
         if project != '':
-            row = sql.execute(query, (project, name, )).fetchone()
+            row = sql.execute(query, (project, name)).fetchone()
         if row is None:
-            row = sql.execute(query, ('', name, )).fetchone()
+            row = sql.execute(query, ('', name)).fetchone()
         return default if row is None else row[0]
 
     def _checkMime(self, obj):
         ''' Check the consistency of the MIME with the file signature'''
         # Check the applicable extension
-        if '.' in obj['filename']:
+        if '.' in obj['filename'] and obj['mime'] != MIME_GENERIC:
             extension = obj['filename'].split('.')[-1]
             for (mext, mtyp, mhdr) in PWIC_MIMES:
                 if extension in mext:
@@ -176,8 +176,11 @@ class PwicServer():
 
     async def _suser(self, request):
         ''' Retrieve the logged user '''
-        session = await get_session(request)
-        return session.get('user', '')
+        if app['no_logon']:
+            return PWIC_USER_ANONYMOUS
+        else:
+            session = await get_session(request)
+            return session.get('user', '')
 
     async def _handlePost(self, request):
         ''' Return the POST as a readable object.get() '''
@@ -197,10 +200,11 @@ class PwicServer():
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
-        pwic['constants'] = {'version': PWIC_VERSION,
+        pwic['constants'] = {'anonymous_user': PWIC_USER_ANONYMOUS,
+                             'db_path': PWIC_DB,
+                             'language': 'en',
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
-                             'anonymous_user': PWIC_USER_ANONYMOUS,
-                             'language': 'en'}
+                             'version': PWIC_VERSION}
 
         # Check the access by IP
         sql = app['sql'].cursor()
@@ -472,6 +476,18 @@ class PwicServer():
                                               'valuser': row[8],
                                               'valdate': row[9],
                                               'valtime': row[10]})
+
+                    # Fetch the tags of the project
+                    sql.execute(''' SELECT tags
+                                    FROM pages
+                                    WHERE project = ?
+                                      AND latest  = 'X'
+                                      AND tags   <> '' ''',
+                                (project, ))
+                    tags = ''
+                    for row in sql.fetchall():
+                        tags += ' ' + row[0]
+                    pwic['tags'] = sorted(list(set(tags.strip().split(' '))))
 
                     # Fetch the documents of the project
                     sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
@@ -1247,6 +1263,8 @@ class PwicServer():
 
         # Transfer the file
         filename = (PWIC_DOCUMENTS_PATH % row[0]) + row[1]
+        if os.path.getsize(filename) != row[3]:
+            raise web.HTTPConflict()  # Size mismatch causes an infinite download time
         try:
             with open(filename, 'rb') as f:
                 content = f.read()
@@ -1260,7 +1278,9 @@ class PwicServer():
 
     async def api_logon(self, request):
         ''' API to log on people '''
-        # IP check
+        # Checks
+        if app['no_logon']:
+            raise web.HTTPBadRequest()
         sql = app['sql'].cursor()
         self._checkIP(request, sql)
 
@@ -1320,17 +1340,40 @@ class PwicServer():
         if user == '':
             raise web.HTTPUnauthorized()
 
-        # Fetch the variables
+        # Fetch the submitted data
+        post = await self._handlePost(request)
+        project = _safeName(post.get('env_project', ''))
+
+        # Verify that the user is authorized for the project
         sql = app['sql'].cursor()
-        sql.execute(''' SELECT key, value
+        if project != '':
+            sql.execute(''' SELECT user
+                            FROM roles
+                            WHERE project  = ?
+                              AND user     = ?
+                              AND disabled = '' ''',
+                        (project, user))
+            if sql.fetchone() is None:
+                return web.HTTPUnauthorized()
+
+        # Fetch the environment variables
+        sql.execute(''' SELECT project, key, value
                         FROM env
-                        ORDER BY key''')
+                        WHERE ( project = ?
+                             OR project = '' )
+                          AND   value  <> ''
+                        ORDER BY key ASC,
+                                 project DESC''',
+                    (project, ))
         data = {}
         for row in sql.fetchall():
-            data[row[0]] = row[1]
+            (global_, key, value) = (row[0] == '', row[1], row[2])
+            if key not in data:
+                data[key] = {'value': value,
+                             'global': global_}
 
         # Final result
-        return web.Response(text=json.dumps(data), content_type='application/json')
+        return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
     async def api_server_ping(self, request):
         ''' Notify if the session is still alive '''
@@ -1338,7 +1381,7 @@ class PwicServer():
         if user == '':
             raise web.HTTPUnauthorized()
         else:
-            return web.Response(text='OK', content_type='text/plain')
+            return web.Response(text='OK', content_type=MIME_TEXT)
 
     async def api_project_info(self, request):
         ''' API to fetch the metadata of the project '''
@@ -1423,7 +1466,65 @@ class PwicServer():
                                               'url': '/special/document/%d/%s?attachment' % (row[0], quote(row[1]))})
 
         # Final result
-        return web.Response(text=json.dumps(data), content_type='application/json')
+        return web.Response(text=json.dumps(data), content_type=MIME_JSON)
+
+    async def api_project_progress(self, request):
+        ''' API to analyze the progress of the project '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the submitted data
+        post = await self._handlePost(request)
+        project = _safeName(post.get('progress_project', ''))
+        tags = post.get('progress_tags', '').strip()
+        if '' in [project, tags]:
+            raise web.HTTPBadRequest()
+
+        # Verify that the user is authorized for the project
+        sql = app['sql'].cursor()
+        if sql.execute(''' SELECT user
+                           FROM roles
+                           WHERE project  = ?
+                             AND user     = ?
+                             AND disabled = '' ''',
+                       (project, user)).fetchone() is None:
+            return web.HTTPUnauthorized()
+
+        # Check each tag
+        tags = sorted(tags.split(' '))
+        data = {}
+        for tag in tags:
+            if tag == '':
+                continue
+            item = {'draft': 0,
+                    'step': 0,
+                    'final': 0,
+                    'validated': 0,
+                    'total': 0}
+
+            # Select the pages
+            sql.execute(''' SELECT draft, final, valuser
+                            FROM pages
+                            WHERE project = ?
+                              AND latest = 'X'
+                              AND ' '||tags||' ' LIKE ? ''',
+                        (project, '%% %s %%' % tag))
+            for row in sql.fetchall():
+                if _xb(row[2]):
+                    item['validated'] += 1
+                elif _xb(row[1]):
+                    item['final'] += 1
+                elif _xb(row[0]):
+                    item['draft'] += 1
+                else:
+                    item['step'] += 1
+                item['total'] += 1
+            data[tag] = item
+
+        # Final result
+        return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
     async def api_project_graph(self, request):
         ''' Draw the directed graph of the project
@@ -1456,7 +1557,7 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY b.project,
                                  b.page''',
-                    (project, user, ))
+                    (project, user))
 
         # Map the pages
         pages = []
@@ -1746,7 +1847,7 @@ class PwicServer():
 
         # Return the converted output
         html, _ = self._md2html(app['sql'].cursor(), project, content)
-        return web.Response(text=html, content_type='text/plain')
+        return web.Response(text=html, content_type=MIME_TEXT)
 
     async def api_page_validate(self, request):
         ''' Validate the pages '''
@@ -2088,18 +2189,21 @@ class PwicServer():
         # Fetch the submitted data
         post = await self._handlePost(request)
         project = _safeName(post.get('create_project', ''))
+        wisheduser = post.get('create_user', '').strip().lower()
         newuser = _safeName(post.get('create_user', ''), extra='')
         if '' in [project, newuser] or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
+        if wisheduser != newuser:  # Invalid chars spotted
+            raise web.HTTPTemporaryRedirect('/special/create-user?project=%s&failed' % escape(project))
 
         # Verify that the user is administrator of the provided project
         ok = False
         sql = app['sql'].cursor()
         sql.execute(''' SELECT user FROM roles
-                        WHERE project   = ?
-                          AND user      = ?
-                          AND admin     = 'X'
-                          AND disabled <> 'X' ''',
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND admin    = 'X'
+                          AND disabled = '' ''',
                     (project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
@@ -2117,7 +2221,7 @@ class PwicServer():
 
         # Grant the default rights as reader
         sql.execute(''' INSERT INTO roles (project, user, reader)
-                        SELECT ?, ?, "X"
+                        SELECT ?, ?, 'X'
                         WHERE NOT EXISTS ( SELECT 1 FROM roles WHERE project = ? AND user = ? )''',
                     (project, newuser, project, newuser))
         if sql.rowcount > 0:
@@ -2237,7 +2341,7 @@ class PwicServer():
                                  'user': userpost},
                            request)
                 self._commit()
-                return web.Response(text='OK', content_type='text/plain')
+                return web.Response(text='OK', content_type=MIME_TEXT)
             else:
                 raise web.HTTPBadRequest()
 
@@ -2263,7 +2367,7 @@ class PwicServer():
                                  'user': userpost},
                            request)
                 self._commit()
-                return web.Response(text=newvalue, content_type='text/plain')
+                return web.Response(text=newvalue, content_type=MIME_TEXT)
 
     async def api_document_create(self, request):
         ''' API to create a new document '''
@@ -2472,7 +2576,7 @@ class PwicServer():
                            'author': row[5],
                            'date': row[6],
                            'time': row[7]})
-        return web.Response(text=json.dumps(result), content_type='application/json')
+        return web.Response(text=json.dumps(result), content_type=MIME_JSON)
 
     async def api_document_delete(self, request):
         ''' Delete a document '''
@@ -2574,6 +2678,7 @@ def main():
                     web.post('/api/server/env', app['pwic'].api_server_env),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/project/info', app['pwic'].api_project_info),
+                    web.post('/api/project/progress', app['pwic'].api_project_progress),
                     web.post('/api/project/graph', app['pwic'].api_project_graph),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
@@ -2631,6 +2736,9 @@ def main():
         app['cors'] = aiohttp_cors.setup(app, defaults={'*': aiohttp_cors.ResourceOptions(allow_headers='*')})  # expose_headers='*'
         for route in list(app.router.routes()):
             app['cors'].add(route)
+
+    # No logon
+    app['no_logon'] = app['pwic']._readEnv(sql, '', 'no_logon') is not None
 
     # Launch the server
     del sql

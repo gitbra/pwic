@@ -60,7 +60,7 @@
 
 
 		<h1 id="help_setup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Setup the server</h1>
-		<p>Refer to the file <code>README.md</code> available in the root directory of the application to know more about the default setup.</p>
+		<p>Refer to the file <code>README.md</code> available at the root directory of the application to know more about the default setup.</p>
 		<p>With the command <code>python pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior:</p>
 			<table>
 				<tr>
@@ -146,6 +146,11 @@
 					<td><code>no_export_project</code></td>
 					<td>Yes</td>
 					<td>Disable the export of the project as an archive for the online administrators.</td>
+				</tr>
+				<tr>
+					<td><code>no_logon</code></td>
+					<td>No</td>
+					<td>Skip the logon screen and assign the anonymous role to any visitor. As per the default behavior of the user account <code>{{pwic.constants.anonymous_user}}</code>, Pwic becomes public, read-only and you update the instance by transferring the folder <code>{{pwic.constants.db_path}}</code> administratively. The server must be restarted when the option is changed.</td>
 				</tr>
 				<tr>
 					<td><code>no_printing</code></td>
@@ -245,7 +250,7 @@
 		<p>If enabled by the administrator, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
 		<p>The tags are the base to classify the pages freely. The keywords are separated by a space. You can search for a tag in the search engine by usign a hash (ex: <code>#tag</code>). A tag counts a lot in the evaluation of the results.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
-		<p>The attribute <em>Milestone</em> of the page is an optional free comment that can be used, for example, by the manager to request a delivery date, or by the editor to announce a publishing date. You can also indicate your difficulties, the current progression, etc...</p>
+		<p>The attribute <em>Milestone</em> of the page is an optional free comment that can be used, for example, by the manager to request a delivery date, or by the editor to announce a publishing date. You can also indicate your difficulties, the current progress, etc...</p>
 		<p>You can upload several files for a page. In case it is a picture, you can also include it in the page as a figure, else as a link. All the files are listed on a gallery below the page. In any case, many rules apply in the uploading process:</p>
 			<ul>
 				<li>No revision is created when a file is created, modified or deleted. The changes are instantly considered.</li>
@@ -390,121 +395,127 @@
 				<td><a href="https://github.com/aio-libs/aiohttp">aiohttp</a></td>
 				<td>3.7.2</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>Apache 2.0 License</td>
+				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp-cors">aiohttp-cors</a></td>
 				<td>0.7.0</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>Apache 2.0 License</td>
+				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp-session">aiohttp-session</a></td>
 				<td>2.9.0</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>Apache 2.0 License</td>
+				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://fonts.google.com/specimen/Baloo+2">Baloo 2</a></td>
 				<td>-</td>
 				<td class="pwic_desktop">Font</td>
-				<td>Open Font License</td>
+				<td><a href="https://raw.githubusercontent.com/EkType/Baloo2/master/Copyright.txt">Open Font License</a></td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/fabiospampinato/cash">cash.js</a></td>
+				<td>8.1.0</td>
+				<td class="pwic_desktop">Library for JavaScript</td>
+				<td><a href="https://raw.githubusercontent.com/fabiospampinato/cash/master/LICENSE.md">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/Ionaru/easy-markdown-editor">EasyMDE</a></td>
 				<td>2.12.1 (modified, >=2.12)</td>
 				<td class="pwic_desktop">Library for JavaScript</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/Ionaru/easy-markdown-editor/master/LICENSE">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://www.flaticon.com/free-icon/verify_2910756">Favorite icon</a></td>
 				<td>-</td>
 				<td class="pwic_desktop">Picture</td>
-				<td>by Pixel Perfect</td>
+				<td><a href="https://www.flaticon.com/free-icon/verify_2910756">by Pixel Perfect</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/FortAwesome/Font-Awesome">FontAwesome</a></td>
 				<td>5</td>
 				<td class="pwic_desktop">Font</td>
-				<td>SIL OFL 1.1</td>
+				<td><a href="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/master/LICENSE.txt">SIL OFL 1.1</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/FortAwesome/Font-Awesome">FontAwesome</a></td>
 				<td>5</td>
 				<td class="pwic_desktop">Cascading style sheets (CSS)</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/master/LICENSE.txt">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/shibukawa/imagesize_py">ImageSize</a></td>
 				<td>1.2.0</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/shibukawa/imagesize_py/master/LICENSE.rst">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/pallets/jinja">Jinja2</a></td>
 				<td>2.11.2</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>BSD-3-Clause License</td>
+				<td><a href="https://raw.githubusercontent.com/pallets/jinja/master/LICENSE.rst">BSD-3-Clause License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/trentm/python-markdown2">Markdown2</a></td>
 				<td>2.3.10 (modified, >=2.3.10)</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/trentm/python-markdown2/master/LICENSE.txt">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/mathjax/MathJax-src">MathJax</a></td>
 				<td>3.1.2</td>
 				<td class="pwic_desktop">Library for JavaScript</td>
-				<td>Apache 2.0 License</td>
+				<td><a href="https://raw.githubusercontent.com/mathjax/MathJax-src/master/LICENSE">Apache 2.0 License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/erikrose/parsimonious">Parsimonious</a></td>
 				<td>0.8.1</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/erikrose/parsimonious/master/README.rst">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/jazzband/prettytable">PrettyTable</a></td>
 				<td>1.0.1</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>BSD License</td>
+				<td><a href="https://raw.githubusercontent.com/jazzband/prettytable/master/COPYING">BSD License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/pygments/pygments">pygments</a></td>
 				<td>2.7.1</td>
 				<td class="pwic_desktop">Library for Python</td>
-				<td>BSD-2-Clause License</td>
+				<td><a href="https://raw.githubusercontent.com/pygments/pygments/master/README.rst">BSD-2-Clause License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/python/cpython/">Python</a></td>
 				<td>3.8.6</td>
 				<td class="pwic_desktop">Programming language</td>
-				<td>Python Software Foundation License</td>
+				<td><a href="https://raw.githubusercontent.com/python/cpython/master/LICENSE">Python Software Foundation License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://www.sqlite.org">SQLite</a></td>
 				<td>3</td>
 				<td class="pwic_desktop">Database engine</td>
-				<td>Public domain</td>
+				<td><a href="https://raw.githubusercontent.com/sqlite/sqlite/master/LICENSE.md">Public domain</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/ariutta/svg-pan-zoom">SVG pan &amp; zoom</a></td>
 				<td>3.5.1</td>
 				<td class="pwic_desktop">Library for JavaScript</td>
-				<td>BSD-2-Clause License</td>
+				<td><a href="https://raw.githubusercontent.com/ariutta/svg-pan-zoom/master/LICENSE">BSD-2-Clause License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/swagger-api/swagger-ui">Swagger UI</a></td>
 				<td>3.14.1</td>
 				<td class="pwic_desktop">Library for JavaScript</td>
-				<td>Apache 2.0 License</td>
+				<td><a href="https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE">Apache 2.0 License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/mdaines/viz.js">Viz.js</a></td>
 				<td>1.7.1</td>
 				<td class="pwic_desktop">Library for JavaScript</td>
-				<td>MIT License</td>
+				<td><a href="https://raw.githubusercontent.com/mdaines/viz.js/master/LICENSE">MIT License</a></td>
 			</tr>
 		</table>
 	</article>

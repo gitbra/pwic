@@ -22,6 +22,8 @@
 		</style>
 	{% endif %}
 
+	<script src="/static/cash.min.js"></script>
+
 	{% if pwic.project != 'special' and pwic.page != 'help' %}
 		{% if pwic.env.mde %}
 			<link rel="stylesheet" href="/static/easymde.min.css" />
@@ -34,13 +36,8 @@
 					tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
 					svg: { fontCache: 'global' }
 				};
-				(function () {
-					var mathjax = document.createElement('script');
-					mathjax.src = '/static/mathjax.min.js';
-					mathjax.async = true;
-					document.head.appendChild(mathjax);
-				})();
 			</script>
+			<script src="/static/mathjax.min.js" async="true"></script>
 		{% endif %}
 	{% endif %}
 
@@ -81,11 +78,6 @@
 		function pwic_slash(value) {
 			// https://stackoverflow.com/questions/18251399/why-doesnt-encodeuricomponent-encode-single-quotes-apostrophes
 			return value.split("'").join("\\'").split('"').join('\\"');
-		}
-
-		function pwic_toggle(id) {
-			document.getElementById(id).classList.toggle('pwic_hidden');
-			return false;
 		}
 
 		function pwic_url_status(success, failed) {

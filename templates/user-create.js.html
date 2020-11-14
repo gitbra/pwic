@@ -2,13 +2,10 @@
 	'use strict';
 
 	function create_submit(errorText) {
-		var	project = document.getElementById('create_project').value,
-			user = document.getElementById('create_user').value.toLowerCase().trim();
-		if (	(project != '')
-			&&	user.match(/^[a-z0-9_\-\.@]+$/i)
-			&&	(user.substring(0,4) != 'pwic')
-		)
-			document.getElementById('create_form').submit();
+		var	project = $('#create_project').val(),
+			user = $('#create_user').val().trim().toLowerCase();
+		if ((project != '') && (user.substring(0, 4) != 'pwic'))
+			$('#create_form')[0].submit();
 		else
 			alert(errorText);
 	}
