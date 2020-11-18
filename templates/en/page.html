@@ -50,13 +50,18 @@
 				{% endif %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 
+				<a href="#" onclick="page_email()">{{pwic.emojis.outbox}} Email</a>
+				{% if not pwic.env.no_printing %}
+					<a href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
+				{% endif %}
+
 				{% set formats = pwic.env.get('disabled_formats', {'value': ''}).value.split(' ') %}
 				{% if '*' not in formats %}
 					{% if 'md' not in formats %}
-						<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} MarkDown</a>
+						<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} Raw</a>
 					{% endif %}
 					{% if 'odt' not in formats %}
-						<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} OpenDocument</a>
+						<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} Desktop</a>
 					{% endif %}
 				{% endif %}
 
@@ -347,11 +352,11 @@
 		{% else %}
 
 			{% if not pwic.latest %}
-			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.</p>
+				<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.</p>
 			{% endif %}
 
 			{% if pwic.valuser != '' %}
-			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
+				<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
 			{% endif %}
 
 			{% if pwic.tmap|count > 0 %}
@@ -409,6 +414,16 @@
 				Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
 				<br/>Hash: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
 			</p>
+
+			{% if pwic.env.legal_notice %}
+				<p id="page_legal_notice">
+					{% if pwic.env.safe_mode %}
+						{{pwic.env.legal_notice.value|escape|replace('\n','<br/>')}}
+					{% else %}
+						{{pwic.env.legal_notice.value}}
+					{% endif %}
+				</p>
+			{% endif %}
 		{% endif %}
 	</article>
 {% endblock %}

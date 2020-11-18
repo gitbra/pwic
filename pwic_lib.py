@@ -22,6 +22,7 @@ PWIC_USER = 'pwic-system'
 PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_DEFAULT_PAGE = 'home'
+PWIC_DEFAULT_HEADING = '1.1.1.1.1.1.'
 
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
@@ -31,6 +32,15 @@ PWIC_REGEX_PAGE = r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)
 PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'  # Find a document in Markdown
 PWIC_REGEX_DOCUMENT_IMGSRC = r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'             # Find the picture ID in IMG.SRC
 PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                          # Check the format of the mime
+PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                                     # Find a HTML tag
+
+PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'ip_filter', 'maintenance', 'mime_enforcement',
+                                'no_logon', 'password_regex', 'safe_mode', 'ssl']
+PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'css', 'disabled_formats', 'document_name_regex',
+                              'export_project_revisions', 'heading_mask', 'legal_notice', 'mathjax',
+                              'max_document_size', 'max_project_size', 'mde', 'no_export_project',
+                              'no_printing', 'no_text_selection', 'odt_page_height', 'odt_page_width',
+                              'robots', 'support_email', 'support_phone', 'support_url']
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
@@ -40,7 +50,9 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'chains': '&#x1F517;',
                'check': '&#x2714;',
                'clamp': '&#x1F5DC;',
+               'clipboard': '&#x1F4CB;',
                'door': '&#x1F6AA;',
+               'email': '&#x1F4E7;',
                'eye': '&#x1F441;',
                'finger_up': '&#x261D;',
                'flag': '&#x1F3C1;',
@@ -59,6 +71,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'locked': '&#x1F512;',
                'memo': '&#x1F4DD;',
                'notes': '&#x1F4CB;',
+               'outbox': '&#x1F4E4;',
                'padlock': '&#x1F510;',
                'pin': '&#x1F4CC;',
                'plug': '&#x1F50C;',
@@ -298,9 +311,9 @@ def _size2str(size):
 #  Editor
 # ===================================================
 
-def pwic_extended_syntax(markdown, mask):
+def pwic_extended_syntax(markdown, mask, headerNumbering=True):
     ''' Automatic numbering of the MD headers '''
-
+    # Local functions
     def _numeric(value):
         return str(value)
 
@@ -325,6 +338,9 @@ def pwic_extended_syntax(markdown, mask):
                 buffer += letter
                 value -= threshold
         return buffer
+
+    def _romanMin(value):
+        return _roman(value).lower()
 
     def _letter(value, mask):
         # https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
@@ -354,7 +370,19 @@ def pwic_extended_syntax(markdown, mask):
     numbering = []
     last_depth = 0
     tmap = []
-    tmask = {'1': _numeric, 'I': _roman, 'A': _letterMaj, 'a': _letterMin}
+    tmask = {'1': _numeric,
+             'I': _roman,
+             'i': _romanMin,
+             'A': _letterMaj,
+             'a': _letterMin}
+
+    # Complete the mask
+    if mask is None:
+        mask = ''
+    a = len(mask)
+    b = len(PWIC_DEFAULT_HEADING)
+    if a < b:
+        mask += PWIC_DEFAULT_HEADING[a - b:]
 
     # For each line
     for i in range(len(lines)):
@@ -379,19 +407,16 @@ def pwic_extended_syntax(markdown, mask):
             sdisp = ''
             stag = ''
             for n in range(len(numbering)):
-                try:
-                    snum = tmask[mask[2 * n]](numbering[n])
-                except (KeyError, IndexError):
-                    snum = _numeric(numbering[n])
-                try:
-                    ssep = mask[2 * n + 1]
-                except (KeyError, IndexError):
-                    ssep = '.'
+                snum = tmask[mask[2 * n]](numbering[n])
+                ssep = mask[2 * n + 1]
                 sdisp += '%s%s' % (snum, ssep)
                 stag += '%s.' % snum.lower()
 
             # Adapt the line
-            lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+            if headerNumbering:
+                lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+            else:
+                lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
             tmap.append({'header': sdisp,
                          'level': stag.count('.'),
                          'title': line.strip()[4:-5]})

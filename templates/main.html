@@ -3,6 +3,9 @@
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="generator" content="Pwic version {{pwic.constants.version|escape}}">
+	{% if pwic.env.robots %}
+		<meta name="robots" content="{{pwic.env.robots.value|escape}}">
+	{% endif %}
 	<meta charset="utf-8">
 	<title>{{pwic.title|escape}} - Pwic</title>
 	<link rel="stylesheet" type="text/css" href="/static/styles.css" />

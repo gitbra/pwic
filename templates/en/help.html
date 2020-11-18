@@ -99,6 +99,11 @@
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 				</tr>
 				<tr>
+					<td><code>export_project_revisions</code></td>
+					<td>Yes</td>
+					<td>Add the revisions of the pages when you export a project as a ZIP file.</td>
+				</tr>
+				<tr>
 					<td><code>ip_filter</code></td>
 					<td>No</td>
 					<td>
@@ -110,7 +115,12 @@
 				<tr>
 					<td><code>heading_mask</code></td>
 					<td>Yes</td>
-					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 (<code>I</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
+					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
+				</tr>
+				<tr>
+					<td><code>legal_notice</code></td>
+					<td>Yes</td>
+					<td>A legal text can be displayed at the bottom of the pages. The HTML syntax is accepted if <code>safe_mode</code> is disabled.</td>
 				</tr>
 				<tr>
 					<td><code>maintenance</code></td>
@@ -163,9 +173,26 @@
 					<td>Enable a basic protection to prevent the user from playing around with his web browser to copy the text of the main page. It also forces the readers to focus on reading the page.</td>
 				</tr>
 				<tr>
+					<td><code>odt_page_height</code></td>
+					<td>Yes</td>
+					<td>Height of the paper when you export a page to OpenDocument. The value <code>29.7cm</code> is used by default (A4).</td>
+				</tr>
+				<tr>
+					<td><code>odt_page_width</code></td>
+					<td>Yes</td>
+					<td>Width of the paper when you export a page to OpenDocument. The value <code>21cm</code> is used by default (A4).</td>
+				</tr>
+				<tr>
 					<td><code>password_regex</code></td>
 					<td>No</td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150/">here</a>. The option does not apply when you reset the password from the console.</td>
+				</tr>
+				<tr>
+					<td><code>robots</code></td>
+					<td>Yes</td>
+					<td>
+						The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</li>
+					</td>
 				</tr>
 				<tr>
 					<td><code>safe_mode</code></td>

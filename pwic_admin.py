@@ -11,8 +11,8 @@ from shutil import copyfile
 from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
-    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+    PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
     _dt, _sha256, _safeName, pwic_audit
 
 
@@ -47,6 +47,9 @@ def main():
     parser_delproj = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
     parser_delproj.add_argument('project', default='', help='Project name')
 
+    parser_cache = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
+    parser_cache.add_argument('--project', default='', help='Name of a project to restrict the scope')
+
     parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
     parser_reset_user.add_argument('user', default='', help='User name')
 
@@ -74,6 +77,8 @@ def main():
         return create_project(args.project, args.description, args.admin)
     elif args.command == 'delete-project':
         return delete_project(args.project)
+    elif args.command == 'clear-cache':
+        return clear_cache(args.project)
     elif args.command == 'reset-password':
         return reset_password(args.user)
     elif args.command == 'show-log':
@@ -245,6 +250,15 @@ CREATE INDEX "pages_index" ON "pages" (
     "page" ASC,
     "latest" ASC
 )''')
+            # Table CACHE
+            sql.execute('''
+CREATE TABLE "cache" (
+    "project" TEXT NOT NULL,
+    "page" TEXT NOT NULL,
+    "html" TEXT NOT NULL,
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    PRIMARY KEY("project","page")
+)''')
             # Table DOCUMENTS
             sql.execute('''
 CREATE TABLE "documents" (
@@ -345,38 +359,14 @@ def show_env():
 
 def set_env(project, name, value):
     # Check the keys
-    project_independent = ['base_url',
-                           'cors',
-                           'ip_filter',
-                           'maintenance',
-                           'mime_enforcement',
-                           'no_logon',
-                           'password_regex',
-                           'safe_mode',
-                           'ssl']
-    project_dependent = ['api_expose_markdown',
-                         'css',
-                         'disabled_formats',
-                         'document_name_regex',
-                         'heading_mask',
-                         'mathjax',
-                         'max_document_size',
-                         'max_project_size',
-                         'mde',
-                         'no_export_project',
-                         'no_printing',
-                         'no_text_selection',
-                         'support_email',
-                         'support_phone',
-                         'support_url']
-    merged = sorted(project_independent + project_dependent)
+    merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if name not in merged:
         print('Error: the name of the variable must be one of "%s"' % ', '.join(merged))
         return False
-    if project != '' and name in project_independent:
+    if project != '' and name in PWIC_ENV_PROJECT_INDEPENDENT:
         print('Error: this parameter is project-independent')
         return False
-    value = value.strip()
+    value = value.strip().replace('\r', '')
 
     # Update the variable
     sql = db_connect()
@@ -576,6 +566,7 @@ def delete_project(project):
         sql.execute('DELETE FROM env       WHERE project = ?', (project, ))
         sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
         sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
+        sql.execute('DELETE FROM cache     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
         pwic_audit(sql, {'author': PWIC_USER,
@@ -587,6 +578,26 @@ def delete_project(project):
     else:
         print('Aborted')
         return False
+
+
+def clear_cache(project):
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Clear the cache
+    project = _safeName(project)
+    if project != '':
+        sql.execute('DELETE FROM cache WHERE project = ?', (project, ))
+    else:
+        sql.execute('DELETE FROM cache')
+    pwic_audit(sql, {'author': PWIC_USER,
+                     'event': 'clear-cache',
+                     'project': project})
+    db_commit()
+    print('The cache is cleared. Do expect a workload of regeneration for a short period time.')
+    return True
 
 
 def reset_password(user):

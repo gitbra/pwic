@@ -23,7 +23,7 @@ from base64 import b64encode
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
     PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
-    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, \
+    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
@@ -62,10 +62,32 @@ class PwicServer():
         ''' Rollback the current transactions '''
         app['sql'].rollback()
 
-    def _md2html(self, sql, project, markdown):
+    def _md2html(self, sql, project, page, markdown, cache=True, headerNumbering=True):
         ''' Convert the text from Markdown to HTML '''
-        return pwic_extended_syntax(app['markdown'].convert(markdown),
-                                    self._readEnv(sql, project, 'heading_mask', default='1.1.1.1.1.1.'))
+        # Read the cache
+        if page is None:
+            cache = False
+        if cache:
+            row = sql.execute(''' SELECT html
+                                  FROM cache
+                                  WHERE project = ?
+                                    AND page    = ?''',
+                              (project, page)).fetchone()
+        else:
+            row = None
+
+        # Update the cache
+        if row is not None:
+            html = row[0]
+        else:
+            html = app['markdown'].convert(markdown)
+            if cache:
+                sql.execute('INSERT OR REPLACE INTO cache (project, page, html) VALUES (?, ?, ?)',
+                            (project, page, html))
+                self._commit()
+        return pwic_extended_syntax(html,
+                                    self._readEnv(sql, project, 'heading_mask'),
+                                    headerNumbering=headerNumbering)
 
     def _mime2icon(self, mime):
         ''' Return the emojis that corresponds to the MIME '''
@@ -351,7 +373,7 @@ class PwicServer():
                     pwic['time'] = row[7]
                     pwic['title'] = row[8]
                     pwic['markdown'] = row[9]
-                    pwic['html'], pwic['tmap'] = self._md2html(sql, project, row[9])
+                    pwic['html'], pwic['tmap'] = self._md2html(sql, project, page, row[9], cache=pwic['latest'])
                     pwic['hash'] = _sha256(row[9], salt=False)
                     pwic['tags'] = [] if row[10] == '' else row[10].split(' ')
                     pwic['valuser'] = row[11]
@@ -848,8 +870,8 @@ class PwicServer():
             ok = True
             score = 0
             for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
-                if (q == ':draft' and row[2] == 'X')                            \
-                   or (q == ':final' and row[3] == 'X')                         \
+                if (q == ':draft' and _xb(row[2]))                              \
+                   or (q == ':final' and _xb(row[3]))                           \
                    or (q[:7] == 'author:' and q[7:] in row[4].lower())          \
                    or (q[:6] == 'title:' and q[6:] in row[7].lower())           \
                    or (q == ':validated' and row[10] != '')                     \
@@ -863,9 +885,9 @@ class PwicServer():
             if ok:
                 for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
                     if q == ':draft':
-                        count = _int(row[2] == 'X')
+                        count = _int(_xb(row[2]))
                     elif q == ':final':
-                        count = _int(row[3] == 'X')
+                        count = _int(_xb(row[3]))
                     elif q[:7] == 'author:':
                         count = row[4].lower().count(q[7:])
                     elif q[:6] == 'title:':
@@ -934,7 +956,8 @@ class PwicServer():
                                       'date': row[7],
                                       'time': row[8]})
 
-        # Show the page
+        # Show the pages by score desc and title asc
+        pwic['pages'].sort(key=lambda x: x['title'])
         pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
         return await self._handleOutput(request, 'search', pwic=pwic)
 
@@ -1023,7 +1046,7 @@ class PwicServer():
                 linkmap[page] = []
 
             # Generate a fake link at the home page for all the bookmarked pages
-            if row[1] == 'X' and page not in linkmap[PWIC_DEFAULT_PAGE]:
+            if _xb(row[1]) and page not in linkmap[PWIC_DEFAULT_PAGE]:
                 linkmap[PWIC_DEFAULT_PAGE].append(page)
 
             # Find the links to the other pages
@@ -1159,6 +1182,7 @@ class PwicServer():
         project = _safeName(request.match_info.get('project', ''))
         if self._readEnv(sql, project, 'no_export_project') is not None:
             raise web.HTTPUnauthorized()
+        with_revisions = self._readEnv(sql, project, 'export_project_revisions') is not None
 
         # Fetch the pages
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
@@ -1173,6 +1197,8 @@ class PwicServer():
                     (project, user))
         pages = []
         for row in sql.fetchall():
+            if not with_revisions and not _xb(row[2]):
+                continue
             pages.append(row)
 
         # Build the zip file
@@ -1187,8 +1213,9 @@ class PwicServer():
             # Pages of the project
             for page in pages:
                 # Raw markdown
-                zip.writestr('%s%s.rev%d.md' % (folder_rev, page[0], page[1]), page[7])
-                if page[2] == 'X':
+                if with_revisions:
+                    zip.writestr('%s%s.rev%d.md' % (folder_rev, page[0], page[1]), page[7])
+                if _xb(page[2]):
                     zip.writestr('%s.md' % page[0], page[7])
 
                 # HTML
@@ -1198,9 +1225,11 @@ class PwicServer():
                                           page[0].replace('<', '&lt;').replace('>', '&gt;'),
                                           page[6].replace('<', '&lt;').replace('>', '&gt;'),
                                           htmlStyles.getCss(rel=True),
-                                          self._md2html(sql, project, page[7])[0])
-                zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
-                if page[2] == 'X':
+                                          '',
+                                          self._md2html(sql, project, page[0], page[7], cache=_xb(page[2]))[0])
+                if with_revisions:
+                    zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
+                if _xb(page[2]):
                     zip.writestr('%s.html' % page[0], html)
 
             # Dependent files for the pages
@@ -1208,7 +1237,8 @@ class PwicServer():
             with open(htmlStyles.css, 'rb') as f:
                 content = f.read()
             zip.writestr(htmlStyles.css, content)
-            zip.writestr(folder_rev + htmlStyles.css, content)
+            if with_revisions:
+                zip.writestr(folder_rev + htmlStyles.css, content)
             del content
 
             # Attached documents
@@ -1596,7 +1626,7 @@ class PwicServer():
             _makeLink('', '', row[0], row[1])
 
             # Assign the bookmarks to the home page
-            if row[2] == 'X':
+            if _xb(row[2]):
                 _makeLink(row[0], PWIC_DEFAULT_PAGE, row[0], row[1])
 
             # Find the links to the other pages
@@ -1828,6 +1858,12 @@ class PwicServer():
                               AND page      = ?
                               AND revision <= ?''',
                         (project, page, revision))
+
+            # Clear the cache
+            sql.execute(''' DELETE FROM cache
+                            WHERE project = ?
+                              AND page    = ?''',
+                        (project, page))
             self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
@@ -1846,7 +1882,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Return the converted output
-        html, _ = self._md2html(app['sql'].cursor(), project, content)
+        html, _ = self._md2html(app['sql'].cursor(), project, None, content, cache=False)
         return web.Response(text=html, content_type=MIME_TEXT)
 
     async def api_page_validate(self, request):
@@ -1940,6 +1976,12 @@ class PwicServer():
         if row is None:
             raise web.HTTPUnauthorized()
         header = row[0]
+
+        # Clear the cache
+        sql.execute(''' DELETE FROM cache
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (project, page))
 
         # Delete the page
         sql.execute(''' DELETE FROM pages
@@ -2055,7 +2097,13 @@ class PwicServer():
         # Initialization
         dt = _dt()
         baseUrl = self._readEnv(sql, '', 'base_url', '')
+        pageUrl = '%s/%s/%s/rev%d' % (baseUrl, project, page, row[0])
         endname = self._attachmentName('%s_%s_rev%d.%s' % (project, page, row[0], format))
+
+        # Fetch the legal notice
+        legal_notice = self._readEnv(sql, project, 'legal_notice', '').strip()
+        legal_notice = re.sub(PWIC_REGEX_HTML_TAG, '', legal_notice)
+        legal_notice = legal_notice.replace('\r', '')
 
         # Format MD
         if format == 'md':
@@ -2071,7 +2119,8 @@ class PwicServer():
                                       page.replace('<', '&lt;').replace('>', '&gt;'),
                                       row[5].replace('<', '&lt;').replace('>', '&gt;'),
                                       htmlStyles.getCss(rel=False),
-                                      self._md2html(sql, project, row[6])[0])
+                                      '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
+                                      self._md2html(sql, project, page, row[6], cache=_xb(row[1]))[0])
             html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
                                                               'Content-Disposition': 'attachment; filename="%s"' % endname}))
@@ -2079,7 +2128,9 @@ class PwicServer():
         # Format ODT
         elif format == 'odt':
             # MD --> HTML --> ODT
-            html = self._md2html(sql, project, row[6])[0]
+            html = self._md2html(sql, project, page, row[6],
+                                 cache=False,  # No cache to recalculate the headers through the styles
+                                 headerNumbering=False)[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
             html = html.replace('</code></pre></div>', '</blockcode>')
             html = html.replace('<pre><code>', '<blockcode>')
@@ -2165,8 +2216,19 @@ class PwicServer():
                                                        escape(user),
                                                        escape(dt['date']), escape(dt['time']),
                                                        row[0]))
-            odt.writestr('styles.xml', odtStyles.styles.replace('<!-- styles-code -->', '' if not odtGenerator.has_code else odtStyles.getOptimizedCodeStyles(html)))
-            odt.writestr('content.xml', odtStyles.content % odtGenerator.odt)
+            xml = odtStyles.styles
+            xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
+            xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(self._readEnv(sql, project, 'heading_mask')))
+            if legal_notice != '':
+                legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
+            xml = xml.replace('<!-- styles-footer -->', legal_notice)
+            xml = xml.replace('fo:page-width=""', 'fo:page-width="%s"' % self._readEnv(sql, project, 'odt_page_width', '21cm').strip().replace(' ', '').replace(',', '.').replace('"', '\\"'))
+            xml = xml.replace('fo:page-height=""', 'fo:page-height="%s"' % self._readEnv(sql, project, 'odt_page_height', '29.7cm').strip().replace(' ', '').replace(',', '.').replace('"', '\\"'))
+            odt.writestr('styles.xml', xml)
+            xml = odtStyles.content
+            xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (pageUrl, pageUrl))  # Trick to connect the master layout to the page
+            xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
+            odt.writestr('content.xml', xml)
             odt.close()
 
             # Return the file
@@ -2324,7 +2386,7 @@ class PwicServer():
                           AND a.user    = ?''',
                     (user, project, userpost))
         row = sql.fetchone()
-        if row is None or (not delete and row[7] == 'X'):
+        if row is None or (not delete and _xb(row[7])):
             raise web.HTTPUnauthorized()
 
         # Delete a user
@@ -2362,7 +2424,7 @@ class PwicServer():
                 raise web.HTTPBadRequest()
             else:
                 pwic_audit(sql, {'author': user,
-                                 'event': '%s-%s' % ('grant' if newvalue == 'X' else 'ungrant', roles[roleid]),
+                                 'event': '%s-%s' % ('grant' if _xb(newvalue) else 'ungrant', roles[roleid]),
                                  'project': project,
                                  'user': userpost},
                            request)

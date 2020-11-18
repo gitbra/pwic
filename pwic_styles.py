@@ -1,4 +1,7 @@
 
+from pwic_lib import PWIC_DEFAULT_HEADING
+
+
 # ===============================
 #  Helper for the export to HTML
 # ===============================
@@ -18,6 +21,7 @@ class pwic_styles_html:
     %s
 </head>
 <body>
+%s
     <article>%s</article>
 </body>
 </html>'''
@@ -182,7 +186,7 @@ class pwic_styles_odt:
             <style:table-column-properties style:use-optimal-column-width="false"/>
         </style:default-style>
         <style:default-style style:family="table-row">
-            <style:table-row-properties style:use-optimal-row-height="true" />
+            <style:table-row-properties style:use-optimal-row-height="true"/>
         </style:default-style>
         <style:default-style style:family="table-cell">
             <style:table-cell-properties style:vertical-align="middle"
@@ -198,8 +202,7 @@ class pwic_styles_odt:
                      style:default-outline-level="1">
             <style:paragraph-properties fo:break-before="page"
                                         fo:margin-top="12pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="0cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="22pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -210,8 +213,7 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="2">
             <style:paragraph-properties fo:margin-top="9pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="1cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="20pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -222,8 +224,7 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="3">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="2cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="18pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -234,8 +235,7 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="4">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="3cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="16pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -246,8 +246,7 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="5">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="4cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="14pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -258,8 +257,7 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="6">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"
-                                        fo:margin-left="5cm"/>
+                                        fo:margin-bottom="6pt"/>
             <style:text-properties fo:font-size="14pt"
                                    fo:font-weight="bold"/>
         </style:style>
@@ -300,6 +298,14 @@ class pwic_styles_odt:
                      style:family="text"
                      style:parent-style-name="Normal">
             <style:text-properties fo:color="#FF0000"/>
+        </style:style>
+        <style:style style:name="Footer"
+                     style:display-name="Footer"
+                     style:family="paragraph">
+            <style:paragraph-properties fo:text-align="center" />
+            <style:text-properties fo:font-size="9pt"
+                                   fo:font-style="italic"
+                                   fo:color="#808080" />
         </style:style>
         <style:style style:name="HR"
                      style:display-name="Horizontal line"
@@ -381,6 +387,10 @@ class pwic_styles_odt:
         </style:style>
 
         <!-- styles-code -->
+
+        <text:outline-style style:name="TitleStructure">
+            <!-- styles-heading-format -->
+        </text:outline-style>
 
         <text:list-style style:name="ListStructure"
                          style:display-name="List structure">
@@ -584,19 +594,29 @@ class pwic_styles_odt:
     </office:styles>
     <office:automatic-styles>
         <style:page-layout style:name="DocumentPage">
-            <style:page-layout-properties fo:page-width="21cm"
-                                          fo:page-height="29.7cm"
+            <style:page-layout-properties fo:page-width=""
+                                          fo:page-height=""
+                                          style:print-orientation="portrait"
                                           fo:margin-top="1in"
                                           fo:margin-left="1in"
                                           fo:margin-bottom="1in"
                                           fo:margin-right="1in"
                                           style:num-format="1">
+                <style:footnote-sep style:width="0.007in"
+                                    style:rel-width="33%"
+                                    style:color="#000000"
+                                    style:line-style="solid"
+                                    style:adjustment="left" />
             </style:page-layout-properties>
         </style:page-layout>
     </office:automatic-styles>
     <office:master-styles>
         <style:master-page style:name="MasterDocumentPage"
-                           style:page-layout-name="DocumentPage"/>
+                           style:page-layout-name="DocumentPage">
+            <style:footer>
+                <!-- styles-footer -->
+            </style:footer>
+        </style:master-page>
     </office:master-styles>
 </office:document-styles>'''
 
@@ -626,9 +646,15 @@ class pwic_styles_odt:
                          xmlns:xhtml="http://www.w3.org/1999/xhtml"
                          xmlns:xlink="http://www.w3.org/1999/xlink"
                          office:version="1.2">
+    <office:automatic-styles>
+        <style:style style:name="Reference"
+                     style:family="paragraph"
+                     style:master-page-name="MasterDocumentPage" />
+    </office:automatic-styles>
     <office:body>
         <office:text>
-            %s
+            <!-- content-url -->
+            <!-- content-page -->
         </office:text>
     </office:body>
 </office:document-content>'''
@@ -640,3 +666,33 @@ class pwic_styles_odt:
             if ref in code:
                 output += line + '\n'
         return output
+
+    def getHeadingStyles(self, mask):
+        # Complete the mask
+        if mask is None:
+            mask = ''
+        a = len(mask)
+        b = len(PWIC_DEFAULT_HEADING)
+        if a < b:
+            mask += PWIC_DEFAULT_HEADING[a - b:]
+
+        # Build the XML section
+        template = '''<text:outline-level-style text:level="%d"
+                                                text:display-levels="%d"
+                                                style:num-format="%s"
+                                                style:num-suffix="%s"
+                                                text:style-name="H%d">
+                        <style:list-level-properties text:list-level-position-and-space-mode="label-alignment">
+                            <style:list-level-label-alignment text:label-followed-by="listtab"
+                                                              fo:margin-left="%dcm"/>
+                        </style:list-level-properties>
+                    </text:outline-level-style>\n'''
+        buffer = ''
+        for i in range(6):
+            buffer += template % (i + 1,
+                                  i + 1,
+                                  mask[2 * i].strip().replace('"', '\\"'),
+                                  mask[2 * i + 1].strip().replace('"', '\\"'),
+                                  i + 1,
+                                  i)
+        return buffer

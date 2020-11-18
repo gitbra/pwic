@@ -1,4 +1,4 @@
-HEADER, .pwic_action_bar, FOOTER {
+HEADER, .pwic_action_bar, #pwic_browser_access, #pwic_browser, #page_topofpage, FOOTER {
 	display: none;
 }
 

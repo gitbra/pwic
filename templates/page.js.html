@@ -7,6 +7,16 @@
 		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
 	}
 
+	function page_email() {
+		window.location = "mailto:?subject={{pwic.title|urlencode}}&body="+encodeURIComponent('\n\n'+window.location);
+		return false;
+	}
+
+	function page_print() {
+		window.print();
+		return false;
+	}
+
 	function page_tmap() {
 		var element = $('#pwic_browser');
 		element.toggleClass('pwic_hidden');
