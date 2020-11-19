@@ -8,7 +8,7 @@ from pwic_lib import PWIC_DEFAULT_HEADING
 
 
 class pwic_styles_html:
-    def __init__(self):
+    def __init__(self: object) -> None:
         self.mime = 'text/html'
         self.css = 'static/styles.css'
         self.html = '''<!DOCTYPE html>
@@ -26,7 +26,7 @@ class pwic_styles_html:
 </body>
 </html>'''
 
-    def getCss(self, rel):
+    def getCss(self: object, rel: bool) -> str:
         if rel:
             return '<link rel="stylesheet" type="text/css" href="%s" />' % self.css
         else:
@@ -42,7 +42,7 @@ class pwic_styles_html:
 
 
 class pwic_styles_odt:
-    def __init__(self):
+    def __init__(self: object) -> None:
         self.mime = 'application/vnd.oasis.opendocument.text'
 
         self.manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -262,12 +262,6 @@ class pwic_styles_odt:
                                    fo:font-weight="bold"/>
         </style:style>
 
-        <style:style style:name="Bold"
-                     style:display-name="Bold"
-                     style:family="text"
-                     style:parent-style-name="Normal">
-            <style:text-properties fo:font-weight="bold"/>
-        </style:style>
         <style:style style:name="Blockquote"
                      style:display-name="Quote"
                      style:family="paragraph"
@@ -345,6 +339,12 @@ class pwic_styles_odt:
                                    style:text-line-through-color="font-color"
                                    style:text-line-through-mode="continuous"
                                    style:text-line-through-type="single"/>
+        </style:style>
+        <style:style style:name="Strong"
+                     style:display-name="Strong"
+                     style:family="text"
+                     style:parent-style-name="Normal">
+            <style:text-properties fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="Sup"
                      style:display-name="Superior"
@@ -659,7 +659,7 @@ class pwic_styles_odt:
     </office:body>
 </office:document-content>'''
 
-    def getOptimizedCodeStyles(self, code):
+    def getOptimizedCodeStyles(self: object, code: str) -> str:
         output = ''
         for line in self.styles_code:
             ref = '<span class="%s">' % (line[30:34].replace('"', '').strip())
@@ -667,7 +667,7 @@ class pwic_styles_odt:
                 output += line + '\n'
         return output
 
-    def getHeadingStyles(self, mask):
+    def getHeadingStyles(self: object, mask: str) -> str:
         # Complete the mask
         if mask is None:
             mask = ''

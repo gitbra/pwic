@@ -30,7 +30,7 @@
 
 		<h1 id="help_top">Matrix of the authorizations</h1>
 		<table class="pwic_zebra">
-			<tr><th>Doc</th><th>Action</th><th>Admin</th><th>Manager</th><th>Editor</th><th>Validator</th><th>Reader</th></tr>
+			<tr><th>Read</th><th>Action</th><th>Admin</th><th>Manager</th><th>Editor</th><th>Validator</th><th>Reader</th></tr>
 			<tr><td><a href="#help_setup">{{pwic.emojis.glasses}}</a></td><td>Setup the server</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_backup">{{pwic.emojis.glasses}}</a></td><td>Create a backup</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_project">{{pwic.emojis.glasses}}</a></td><td>Create a project</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
@@ -191,7 +191,7 @@
 					<td><code>robots</code></td>
 					<td>Yes</td>
 					<td>
-						The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</li>
+						The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.
 					</td>
 				</tr>
 				<tr>
@@ -241,6 +241,7 @@
 		<h1 id="help_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a user account</h1>
 		<p>The users are created by default as readers. The default password is predetermined by the general configuration.</p>
 		<p>The users must change their password before you can change their authorizations.</p>
+		<p>It is not possible to delete a user account to ensure the consistency of the documentation and the audit tables.</p>
 
 
 		<h1 id="help_pass1"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change own password</h1>
@@ -266,6 +267,7 @@
 		<h1 id="help_create"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a page</h1>
 		<p>The creation of new pages is restricted to the managers in order to monitor the documentation efficiently. Each page is codified with an external identifier that can be listed alphabetically in each project overview.</p>
 		<p>If a page is created in reference to another page, its content is copied by default. In that way, you can dedicate a project for containing the default templates. It is not possible to refer to a page that doesn't exist or for which you have no access rights.</p>
+		<p>A page cannot be renamed to ensure the consistency of the documentation and the audit tables.</p>
 
 
 		<h1 id="help_modify"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Modify a page</h1>

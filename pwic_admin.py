@@ -10,8 +10,8 @@ from os.path import isdir, isfile
 from shutil import copyfile
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
+    PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
     _dt, _sha256, _safeName, pwic_audit
 
@@ -19,7 +19,7 @@ from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUME
 db = None
 
 
-def main():
+def main() -> bool:
     # Prepare the command line
     parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console')
     subparsers = parser.add_subparsers(dest='command')
@@ -90,7 +90,7 @@ def main():
         return False
 
 
-def db_connect(init=False):
+def db_connect(init: bool = False) -> object:
     global db
     if not init and not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
@@ -103,13 +103,13 @@ def db_connect(init=False):
         return None
 
 
-def db_commit():
+def db_commit() -> None:
     global db
     if db is not None:
         db.commit()
 
 
-def generate_ssl():
+def generate_ssl() -> bool:
     # Ownership by https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
 
     # Check the database
@@ -154,7 +154,7 @@ def generate_ssl():
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
     # Final output
-    pwic_audit(db_connect(), {'author': PWIC_USER,
+    pwic_audit(db_connect(), {'author': PWIC_USER_SYSTEM,
                               'event': 'ssl-regen'})
     db_commit()
     print('The certificates are generated:')
@@ -163,7 +163,7 @@ def generate_ssl():
     return True
 
 
-def init_db():
+def init_db() -> bool:
     if not isdir(PWIC_DB):
         os.mkdir(PWIC_DB)
     if isfile(PWIC_DB_SQLITE):
@@ -191,6 +191,7 @@ CREATE TABLE "env" (
     PRIMARY KEY("key","project")
 )''')
             sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
+            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')")
             # Table USERS
             sql.execute('''
 CREATE TABLE "users" (
@@ -201,6 +202,7 @@ CREATE TABLE "users" (
 )''')
             sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")  # Empty pages.valuser
             sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
+            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_GHOST, ))
             # Table ROLES
             sql.execute('''
 CREATE TABLE "roles" (
@@ -309,7 +311,7 @@ BEGIN
 END''')
 
             # Trace
-            pwic_audit(sql, {'author': PWIC_USER,
+            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                              'event': 'init-db'})
             db_commit()
             print('The database is created at "%s"' % PWIC_DB_SQLITE)
@@ -317,7 +319,7 @@ END''')
     return False
 
 
-def show_env():
+def show_env() -> bool:
     # Package info
     try:
         from importlib.metadata import PackageNotFoundError, version
@@ -357,7 +359,7 @@ def show_env():
     return True
 
 
-def set_env(project, name, value):
+def set_env(project: str, name: str, value: str) -> bool:
     # Check the keys
     merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if name not in merged:
@@ -379,7 +381,7 @@ def set_env(project, name, value):
                     (project, name, ))
     else:
         sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, name, value))
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': '%sset-%s' % ('un' if value == '' else '', name),
                      'project': project,
                      'string': value})
@@ -388,7 +390,7 @@ def set_env(project, name, value):
     return True
 
 
-def show_mime():
+def show_mime() -> bool:
     # Load the platform-dependent library
     try:
         import winreg
@@ -428,7 +430,7 @@ def show_mime():
     return True
 
 
-def create_backup():
+def create_backup() -> bool:
     # Check the database
     if not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
@@ -451,7 +453,7 @@ def create_backup():
         return False
 
 
-def create_project(project, description, admin):
+def create_project(project: str, description: str, admin: str) -> bool:
     # Check the arguments
     project = _safeName(project)
     description = description.strip()
@@ -486,21 +488,21 @@ def create_project(project, description, admin):
                     WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
                 (admin, _sha256(PWIC_DEFAULT_PASSWORD), admin))
     if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER,
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                          'event': 'create-user',
                          'user': admin})
 
     # Add the project
     sql.execute('INSERT INTO projects (project, description) VALUES (?, ?)', (project, description))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'create-project',
                      'project': project})
 
     # Add the role
     sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')", (project, admin))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
@@ -511,7 +513,7 @@ def create_project(project, description, admin):
                     VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")''',
                 (project, PWIC_DEFAULT_PAGE, admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'create-page',
                      'project': project,
                      'page': PWIC_DEFAULT_PAGE,
@@ -528,7 +530,7 @@ def create_project(project, description, admin):
     return True
 
 
-def delete_project(project):
+def delete_project(project: str) -> bool:
     # Verify that the project exists yet
     sql = db_connect()
     if sql is None:
@@ -569,7 +571,7 @@ def delete_project(project):
         sql.execute('DELETE FROM cache     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
         sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
-        pwic_audit(sql, {'author': PWIC_USER,
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                          'event': 'delete-project'})
         db_commit()
         print('Project "%s" is deleted' % project)
@@ -580,7 +582,7 @@ def delete_project(project):
         return False
 
 
-def clear_cache(project):
+def clear_cache(project: str) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -592,7 +594,7 @@ def clear_cache(project):
         sql.execute('DELETE FROM cache WHERE project = ?', (project, ))
     else:
         sql.execute('DELETE FROM cache')
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'clear-cache',
                      'project': project})
     db_commit()
@@ -600,7 +602,7 @@ def clear_cache(project):
     return True
 
 
-def reset_password(user):
+def reset_password(user: str) -> bool:
     # Check if the user is administrator
     sql = db_connect()
     if sql is None:
@@ -633,7 +635,7 @@ def reset_password(user):
                     WHERE user = ?''',
                 (_sha256(pwd), user))
     if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER,
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                          'event': 'reset-password',
                          'user': user})
         db_commit()
@@ -645,7 +647,7 @@ def reset_password(user):
     return ok
 
 
-def show_log(dmin, dmax):
+def show_log(dmin: int, dmax: int) -> bool:
     # Calculate the dates
     dmin = max(0, dmin)
     dmax = max(0, dmax)
@@ -682,7 +684,7 @@ def show_log(dmin, dmax):
     return True
 
 
-def execute_sql():
+def execute_sql() -> bool:
     # Warn the user
     print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
     print('Type "YES" to continue: ', end='')
@@ -703,7 +705,7 @@ def execute_sql():
                     return False
                 rownone = sql.execute(query).fetchone() is None
                 rowcount = sql.rowcount
-                pwic_audit(sql, {'author': PWIC_USER,
+                pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                                  'event': 'execute-sql',
                                  'string': query})
                 db_commit()

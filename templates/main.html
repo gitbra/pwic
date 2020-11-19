@@ -30,6 +30,10 @@
 	{% if pwic.project != 'special' and pwic.page != 'help' %}
 		{% if pwic.env.mde %}
 			<link rel="stylesheet" href="/static/easymde.min.css" />
+			<style>
+				/* Patch */
+				.CodeMirror { height: 75vh; }
+			</style>
 			<script src="/static/easymde.min.js"></script>
 		{% endif %}
 

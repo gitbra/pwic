@@ -21,8 +21,8 @@ from html import escape
 from base64 import b64encode
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER, \
-    PWIC_USER_ANONYMOUS, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
+    PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
     PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
@@ -54,15 +54,15 @@ from pwic_styles import pwic_styles_html, pwic_styles_odt
 # ===================================================
 
 class PwicServer():
-    def _commit(self):
+    def _commit(self: object) -> None:
         ''' Commit the current transactions '''
         app['sql'].commit()
 
-    def _rollback(self):
+    def _rollback(self: object) -> None:
         ''' Rollback the current transactions '''
         app['sql'].rollback()
 
-    def _md2html(self, sql, project, page, markdown, cache=True, headerNumbering=True):
+    def _md2html(self: object, sql: object, project: str, page: str, markdown: str, cache: bool = True, headerNumbering: bool = True) -> (str, object):
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
         if page is None:
@@ -80,7 +80,7 @@ class PwicServer():
         if row is not None:
             html = row[0]
         else:
-            html = app['markdown'].convert(markdown)
+            html = app['markdown'].convert(markdown).replace('<span></span>', '')
             if cache:
                 sql.execute('INSERT OR REPLACE INTO cache (project, page, html) VALUES (?, ?, ?)',
                             (project, page, html))
@@ -89,7 +89,7 @@ class PwicServer():
                                     self._readEnv(sql, project, 'heading_mask'),
                                     headerNumbering=headerNumbering)
 
-    def _mime2icon(self, mime):
+    def _mime2icon(self: object, mime: str) -> str:
         ''' Return the emojis that corresponds to the MIME '''
         if mime[:6] == 'image/':
             return PWIC_EMOJIS['image']
@@ -102,11 +102,11 @@ class PwicServer():
         else:
             return PWIC_EMOJIS['sheet']
 
-    def _attachmentName(self, name):
+    def _attachmentName(self: object, name: str) -> str:
         ''' Return the file name for a proper download '''
         return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
-    def _readEnv(self, sql, project, name, default=None):
+    def _readEnv(self: object, sql: object, project: str, name: str, default: str = None) -> str:
         ''' Read a variable from the table ENV '''
         if sql is None:
             return None
@@ -118,7 +118,7 @@ class PwicServer():
             row = sql.execute(query, ('', name)).fetchone()
         return default if row is None else row[0]
 
-    def _checkMime(self, obj):
+    def _checkMime(self: object, obj: object) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
         # Check the applicable extension
         if '.' in obj['filename'] and obj['mime'] != MIME_GENERIC:
@@ -146,7 +146,7 @@ class PwicServer():
                     break
         return obj['mime'] != ''
 
-    def _checkIP(self, request, sql):
+    def _checkIP(self: object, request: object, sql: object) -> None:
         ''' Handle the HTTP request to check the IP address '''
         # Initialization
         okIncl = False
@@ -196,7 +196,7 @@ class PwicServer():
         if koExcl or (hasIncl != okIncl):
             raise web.HTTPUnauthorized()
 
-    async def _suser(self, request):
+    async def _suser(self: object, request: object) -> str:
         ''' Retrieve the logged user '''
         if app['no_logon']:
             return PWIC_USER_ANONYMOUS
@@ -204,7 +204,7 @@ class PwicServer():
             session = await get_session(request)
             return session.get('user', '')
 
-    async def _handlePost(self, request):
+    async def _handlePost(self: object, request: object) -> object:
         ''' Return the POST as a readable object.get() '''
         result = {}
         if request.body_exists:
@@ -214,11 +214,11 @@ class PwicServer():
                 result[res] = result[res][0]
         return result
 
-    async def _handleLogon(self, request):
+    async def _handleLogon(self: object, request: object) -> str:
         ''' Show the logon page '''
         return await self._handleOutput(request, 'logon', {'title': 'Connect to Pwic'})
 
-    async def _handleOutput(self, request, name, pwic):
+    async def _handleOutput(self: object, request: object, name: str, pwic: object) -> object:
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
@@ -255,7 +255,7 @@ class PwicServer():
         template = app['jinja'].get_template('%s/%s.html' % (pwic['constants']['language'], name))
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
-    async def page(self, request):
+    async def page(self: object, request: object) -> object:
         ''' Serve the pages '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -266,13 +266,13 @@ class PwicServer():
         sql = app['sql'].cursor()
         project = _safeName(request.match_info.get('project', ''))
         page = _safeName(request.match_info.get('page', PWIC_DEFAULT_PAGE))
+        page_special = (page == 'special')
         revision = _int(request.match_info.get('revision', 0))
         action = request.match_info.get('action', 'view')
         pwic = {'title': 'Wiki',
                 'project': project,
                 'page': page,
-                'revision': revision,
-                'special': page == 'special'}
+                'revision': revision}
         dt = _dt()
 
         # Fetch the name of the project...
@@ -332,7 +332,7 @@ class PwicServer():
 
         # Fetch the name of the page
         if page != '':
-            if page == 'special':
+            if page_special:
                 row = ['Special']
             else:
                 sql.execute(''' SELECT title
@@ -348,7 +348,7 @@ class PwicServer():
 
             # Show the requested page (not necessarily the latest one)
             if action == 'view':
-                if page != 'special':
+                if not page_special:
                     sql.execute(''' SELECT revision, latest, draft, final, protection,
                                            author, date, time, title, markdown,
                                            tags, valuser, valdate, valtime
@@ -575,7 +575,7 @@ class PwicServer():
                                                    'string': row[9]})
 
                 # Render the page in HTML or Markdown
-                return await self._handleOutput(request, 'page', pwic)
+                return await self._handleOutput(request, 'page-special' if page_special else 'page', pwic)
 
             # Edit the requested page
             elif action == 'edit':
@@ -629,14 +629,14 @@ class PwicServer():
         # Default output if nothing was done before
         raise web.HTTPNotFound()
 
-    async def page_help(self, request):
+    async def page_help(self: object, request: object) -> object:
         ''' Serve the help page to any user '''
         pwic = {'project': 'special',
                 'page': 'help',
                 'title': 'Help for Pwic'}
         return await self._handleOutput(request, 'help', pwic)
 
-    async def page_create(self, request):
+    async def page_create(self: object, request: object) -> object:
         ''' Serve the page to create a new page '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -664,7 +664,7 @@ class PwicServer():
         # Show the page
         return await self._handleOutput(request, 'page-create', pwic=pwic)
 
-    async def user_create(self, request):
+    async def user_create(self: object, request: object) -> object:
         ''' Serve the page to create a new user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -692,7 +692,7 @@ class PwicServer():
         # Show the page
         return await self._handleOutput(request, 'user-create', pwic=pwic)
 
-    async def page_user(self, request):
+    async def page_user(self: object, request: object) -> object:
         ''' Serve the page to view the profile of a user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -811,7 +811,7 @@ class PwicServer():
         # Show the page
         return await self._handleOutput(request, 'user', pwic=pwic)
 
-    async def page_search(self, request):
+    async def page_search(self: object, request: object) -> object:
         ''' Serve the search engine '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -961,7 +961,7 @@ class PwicServer():
         pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
         return await self._handleOutput(request, 'search', pwic=pwic)
 
-    async def page_roles(self, request):
+    async def page_roles(self: object, request: object) -> object:
         ''' Serve the search engine '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1003,7 +1003,7 @@ class PwicServer():
         else:
             return await self._handleOutput(request, 'user-roles', pwic=pwic)
 
-    async def page_links(self, request):
+    async def page_links(self: object, request: object) -> object:
         ''' Serve the check of the links '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1090,7 +1090,7 @@ class PwicServer():
                 'broken_docs': broken_docs}
         return await self._handleOutput(request, 'page-links', pwic=pwic)
 
-    async def page_graph(self, request):
+    async def page_graph(self: object, request: object) -> object:
         ''' Serve the check of the links '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1117,7 +1117,7 @@ class PwicServer():
                 'project_description': sql.fetchone()[0]}
         return await self._handleOutput(request, 'page-graph', pwic=pwic)
 
-    async def page_compare(self, request):
+    async def page_compare(self: object, request: object) -> object:
         ''' Serve the page that compare two revisions '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1154,7 +1154,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Show the page
-        def _diff(tfrom, tto):
+        def _diff(tfrom: str, tto: str) -> str:
             diff = HtmlDiff()
             tfrom = tfrom.replace('\r', '').split('\n')
             tto = tto.replace('\r', '').split('\n')
@@ -1170,7 +1170,7 @@ class PwicServer():
                 'diff': _diff(row[3], row[2])}
         return await self._handleOutput(request, 'page-compare', pwic=pwic)
 
-    async def project_export(self, request):
+    async def project_export(self: object, request: object) -> object:
         ''' Download the project as a zip file '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1269,7 +1269,7 @@ class PwicServer():
         inmemory.close()
         return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'attachment; filename="%s"' % self._attachmentName(project + '.zip')}))
 
-    async def document_get(self, request):
+    async def document_get(self: object, request: object) -> object:
         ''' Download a document '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1306,7 +1306,7 @@ class PwicServer():
             headers['Content-Disposition'] = 'attachment; filename="%s"' % self._attachmentName(row[1])
         return web.Response(body=content, headers=MultiDict(headers))
 
-    async def api_logon(self, request):
+    async def api_logon(self: object, request: object) -> object:
         ''' API to log on people '''
         # Checks
         if app['no_logon']:
@@ -1345,7 +1345,7 @@ class PwicServer():
         else:
             return web.HTTPOk() if ok else web.HTTPUnauthorized()
 
-    async def api_logout(self, request):
+    async def api_logout(self: object, request: object) -> object:
         ''' API to log out '''
         # Logging the disconnection (not visible online) aims to not report a reader as inactive.
         # Knowing that the session is encrypted in the cookie, the event does NOT guarantee that
@@ -1363,7 +1363,7 @@ class PwicServer():
         session.invalidate()
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
-    async def api_server_env(self, request):
+    async def api_server_env(self: object, request: object) -> object:
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1405,7 +1405,7 @@ class PwicServer():
         # Final result
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
-    async def api_server_ping(self, request):
+    async def api_server_ping(self: object, request: object) -> object:
         ''' Notify if the session is still alive '''
         user = await self._suser(request)
         if user == '':
@@ -1413,7 +1413,7 @@ class PwicServer():
         else:
             return web.Response(text='OK', content_type=MIME_TEXT)
 
-    async def api_project_info(self, request):
+    async def api_project_info(self: object, request: object) -> object:
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1498,7 +1498,7 @@ class PwicServer():
         # Final result
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
-    async def api_project_progress(self, request):
+    async def api_project_progress(self: object, request: object) -> object:
         ''' API to analyze the progress of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1556,7 +1556,7 @@ class PwicServer():
         # Final result
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
-    async def api_project_graph(self, request):
+    async def api_project_graph(self: object, request: object) -> None:
         ''' Draw the directed graph of the project
             http://graphviz.org/pdf/dotguide.pdf
             http://graphviz.org/Gallery/directed/go-package.html
@@ -1593,14 +1593,14 @@ class PwicServer():
         pages = []
         maps = []
 
-        def _makeLink(fromProject, fromPage, toProject, toPage):
+        def _makeLink(fromProject: str, fromPage: str, toProject: str, toPage: str) -> None:
             if (fromProject, fromPage) != (toProject, toPage):
                 tuple = (toProject, toPage, fromProject, fromPage)
                 pos = bisect_left(maps, tuple)
                 if pos >= len(maps) or maps[pos] != tuple:
                     insort(maps, tuple)
 
-        def _getNodeID(project, page):
+        def _getNodeID(project: str, page: str) -> str:
             tuple = (project, page)
             pos = bisect_left(pages, tuple)
             if (pos >= len(pages)) or (pages[pos] != tuple):
@@ -1609,7 +1609,7 @@ class PwicServer():
             else:
                 return 'n%d' % (pos + 1)
 
-        def _getNodeTitle(sql, project, page):
+        def _getNodeTitle(sql: object, project: str, page: str) -> str:
             # TODO Possible technical improvement here to avoid selects in loops
             sql.execute(''' SELECT title
                             FROM pages
@@ -1687,7 +1687,7 @@ class PwicServer():
         viz += '}'
         return web.Response(text=viz, content_type='text/vnd.graphviz')
 
-    async def api_page_create(self, request):
+    async def api_page_create(self: object, request: object) -> None:
         ''' API to create a new page '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1759,7 +1759,7 @@ class PwicServer():
         self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
-    async def api_page_edit(self, request):
+    async def api_page_edit(self: object, request: object) -> None:
         ''' API to update an existing page '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1867,7 +1867,7 @@ class PwicServer():
             self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
-    async def api_page_markdown(self, request):
+    async def api_page_markdown(self: object, request: object) -> object:
         ''' Return the HTML corresponding to the posted Markdown '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1885,7 +1885,7 @@ class PwicServer():
         html, _ = self._md2html(app['sql'].cursor(), project, None, content, cache=False)
         return web.Response(text=html, content_type=MIME_TEXT)
 
-    async def api_page_validate(self, request):
+    async def api_page_validate(self: object, request: object) -> None:
         ''' Validate the pages '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1937,7 +1937,7 @@ class PwicServer():
         self._commit()
         raise web.HTTPOk()
 
-    async def api_page_delete(self, request):
+    async def api_page_delete(self: object, request: object) -> None:
         ''' Delete a page upon administrative request '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2055,7 +2055,7 @@ class PwicServer():
         self._commit()
         raise web.HTTPOk()
 
-    async def api_page_export(self, request):
+    async def api_page_export(self: object, request: object) -> object:
         ''' API to export a page '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2241,7 +2241,7 @@ class PwicServer():
         else:
             raise web.HTTPUnsupportedMediaType()
 
-    async def api_user_create(self, request):
+    async def api_user_create(self: object, request: object) -> None:
         ''' API to create a new user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2301,7 +2301,7 @@ class PwicServer():
         else:
             raise web.HTTPTemporaryRedirect('/%s/special/roles?failed' % project)
 
-    async def api_user_change_password(self, request):
+    async def api_user_change_password(self: object, request: object) -> None:
         ''' Change the password of the current user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2347,7 +2347,7 @@ class PwicServer():
         else:
             raise web.HTTPTemporaryRedirect('/special/user/%s?failed' % user)
 
-    async def api_user_roles(self, request):
+    async def api_user_roles(self: object, request: object) -> object:
         ''' Change the roles of a user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2431,7 +2431,7 @@ class PwicServer():
                 self._commit()
                 return web.Response(text=newvalue, content_type=MIME_TEXT)
 
-    async def api_document_create(self, request):
+    async def api_document_create(self: object, request: object) -> None:
         ''' API to create a new document '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2601,7 +2601,7 @@ class PwicServer():
         self._commit()
         raise web.HTTPOk()
 
-    async def api_document_list(self, request):
+    async def api_document_list(self: object, request: object) -> object:
         ''' Return the list of the attached documents '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2640,7 +2640,7 @@ class PwicServer():
                            'time': row[7]})
         return web.Response(text=json.dumps(result), content_type=MIME_JSON)
 
-    async def api_document_delete(self, request):
+    async def api_document_delete(self: object, request: object) -> None:
         ''' Delete a document '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -2693,7 +2693,7 @@ class PwicServer():
         self._commit()
         raise web.HTTPOk()
 
-    async def api_swagger(self, request):
+    async def api_swagger(self: object, request: object) -> object:
         ''' Display the features of the API '''
         return await self._handleOutput(request, 'page-swagger', {'title': 'API specification'})
 
@@ -2705,7 +2705,7 @@ class PwicServer():
 app = None
 
 
-def main():
+def main() -> bool:
     global app
 
     # Command-line
@@ -2723,7 +2723,7 @@ def main():
     # app['sql'].set_trace_callback(print)
     sql = app['sql'].cursor()
     sql.execute('PRAGMA optimize')
-    pwic_audit(sql, {'author': PWIC_USER,
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'start-server'})
     app['sql'].commit()
     # ... PWIC

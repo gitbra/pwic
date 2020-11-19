@@ -18,8 +18,9 @@ PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
-PWIC_USER = 'pwic-system'
 PWIC_USER_ANONYMOUS = 'pwic-anonymous'
+PWIC_USER_GHOST = 'pwic-ghost'
+PWIC_USER_SYSTEM = 'pwic-system'
 PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_DEFAULT_PAGE = 'home'
 PWIC_DEFAULT_HEADING = '1.1.1.1.1.1.'
@@ -234,17 +235,17 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
 #  Reusable functions
 # ===================================================
 
-def _x(value):
+def _x(value: bool) -> str:
     ''' Convert a boolean to 'X' or empty string '''
-    return 'X' if value is True else ''
+    return 'X' if value else ''
 
 
-def _xb(value):
+def _xb(value: str) -> bool:
     ''' Convert 'X' to a boolean '''
     return value == 'X'
 
 
-def _int(value):
+def _int(value: str) -> int:
     ''' Safe conversion to integer '''
     try:
         return int(value)
@@ -252,7 +253,7 @@ def _int(value):
         return 0
 
 
-def _dt():
+def _dt() -> object:
     ''' Return some key dates and time '''
     dts = str(datetime.datetime.now())
     return {'date': dts[:10],
@@ -261,7 +262,7 @@ def _dt():
             'time': dts[11:19]}
 
 
-def _recursiveReplace(text, search, replace):
+def _recursiveReplace(text: str, search: str, replace: str) -> str:
     while True:
         curlen = len(text)
         text = text.replace(search, replace)
@@ -270,7 +271,7 @@ def _recursiveReplace(text, search, replace):
     return text.strip()
 
 
-def _sha256(value, salt=True):
+def _sha256(value: str, salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:
         assert(salt is False)
@@ -280,14 +281,14 @@ def _sha256(value, salt=True):
         return sha256(text.encode()).hexdigest()
 
 
-def _safeName(name, extra='.@'):
+def _safeName(name: str, extra: str = '.@') -> str:
     chars = PWIC_CHARS_UNSAFE + extra
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
     return name.strip().lower()
 
 
-def _safeFileName(name):
+def _safeFileName(name: str) -> str:
     name = _safeName(name, extra='').replace(' ', '_')
     while True:
         curlen = len(name)
@@ -297,7 +298,7 @@ def _safeFileName(name):
     return name
 
 
-def _size2str(size):
+def _size2str(size: int) -> str:
     ''' Convert a size to a readable format '''
     units = ' kMGTPEZ'
     for i in range(len(units)):
@@ -311,13 +312,13 @@ def _size2str(size):
 #  Editor
 # ===================================================
 
-def pwic_extended_syntax(markdown, mask, headerNumbering=True):
+def pwic_extended_syntax(markdown: str, mask: str, headerNumbering: bool = True) -> (str, object):
     ''' Automatic numbering of the MD headers '''
     # Local functions
-    def _numeric(value):
+    def _numeric(value: int) -> str:
         return str(value)
 
-    def _roman(value):
+    def _roman(value: int) -> str:
         if value < 1 or value > 4999:
             return '0'
         buffer = ''
@@ -339,10 +340,10 @@ def pwic_extended_syntax(markdown, mask, headerNumbering=True):
                 value -= threshold
         return buffer
 
-    def _romanMin(value):
+    def _romanMin(value: int) -> str:
         return _roman(value).lower()
 
-    def _letter(value, mask):
+    def _letter(value: int, mask: str) -> str:
         # https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
         def _divmod(n, base):
             a, b = divmod(n, base)
@@ -358,10 +359,10 @@ def pwic_extended_syntax(markdown, mask, headerNumbering=True):
             buffer.append(mask[d - 1])
         return ''.join(reversed(buffer))
 
-    def _letterMin(value):
+    def _letterMin(value: int) -> str:
         return _letter(value, 'abcdefghijklmnopqrstuvwxyz')
 
-    def _letterMaj(value):
+    def _letterMaj(value: int) -> str:
         return _letter(value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
 
     # Initialisation
@@ -429,7 +430,7 @@ def pwic_extended_syntax(markdown, mask, headerNumbering=True):
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql, object, request=None):
+def pwic_audit(sql: object, object: object, request: bool = None) -> bool:
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = _dt()
@@ -459,37 +460,37 @@ def pwic_audit(sql, object, request=None):
 # ===================================================
 
 class PwicSearchVisitor(NodeVisitor):
-    def __init__(self):
+    def __init__(self) -> None:
         self.negate = False
         self.included = []
         self.excluded = []
 
-    def visit_decl(self, node, visited_children):
+    def visit_decl(self, node, visited_children) -> None:
         pass
 
-    def visit_term(self, node, visited_children):
+    def visit_term(self, node, visited_children) -> None:
         pass
 
-    def visit_comb(self, node, visited_children):
+    def visit_comb(self, node, visited_children) -> None:
         pass
 
-    def visit_space(self, node, visited_children):
+    def visit_space(self, node, visited_children) -> None:
         pass
 
-    def visit_negate(self, node, visited_children):
+    def visit_negate(self, node, visited_children) -> None:
         if node.match.group(0) == '-':
             self.negate = True
 
-    def visit_individual(self, node, visited_children):
+    def visit_individual(self, node, visited_children) -> None:
         (self.excluded if self.negate else self.included).append(node.match.group(0).strip().lower())
         self.negate = False
 
-    def visit_quoted(self, node, visited_children):
+    def visit_quoted(self, node, visited_children) -> None:
         (self.excluded if self.negate else self.included).append(node.match.group(0)[1:-1].strip().lower())
         self.negate = False
 
 
-def pwic_search_parse(query):
+def pwic_search_parse(query: str) -> object:
     # Parse the query
     if query in ['', None]:
         return None
@@ -516,7 +517,7 @@ def pwic_search_parse(query):
         return None
 
 
-def pwic_search_tostring(query):
+def pwic_search_tostring(query: str) -> str:
     if query is None:
         return ''
     result = ''
@@ -534,7 +535,7 @@ def pwic_search_tostring(query):
 # ===================================================
 
 class pwic_html2odt(HTMLParser):
-    def __init__(self, baseUrl, project, page, pictMeta=None):
+    def __init__(self: object, baseUrl: str, project: str, page: str, pictMeta: object = None) -> None:
         # The parser can be feeded only once
         HTMLParser.__init__(self)
 
@@ -614,7 +615,7 @@ class pwic_html2odt(HTMLParser):
                            'p': {'text:style-name': '#'},
                            'span': {'text:style-name': '#class'},
                            'strike': {'text:style-name': 'Strike'},
-                           'strong': {'text:style-name': 'Bold'},
+                           'strong': {'text:style-name': 'Strong'},
                            'sup': {'text:style-name': 'Sup'},
                            'table': {'table:style-name': 'Table'},
                            'td': {'table:style-name': 'TableCell'},
@@ -641,12 +642,12 @@ class pwic_html2odt(HTMLParser):
         # Output
         self.odt = ''
 
-    def _replace_marker(self, joker, content):
+    def _replace_marker(self: object, joker: str, content: str) -> None:
         pos = self.odt.rfind(joker)
         if pos != -1:
             self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self: object, tag: str, attrs: object) -> None:
         tag = tag.lower()
 
         # Rules
@@ -747,7 +748,7 @@ class pwic_html2odt(HTMLParser):
         if tag in self.extrasAfter:
             self.odt += self.extrasAfter[tag][0]
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self: object, tag: str) -> None:
         tag = tag.lower()
 
         # Rules
@@ -806,7 +807,7 @@ class pwic_html2odt(HTMLParser):
         if tag in self.extrasBefore:
             self.odt += self.extrasBefore[tag][1]
 
-    def handle_data(self, data):
+    def handle_data(self: object, data: str) -> None:
         # List item should be enclosed by <p>
         if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
             self.tag_path.append('p')
