@@ -15,6 +15,17 @@
 			<form id="logon_form" action="/api/logon?redirect" method="post">
 				<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" /></p>
 				<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="logon_password" name="logon_password" /></p>
+				<p><strong>Language:</strong>
+					<select id="logon_language" name="logon_language">
+						{% for lang in pwic.constants.languages %}
+							<option value="{{lang|escape}}"
+								{% if lang == pwic.constants.default_language %}
+									selected="selected"
+								{% endif %}
+							>{{lang|escape}}</option>
+						{% endfor %}
+					</select>
+				</p>
 				<p>
 					<input type="submit" value="{{pwic.emojis.plug}} Log on" />
 					<input type="button" value="{{pwic.emojis.alien}} Anonymous logon" onclick="logon_anonymous()"/>
@@ -24,6 +35,16 @@
 	</article>
 
 	{% include 'logon.js.html' %}
+	<script>
+		logon_translate_langs({	'cn': 'Chinese',
+								'de': 'German',
+								'es': 'Spanish',
+								'en': 'English',
+								'fr': 'French',
+								'jp': 'Japanese',
+								'pt': 'Portuguese'
+							});
+	</script>
 {% endblock %}
 
 

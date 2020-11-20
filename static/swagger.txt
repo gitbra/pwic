@@ -32,7 +32,7 @@ paths:
         - in: query
           name: redirect
           type: string
-          description: Always redirect to the next screen
+          description: Redirect to the next screen
           required: false
         - in: formData
           name: logon_user
@@ -44,6 +44,12 @@ paths:
           type: string
           description: Password of the user
           required: false
+        - in: formData
+          name: logon_language
+          type: string
+          description: Language
+          required: false
+          default: en
       responses:
         200:
           description: Successful operation if no body, else redirected page from 302

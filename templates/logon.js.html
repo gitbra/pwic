@@ -1,6 +1,14 @@
 <script>
 	'use strict';
 
+	function logon_translate_langs(mapping) {
+		$('#logon_language OPTION').each(function(index, element) {
+			var lang = $(element).attr('value');
+			if (mapping.hasOwnProperty(lang))
+				$(element).html(lang + ' - ' + mapping[lang])
+		});
+	}
+
 	function logon_anonymous() {
 		$('#logon_user').val('{{pwic.constants.anonymous_user|escape}}');
 		$('#logon_password').val('');

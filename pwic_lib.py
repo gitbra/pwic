@@ -22,6 +22,7 @@ PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_USER_GHOST = 'pwic-ghost'
 PWIC_USER_SYSTEM = 'pwic-system'
 PWIC_DEFAULT_PASSWORD = 'initial'
+PWIC_DEFAULT_LANGUAGE = 'en'
 PWIC_DEFAULT_PAGE = 'home'
 PWIC_DEFAULT_HEADING = '1.1.1.1.1.1.'
 

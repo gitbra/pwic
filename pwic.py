@@ -10,7 +10,8 @@ import sqlite3
 from difflib import HtmlDiff
 import zipfile
 from io import BytesIO
-import os
+from os import listdir, urandom, remove
+from os.path import getsize, isdir, isfile, join
 import json
 import re
 import imagesize
@@ -22,8 +23,8 @@ from base64 import b64encode
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
-    PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
-    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
+    PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
+    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
@@ -224,7 +225,8 @@ class PwicServer():
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'anonymous_user': PWIC_USER_ANONYMOUS,
                              'db_path': PWIC_DB,
-                             'language': 'en',
+                             'default_language': PWIC_DEFAULT_LANGUAGE,
+                             'languages': app['langs'],
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'version': PWIC_VERSION}
 
@@ -252,7 +254,9 @@ class PwicServer():
                                                  'global': global_}
 
         # Render the template
-        template = app['jinja'].get_template('%s/%s.html' % (pwic['constants']['language'], name))
+        session = await get_session(request)
+        pwic['language'] = session.get('language', PWIC_DEFAULT_LANGUAGE)
+        template = app['jinja'].get_template('%s/%s.html' % (pwic['language'], name))
         return web.Response(text=template.render(pwic=pwic), content_type='text/html')
 
     async def page(self: object, request: object) -> object:
@@ -1245,7 +1249,7 @@ class PwicServer():
             sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
             for row in sql.fetchall():
                 fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
-                if os.path.isfile(fn):
+                if isfile(fn):
                     content = ''
                     with open(fn, 'rb') as f:
                         content = f.read()
@@ -1293,7 +1297,7 @@ class PwicServer():
 
         # Transfer the file
         filename = (PWIC_DOCUMENTS_PATH % row[0]) + row[1]
-        if os.path.getsize(filename) != row[3]:
+        if getsize(filename) != row[3]:
             raise web.HTTPConflict()  # Size mismatch causes an infinite download time
         try:
             with open(filename, 'rb') as f:
@@ -1318,6 +1322,9 @@ class PwicServer():
         post = await self._handlePost(request)
         user = _safeName(post.get('logon_user', ''), extra='')
         pwd = '' if user == PWIC_USER_ANONYMOUS else _sha256(post.get('logon_password', ''))
+        lang = post.get('logon_language', PWIC_DEFAULT_LANGUAGE)
+        if lang not in app['langs']:
+            lang = PWIC_DEFAULT_LANGUAGE
 
         # Logon with the credentials
         ok = False
@@ -1333,6 +1340,7 @@ class PwicServer():
             ok = True
             session = await new_session(request)
             session['user'] = user
+            session['language'] = lang
             if user != PWIC_USER_ANONYMOUS:
                 pwic_audit(sql, {'author': user,
                                  'event': 'logon'},
@@ -2032,9 +2040,9 @@ class PwicServer():
                 docFound = True
                 fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
                 try:
-                    os.remove(fn)
+                    remove(fn)
                 except (OSError, FileNotFoundError):
-                    if os.path.isfile(fn):
+                    if isfile(fn):
                         self._rollback()
                         raise web.HTTPTemporaryRedirect('/%s/%s?failed' % (project, page))
 
@@ -2156,7 +2164,7 @@ class PwicServer():
             pictMeta = {}
             for rowdoc in sql.fetchall():
                 fn = (PWIC_DOCUMENTS_PATH % project) + rowdoc[3]
-                if os.path.isfile(fn):
+                if isfile(fn):
                     try:
                         w, h = imagesize.get(fn)
 
@@ -2490,7 +2498,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the target folder exists
-        if not os.path.isdir(PWIC_DOCUMENTS_PATH % doc['project']):
+        if not isdir(PWIC_DOCUMENTS_PATH % doc['project']):
             raise web.HTTPInternalServerError()
 
         # Verify the authorizations
@@ -2565,9 +2573,9 @@ class PwicServer():
             if row[1] == doc['page']:           # Existing document = Delete + Keep same ID (replace it)
                 try:
                     fn = (PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename']
-                    os.remove(fn)
+                    remove(fn)
                 except Exception:
-                    if os.path.isfile(fn):
+                    if isfile(fn):
                         raise web.HTTPInternalServerError()
                 sql.execute('DELETE FROM documents WHERE id = ?', (row[0], ))
                 forcedId = row[0]
@@ -2677,9 +2685,9 @@ class PwicServer():
         # Delete the file
         fn = (PWIC_DOCUMENTS_PATH % project) + filename
         try:
-            os.remove(fn)
+            remove(fn)
         except (OSError, FileNotFoundError):
-            if os.path.isfile(fn):
+            if isfile(fn):
                 raise web.HTTPInternalServerError()
 
         # Delete the index
@@ -2716,6 +2724,11 @@ def main() -> bool:
 
     # Modules
     app = web.Application()
+    # ... languages
+    app['langs'] = sorted([f for f in listdir('templates/') if isdir(join('templates/', f))])
+    if PWIC_DEFAULT_LANGUAGE not in app['langs']:
+        print('Error: English template is missing')
+        return False
     # ... templates
     app['jinja'] = Environment(loader=FileSystemLoader('./templates/'))
     # ... SQLite
@@ -2728,7 +2741,7 @@ def main() -> bool:
     app['sql'].commit()
     # ... PWIC
     app['pwic'] = PwicServer()
-    setup(app, EncryptedCookieStorage(os.urandom(32)))  # Storage for cookies
+    setup(app, EncryptedCookieStorage(urandom(32)))  # Storage for cookies
     # ... Markdown parser
     app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'],
                                safe_mode=app['pwic']._readEnv(sql, '', 'safe_mode') is not None)
@@ -2805,6 +2818,7 @@ def main() -> bool:
     # Launch the server
     del sql
     web.run_app(app, host=args.host, port=args.port, ssl_context=https)
+    return True
 
 
 main()
