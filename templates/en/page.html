@@ -6,22 +6,28 @@
 		<div class="pwic_ph1">
 			<a href="/{% if pwic.page != 'home' %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a>
 		</div>
-		<div class="pwic_tagbox">
-			{% for link in pwic.links %}
-				<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
-			{% endfor %}
-			<div class="pwic_searchbox">
-				{{pwic.emojis.search}}
-				<input type="text" id="page_search" onkeypress="page_search()" />
+		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
+			<div class="pwic_tagbox">
+				{% for link in pwic.links %}
+					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+				{% endfor %}
+				{% if not pwic.env.no_search %}
+					<div class="pwic_searchbox">
+						{{pwic.emojis.search}}
+						<input type="text" id="page_search" onkeypress="page_search()" />
+					</div>
+				{% endif %}
 			</div>
-		</div>
+		{% endif %}
 	</header>
 
 	{% if pwic.env.no_text_selection %}
 		{% include 'page-special-nosel.js.html' %}
 	{% endif %}
 	{% include 'page.js.html' %}
-	{% include 'search.js.html' %}
+	{% if not pwic.env.no_search %}
+		{% include 'search.js.html' %}
+	{% endif %}
 
 	<article>
 		<div id="pwic_progress"></div>

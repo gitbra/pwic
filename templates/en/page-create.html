@@ -28,6 +28,7 @@
 				</p>
 				<p><strong>Page identifier:</strong> <input id="create_page" class="pwic_fill" type="text" name="create_page" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="create_milestone" /></p>
+				<p><strong>Tags:</strong> <input id="create_tags" class="pwic_fill" type="text" name="create_tags" value="" title="No hash and separated by a space" /></p>
 
 				<h1>Copy in reference to another page</h1>
 				<p><strong>Project:</strong><br/>
@@ -39,7 +40,7 @@
 					</select>
 				</p>
 				<p><strong>Page identifier:</strong> <input class="pwic_fill" type="text" name="create_ref_page" /></p>
-				<p><input type="checkbox" id="create_ref_tags" name="create_ref_tags" checked="checked" /> <label for="create_ref_tags">Copy the tags</label></p>
+				<p><input type="checkbox" id="create_ref_tags" name="create_ref_tags" checked="checked" /> <label for="create_ref_tags">Copy the tags and merge with the above ones</label></p>
 
 				<p><input type="button" value="{{pwic.emojis.sheet}} Create the page" onclick="create_submit('The names are not acceptable.')" /></p>
 			</form>

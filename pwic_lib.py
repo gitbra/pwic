@@ -18,6 +18,7 @@ PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
+PWIC_TEMPLATES_PATH = './templates/'
 PWIC_USER_ANONYMOUS = 'pwic-anonymous'
 PWIC_USER_GHOST = 'pwic-ghost'
 PWIC_USER_SYSTEM = 'pwic-system'
@@ -41,8 +42,8 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'ip_filter', 'maintenance', 
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'css', 'disabled_formats', 'document_name_regex',
                               'export_project_revisions', 'heading_mask', 'legal_notice', 'mathjax',
                               'max_document_size', 'max_project_size', 'mde', 'no_export_project',
-                              'no_printing', 'no_text_selection', 'odt_page_height', 'odt_page_width',
-                              'robots', 'support_email', 'support_phone', 'support_url']
+                              'no_printing', 'no_search', 'no_text_selection', 'odt_page_height',
+                              'odt_page_width', 'robots', 'support_email', 'support_phone', 'support_url']
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',

@@ -15,7 +15,11 @@
 			<form id="logon_form" action="/api/logon?redirect" method="post">
 				<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" /></p>
 				<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="logon_password" name="logon_password" /></p>
-				<p><strong>Language:</strong>
+				<p
+					{% if pwic.constants.languages|count == 1 %}
+						class="pwic_hidden"
+					{% endif %}
+				><strong>Language:</strong><br/>
 					<select id="logon_language" name="logon_language">
 						{% for lang in pwic.constants.languages %}
 							<option value="{{lang|escape}}"

@@ -60,7 +60,7 @@
 
 			// Display the result
 			var e = $('#page_progress_list');
-			e.html((list_initial ||= e.html()) + buffer);
+			e.html((list_initial ||= e.html()) + buffer).toggleClass('pwic_hidden', buffer.length == 0);
 		}
 	}())
 </script>

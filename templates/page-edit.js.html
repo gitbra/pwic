@@ -229,7 +229,7 @@
 									<td><input type="button" onclick="return edit_document_delete('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
 								<\/tr>';
 				}
-				$('#edit_files_list').html(edit_files_list_initial + buffer);
+				$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);
 			}
 		}
 		catch (error) {

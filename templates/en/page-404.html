@@ -1,0 +1,33 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1">
+			<a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a>
+		</div>
+		{% if pwic.links|count > 0 %}
+			<div class="pwic_tagbox">
+				{% for link in pwic.links %}
+					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</header>
+
+	<article>
+		<p class="pwic_error">{{pwic.emojis.padlock}} The page does not exist.</p>
+		<p>Please verify your authorizations, the spelling of the link and the revision level that could have been deleted in the meanwhile.</p>
+		<p>You can go back to:</p>
+			<ol>
+				<li><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">the latest revision of the page</a></li>
+				<li><a href="/{{pwic.project|urlencode}}">the home page of the project</a></li>
+				<li><a href="/">the selection of a new project</a></li>
+			</ol>
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

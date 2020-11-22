@@ -1,38 +1,110 @@
 # PWIC - Python Wiki Information Center
 
-**Pwic** is a stable easy-to-use stand-alone monolithic Wiki server fully written in Python and backed by SQLite. In the process to support the knowledge, it has many advantages for a professional use.
 
-**Project proficiency**
+## Presentation
 
-- Central repository for an online and up-to-date documentation
-- Ready for Unicode and built on Emojis
-- New pages, broken links, orphaned pages and graph supervised by the project managers
-- Linear and partially undoable versioning of the pages for a proper customer's validation
-- Unified look and feel among all the pages
-- Automatic highlight of the lines of code
-- Follow-up of the deliverable pages
-- Lean pages with no rainbow color or overloaded revision mark
-- Display of the differences between two versions
-- File attachments with normalized names
-- In-text search with inclusion, exclusion and special keywords
-- Export to OpenDocument (ODT)
+**Pwic** is a wiki server to support your personal and professional documentation. Its paradigm is to put the documentation at the center of your methodology through comprehensive features and 5 basic roles (reader, editor, validator, manager and administrator). The users are focused on writing the documentation, not on changing the styles. The managers supervise the progress. The technical team can reject any uncomplient document.
 
 
-**Cost effectiveness and technicity**
+## Some supported features
 
-- Extra fast setup
-- Low technical requirements
-- Easy backup and recovery
-- Ready for TLS v1.3
+Who can do the most can do the least!
+
+### For the readers
+
+- Access with a user account on both desktop and mobile devices
+- Light user interface illustrated with emojis
+- Homogeneous look and feel of the pages
+- Automatic summary of the page
+- In-text search with inclusion, exclusion, hash tags and special keywords
+- Highlight of the lines of code
+- Export of a page to Markdown
+- Export of a page to OpenDocument (*.odt)
+- Share by link
+- Share by email
+- Internationalization (English only for now)
+
+### For the editors
+
+- Page layout supervised with Markdown
+- Wysiwyg editor for Markdown
+- Classification of the pages with hashtags
+- Automatic numbering of the headers
+- Linear and partially undoable versioning for a proper customer's validation
+- Status follow-up by page and hashtag
+
+### For the validators
+
+- Visible control hash key
+- Text comparison between two revisions
+- No change or no deletion possible after a page is validated
+
+### For the managers
+
+- Write the templates in a dedicated project
+- Detection of the orphaned pages
+- Detection of the broken links
+- Visual graph of the links between the pages
+
+### For the administrators
+
+**System**
+
+- Low technical requirements and bandwidth
+- Affordable solution based on open-source applications
+- Complete setup with Python in 10 minutes (no LAMP setup)
+- Local storage of the uploaded files and SQLite database
+- Support for HTTP and HTTPS
+- Unicode content and URL
 - IP filtering
-- Cross Origin Resource Sharing (CORS)
+
+**Pwic**
+
+- Multi-projects with dedicated user authorizations
+- Global and project-dependent settings
+- Management of the attached documents by name, mime and size
+- Private and public modes
+- Custom CSS and templates
+- Export of a project to Markdown and HTML
+- Traceable activities
+- API and command line to automate the classical operations
+
+## Future ideas
+
+The following features are **not** available yet:
+
+- Internationalization through GetText
+- Authentication with SAML/oAuth
+- IP logon
 
 
-**Custom use**
+## Install
 
-- Internationalization: English for now
-- Customizable UI with Jinja2 templates
-- API to perform operations by bots or scripts
+- Install Python: `apt-get install python3`
+	- Depending on your operating system, use `python` or `python3` to invoke Python version 3 later
+- Install the dependencies: `python -m pip install aiohttp aiohttp-cors aiohttp-session cryptography jinja2 parsimonious PrettyTable pygments`
+- Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py ssl`
+- Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
+- Make sure that the folder `db/` is writable
+- Initialize the SQLite database: `python pwic_admin.py init-db`
+- Create a new project: `python pwic_admin.py create-project --help`
+- Optionally define the global and project-dependent variables: `python pwic_admin.py set-env --help` (list available in the help page)
+- Run the server: `python pwic.py`
+- Open your browser at `http://127.0.0.1:1234`
+
+If you intend to change the cascading style sheets (CSS), you need SASS:
+
+- Install Node.js: `apt-get install node`
+- Install the dependencies: `npm install -g sass`
+- Run the watcher: `sass --no-source-map --style=compressed --watch static/styles.sass static/styles.css`
+- Adapt the templates in `templates/` and CSS files in `static/` until you get the desired output
+
+Note: overriding the default CSS is possible in the options by linking to a custom CSS file, and then you don't need SASS.
+
+
+## Support
+
+Please use the issue tracker on Github to ask questions, report bugs or request new features.
 
 
 ## Licenses
@@ -61,29 +133,4 @@ Copyright (C) Alexandre Bréard, 2020
 - [Swagger UI](https://github.com/swagger-api/swagger-ui) is released under Apache 2.0 License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
 
-Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic.
-
-
-## Install
-
-- Install Python: `apt-get install python3`
-- Install the dependencies: `pip install aiohttp aiohttp-cors aiohttp-session cryptography jinja2 parsimonious PrettyTable pygments`
-- Generate your self-signed SSL keys: `python pwic_admin.py ssl`
-- Ideally define your secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
-- Initialize the SQLite database: `python pwic_admin.py init-db`
-- Eventually refine the global variables: `python pwic_admin.py set-env --help` (refer to the online help)
-- Create a new project: `python pwic_admin.py create-project --help`
-- Run the server: `python pwic.py`
-- Open your browser at `https://localhost:1234`
-
-If you intend to change the cascading style sheets (CSS), you need SASS:
-
-- Install Node.js: `apt-get install node`
-- Install the dependencies: `npm install -g sass`
-- Run the watcher: `sass --no-source-map --style=compressed --watch static/styles.sass static/styles.css`
-- Adapt the templates and CSS stored in the folder `static` until you get the desired output
-
-
-## Support
-
-Please use the issue tracker on Github to report bugs or request new features.
+Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic. You cannot upgrade them automatically.

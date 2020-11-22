@@ -19,6 +19,7 @@
 				<tr>
 					<th>Page</th>
 					<th>Title</th>
+					<th>Flags</th>
 					<th class="pwic_desktop">Author</th>
 					<th>Date</th>
 					<th class="pwic_desktop">Time</th>
@@ -29,6 +30,17 @@
 					<tr>
 						<td>{{page.page|escape}}</td>
 						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td>
+							{% if page.draft %}
+								<span title="Draft">{{pwic.emojis.hourglass}}</span>
+							{% endif %}
+							{% if page.final %}
+								<span title="Marked as final">{{pwic.emojis.notes}}</span>
+							{% endif %}
+							{% if page.valuser != '' %}
+								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							{% endif %}
+						</td>
 						<td class="pwic_desktop"><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
 						<td>{{page.date|escape}}</td>
 						<td class="pwic_desktop">{{page.time|escape}}</td>

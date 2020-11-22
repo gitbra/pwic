@@ -224,6 +224,11 @@ paths:
           description: Planned milestone for the new page
           required: false
         - in: formData
+          name: create_tags
+          type: string
+          description: Tags separated by a space and with no hash
+          required: false
+        - in: formData
           name: create_ref_project
           type: string
           description: Reference project
@@ -240,11 +245,9 @@ paths:
           required: false
       responses:
         200:
-          description: Successful operation
+          description: Successful or failed operation
         302:
-          description: Successful operation
-        307:
-          description: Incorrect processing
+          description: Successful or failed operation
         400:
           description: Invalid parameters
         401:
@@ -274,9 +277,9 @@ paths:
           required: true
       responses:
         200:
-          description: Successful operation
-        307:
-          description: Internal error during the deletion of the attached documents
+          description: Successful or failed operation
+        302:
+          description: Successful or failed operation
         400:
           description: Invalid parameters
         401:
@@ -312,7 +315,7 @@ paths:
         - in: formData
           name: edit_tags
           type: string
-          description: Tags separated by a space
+          description: Tags separated by a space and with no hash
           required: false
         - in: formData
           name: edit_comment
@@ -581,11 +584,9 @@ paths:
           required: true
       responses:
         200:
-          description: Successful operation
+          description: Successful or failed operation
         302:
-          description: Successful operation
-        307:
-          description: Failure of the operation
+          description: Successful or failed operation
         400:
           description: Invalid parameters
         401:
@@ -617,11 +618,9 @@ paths:
           required: true
       responses:
         200:
-          description: Successful operation
+          description: Successful or failed operation
         302:
-          description: Successful operation
-        307:
-          description: Failure of the operation
+          description: Successful or failed operation
         400:
           description: Invalid parameters
         401:

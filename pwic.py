@@ -22,8 +22,8 @@ from html import escape
 from base64 import b64encode
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
-    PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, \
+    PWIC_USER_ANONYMOUS, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
@@ -62,6 +62,10 @@ class PwicServer():
     def _rollback(self: object) -> None:
         ''' Rollback the current transactions '''
         app['sql'].rollback()
+
+    def _sanitizeTags(self: object, tags: str) -> str:
+        tags = _recursiveReplace(tags.replace('#', '').replace('\t', ' ').strip().lower(), '  ', ' ')
+        return ' '.join(sorted(list(set(tags.split(' ')))))
 
     def _md2html(self: object, sql: object, project: str, page: str, markdown: str, cache: bool = True, headerNumbering: bool = True) -> (str, object):
         ''' Convert the text from Markdown to HTML '''
@@ -256,8 +260,10 @@ class PwicServer():
         # Render the template
         session = await get_session(request)
         pwic['language'] = session.get('language', PWIC_DEFAULT_LANGUAGE)
-        template = app['jinja'].get_template('%s/%s.html' % (pwic['language'], name))
-        return web.Response(text=template.render(pwic=pwic), content_type='text/html')
+        template_name = '%s/%s.html' % (pwic['language'], name)
+        if (pwic['language'] != PWIC_DEFAULT_LANGUAGE) and not isfile(PWIC_TEMPLATES_PATH + template_name):
+            template_name = '%s/%s.html' % (PWIC_DEFAULT_LANGUAGE, name)
+        return web.Response(text=app['jinja'].get_template(template_name).render(pwic=pwic), content_type='text/html')
 
     async def page(self: object, request: object) -> object:
         ''' Serve the pages '''
@@ -292,7 +298,7 @@ class PwicServer():
                         (project, user))
             row = sql.fetchone()
             if row is None:
-                raise web.HTTPNotFound()  # Project not found, or user not authorized to view it
+                raise web.HTTPTemporaryRedirect('/')  # Project not found, or user not authorized to view it
             pwic['project_description'] = row[0]
             pwic['admin'] = _xb(row[1])
             pwic['manager'] = _xb(row[2])
@@ -347,7 +353,7 @@ class PwicServer():
                             (project, page))
                 row = sql.fetchone()
                 if row is None:
-                    raise web.HTTPNotFound()  # Page not found
+                    return await self._handleOutput(request, 'page-404', pwic)  # Page not found
             pwic['page_title'] = row[0]
 
             # Show the requested page (not necessarily the latest one)
@@ -366,7 +372,7 @@ class PwicServer():
                                 (project, page, revision, revision))
                     row = sql.fetchone()
                     if row is None:
-                        raise web.HTTPNotFound()  # Revision not found
+                        return await self._handleOutput(request, 'page-404', pwic)  # Revision not found
                     pwic['revision'] = row[0]
                     pwic['latest'] = _xb(row[1])
                     pwic['draft'] = _xb(row[2])
@@ -590,8 +596,7 @@ class PwicServer():
                                   AND latest  = 'X' ''',
                             (project, page))
                 row = sql.fetchone()
-                if row is None:
-                    raise web.HTTPNotFound()        # Page not found
+                assert(row is not None)
                 pwic['draft'] = _xb(row[0])
                 pwic['final'] = _xb(row[1])
                 pwic['header'] = _xb(row[2])
@@ -825,8 +830,10 @@ class PwicServer():
         # Parse the query
         sql = app['sql'].cursor()
         project = _safeName(request.match_info.get('project', ''))
-        terms = request.rel_url.query.get('q', '')
-        query = pwic_search_parse(terms)
+        if self._readEnv(sql, project, 'no_search') is not None:
+            query = None
+        else:
+            query = pwic_search_parse(request.rel_url.query.get('q', ''))
         if query is None:
             raise web.HTTPTemporaryRedirect('/%s' % project)
 
@@ -852,7 +859,7 @@ class PwicServer():
         # Search for a page
         sql.execute(''' SELECT a.project, a.page, a.draft, a.final, a.author,
                                a.date, a.time, a.title, LOWER(a.markdown), a.tags,
-                               a.valuser, b.document_count
+                               a.valuser, a.valdate, a.valtime, b.document_count
                         FROM pages AS a
                             LEFT JOIN (
                                 SELECT project, page, COUNT(id) AS document_count
@@ -868,7 +875,7 @@ class PwicServer():
                                  a.time DESC''',
                     (project, project))
         for row in sql.fetchall():
-            tagList = row[9].split(' ')         # Tags
+            tagList = row[9].split(' ')
 
             # Apply the filters
             ok = True
@@ -880,7 +887,7 @@ class PwicServer():
                    or (q[:6] == 'title:' and q[6:] in row[7].lower())           \
                    or (q == ':validated' and row[10] != '')                     \
                    or (q[:10] == 'validator:' and q[10:] in row[10].lower())    \
-                   or (q == ':document' and _int(row[11]) > 0)                  \
+                   or (q == ':document' and _int(row[13]) > 0)                  \
                    or (q[1:] in tagList if q[:1] == '#' else False)             \
                    or (q == row[1].lower())                                     \
                    or (q in row[8]):
@@ -901,7 +908,7 @@ class PwicServer():
                     elif q[:10] == 'validator:':
                         count = _int(q[10:] in row[10].lower())
                     elif q == ':document':
-                        count = _int(_int(row[11]) > 0)
+                        count = _int(_int(row[13]) > 0)
                     elif (q[1:] in tagList if q[:1] == '#' else False):
                         count = 5               # A tag counts more
                     else:
@@ -917,10 +924,15 @@ class PwicServer():
             # Save the found result
             pwic['pages'].append({'project': row[0],
                                   'page': row[1],
+                                  'draft': _xb(row[2]),
+                                  'final': _xb(row[3]),
                                   'author': row[4],
                                   'date': row[5],
                                   'time': row[6],
                                   'title': row[7],
+                                  'valuser': row[10],
+                                  'valdate': row[11],
+                                  'valtime': row[12],
                                   'score': score})
 
         # Search for documents
@@ -1375,7 +1387,7 @@ class PwicServer():
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user == '':
+        if user in ['', PWIC_USER_ANONYMOUS]:
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -1425,7 +1437,7 @@ class PwicServer():
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user == '':
+        if user in ['', PWIC_USER_ANONYMOUS]:
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -1707,6 +1719,7 @@ class PwicServer():
         project = _safeName(post.get('create_project', ''))
         page = _safeName(post.get('create_page', ''))
         milestone = post.get('create_milestone', '').strip()
+        tags = post.get('create_tags', '')
         ref_project = _safeName(post.get('create_ref_project', ''))
         ref_page = _safeName(post.get('create_ref_page', ''))
         ref_tags = _x('create_ref_tags' in post)
@@ -1728,7 +1741,7 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
-            raise web.HTTPTemporaryRedirect('/special/create-page?failed')
+            raise web.HTTPFound('/special/create-page?failed')
 
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
@@ -1746,7 +1759,7 @@ class PwicServer():
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
-                raise web.HTTPTemporaryRedirect('/special/create-page?failed')
+                raise web.HTTPFound('/special/create-page?failed')
             default_markdown = row[0]
             if ref_tags:
                 default_tags = row[1]
@@ -1756,7 +1769,8 @@ class PwicServer():
         revision = 1
         sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, tags, comment, milestone)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown, default_tags, 'Initial', milestone))
+                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown,
+                     self._sanitizeTags(tags + ' ' + default_tags), 'Initial', milestone))
         assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': user,
                          'event': 'create-page',
@@ -1780,7 +1794,7 @@ class PwicServer():
         page = _safeName(post.get('edit_page', ''))
         title = post.get('edit_title', '').strip()
         markdown = post.get('edit_markdown', '')
-        tags = post.get('edit_tags', '')
+        tags = self._sanitizeTags(post.get('edit_tags', ''))
         comment = post.get('edit_comment', '').strip()
         milestone = post.get('edit_milestone', '').strip()
         draft = _x('edit_draft' in post)
@@ -1792,10 +1806,6 @@ class PwicServer():
             raise web.HTTPBadRequest()
         if final:
             draft = ''
-
-        # Reprocess the tags in alphabetical order
-        tags = _recursiveReplace(tags.replace('\t', ' ').strip().lower(), '  ', ' ')
-        tags = ' '.join(sorted(list(set(tags.split(' ')))))
 
         # Fetch the last revision of the page and the profile of the user
         sql = app['sql'].cursor()
@@ -1889,8 +1899,21 @@ class PwicServer():
         if project == '':
             raise web.HTTPBadRequest()
 
+        # Verify that the user is able to write
+        sql = app['sql'].cursor()
+        sql.execute(''' SELECT user
+                        FROM roles
+                        WHERE   project  = ?
+                          AND   user     = ?
+                          AND ( manager  = 'X'
+                            OR  editor   = 'X' )
+                          AND   disabled = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
+
         # Return the converted output
-        html, _ = self._md2html(app['sql'].cursor(), project, None, content, cache=False)
+        html, _ = self._md2html(sql, project, None, content, cache=False)
         return web.Response(text=html, content_type=MIME_TEXT)
 
     async def api_page_validate(self: object, request: object) -> None:
@@ -2044,7 +2067,7 @@ class PwicServer():
                 except (OSError, FileNotFoundError):
                     if isfile(fn):
                         self._rollback()
-                        raise web.HTTPTemporaryRedirect('/%s/%s?failed' % (project, page))
+                        raise web.HTTPFound('/%s/%s?failed' % (project, page))
 
             # Remove the index
             if docFound:
@@ -2264,7 +2287,7 @@ class PwicServer():
         if '' in [project, newuser] or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
         if wisheduser != newuser:  # Invalid chars spotted
-            raise web.HTTPTemporaryRedirect('/special/create-user?project=%s&failed' % escape(project))
+            raise web.HTTPFound('/special/create-user?project=%s&failed' % escape(project))
 
         # Verify that the user is administrator of the provided project
         ok = False
@@ -2304,10 +2327,7 @@ class PwicServer():
         self._commit()
 
         # Redirection
-        if ok:
-            raise web.HTTPFound('/%s/special/roles?success' % project)
-        else:
-            raise web.HTTPTemporaryRedirect('/%s/special/roles?failed' % project)
+        raise web.HTTPFound('/%s/special/roles?%s' % (project, 'success' if ok else 'failed'))
 
     async def api_user_change_password(self: object, request: object) -> None:
         ''' Change the password of the current user '''
@@ -2350,10 +2370,7 @@ class PwicServer():
                 ok = True
 
         # Redirection
-        if ok:
-            raise web.HTTPFound('/special/user/%s?success' % user)
-        else:
-            raise web.HTTPTemporaryRedirect('/special/user/%s?failed' % user)
+        raise web.HTTPFound('/special/user/%s?%s' % (user, 'success' if ok else 'failed'))
 
     async def api_user_roles(self: object, request: object) -> object:
         ''' Change the roles of a user '''
@@ -2717,7 +2734,7 @@ def main() -> bool:
     global app
 
     # Command-line
-    parser = argparse.ArgumentParser(description='Pwic Server')
+    parser = argparse.ArgumentParser(description='Pwic Server version %s' % PWIC_VERSION)
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=1234, help='Listening port')
     args = parser.parse_args()
@@ -2725,12 +2742,12 @@ def main() -> bool:
     # Modules
     app = web.Application()
     # ... languages
-    app['langs'] = sorted([f for f in listdir('templates/') if isdir(join('templates/', f))])
+    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if isdir(join(PWIC_TEMPLATES_PATH, f))])
     if PWIC_DEFAULT_LANGUAGE not in app['langs']:
         print('Error: English template is missing')
         return False
     # ... templates
-    app['jinja'] = Environment(loader=FileSystemLoader('./templates/'))
+    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH))
     # ... SQLite
     app['sql'] = sqlite3.connect(PWIC_DB_SQLITE)
     # app['sql'].set_trace_callback(print)
