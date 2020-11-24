@@ -1,0 +1,39 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} {{pwic.project_description|escape}}</a></div>
+	</header>
+
+	<article>
+		<h1>Project-dependent settings</h1>
+		<p>The following settings are changeable online and they are applicable to the current project only.</p>
+		<p>Refer to your administrator to configure the other environment variables whose details are available in the <a href="/help">help page</a>, or if you want a setting to apply once for all the projects hosted on the server.</p>
+
+		<table>
+			<tr>
+				<th style="width:33%">Variable</th>
+				<th style="width:67%">Value</th>
+			</tr>
+			{% for key in pwic.constants.changeable_env_variables %}
+				<tr>
+					<td><code>{{key|escape}}</code></td>
+					<td>
+						<input class="pwic_fill" type="text" data-key="{{key|escape}}">
+						<input type="button" data-key="{{key|escape}}" value="{{pwic.emojis.save}} Save">
+					</td>
+				</tr>
+			{% endfor %}
+		</table>
+
+		<p class="pwic_center"><a href="env" onclick="return confirm('Are you sure to reset the current changes?')">Cancel the current modifications</a></p>
+	</article>
+
+	{% include 'page-env.js.html' %}
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

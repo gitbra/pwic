@@ -67,10 +67,10 @@
 			{% endif %}
 
 			{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
-				<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?', 'Function not available.')">{{pwic.emojis.validate}} Validate</a>
+				<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
 			{% endif %}
 			{% if pwic.removable %}
-				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?', 'Function not available.')">{{pwic.emojis.recycle}} Delete</a>
+				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
 			{% endif %}
 		</p>
 

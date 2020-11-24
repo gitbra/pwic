@@ -24,13 +24,7 @@
 			element[0].focus();
 	}
 
-	function page_post_action(action, confirmText, notAvailableText) {
-		{% if (pwic.page == 'home') and (pwic.revision == 1) %}
-			if (action == 'delete')
-				alert(notAvailableText);
-			else
-		{% endif %}
-
+	function page_post_action(action, confirmText) {
 		if (confirm(confirmText))
 		{
 			fetch('/api/page/'+action, {method: 'POST',
@@ -71,7 +65,7 @@
 					var filename = response.headers.get('Content-Disposition').split('"')[1];
 					filename = filename.substring(10,filename.length-2);
 					filename = decodeURIComponent(escape(atob(filename)))
-					response.blob().then(function (blob) {
+					response.blob().then(function(blob) {
 						var dl = $(document.createElement('a'))
 									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
 									.attr('download', filename)

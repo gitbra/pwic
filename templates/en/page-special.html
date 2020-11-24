@@ -3,9 +3,7 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1">
-			<a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a>
-		</div>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.emojis.finger_up}} {{pwic.project_description|escape}}</a></div>
 		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
@@ -33,6 +31,7 @@
 		{% if pwic.admin or pwic.manager %}
 			<p class="pwic_action_bar">
 				{% if pwic.admin %}
+					<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 					<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
 					<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
 				{% endif %}
@@ -50,6 +49,31 @@
 		{% endif %}
 
 
+		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
+			<h1>Internal support</h1>
+			<ul>
+				{% if pwic.env.support_email %}
+					<li>By email: <a href="mailto:{{pwic.env.support_email.value|urlencode}}">{{pwic.env.support_email.value|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_phone %}
+					<li>By phone: <a href="tel:{{pwic.env.support_phone.value|replace(' ','')|urlencode}}">{{pwic.env.support_phone.value|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_url %}
+					<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_text %}
+					<li>
+						{% if pwic.env.safe_mode %}
+							{{pwic.env.support_text.value|escape|replace('\\n','<br/>')}}
+						{% else %}
+							{{pwic.env.support_text.value}}
+						{% endif %}
+					</li>
+				{% endif %}
+			</ul>
+		{% endif %}
+
+
 		{% if pwic.recents|count > 0 %}
 			<h1>Recent updates</h1>
 			<table>
@@ -64,7 +88,7 @@
 
 				{% for recent in pwic.recents %}
 					<tr>
-						<td>{{recent.date}}</td>
+						<td class="pwic_nowrap">{{recent.date}}</td>
 						<td class="pwic_desktop">{{recent.time}}</td>
 						<td><a href="/{{pwic.project|urlencode}}/{{recent.page|urlencode}}">{{recent.title|escape}}</a></td>
 						<td class="pwic_desktop"><a href="/special/user/{{recent.author|urlencode}}">{{recent.author|escape}}</a></td>
@@ -170,7 +194,7 @@
 						{% endif %}
 					</td>
 					<td><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
-					<td class="pwic_desktop">{{page.date|escape}}</td>
+					<td class="pwic_desktop pwic_nowrap">{{page.date|escape}}</td>
 					<td class="pwic_desktop">{{page.time|escape}}</td>
 					<td class="pwic_desktop">{{page.milestone|escape}}</td>
 				</tr>
@@ -239,7 +263,7 @@
 							{% endif %}
 						</td>
 						<td><a href="/special/user/{{doc.author|urlencode}}">{{doc.author|escape}}</a></td>
-						<td class="pwic_desktop">{{doc.date|escape}}</td>
+						<td class="pwic_desktop pwic_nowrap">{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>
 						<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
 					</tr>
@@ -254,7 +278,7 @@
 				<tr>
 					<th><a href="/special/help#help_setup">Key</a></th>
 					<th>Scope</th>
-					<th>Value</th>
+					<th><a href="/{{pwic.project|urlencode}}/special/env" title="Change the values">Value</a></th>
 				</tr>
 
 				{% for key in pwic.env %}
@@ -290,7 +314,7 @@
 
 				{% for audit in pwic.audits %}
 					<tr>
-						<td>{{audit.date|escape}}</td>
+						<td class="pwic_nowrap">{{audit.date|escape}}</td>
 						<td>{{audit.time|escape}}</td>
 						<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
 						<td>{{audit.event|escape}}</td>

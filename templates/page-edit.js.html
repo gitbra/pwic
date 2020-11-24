@@ -337,7 +337,7 @@
 					if (response.status != 200)
 						throw Error(errorPing + ' ['+response.status+']');
 					else
-						response.text().then(function (text) {
+						response.text().then(function(text) {
 							if (text == 'OK')
 								// OK let's submit the modification to not lose the current work in progress
 								$('#edit_form')[0].submit();
@@ -364,7 +364,7 @@
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);
 				else
-					response.text().then(function (text) {
+					response.text().then(function(text) {
 						var page = window.open('');
 						page.document.title = pageTitle;
 						page.document.body.innerHTML = '\
@@ -391,7 +391,7 @@
 
 	// -------------------------------- Leave without save
 
-	window.onbeforeunload = function (e) {
+	window.onbeforeunload = function(e) {
 		var	msg = 'The current changes may be lost.',
 			e = e || window.event;
 		if (!edit_submittable)

@@ -454,6 +454,36 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations, or not found
+  /api/project/env:
+    post:
+      summary: Change a project-dependent setting
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: env_project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: env_key
+          type: string
+          description: Name of the option (refer to /help)
+          required: true
+        - in: formData
+          name: env_value
+          type: string
+          description: Value of the option
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
   /api/project/info:
     post:
       summary: Details about the project

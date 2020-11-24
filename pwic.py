@@ -24,8 +24,9 @@ from base64 import b64encode
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, \
     PWIC_USER_ANONYMOUS, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
-    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
-    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
+    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, \
+    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
+    MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_styles import pwic_styles_html, pwic_styles_odt
@@ -230,6 +231,7 @@ class PwicServer():
         pwic['constants'] = {'anonymous_user': PWIC_USER_ANONYMOUS,
                              'db_path': PWIC_DB,
                              'default_language': PWIC_DEFAULT_LANGUAGE,
+                             'changeable_env_variables': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE),
                              'languages': app['langs'],
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'version': PWIC_VERSION}
@@ -977,8 +979,36 @@ class PwicServer():
         pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
         return await self._handleOutput(request, 'search', pwic=pwic)
 
+    async def page_env(self: object, request: object) -> object:
+        ''' Serve the project-dependent settings that can be modified online
+            without critical, technical or legal impact on the server '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            return await self._handleLogon(request)
+
+        # Fetch the parameters
+        project = _safeName(request.match_info.get('project', ''))
+
+        # Verify that the user is an administrator
+        sql = app['sql'].cursor()
+        if sql.execute(''' SELECT user
+                           FROM roles
+                           WHERE project = ?
+                             AND user    = ?
+                             AND admin   = 'X' ''',
+                       (project, user)).fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # Show the page
+        sql.execute('SELECT description FROM projects WHERE project = ?', (project, ))
+        pwic = {'title': 'Project-dependent environment variables',
+                'project': project,
+                'project_description': sql.fetchone()[0]}
+        return await self._handleOutput(request, 'page-env', pwic=pwic)
+
     async def page_roles(self: object, request: object) -> object:
-        ''' Serve the search engine '''
+        ''' Serve the form to change the authorizations of the users '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -1216,10 +1246,21 @@ class PwicServer():
             if not with_revisions and not _xb(row[2]):
                 continue
             pages.append(row)
-
-        # Build the zip file
         if len(pages) == 0:
             raise web.HTTPUnauthorized()
+
+        # Fetch the attached documents
+        sql.execute(''' SELECT id, filename, mime
+                        FROM documents
+                        WHERE project = ?''',
+                    (project, ))
+        documents = []
+        for row in sql.fetchall():
+            documents.append({'id': row[0],
+                              'filename': row[1],
+                              'image': row[2][:6] == 'image/'})
+
+        # Build the zip file
         folder_rev = 'revisions/'
         htmlStyles = pwic_styles_html()
         try:
@@ -1243,6 +1284,11 @@ class PwicServer():
                                           htmlStyles.getCss(rel=True),
                                           '',
                                           self._md2html(sql, project, page[0], page[7], cache=_xb(page[2]))[0])
+                for doc in documents:
+                    if doc['image']:
+                        html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
+                    html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
+                    html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
                 if with_revisions:
                     zip.writestr('%s%s.rev%d.html' % (folder_rev, page[0], page[1]), html)
                 if _xb(page[2]):
@@ -1258,14 +1304,13 @@ class PwicServer():
             del content
 
             # Attached documents
-            sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
-            for row in sql.fetchall():
-                fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
+            for doc in documents:
+                fn = (PWIC_DOCUMENTS_PATH % project) + doc['filename']
                 if isfile(fn):
                     content = ''
                     with open(fn, 'rb') as f:
                         content = f.read()
-                    zip.writestr('documents/%s' % row[0], content)
+                    zip.writestr('documents/%s' % doc['filename'], content)
                     del content
 
             # Close the archive
@@ -1517,6 +1562,43 @@ class PwicServer():
 
         # Final result
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
+
+    async def api_project_env(self: object, request: object) -> object:
+        ''' API to modify some of the project-dependent settings '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the submitted data
+        post = await self._handlePost(request)
+        project = _safeName(post.get('env_project', ''))
+        key = post.get('env_key', '')
+        value = post.get('env_value', '')
+        if project == '' or key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE:
+            raise web.HTTPBadRequest()
+
+        # Verify that the user is administrator of the project
+        sql = app['sql'].cursor()
+        if sql.execute(''' SELECT user
+                           FROM roles
+                           WHERE project = ?
+                             AND user    = ?
+                             AND admin   = 'X' ''',
+                       (project, user)).fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # Update the variable
+        if value == '':
+            sql.execute('DELETE FROM env WHERE project = ? AND key = ?', (project, key))
+        else:
+            sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, key, value))
+        pwic_audit(sql, {'author': user,
+                         'event': '%sset-%s' % ('un' if value == '' else '', key),
+                         'project': project,
+                         'string': value})
+        self._commit()
+        raise web.HTTPOk()
 
     async def api_project_progress(self: object, request: object) -> object:
         ''' API to analyze the progress of the project '''
@@ -1984,8 +2066,6 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
-        if (page == PWIC_DEFAULT_PAGE) and (revision == 1):
-            raise web.HTTPUnauthorized()    # Deleting the first page when a project is freshly created may stuck the user at the error 404
         sql = app['sql'].cursor()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
@@ -2770,6 +2850,7 @@ def main() -> bool:
                     web.post('/api/server/env', app['pwic'].api_server_env),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/project/info', app['pwic'].api_project_info),
+                    web.post('/api/project/env', app['pwic'].api_project_env),
                     web.post('/api/project/progress', app['pwic'].api_project_progress),
                     web.post('/api/project/graph', app['pwic'].api_project_graph),
                     web.post('/api/page/create', app['pwic'].api_page_create),
@@ -2792,6 +2873,7 @@ def main() -> bool:
                     web.get('/special/create-user', app['pwic'].user_create),
                     web.get('/special/user/{userpage}', app['pwic'].page_user),
                     web.get(r'/{project:[^\/]+}/special/search', app['pwic'].page_search),
+                    web.get(r'/{project:[^\/]+}/special/env', app['pwic'].page_env),
                     web.get(r'/{project:[^\/]+}/special/roles', app['pwic'].page_roles),
                     web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
                     web.get(r'/{project:[^\/]+}/special/graph', app['pwic'].page_graph),

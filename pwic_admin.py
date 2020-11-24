@@ -34,6 +34,7 @@ def main() -> bool:
     parser_env.add_argument('--project', default='', help='Name of the project (if project-dependent)')
     parser_env.add_argument('name', default='', help='Name of the variable')
     parser_env.add_argument('value', default='', help='Value of the variable')
+    parser_env.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
 
     subparsers.add_parser('show-mime', help='Show the MIME types defined on the server [Windows]')
 
@@ -68,7 +69,7 @@ def main() -> bool:
     elif args.command == 'show-env':
         return show_env()
     elif args.command == 'set-env':
-        return set_env(args.project, args.name, args.value)
+        return set_env(args.project, args.name, args.value, args.override)
     elif args.command == 'show-mime':
         return show_mime()
     elif args.command == 'create-backup':
@@ -359,34 +360,52 @@ def show_env() -> bool:
     return True
 
 
-def set_env(project: str, name: str, value: str) -> bool:
-    # Check the keys
-    merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
-    if name not in merged:
-        print('Error: the name of the variable must be one of "%s"' % ', '.join(merged))
+def set_env(project: str, key: str, value: str, override: bool) -> bool:
+    # Check the parameters
+    if override and project != '':
+        print('Error: useless parameter --override if a project is indicated')
         return False
-    if project != '' and name in PWIC_ENV_PROJECT_INDEPENDENT:
-        print('Error: this parameter is project-independent')
+    merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
+    if key not in merged:
+        print('Error: the name of the variable must be one of: %s' % ', '.join(merged))
+        return False
+    if project != '' and key in PWIC_ENV_PROJECT_INDEPENDENT:
+        print('Error: the parameter is project-independent')
         return False
     value = value.strip().replace('\r', '')
 
-    # Update the variable
+    # Connect to the database
     sql = db_connect()
     if sql is None:
         return False
+
+    # Reset the project-dependent values if --override
+    if override:
+        sql.execute(''' SELECT project
+                        FROM env
+                        WHERE project <> ''
+                          AND key      = ?''',
+                    (key, ))
+        for row in sql.fetchall():
+            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                             'event': 'unset-%s' % key,
+                             'project': row[0]})
+        sql.execute('DELETE FROM env WHERE key = ?', (key, ))
+
+    # Update the variable
     if value == '':
-        sql.execute(''' DELETE FROM env
-                        WHERE project = ?
-                          AND key     = ?''',
-                    (project, name, ))
+        sql.execute('DELETE FROM env WHERE project = ? AND key = ?', (project, key))
     else:
-        sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, name, value))
+        sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, key, value))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                     'event': '%sset-%s' % ('un' if value == '' else '', name),
+                     'event': '%sset-%s' % ('un' if value == '' else '', key),
                      'project': project,
                      'string': value})
     db_commit()
-    print('Variable updated for the project "%s"' % project)
+    if project != '':
+        print('Variable updated for the project "%s"' % project)
+    else:
+        print('Variable updated globally')
     return True
 
 
@@ -718,4 +737,5 @@ def execute_sql() -> bool:
     return False
 
 
-main()
+if not main():
+    print('The operation failed')

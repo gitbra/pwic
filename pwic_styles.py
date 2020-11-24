@@ -17,7 +17,7 @@ class pwic_styles_html:
     <meta charset="utf-8">
     <meta name="author" content="%s">
     <meta name="last-modified" content="%s %s">
-    <title>%s %s</title>
+    <title>[%s] %s</title>
     %s
 </head>
 <body>

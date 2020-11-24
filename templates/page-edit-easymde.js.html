@@ -1,21 +1,21 @@
 <script>
 	var easyMDE_buttons = [
 			{	name: 'custom',
-				action: function (editor) {
+				action: function(editor) {
 					edit_table('Number of columns', 'Number of rows')
 				},
 				className: 'fa fa-table',
 				title: 'Insert a table',
 			},
 			{	name: 'custom',
-				action: function (editor) {
+				action: function(editor) {
 					alert('From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.');
 				},
 				className: 'fa fa-paperclip',
 				title: 'Attach an uploaded document',
 			},
 			{	name: 'custom',
-				action: function (editor) {
+				action: function(editor) {
 					if (confirm('Are you sure to switch back to the basic editor ?'))
 					{
 						$('#edit_toolbar').removeClass('pwic_hidden');

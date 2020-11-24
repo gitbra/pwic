@@ -3,7 +3,7 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1"><a href="/">Help</a></div>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} Help</a></div>
 	</header>
 
 	<article>
@@ -11,21 +11,29 @@
 			<span title="The page is protected">{{pwic.emojis.padlock}}</span>
 		</p>
 
-		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url %}
-			<h1>Support from your internal organization</h1>
-			<p>Your administrator has defined some possibilities to contact the support team. Please use them in priority:</p>
+		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
+			<h1>System support</h1>
+			<p>The support team for your project may be different than the one mentioned below. So refer to the special page of your project in priority.</p>
 			<ul>
 				{% if pwic.env.support_email %}
-				<li>By email: <a href="mailto:{{pwic.env.support_email.value|urlencode}}">{{pwic.env.support_email.value|escape}}</a></li>
+					<li>By email: <a href="mailto:{{pwic.env.support_email.value|urlencode}}">{{pwic.env.support_email.value|escape}}</a></li>
 				{% endif %}
 				{% if pwic.env.support_phone %}
-				<li>By phone: <a href="tel:{{pwic.env.support_phone.value|urlencode}}">{{pwic.env.support_phone.value|escape}}</a></li>
+					<li>By phone: <a href="tel:{{pwic.env.support_phone.value|replace(' ','')|urlencode}}">{{pwic.env.support_phone.value|escape}}</a></li>
 				{% endif %}
 				{% if pwic.env.support_url %}
-				<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
+					<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
+				{% endif %}
+				{% if pwic.env.support_text %}
+					<li>
+						{% if pwic.env.safe_mode %}
+							{{pwic.env.support_text.value|escape|replace('\\n','<br/>')}}
+						{% else %}
+							{{pwic.env.support_text.value}}
+						{% endif %}
+					</li>
 				{% endif %}
 			</ul>
-			<p>Below is a generic explanation of all the features of Pwic.</p>
 		{% endif %}
 
 		<h1 id="help_top">Matrix of the authorizations</h1>
@@ -65,47 +73,56 @@
 			<table>
 				<tr>
 					<th>Name</th>
-					<th>Project-dependent</th>
+					<th class="pwic_desktop">Project-dependent</th>
+					<th class="pwic_desktop">Changeable online</th>
 					<th>Description</th>
 				</tr>
 				<tr>
 					<td><code>api_expose_markdown</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Expose the content of the pages in the API <code>/api/project/info</code> to allow the full copy of the documentation.</td>
 				</tr>
 				<tr>
 					<td><code>base_url</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Define the base HTTP address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>.</td>
 				</tr>
 				<tr>
 					<td><code>cors</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Enable <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> that adds the HTTP header <code>Access-Control-Allow-Origin</code>.</td>
 				</tr>
 				<tr>
 					<td><code>css</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>.</td>
 				</tr>
 				<tr>
 					<td><code>disabled_formats</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>List of the file extensions separated with a space that cannot be used to export a page. The value <code>*</code> is possible.</td>
 				</tr>
 				<tr>
 					<td><code>document_name_regex</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 				</tr>
 				<tr>
 					<td><code>export_project_revisions</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Add the revisions of the pages when you export a project as a ZIP file.</td>
 				</tr>
 				<tr>
 					<td><code>ip_filter</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>
 						- List of IP addresses separated by <code>;</code>. The unauthorized addresses are prefixed by <code>~</code> and used as <em>AND</em> conditions, else as <em>OR</em> conditions.
 						<br/>- To be fully effective, the server should be restarted when the value is changed. The current sessions will be terminated.
@@ -114,114 +131,140 @@
 				</tr>
 				<tr>
 					<td><code>heading_mask</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
 				</tr>
 				<tr>
 					<td><code>legal_notice</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>A legal text can be displayed at the bottom of the pages. The HTML syntax is accepted if <code>safe_mode</code> is disabled.</td>
 				</tr>
 				<tr>
 					<td><code>maintenance</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>The value is displayed on the pages to inform the users of a planned maintenance. The upload of documents is immediately disabled.</td>
 				</tr>
 				<tr>
 					<td><code>mathjax</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Enable the renderer of mathematical expressions. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</td>
 				</tr>
 				<tr>
 					<td><code>max_document_size</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>All the uploaded files must have a size lower than this limit. To disable the upload, set the value <code>-1</code>.</td>
 				</tr>
 				<tr>
 					<td><code>max_project_size</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Define the maximal disk space allowed for all the attached documents of a project.</td>
 				</tr>
 				<tr>
 					<td><code>mde</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Activate the visual <em>wysiwyg</em> Markdown editor.</td>
 				</tr>
 				<tr>
 					<td><code>mime_enforcement</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the extension of its expected content.</td>
 				</tr>
 				<tr>
 					<td><code>no_export_project</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
 					<td>Disable the export of the project as an archive for the online administrators.</td>
 				</tr>
 				<tr>
 					<td><code>no_logon</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Skip the logon screen and assign the anonymous role to any visitor. As per the default behavior of the user account <code>{{pwic.constants.anonymous_user}}</code>, Pwic becomes public, read-only and you update the instance by transferring the folder <code>{{pwic.constants.db_path}}</code> administratively. The server must be restarted when the option is changed.</td>
 				</tr>
 				<tr>
 					<td><code>no_printing</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>To save some trees, enable a basic protection to prevent the printing of a page. It also disables the export to PDF through a virtual printer.</td>
 				</tr>
 				<tr>
 					<td><code>no_search</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Disable the search engine.</td>
 				</tr>
 				<tr>
 					<td><code>no_text_selection</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Enable a basic protection to prevent the user from playing around with his web browser to copy the text of the main page. It also forces the readers to focus on reading the page.</td>
 				</tr>
 				<tr>
 					<td><code>odt_page_height</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Height of the paper when you export a page to OpenDocument. The value <code>29.7cm</code> is used by default (A4).</td>
 				</tr>
 				<tr>
 					<td><code>odt_page_width</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Width of the paper when you export a page to OpenDocument. The value <code>21cm</code> is used by default (A4).</td>
 				</tr>
 				<tr>
 					<td><code>password_regex</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150/">here</a>. The option does not apply when you reset the password from the console.</td>
 				</tr>
 				<tr>
 					<td><code>robots</code></td>
-					<td>Yes</td>
-					<td>
-						The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.
-					</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
+					<td>The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</td>
 				</tr>
 				<tr>
 					<td><code>safe_mode</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues.</td>
 				</tr>
 				<tr>
 					<td><code>ssl</code></td>
-					<td>No</td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
 					<td>Enable HTTPS for Pwic provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
 				</tr>
 				<tr>
 					<td><code>support_email</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>A user can write to this email address to get support.</td>
 				</tr>
 				<tr>
 					<td><code>support_phone</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>A user can call this phone number to get support.</td>
 				</tr>
 				<tr>
+					<td><code>support_text</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Free text to describe how to get in touch with the support team. If <code>safe_mode</code> is enabled, type the characters <code>\n</code> to indicate a new line, else you can use raw HTML tags.</td>
+				</tr>
+				<tr>
 					<td><code>support_url</code></td>
-					<td>Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
 					<td>Portal address that a user can use to find an extended help.</td>
 				</tr>
 			</table>
@@ -408,7 +451,7 @@
 
 		<h1 id="help_log_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity of a user</h1>
 		<p>The user page contains a public overview of the recently modified pages (over the last 30 days) and the uploaded documents.</p>
-		<p>Your own user page is mentionned in the footer.</p>
+		<p>Your own user page is mentioned in the footer.</p>
 
 
 		<h1 id="help_automate"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Automate Pwic</h1>

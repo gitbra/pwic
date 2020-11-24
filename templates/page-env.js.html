@@ -1,0 +1,68 @@
+<script>
+	'use strict';
+
+	// Manage the visibility of the save button
+	$('INPUT[type=button]').addClass('pwic_hidden');
+	$('INPUT[type=text]').on('change', function() {
+		$(this).removeAttr('placeholder');
+		$('INPUT[type=button][data-key='+$(this).data('key')+']').removeClass('pwic_hidden');
+	});
+
+	// Manage the save button
+	$('INPUT[type=button]').on('click', function() {
+		var key = $(this).data('key');
+		var value = $('INPUT[type=text][data-key='+key+']').val();
+		env_set(key, value);
+	});
+
+	// Load the default values of the configuration
+	$('INPUT[type=text]').attr('readonly', '').addClass('pwic_disabled_bg');
+	fetch('/api/server/env', {	method: 'POST',
+								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+								body: 'env_project={{pwic.project|urlencode}}',
+								credentials: 'same-origin' })
+	.then(function(response) {
+		if (response.status != 200)
+			throw Error(response.status + ' ' + response.statusText);
+		else
+			response.json().then(function(data) {
+				var key, item, element;
+				for (key in data)
+				{
+					item = data[key];
+					element = $('INPUT[type=text][data-key='+key+']');
+					if (element.length > 0)
+					{
+						if (item['global'])
+							element.attr('placeholder', item['value']);
+						else
+							element.val(item['value']);
+					}
+				}
+				$('INPUT[type=text]').removeAttr('readonly').removeClass('pwic_disabled_bg');
+			});
+	})
+	.catch(function(error) {
+		alert(error);
+	});
+
+	// Action when the save button is pressed
+	function env_set(key, value)
+	{
+		fetch('/api/project/env', {	method: 'POST',
+									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+									body:	'env_project={{pwic.project|urlencode}}' +
+											'&env_key=' + encodeURIComponent(key) +
+											'&env_value=' + encodeURIComponent(value),
+									credentials: 'same-origin' })
+		.then(function(response) {
+			if (response.status == 200)
+				$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
+			else
+				throw Error(response.status + ' ' + response.statusText);
+		})
+		.catch(function(error) {
+			alert(error);
+		});
+	}
+</script>
