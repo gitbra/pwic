@@ -1799,17 +1799,30 @@ class PwicServer():
         # Fetch the submitted data
         post = await self._handlePost(request)
         project = _safeName(post.get('create_project', ''))
-        page = _safeName(post.get('create_page', ''))
+        kb = 'create_kb' in post
+        page = '' if kb else _safeName(post.get('create_page', ''))
         milestone = post.get('create_milestone', '').strip()
         tags = post.get('create_tags', '')
         ref_project = _safeName(post.get('create_ref_project', ''))
         ref_page = _safeName(post.get('create_ref_page', ''))
-        ref_tags = _x('create_ref_tags' in post)
-        if project in ['', 'api', 'special'] or page in ['', 'special']:
+        ref_tags = 'create_ref_tags' in post
+        if project in ['', 'api', 'special'] or (not kb and page in ['', 'special']):
             raise web.HTTPBadRequest()
 
-        # Verify that the user is manager of the provided project, and that the page doesn't exist yet
+        # Consume a KBid
         sql = app['sql'].cursor()
+        if kb:
+            sql.execute('BEGIN EXCLUSIVE TRANSACTION')
+            kbid = int(self._readEnv(sql, project, 'kbid', 0)) + 1
+            sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)',
+                        (project, 'kbid', kbid))
+            page = 'kb%06d' % kbid
+            # No commit because the creation of the page can fail below
+        else:
+            if re.compile(r'^kb[0-9]{6}$').match(page) is not None:
+                raise web.HTTPBadRequest()
+
+        # Verify that the user is manager of the provided project, and that the page doesn't exist yet
         sql.execute(''' SELECT b.page
                         FROM roles AS a
                             LEFT OUTER JOIN pages AS b
@@ -1823,6 +1836,8 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row[0] is not None:
+            if kb:
+                self._rollback()
             raise web.HTTPFound('/special/create-page?failed')
 
         # Fetch the default markdown if the page is created in reference to another one
@@ -1841,6 +1856,8 @@ class PwicServer():
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
+                if kb:
+                    self._rollback()
                 raise web.HTTPFound('/special/create-page?failed')
             default_markdown = row[0]
             if ref_tags:
@@ -1879,15 +1896,15 @@ class PwicServer():
         tags = self._sanitizeTags(post.get('edit_tags', ''))
         comment = post.get('edit_comment', '').strip()
         milestone = post.get('edit_milestone', '').strip()
-        draft = _x('edit_draft' in post)
-        final = _x('edit_final' in post)
+        draft = 'edit_draft' in post
+        final = 'edit_final' in post
         protection = _x('edit_protection' in post)
         header = _x('edit_header' in post)
         dt = _dt()
         if '' in [user, project, page, title, comment]:
             raise web.HTTPBadRequest()
         if final:
-            draft = ''
+            draft = False
 
         # Fetch the last revision of the page and the profile of the user
         sql = app['sql'].cursor()
@@ -1920,7 +1937,7 @@ class PwicServer():
                              protection, author, date, time, title,
                              markdown, tags, comment, milestone)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision + 1, draft, final, header,
+                    (project, page, revision + 1, _x(draft), _x(final), header,
                      protection, user, dt['date'], dt['time'], title,
                      markdown, tags, comment, milestone))
         if sql.rowcount > 0:

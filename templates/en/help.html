@@ -27,7 +27,7 @@
 				{% if pwic.env.support_text %}
 					<li>
 						{% if pwic.env.safe_mode %}
-							{{pwic.env.support_text.value|escape|replace('\\n','<br/>')}}
+							{{pwic.env.support_text.value|escape|replace('\n','<br/>')}}
 						{% else %}
 							{{pwic.env.support_text.value}}
 						{% endif %}
@@ -102,6 +102,18 @@
 					<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>.</td>
 				</tr>
 				<tr>
+					<td><code>css_dark</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
+					<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>. This applies only if <code>dark_mode</code> is activated.</td>
+				</tr>
+				<tr>
+					<td><code>dark_mode</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Enable the dark mode that is less aggressive in terms of luminosity.</td>
+				</tr>
+				<tr>
 					<td><code>disabled_formats</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">Yes</td>
@@ -134,6 +146,12 @@
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">Yes</td>
 					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
+				</tr>
+				<tr>
+					<td><code>kbid</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">No</td>
+					<td>Managed counter to allocate an identifier to a knowledge base article.</td>
 				</tr>
 				<tr>
 					<td><code>legal_notice</code></td>
@@ -259,7 +277,7 @@
 					<td><code>support_text</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">Yes</td>
-					<td>Free text to describe how to get in touch with the support team. If <code>safe_mode</code> is enabled, type the characters <code>\n</code> to indicate a new line, else you can use raw HTML tags.</td>
+					<td>Free text to describe how to get in touch with the support team. If <code>safe_mode</code> is disabled, you can use raw HTML tags.</td>
 				</tr>
 				<tr>
 					<td><code>support_url</code></td>

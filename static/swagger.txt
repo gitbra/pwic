@@ -214,6 +214,11 @@ paths:
           description: Name of the project
           required: true
         - in: formData
+          name: create_kbid
+          type: string
+          description: Checkbox to generate a knowledge base article
+          required: false
+        - in: formData
           name: create_page
           type: string
           description: Name of the page

@@ -1,0 +1,223 @@
+
+// --------------------------------
+//  Main HTML tags
+
+BODY
+	background-color: black
+	color: lightgray
+
+CODE
+	border-color: white
+	color: black
+
+INPUT, SELECT
+	background-color: gray
+	color: white
+
+::placeholder
+	color: maroon
+	opacity: 1
+::-ms-input-placeholder
+	color: maroon
+
+
+// --------------------------------
+//  Template - Header
+
+HEADER
+	background-color: gray
+
+	.pwic_ph1, .pwic_ph2
+		color: black
+
+	.pwic_tagbox
+		A
+			background-color: lightgray
+		A:hover
+			border-color: white
+			background-color: black
+			color: white
+
+		DIV
+			background-color: lightgray
+			> INPUT
+				background-color: lightgray
+				color: black
+
+
+// --------------------------------
+//  Template - Content
+
+ARTICLE
+	background-color: #303030
+	border-bottom: 1px dashed white
+
+	// -------------------------------- Standard tags
+
+	H1
+		border-color: white
+		background-color: gray
+		color: black
+
+	TABLE
+		TR:hover
+			background-color: lightblue !important
+			color: black !important
+
+	TABLE.pwic_zebra
+		TR:nth-child(even)
+			background-color: #505050
+
+	A
+		color: yellow
+
+
+	// -------------------------------- Action bar
+
+	.pwic_action_bar
+		A
+			background-color: gray
+		A:hover
+			border-color: white
+			background-color: black
+			color: white
+
+
+	// -------------------------------- Tag box
+
+	.pwic_tagbox
+		A
+			background-color: lightgray
+		A:hover
+			border-color: white
+			background-color: black
+			color: white
+		A.pwic_selected
+			border-color: white
+			background-color: black
+			color: white
+
+
+	// -------------------------------- File gallery
+
+	.pwic_file_gallery
+		A
+			background-color: lightgray
+			color: black
+		A:hover
+			border-color: yellow
+
+
+	// -------------------------------- Progress
+
+	#pwic_progress
+		background-color: white
+
+
+	// -------------------------------- Document browser
+
+	#pwic_browser_access
+		background-color: rgb(149, 236, 168)
+		box-shadow: 0px 0px 0px 10px gray
+	#pwic_browser_access:hover
+		background-color: green
+		color: white
+
+	#pwic_browser
+		background-color: #303030
+
+		A
+			color: white
+		A:hover
+			background-color: lightgray
+			color: black
+
+
+// --------------------------------
+//  Template - Footer
+
+FOOTER
+	background-color: #303030
+	color: lightgray
+
+	A
+		color: lightgray
+
+
+// --------------------------------
+//  Popup widget
+
+.pwic_blurcontainer
+	background-color: rgb(255, 255, 255, 75%)
+
+.pwic_popup
+	background-color: #303030
+
+
+// --------------------------------
+//  Messages types
+
+.pwic_error, .pwic_information, .pwic_warning
+	color: black
+
+
+// --------------------------------
+//  Progress bar
+
+SPAN.pwic_progressbar
+	> SPAN
+		background-color: teal
+
+
+// --------------------------------
+//  Individual reusable styles
+
+.pwic_disabled_bg
+	background-color: gray
+
+
+// --------------------------------
+//  Individual elements
+
+#page_legal_notice
+	color: white
+
+#page_topofpage
+	A
+		color: white
+
+#edit_files_drop
+	background-color: gray
+	color: white
+
+#edit_files_drop.pwic_dragover
+	background-color: white
+	color: black
+
+
+// --------------------------------
+//  Code differences
+
+.diff_header
+	background-color: gray
+	color: white
+
+.diff_add
+	background-color: #E0FFE0
+	color: black
+
+.diff_chg
+	background-color: #FFFFE0
+	color: black
+
+.diff_sub
+	background-color: #FFE0E0
+	color: black
+
+
+// --------------------------------
+//  Syntax highlight
+
+ARTICLE
+	CODE
+		background: lightgray

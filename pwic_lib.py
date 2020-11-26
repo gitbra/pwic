@@ -39,13 +39,13 @@ PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                             
 
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'ip_filter', 'maintenance', 'mime_enforcement',
                                 'no_logon', 'password_regex', 'safe_mode', 'ssl']
-PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'css', 'disabled_formats', 'document_name_regex',
-                              'export_project_revisions', 'heading_mask', 'legal_notice', 'mathjax',
-                              'max_document_size', 'max_project_size', 'mde', 'no_export_project',
-                              'no_printing', 'no_search', 'no_text_selection', 'odt_page_height',
-                              'odt_page_width', 'robots', 'support_email', 'support_phone', 'support_text',
-                              'support_url']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['disabled_formats', 'heading_mask', 'mathjax', 'mde',
+PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'css', 'css_dark', 'dark_mode', 'disabled_formats',
+                              'document_name_regex', 'export_project_revisions', 'heading_mask', 'kbid',
+                              'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'mde',
+                              'no_export_project', 'no_printing', 'no_search', 'no_text_selection',
+                              'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
+                              'support_text', 'support_url']
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['dark_mode', 'disabled_formats', 'heading_mask', 'mathjax', 'mde',
                                      'no_printing', 'no_search', 'no_text_selection', 'odt_page_height',
                                      'odt_page_width', 'support_email', 'support_phone', 'support_text',
                                      'support_url']

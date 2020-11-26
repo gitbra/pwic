@@ -6,8 +6,6 @@
 		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_left}} Create a new page</a></div>
 	</header>
 
-	{% include 'page-create.js.html' %}
-
 	<article>
 		{% if pwic.projects|count == 0 %}
 
@@ -26,7 +24,9 @@
 						{% endfor %}
 					</select>
 				</p>
-				<p><strong>Page identifier:</strong> <input id="create_page" class="pwic_fill" type="text" name="create_page" /></p>
+				<p><strong>Page identifier:</strong>
+					<br/><input id="create_kb" type="checkbox" name="create_kb" /> <label for="create_kb">Generate a knowledge base article</label>
+					<br/><input id="create_page" class="pwic_fill" type="text" name="create_page" /></p>
 				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="create_milestone" /></p>
 				<p><strong>Tags:</strong> <input id="create_tags" class="pwic_fill" type="text" name="create_tags" value="" title="No hash and separated by a space" /></p>
 
@@ -40,10 +40,12 @@
 					</select>
 				</p>
 				<p><strong>Page identifier:</strong> <input class="pwic_fill" type="text" name="create_ref_page" /></p>
-				<p><input type="checkbox" id="create_ref_tags" name="create_ref_tags" checked="checked" /> <label for="create_ref_tags">Copy the tags and merge with the above ones</label></p>
+				<p><input id="create_ref_tags" type="checkbox" name="create_ref_tags" checked="checked" /> <label for="create_ref_tags">Copy the tags and merge with the above ones</label></p>
 
 				<p><input type="button" value="{{pwic.emojis.sheet}} Create the page" onclick="create_submit('The names are not acceptable.')" /></p>
 			</form>
+
+			{% include 'page-create.js.html' %}
 
 		{% endif %}
 	</article>

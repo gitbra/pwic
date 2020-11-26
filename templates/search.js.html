@@ -2,7 +2,7 @@
 	'use strict';
 
 	function page_search(event) {
-		event ||= window.event;
+		event = event|| window.event;
 		if ((event.keyCode || event.which) == 13)
 		{
 			var q = $('#page_search').val();

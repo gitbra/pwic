@@ -1,13 +1,21 @@
 <script>
 	'use strict';
 
+	$('#create_kb').on('change', function(event) {
+		var state = $(this).prop('checked');
+		$('#create_page').toggleClass('pwic_hidden', state);
+		if (state)
+			$('#create_page').val('');
+	});
+
 	function create_submit(errorText) {
 		var	project = $('#create_project').val(),
-			page = $('#create_page').val().trim();
+			page = $('#create_page').val().trim(),
+			kbmode = $('#create_kb').prop('checked');
 		if (	!pwic_is_safe(project)
 			||	!pwic_is_safe(page)
 			||	(['', 'api', 'special'].indexOf(project) !== -1)
-			||	(['', 'special'].indexOf(page) !== -1)
+			||	(!kbmode && ((['', 'special'].indexOf(page) !== -1) || page.match(/^kb[0-9]{6}$/i)))
 		)
 			alert(errorText);
 		else

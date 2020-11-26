@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{pwic.language|escape}}">
 <head>
+	<!-- General headers -->
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="generator" content="Pwic version {{pwic.constants.version|escape}}">
 	{% if pwic.env.robots %}
@@ -8,15 +9,26 @@
 	{% endif %}
 	<meta charset="utf-8">
 	<title>{{pwic.title|escape}} - Pwic</title>
-	<link rel="stylesheet" type="text/css" href="/static/styles.css" />
-	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 
+	<!-- Styles -->
+	<link rel="stylesheet" type="text/css" href="/static/styles.css" />
+	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
 	{% if pwic.env.css %}
 		{% set list = pwic.env.css.value.split(';') %}
 		{% for css in list %}
 			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" />
 		{% endfor %}
+	{% endif %}
+
+	{% if pwic.env.dark_mode %}
+		<link rel="stylesheet" type="text/css" href="/static/styles_dark.css" />
+		{% if pwic.env.css_dark %}
+			{% set list = pwic.env.css_dark.value.split(';') %}
+			{% for css in list %}
+				<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" />
+			{% endfor %}
+		{% endif %}
 	{% endif %}
 
 	{% if pwic.env.no_printing %}
@@ -25,14 +37,20 @@
 		</style>
 	{% endif %}
 
+	<!-- Scripts -->
 	<script src="/static/cash.min.js"></script>
 
 	{% if pwic.project != 'special' and pwic.page != 'help' %}
 		{% if pwic.env.mde %}
-			<link rel="stylesheet" href="/static/easymde.min.css" />
+			<link rel="stylesheet" type="text/css" href="/static/easymde.min.css" />
 			<style>
 				/* Patch */
 				.CodeMirror { height: 75vh; }
+				{% if pwic.env.dark_mode %}
+					.CodeMirror { background-color: lightgray; }
+					.cm-url{ color: black !important; }
+					.editor-toolbar { background-color: gray; }
+				{% endif %}
 			</style>
 			<script src="/static/easymde.min.js"></script>
 		{% endif %}
