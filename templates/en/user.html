@@ -34,10 +34,10 @@
 		{% if pwic.user == pwic.userpage %}
 			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
 				<div class="pwic_popup">
-					<form id="user_password_form" action="/api/user/password/change" method="post">
+					<form id="user_password_form" action="/api/user/password/change" method="post" autocomplete="new-password">
 						<h3>Change your password</h3>
 						{% if not pwic.env.ssl %}
-						<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
+							<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
 						{% endif %}
 						<table>
 							<tr><td>Current password:</td>	<td><input class="pwic_fill" type="password" id="user_password_current" name="user_password_current" /></td></tr>
@@ -76,13 +76,13 @@
 						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
 						<td>
 							{% if page.draft %}
-							<span title="Draft">{{pwic.emojis.hourglass}}</span>
+								<span title="Draft">{{pwic.emojis.hourglass}}</span>
 							{% endif %}
 							{% if page.final %}
-							<span title="Marked as final">{{pwic.emojis.notes}}</span>
+								<span title="Marked as final">{{pwic.emojis.notes}}</span>
 							{% endif %}
 							{% if page.valuser != '' %}
-							<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
 						<td>{{page.date|escape}}</td>

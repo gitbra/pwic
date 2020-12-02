@@ -9,7 +9,7 @@
 		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
-					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
 				{% endfor %}
 				{% if not pwic.env.no_search %}
 					<div class="pwic_searchbox">
@@ -44,12 +44,14 @@
 				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} Create a page</a>
+				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 			{% endif %}
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 			{% endif %}
-			<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
+			{% if not pwic.pure_reader or not pwic.env.no_history %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
+			{% endif %}
 
 			<a href="#" onclick="page_email()">{{pwic.emojis.outbox}} Email</a>
 			{% if not pwic.env.no_printing %}
@@ -75,7 +77,13 @@
 		</p>
 
 		{% if not pwic.latest %}
-			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.</p>
+			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>
+				{% if pwic.env.validated_only %}
+					and <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">non-validated revisions</a> are pending.
+				{% else %}
+					, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.
+				{% endif %}
+			</p>
 		{% endif %}
 
 		{% if pwic.valuser != '' %}

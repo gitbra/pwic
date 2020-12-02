@@ -39,7 +39,7 @@
 		<h1 id="help_top">Matrix of the authorizations</h1>
 		<table class="pwic_zebra">
 			<tr><th>Read</th><th>Action</th><th>Admin</th><th>Manager</th><th>Editor</th><th>Validator</th><th>Reader</th></tr>
-			<tr><td><a href="#help_setup">{{pwic.emojis.glasses}}</a></td><td>Setup the server</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
+			<tr><td><a href="#help_setup">{{pwic.emojis.glasses}}</a></td><td>Setup the server</td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_backup">{{pwic.emojis.glasses}}</a></td><td>Create a backup</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_project">{{pwic.emojis.glasses}}</a></td><td>Create a project</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_delete_project">{{pwic.emojis.glasses}}</a></td><td>Delete a project</td><td>{{pwic.emojis.check}} (console)</td><td></td><td></td><td></td><td></td></tr>
@@ -202,6 +202,12 @@
 					<td>Disable the export of the project as an archive for the online administrators.</td>
 				</tr>
 				<tr>
+					<td><code>no_history</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Disable the ability to see the revisions of a page (a fortiori to access one of its revisions explicitly) when the user is a pure reader. In other words, the pure readers only see the latest revision, or the latest validated revision if the option <code>validated_only</code> is used too.</td>
+				</tr>
+				<tr>
 					<td><code>no_logon</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
@@ -285,6 +291,12 @@
 					<td class="pwic_desktop">Yes</td>
 					<td>Portal address that a user can use to find an extended help.</td>
 				</tr>
+				<tr>
+					<td><code>validated_only</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Force the default redirection of the pure readers to the last validated revision of a page if it exists. This feature allows the editors to prepare the upcoming revisions of a page without showing them by default, and to publish only validated pages to the end-users. As a complement, use the option <code>no_history</code> to hide the history of the page.</td>
+				</tr>
 			</table>
 		<p>The project-independent variables generally require a restart of the server. Beware that doing that closes all the current sessions. The users will have to reconnect from another tab when the server is back in order to be able to save their work in progress.</p>
 
@@ -292,12 +304,13 @@
 		<h1 id="help_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
 		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
 		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
-		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic.</p>
+		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same.</p>
+		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
 
 
 		<h1 id="help_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a project</h1>
 		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python pwic_admin.py create-project --help</code> for further details.</p>
-		<p>By default, you cannot create new pages. You must expand your rights, or add new dedicated users having the right profile. Refer to the matrix above for the feasible actions per profile.</p>
+		<p>By default, you cannot create new pages. You must extend your rights as a manager, or add new dedicated users having that profile. Refer to the matrix above for the feasible actions per profile.</p>
 
 
 		<h1 id="help_delete_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a project</h1>
@@ -305,8 +318,8 @@
 
 
 		<h1 id="help_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a user account</h1>
-		<p>The users are created by default as readers. The default password is predetermined by the general configuration.</p>
-		<p>The users must change their password before you can change their authorizations.</p>
+		<p>The users are created by default as readers. The default password is predetermined by the general configuration variable <code>PWIC_DEFAULT_PASSWORD</code>.</p>
+		<p>The users must change their password before you can change their authorizations. This ensures that the default password is not hijacked.</p>
 		<p>It is not possible to delete a user account to ensure the consistency of the documentation and the audit tables.</p>
 
 
@@ -377,6 +390,7 @@
 
 		<h1 id="help_read"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Read a page</h1>
 		<p>You must have an account to be able to read the documentation.</p>
+		<p>The pages are saved into a cache to improve the overall performances of the server. After certain technical operations, it might be needed to clear the cache from the administration console. The pages are regenerated on-the-fly only.</p>
 
 
 		<h1 id="help_export"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Export a page</h1>

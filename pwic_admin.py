@@ -36,20 +36,27 @@ def main() -> bool:
     parser_env.add_argument('value', default='', help='Value of the variable')
     parser_env.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
 
-    subparsers.add_parser('show-mime', help='Show the MIME types defined on the server [Windows]')
+    subparsers.add_parser('show-mime', help='Show the MIME types defined on the server (Windows only)')
 
-    subparsers.add_parser('create-backup', help='Make a backup copy of the database')
+    subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
     parser_newproj = subparsers.add_parser('create-project', help='Create a new project')
     parser_newproj.add_argument('project', default='', help='Project name')
     parser_newproj.add_argument('description', default='', help='Project description')
     parser_newproj.add_argument('admin', default='', help='User name of the administrator of the project')
 
+    parser_ownproj = subparsers.add_parser('takeover-project', help='Assign an administrator to a project')
+    parser_ownproj.add_argument('project', default='', help='Project name')
+    parser_ownproj.add_argument('admin', default='', help='User name of the administrator')
+
     parser_delproj = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
     parser_delproj.add_argument('project', default='', help='Project name')
 
+    parser_deluser = subparsers.add_parser('revoke-user', help='Revoke a user')
+    parser_deluser.add_argument('user', default='', help='User name')
+
     parser_cache = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
-    parser_cache.add_argument('--project', default='', help='Name of a project to restrict the scope')
+    parser_cache.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
     parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
     parser_reset_user.add_argument('user', default='', help='User name')
@@ -76,8 +83,12 @@ def main() -> bool:
         return create_backup()
     elif args.command == 'create-project':
         return create_project(args.project, args.description, args.admin)
+    elif args.command == 'takeover-project':
+        return takeover_project(args.project, args.admin)
     elif args.command == 'delete-project':
         return delete_project(args.project)
+    elif args.command == 'revoke-user':
+        return revoke_user(args.user)
     elif args.command == 'clear-cache':
         return clear_cache(args.project)
     elif args.command == 'reset-password':
@@ -331,7 +342,8 @@ def show_env() -> bool:
         tab.align[tab.field_names[1]] = 'r'
         tab.header = True
         tab.border = True
-        for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize', 'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
+        for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
+                        'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
             try:
                 tab.add_row([package, version(package)])
             except PackageNotFoundError:
@@ -347,6 +359,7 @@ def show_env() -> bool:
         return False
     sql.execute(''' SELECT project, key, value
                     FROM env
+                    WHERE value <> ''
                     ORDER BY project, key''')
     tab = PrettyTable()
     tab.field_names = ['Project', 'Key', 'Value']
@@ -519,7 +532,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
                      'project': project})
 
     # Add the role
-    sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')", (project, admin))
+    sql.execute("INSERT INTO roles (project, user, admin, reader) VALUES (?, ?, 'X', 'X')", (project, admin))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'grant-admin',
@@ -549,11 +562,58 @@ def create_project(project: str, description: str, admin: str) -> bool:
     return True
 
 
-def delete_project(project: str) -> bool:
-    # Verify that the project exists yet
+def takeover_project(project: str, admin: str) -> bool:
+    # Connect to the database
     sql = db_connect()
     if sql is None:
         return False
+
+    # Verify that the project exists yet
+    project = _safeName(project)
+    if project == '' or sql.execute(''' SELECT project
+                                        FROM projects
+                                        WHERE project = ?''',
+                                    (project, )).fetchone() is None:
+        print('Error: the project "%s" does not exist' % project)
+        return False
+
+    # Verify that the user is valid and has changed his password
+    admin = _safeName(admin, extra='')
+    if admin[:4] == 'pwic':
+        return False
+    if sql.execute(''' SELECT user
+                       FROM users
+                       WHERE user    = ?
+                         AND initial = '' ''',
+                   (admin, )).fetchone() is None:
+        print('Error: the user "%s" is unknown or has not changed his password yet' % admin)
+        return False
+
+    # Assign the user to the project
+    sql.execute(''' UPDATE roles
+                    SET admin    = 'X',
+                        disabled = ''
+                    WHERE project = ?
+                      AND user    = ?''',
+                (project, admin))
+    if sql.rowcount == 0:
+        sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')", (project, admin))
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                     'event': 'grant-admin',
+                     'project': project,
+                     'user': admin})
+    db_commit()
+    print('The user "%s" is now an administrator of the project "%s"' % (admin, project))
+    return True
+
+
+def delete_project(project: str) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Verify that the project exists yet
     project = _safeName(project)
     if project == '' or sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
         print('Error: the project "%s" does not exist' % project)
@@ -562,43 +622,110 @@ def delete_project(project: str) -> bool:
     # Confirm
     print('This operation is IRREVERSIBLE. You loose all the pages and the uploaded documents.')
     print('Type "YES" in uppercase to confirm the deletion of the project "%s": ' % project, end='')
-    if input() == 'YES':
-
-        # Remove the uploaded files
-        sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
-        for row in sql.fetchall():
-            fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
-            try:
-                os.remove(fn)
-            except (OSError, FileNotFoundError):
-                if isfile(fn):
-                    print('Error: unable to delete "%s"' % fn)
-                    return False
-
-        # Remove the folder of the project used to upload files
-        try:
-            fn = PWIC_DOCUMENTS_PATH % project
-            os.rmdir(fn)
-        except OSError:
-            print('Error: unable to remove "%s". The folder may be not empty' % fn)
-            return False
-
-        # Delete
-        sql.execute('DELETE FROM env       WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM cache     WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
-        sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                         'event': 'delete-project'})
-        db_commit()
-        print('Project "%s" is deleted' % project)
-        print('Warning: the file structure is now inconsistent with the old backups (if any)')
-        return True
-    else:
-        print('Aborted')
+    if input() != 'YES':
         return False
+
+    # Remove the uploaded files
+    sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
+    for row in sql.fetchall():
+        fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
+        try:
+            os.remove(fn)
+        except (OSError, FileNotFoundError):
+            if isfile(fn):
+                print('Error: unable to delete "%s"' % fn)
+                return False
+
+    # Remove the folder of the project used to upload files
+    try:
+        fn = PWIC_DOCUMENTS_PATH % project
+        os.rmdir(fn)
+    except OSError:
+        print('Error: unable to remove "%s". The folder may be not empty' % fn)
+        return False
+
+    # Delete
+    sql.execute('DELETE FROM env       WHERE project = ?', (project, ))
+    sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
+    sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
+    sql.execute('DELETE FROM cache     WHERE project = ?', (project, ))
+    sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
+    sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                     'event': 'delete-project'})
+    db_commit()
+    print('The project "%s" is deleted' % project)
+    print('Warning: the file structure is now inconsistent with the old backups (if any)')
+    return True
+
+
+def revoke_user(user: str) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Verify the user name
+    user = _safeName(user, extra='')
+    if user[:4] == 'pwic':
+        print('Error: this user cannot be managed')
+        return False
+    if sql.execute('SELECT user FROM users WHERE user = ?', (user, )).fetchone() is None:
+        print('Error: the user "%s" does not exist' % user)
+        return False
+
+    # Check if there is a project where the user is the sole active administrator
+    sql.execute(''' SELECT a.project, c.description
+                    FROM roles AS a
+                        INNER JOIN (
+                            SELECT project, COUNT(admin) AS numAdmin
+                            FROM roles
+                            WHERE admin    = 'X'
+                              AND disabled = ''
+                            GROUP BY project
+                        ) AS b
+                            ON b.project = a.project
+                        INNER JOIN projects AS c
+                            ON c.project = a.project
+                    WHERE a.user     = ?
+                      AND a.admin    = 'X'
+                      AND a.disabled = ''
+                      AND b.numAdmin = 1
+                    ORDER BY a.project''',
+                (user, ))
+    found = False
+    for row in sql.fetchall():
+        if not found:
+            found = True
+            tab = PrettyTable()
+            tab.field_names = ['Project', 'Description']
+            for f in tab.field_names:
+                tab.align[f] = 'l'
+            print('Error: organize a transfer of ownership for the following projects before revoking the user')
+        tab.add_row([row[0], row[1]])
+    if found:
+        tab.header = False
+        tab.border = False
+        print(tab.get_string())
+        return False
+
+    # Confirm
+    print('This operation in mass needs your confirmation.')
+    print('Type "YES" in uppercase to confirm the revocation of the user "%s": ' % user, end='')
+    if input() != 'YES':
+        return False
+
+    # Disable the user for every project
+    sql.execute('SELECT project FROM roles WHERE user = ?', (user, ))
+    for row in sql.fetchall():
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                         'event': 'delete-user',
+                         'project': row[0],
+                         'user': user})
+    sql.execute('DELETE FROM roles WHERE user = ?', (user, ))
+    db_commit()
+    print('The user "%s" is fully unassigned to the projects' % user)
+    return True
 
 
 def clear_cache(project: str) -> bool:
@@ -738,4 +865,4 @@ def execute_sql() -> bool:
 
 
 if not main():
-    print('The operation failed')
+    print('\nThe operation failed')

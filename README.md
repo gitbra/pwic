@@ -13,14 +13,15 @@ Who can do the most can do the least!
 ### For the readers
 
 - Access with a user account on both desktop and mobile devices
-- Light user interface illustrated with emojis
+- Lightweight user interface illustrated with emojis
 - Dark mode
-- Homogeneous look and feel of the pages
+- Homogeneous look and feel across the pages
+- Encyclopedic mode to browse the latest (non-)validated revisions only
 - Automatic summary of the page
 - In-text search with inclusion, exclusion, hash tags and special keywords
 - Highlight of the lines of code
-- Export of a page to Markdown
 - Export of a page to OpenDocument (*.odt)
+- Export of a page to Markdown
 - Share by link
 - Share by email
 - Internationalization (English only for now)
@@ -36,14 +37,15 @@ Who can do the most can do the least!
 
 ### For the validators
 
-- Visible control hash key
 - Text comparison between two revisions
 - No change or no deletion possible after a page is validated
+- Visible control hash key
 
 ### For the managers
 
+- Dynamic tables to track the progress of the documentation by project or tag
 - Write the templates in a dedicated project
-- Create the pages with a manual or automatic KB identifier
+- Create the pages with a manual name or automatic KB identifier
 - Detection of the orphaned pages
 - Detection of the broken links
 - Visual graph of the links between the pages
@@ -87,11 +89,12 @@ The following features are **not** available yet:
 - Install the dependencies: `python -m pip install aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
 - Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py ssl`
 - Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
-- Make sure that the folder `db/` is writable
+- Make sure that the subfolder `db/` is writable
 - Initialize the SQLite database: `python pwic_admin.py init-db`
 - Create a new project: `python pwic_admin.py create-project --help`
-- Optionally define the global and project-dependent variables: `python pwic_admin.py set-env --help` (list available in the help page)
+- Optionally define the global and project-dependent variables: `python pwic_admin.py set-env --help` (details available in the help page)
 - Run the server: `python pwic.py`
+	- The bind address and port can be modified in the command line if you need a public exposure for your server
 - Open your browser at `http://127.0.0.1:1234`
 
 If you intend to change the cascading style sheets (CSS), you need SASS:

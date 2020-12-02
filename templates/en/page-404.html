@@ -9,7 +9,7 @@
 		{% if pwic.links|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
-					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
 				{% endfor %}
 			</div>
 		{% endif %}

@@ -4,10 +4,10 @@
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.emojis.finger_up}} {{pwic.project_description|escape}}</a></div>
-		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
+		{% if (pwic.links|count > 0) or (not pwic.env.no_search) %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
-					<a href="/{{link.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
 				{% endfor %}
 				{% if not pwic.env.no_search %}
 					<div class="pwic_searchbox">
@@ -32,11 +32,11 @@
 			<p class="pwic_action_bar">
 				{% if pwic.admin %}
 					<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
-					<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
+					<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
 					<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
 				{% endif %}
 				{% if pwic.manager %}
-					<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} Create a page</a>
+					<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 				{% endif %}
 				{% if pwic.manager %}
 					<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
@@ -227,7 +227,7 @@
 
 		{% if (pwic.documents|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 			<h1>All the documents of the project</h1>
-			<p class="pwic_center"><strong>Disk usage :</strong>
+			<p class="pwic_center"><strong>Disk usage:</strong>
 				{% if pwic.disk_space.project_max > 0 %}
 					<span class="pwic_progressbar">
 						<span style="width:{{pwic.disk_space.percentage}}%">&nbsp;</span>

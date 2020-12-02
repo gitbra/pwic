@@ -491,7 +491,7 @@ paths:
           description: Unsufficient authorizations
   /api/project/info:
     post:
-      summary: Details about the project
+      summary: Details about the project or a page
       tags:
         - project
       consumes:
@@ -505,9 +505,14 @@ paths:
           description: Name of the project
           required: true
         - in: formData
+          name: info_page
+          type: string
+          description: Name of the page
+          required: false
+        - in: formData
           name: info_all
           type: string
-          description: Include the old versions of a given page
+          description: Include the all the revisions of the pages
           required: false
       responses:
         200:
@@ -516,6 +521,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        403:
+          description: System configuration incompatible with the authorizations of the user
   /api/project/progress:
     post:
       summary: Show the current progress of the project by tag

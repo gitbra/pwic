@@ -18,9 +18,9 @@
 				<p><strong>Project:</strong><br/>
 					<select id="create_project" name="create_project">
 						{% for proj in pwic.projects %}
-						<option value="{{proj.project|escape}}"
-							{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
-						>{{proj.description|escape}} ({{proj.project|escape}})</option>
+							<option value="{{proj.project|escape}}"
+								{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
+							>{{proj.description|escape}} [{{proj.project|escape}}]</option>
 						{% endfor %}
 					</select>
 				</p>
@@ -35,7 +35,7 @@
 					<select name="create_ref_project">
 						<option value=""></option>
 						{% for p in pwic.projects %}
-						<option value="{{p.project|escape}}">{{p.description|escape}}</option>
+							<option value="{{p.project|escape}}">{{p.description|escape}} [{{p.project|escape}}]</option>
 						{% endfor %}
 					</select>
 				</p>

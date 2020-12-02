@@ -13,7 +13,7 @@
 			<p class="pwic_error" id="logon_js">{{pwic.emojis.red_check}} Your browser is incompatible.</p>
 
 			<form id="logon_form" action="/api/logon?redirect" method="post">
-				<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" /></p>
+				<p><strong>User:</strong> <input class="pwic_fill" type="text" id="logon_user" name="logon_user" autofocus /></p>
 				<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="logon_password" name="logon_password" /></p>
 				<p
 					{% if pwic.constants.languages|count == 1 %}

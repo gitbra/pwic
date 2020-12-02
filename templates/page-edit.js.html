@@ -318,37 +318,68 @@
 	}
 
 
-	// -------------------------------- Submit
+	// -------------------------------- Submit a page
 
 	var edit_submittable = false;
 
-	function edit_submit(errorText, errorPing) {
+	function edit_submit_form(errorNetwork, errorCantSubmit, errorPing, errorConflict) {
 		// Check the current values
 		edit_submittable = ($('#edit_title').val() != '')
 						&& ($('#edit_comment').val() != '');
 		if (!edit_submittable)
-			alert(errorText);
-		else
 		{
-			// First ping-pong the server to make sure that the session is still valid
-			fetch('/api/server/ping', {	method: 'POST',
-										credentials: 'same-origin' })
-				.then(function(response) {
-					if (response.status != 200)
-						throw Error(errorPing + ' ['+response.status+']');
-					else
-						response.text().then(function(text) {
-							if (text == 'OK')
-								// OK let's submit the modification to not lose the current work in progress
-								$('#edit_form')[0].submit();
-							else
-								alert(errorPing);
-						});
-				})
-				.catch(function(error) {
-					alert(errorPing);
-				});
+			alert(errorCantSubmit);
+			return false;
 		}
+
+		// Disable the button temporarily
+		$('#edit_submit').prop('disabled', true);
+		setTimeout(function() {
+				$('#edit_submit').prop('disabled', false);
+			}, 5000);
+
+		// First ping-pong the server to make sure that the session is still valid
+		fetch('/api/server/ping', {	method: 'POST',
+									credentials: 'same-origin' })
+			.then(function(response) {
+				if (response.status != 200)
+					alert('['+response.status+'] '+errorPing);
+				else
+					response.text().then(function(text) {
+						if (text != 'OK')
+							alert(errorPing);
+						else
+
+							// Query the current revision of the modified page
+							fetch('/api/project/info', { method: 'POST',
+														headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+														body:	'info_project={{pwic.project|urlencode}}'+
+																'&info_page={{pwic.page|urlencode}}',
+														credentials: 'same-origin' })
+								.then(function(response) {
+									if (response.status != 200)
+										throw Error('['+response.status+'] '+errorConflict);
+									response.json().then(function(data) {
+										if (data['{{pwic.page|escape}}']['revisions'][0]['revision'] > {{pwic.revision}})
+										{
+											if (!confirm(errorConflict))
+												return false;
+											$('#edit_draft').prop('checked', true);
+											$('#edit_final').prop('checked', false);
+										}
+
+										// The modifications can be submitted
+										$('#edit_form')[0].submit();
+									});
+								})
+								.catch(function(error){
+									alert(error);
+								});
+					});
+			})
+			.catch(function(error) {
+				alert(errorNetwork);
+			});
 	}
 
 	function edit_preview(pageTitle, buttonTitle) {
@@ -377,7 +408,7 @@
 		<p style="position:fixed; top:0px; right:0px; padding:15px">\
 			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" />\
 		<\/p>\
-		' + text + '\
+		'+text+'\
 	<\/article>\
 <\/body>\
 <\/html>';
