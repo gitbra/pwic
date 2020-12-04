@@ -12,7 +12,7 @@
 		{% else %}
 			<ul>
 				{% for project in pwic.projects %}
-				<li><a href="/{{project.project|urlencode}}">{{project.description|escape}}</a></li>
+				<li><a href="/{{project.project|urlencode}}">{{project.description|escape}}</a> [{{project.project|escape}}]</li>
 				{% endfor %}
 			</ul>
 		{% endif %}

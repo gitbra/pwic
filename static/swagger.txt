@@ -5,6 +5,7 @@ info:
   description:
     The page lists all the available interfaces to interact with Pwic.
     The authentication is managed through a cookie.
+    The default method is POST.
 tags:
   - name: connection
     description: Connection to the API
@@ -196,6 +197,32 @@ paths:
                   type: string
                 time:
                   type: string
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+  /api/markdown/convert:
+    post:
+      summary: Convert Markdown to HTML
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      parameters:
+        - in: formData
+          name: markdown_project
+          type: string
+          required: true
+        - in: formData
+          name: markdown_content
+          type: string
+          description: Content written in Markdown
+          required: false
+      responses:
+        200:
+          description: Successful operation
         400:
           description: Invalid parameters
         401:
@@ -403,32 +430,6 @@ paths:
           description: Invalid file format
         500:
           description: Failed export (open a support ticket)
-  /api/page/markdown:
-    post:
-      summary: Convert Markdown to HTML
-      tags:
-        - page
-      consumes:
-        - application/x-www-form-urlencoded
-      produces:
-        - text/plain
-      parameters:
-        - in: formData
-          name: markdown_project
-          type: string
-          required: true
-        - in: formData
-          name: markdown_content
-          type: string
-          description: Content written in Markdown
-          required: false
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations
   /api/page/validate:
     post:
       summary: Validate the revision of a page
@@ -459,7 +460,7 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations, or not found
-  /api/project/env:
+  /api/project/env/set:
     post:
       summary: Change a project-dependent setting
       tags:
@@ -489,7 +490,7 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/project/info:
+  /api/project/info/get:
     post:
       summary: Details about the project or a page
       tags:
@@ -523,7 +524,7 @@ paths:
           description: Unsufficient authorizations
         403:
           description: System configuration incompatible with the authorizations of the user
-  /api/project/progress:
+  /api/project/progress/get:
     post:
       summary: Show the current progress of the project by tag
       tags:
@@ -550,7 +551,7 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/project/graph:
+  /api/project/graph/get:
     post:
       summary: Generate the graph of a project
       tags:
@@ -572,7 +573,7 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/server/env:
+  /api/server/env/get:
     post:
       summary: Details about the environment variables
       tags:
@@ -669,7 +670,7 @@ paths:
           description: Unsufficient authorizations
         500:
           description: Invalid configuration of the server
-  /api/user/roles:
+  /api/user/roles/set:
     post:
       summary: Toggle or drop the role of a user for a project
       tags:

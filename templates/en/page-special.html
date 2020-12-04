@@ -31,9 +31,10 @@
 		{% if pwic.admin or pwic.manager %}
 			<p class="pwic_action_bar">
 				{% if pwic.admin %}
-					<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 					<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
 					<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
+					<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
+					<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 				{% endif %}
 				{% if pwic.manager %}
 					<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
@@ -51,26 +52,7 @@
 
 		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
 			<h1>Internal support</h1>
-			<ul>
-				{% if pwic.env.support_email %}
-					<li>By email: <a href="mailto:{{pwic.env.support_email.value|urlencode}}">{{pwic.env.support_email.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_phone %}
-					<li>By phone: <a href="tel:{{pwic.env.support_phone.value|replace(' ','')|urlencode}}">{{pwic.env.support_phone.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_url %}
-					<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_text %}
-					<li>
-						{% if pwic.env.safe_mode %}
-							{{pwic.env.support_text.value|escape|replace('\n','<br/>')}}
-						{% else %}
-							{{pwic.env.support_text.value}}
-						{% endif %}
-					</li>
-				{% endif %}
-			</ul>
+			{% include "en/block-support.html" %}
 		{% endif %}
 
 
@@ -266,80 +248,6 @@
 						<td class="pwic_desktop pwic_nowrap">{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>
 						<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
-					</tr>
-				{% endfor %}
-			</table>
-		{% endif %}
-
-
-		{% if pwic.admin and (pwic.env|count > 0) %}
-			<h1 id="special_env">Environment variables</h1>
-			<table>
-				<tr>
-					<th><a href="/special/help#help_setup">Key</a></th>
-					<th>Scope</th>
-					<th><a href="/{{pwic.project|urlencode}}/special/env" title="Change the values">Value</a></th>
-				</tr>
-
-				{% for key in pwic.env %}
-					<tr>
-						<td>{{key|escape}}</td>
-						<td>
-							{% if pwic.env[key].global %}
-								<span title="Global">{{pwic.emojis.globe}}</span>
-							{% else %}
-								<span title="Project-dependent">{{pwic.emojis.hammer}}</span>
-							{% endif %}
-						</td>
-						<td>{{pwic.env[key].value|escape}}</td>
-					</tr>
-				{% endfor %}
-			</table>
-		{% endif %}
-
-
-		{% if pwic.audits|count > 0 %}
-			<h1 id="special_audit">Audit of the last 30 days</h1>
-			<table>
-				<tr>
-					<th>Date</th>
-					<th>Time</th>
-					<th>Author</th>
-					<th>Event</th>
-					<th class="pwic_desktop">Project</th>
-					<th>Page</th>
-					<th class="pwic_desktop">Revision</th>
-					<th class="pwic_desktop">String</th>
-				</tr>
-
-				{% for audit in pwic.audits %}
-					<tr>
-						<td class="pwic_nowrap">{{audit.date|escape}}</td>
-						<td>{{audit.time|escape}}</td>
-						<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
-						<td>{{audit.event|escape}}</td>
-						<td class="pwic_desktop">
-							{% if audit.project != '' %}
-								<a href="/{{audit.project|urlencode}}">{{audit.project|escape}}</a>
-							{% endif %}
-						</td>
-						<td>
-							{% if audit.page != '' %}
-								<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}">{{audit.page|escape}}</a>
-							{% endif %}
-						</td>
-						<td class="pwic_desktop">
-							{% if audit.revision > 0 %}
-								<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
-							{% endif %}
-						</td>
-						<td class="pwic_desktop">
-							{% if audit.string != '' %}
-								{{audit.string|escape}}
-							{% elif audit.user != '' %}
-								<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
-							{% endif %}
-						</td>
 					</tr>
 				{% endfor %}
 			</table>

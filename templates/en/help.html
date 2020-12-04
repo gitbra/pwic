@@ -14,26 +14,7 @@
 		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
 			<h1>System support</h1>
 			<p>The support team for your project may be different than the one mentioned below. So refer to the special page of your project in priority.</p>
-			<ul>
-				{% if pwic.env.support_email %}
-					<li>By email: <a href="mailto:{{pwic.env.support_email.value|urlencode}}">{{pwic.env.support_email.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_phone %}
-					<li>By phone: <a href="tel:{{pwic.env.support_phone.value|replace(' ','')|urlencode}}">{{pwic.env.support_phone.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_url %}
-					<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
-				{% endif %}
-				{% if pwic.env.support_text %}
-					<li>
-						{% if pwic.env.safe_mode %}
-							{{pwic.env.support_text.value|escape|replace('\n','<br/>')}}
-						{% else %}
-							{{pwic.env.support_text.value}}
-						{% endif %}
-					</li>
-				{% endif %}
-			</ul>
+			{% include "en/block-support.html" %}
 		{% endif %}
 
 		<h1 id="help_top">Matrix of the authorizations</h1>
@@ -81,7 +62,13 @@
 					<td><code>api_expose_markdown</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
-					<td>Expose the content of the pages in the API <code>/api/project/info</code> to allow the full copy of the documentation.</td>
+					<td>Expose the content of the pages in the API <code>/api/project/info/get</code> to allow the full copy of the documentation.</td>
+				</tr>
+				<tr>
+					<td><code>audit_range</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Number of days in the past for the online visibility of the audit data that are restricted to the administrators. Define the value <code>-1</code> to switch off the listing.</td>
 				</tr>
 				<tr>
 					<td><code>base_url</code></td>

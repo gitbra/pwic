@@ -1,0 +1,100 @@
+{% extends 'main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} Audit of the activities</a></div>
+		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
+	</header>
+
+	<article>
+		<p class="pwic_action_bar">
+			<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
+			<a href="/special/help#help_setup">{{pwic.emojis.help}} Help</a>
+		</p>
+
+
+		<h1>Reference time</h1>
+		<p>The server has started on {{pwic.up.date|escape}} at {{pwic.up.time|escape}}.</p>
+		<p>The current time on the server is {{pwic.systime.date|escape}} at {{pwic.systime.time|escape}}.</p>
+
+
+		{% if pwic.env|count > 0 %}
+			<h1>Environment variables</h1>
+			<table>
+				<tr>
+					<th>Key</th>
+					<th>Scope</th>
+					<th>Value</th>
+				</tr>
+
+				{% for key in pwic.env %}
+					<tr>
+						<td>{{key|escape}}</td>
+						<td>
+							{% if pwic.env[key].global %}
+								<span title="Global">{{pwic.emojis.globe}}</span>
+							{% else %}
+								<span title="Project-dependent">{{pwic.emojis.hammer}}</span>
+							{% endif %}
+						</td>
+						<td>{{pwic.env[key].value|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+
+		{% if pwic.audits|count > 0 %}
+			<h1>Audit of the last {{pwic.range|escape}} days</h1>
+			<table>
+				<tr>
+					<th>Date</th>
+					<th>Time</th>
+					<th>Author</th>
+					<th>Event</th>
+					<th class="pwic_desktop">Project</th>
+					<th>Page</th>
+					<th class="pwic_desktop">Revision</th>
+					<th class="pwic_desktop">String</th>
+				</tr>
+
+				{% for audit in pwic.audits %}
+					<tr>
+						<td class="pwic_nowrap">{{audit.date|escape}}</td>
+						<td>{{audit.time|escape}}</td>
+						<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
+						<td>{{audit.event|escape}}</td>
+						<td class="pwic_desktop">
+							{% if audit.project != '' %}
+								<a href="/{{audit.project|urlencode}}">{{audit.project|escape}}</a>
+							{% endif %}
+						</td>
+						<td>
+							{% if audit.page != '' %}
+								<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}">{{audit.page|escape}}</a>
+							{% endif %}
+						</td>
+						<td class="pwic_desktop">
+							{% if audit.revision > 0 %}
+								<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
+							{% endif %}
+						</td>
+						<td class="pwic_desktop">
+							{% if audit.string != '' %}
+								{{audit.string|escape}}
+							{% elif audit.user != '' %}
+								<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
+							{% endif %}
+						</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}
+
+
+{% block footer %}
+	{% include "en/footer.html" %}
+{% endblock %}

@@ -32,7 +32,7 @@
 								body: 'progress_project={{pwic.project|urlencode}}&progress_tags='+encodeURIComponent(tags),
 								credentials: 'same-origin' };
 				try {
-					var request = await fetch('/api/project/progress', options);
+					var request = await fetch('/api/project/progress/get', options);
 					if (request.ok)
 					{
 						var data = await request.json();

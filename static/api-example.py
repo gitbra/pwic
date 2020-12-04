@@ -4,7 +4,7 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 import json
 
-host = 'http://127.0.0.1:1234'
+host = 'http://127.0.0.1:8080'
 headers = {'Origin': host}
 
 # Authentication
@@ -16,7 +16,7 @@ response = urlopen(Request(host + '/api/logon',
 headers['Cookie'] = response.headers.get('Set-Cookie', '')
 
 # Get some information
-response = urlopen(Request(host + '/api/project/info',
+response = urlopen(Request(host + '/api/project/info/get',
                            urlencode({'info_project': 'your_project'}).encode(),
                            headers=headers,
                            method='POST'))

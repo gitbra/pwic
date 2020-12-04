@@ -351,11 +351,11 @@
 						else
 
 							// Query the current revision of the modified page
-							fetch('/api/project/info', { method: 'POST',
-														headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-														body:	'info_project={{pwic.project|urlencode}}'+
-																'&info_page={{pwic.page|urlencode}}',
-														credentials: 'same-origin' })
+							fetch('/api/project/info/get', {	method: 'POST',
+																headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+																body:	'info_project={{pwic.project|urlencode}}'+
+																		'&info_page={{pwic.page|urlencode}}',
+																credentials: 'same-origin' })
 								.then(function(response) {
 									if (response.status != 200)
 										throw Error('['+response.status+'] '+errorConflict);
@@ -386,11 +386,11 @@
 		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
-		fetch('/api/page/markdown', {	method: 'POST',
-										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	'markdown_project={{pwic.project|urlencode}}' +
-												'&markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
-										credentials: 'same-origin' })
+		fetch('/api/markdown/convert', {	method: 'POST',
+											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+											body:	'markdown_project={{pwic.project|urlencode}}' +
+													'&markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+											credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);

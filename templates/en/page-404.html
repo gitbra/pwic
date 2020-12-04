@@ -3,9 +3,7 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1">
-			<a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a>
-		</div>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></div>
 		{% if pwic.links|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}

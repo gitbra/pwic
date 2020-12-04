@@ -95,7 +95,7 @@ The following features are **not** available yet:
 - Optionally define the global and project-dependent variables: `python pwic_admin.py set-env --help` (details available in the help page)
 - Run the server: `python pwic.py`
 	- The bind address and port can be modified in the command line if you need a public exposure for your server
-- Open your browser at `http://127.0.0.1:1234`
+- Open your browser at `http://127.0.0.1:8080`
 
 If you intend to change the cascading style sheets (CSS), you need SASS:
 

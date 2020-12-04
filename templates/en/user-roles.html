@@ -3,14 +3,15 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} User roles on the project "{{pwic.project|escape}}"</a></div>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} Roles of the users</a></div>
+		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
 	</header>
 
 	{% include 'user-roles.js.html' %}
 
 	<article>
 		<p class="pwic_action_bar">
-			<a href="/{{pwic.project|urlencode}}/special#special_audit">{{pwic.emojis.glasses}} Audit</a>
+			<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
 			<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
 		</p>
 

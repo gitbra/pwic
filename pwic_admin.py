@@ -202,8 +202,9 @@ CREATE TABLE "env" (
     FOREIGN KEY("project") REFERENCES "projects"("project"),
     PRIMARY KEY("key","project")
 )''')
-            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
+            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'mde', 'X')")
             sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')")
+            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
             # Table USERS
             sql.execute('''
 CREATE TABLE "users" (
