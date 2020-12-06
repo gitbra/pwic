@@ -4,10 +4,11 @@ import argparse
 import sqlite3
 from prettytable import PrettyTable
 import re
+import gzip
 import datetime
 import os
-from os.path import isdir, isfile
-from shutil import copyfile
+from os.path import isdir, isfile, join
+from shutil import copyfile, copyfileobj
 from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
@@ -24,13 +25,13 @@ def main() -> bool:
     parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console')
     subparsers = parser.add_subparsers(dest='command')
 
-    subparsers.add_parser('ssl', help='Generate self-signed certificates')
+    subparsers.add_parser('generate-ssl', help='Generate the self-signed certificates')
 
     subparsers.add_parser('init-db', help='Initialize the database once')
 
     subparsers.add_parser('show-env', help='Show the current configuration')
 
-    parser_env = subparsers.add_parser('set-env', help='Set a variable of configuration')
+    parser_env = subparsers.add_parser('set-env', help='Set a global or a project-dependent parameter')
     parser_env.add_argument('--project', default='', help='Name of the project (if project-dependent)')
     parser_env.add_argument('name', default='', help='Name of the variable')
     parser_env.add_argument('value', default='', help='Value of the variable')
@@ -52,24 +53,29 @@ def main() -> bool:
     parser_delproj = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
     parser_delproj.add_argument('project', default='', help='Project name')
 
-    parser_deluser = subparsers.add_parser('revoke-user', help='Revoke a user')
-    parser_deluser.add_argument('user', default='', help='User name')
-
-    parser_cache = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
-    parser_cache.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    parser_create_user = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
+    parser_create_user.add_argument('user', default='', help='User name')
 
     parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
     parser_reset_user.add_argument('user', default='', help='User name')
 
-    parser_log = subparsers.add_parser('show-log', help='Show the full log')
+    parser_deluser = subparsers.add_parser('revoke-user', help='Revoke a user')
+    parser_deluser.add_argument('user', default='', help='User name')
+
+    parser_log = subparsers.add_parser('show-log', help='Show the log of the database (no HTTP traffic)')
     parser_log.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
     parser_log.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
+
+    subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
+
+    parser_cache = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
+    parser_cache.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
     # Parse the command line
     args = parser.parse_args()
-    if args.command == 'ssl':
+    if args.command == 'generate-ssl':
         return generate_ssl()
     elif args.command == 'init-db':
         return init_db()
@@ -87,14 +93,18 @@ def main() -> bool:
         return takeover_project(args.project, args.admin)
     elif args.command == 'delete-project':
         return delete_project(args.project)
-    elif args.command == 'revoke-user':
-        return revoke_user(args.user)
-    elif args.command == 'clear-cache':
-        return clear_cache(args.project)
+    elif args.command == 'create-user':
+        return create_user(args.user)
     elif args.command == 'reset-password':
         return reset_password(args.user)
+    elif args.command == 'revoke-user':
+        return revoke_user(args.user)
     elif args.command == 'show-log':
         return show_log(args.min, args.max)
+    elif args.command == 'compress-static':
+        return compress_static()
+    elif args.command == 'clear-cache':
+        return clear_cache(args.project)
     elif args.command == 'execute-sql':
         return execute_sql()
     else:
@@ -660,6 +670,80 @@ def delete_project(project: str) -> bool:
     return True
 
 
+def create_user(user: str) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Verify the user account
+    user = _safeName(user, extra='')
+    if (user == '') or (user[:4] == 'pwic'):
+        print('Error: invalid user')
+        return False
+    sql.execute('SELECT user FROM users WHERE user = ?', (user, ))
+    if sql.fetchone() is not None:
+        print('Error: the user "%s" already exists' % user)
+        return False
+
+    # Create the user account
+    sql.execute('INSERT INTO users (user, password, initial) VALUES (?, ?, ?)',
+                (user, _sha256(PWIC_DEFAULT_PASSWORD), 'X'))
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                     'event': 'create-user',
+                     'user': user})
+    db_commit()
+    print('The user "%s" is created with the default password "%s".' % (user, PWIC_DEFAULT_PASSWORD))
+    return True
+
+
+def reset_password(user: str) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Check if the user is administrator
+    user = _safeName(user, extra='')
+    if user[:4] == 'pwic':
+        print('Error: invalid user')
+        return False
+    sql.execute(''' SELECT COUNT(*) AS total
+                    FROM roles
+                    WHERE user  = ?
+                      AND admin = 'X' ''',
+                (user, ))
+    if sql.fetchone()[0] > 0:
+        print("The user '%s' has administrative rights on some projects." % user)
+        print("For that reason, you must provide a manual password.")
+        print("Type the new temporary password with 8 characters at least: ", end='')
+        pwd = input()
+        if len(pwd) < 8:
+            print('Error: password too short')
+            return False
+    else:
+        pwd = PWIC_DEFAULT_PASSWORD
+
+    # Reset the password with no rights takedown else some projects may loose their administrators
+    ok = False
+    sql.execute(''' UPDATE users
+                    SET password = ?,
+                        initial  = 'X'
+                    WHERE user = ?''',
+                (_sha256(pwd), user))
+    if sql.rowcount > 0:
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                         'event': 'reset-password',
+                         'user': user})
+        db_commit()
+        ok = True
+    if not ok:
+        print('Error: unknown user')
+    else:
+        print('The user "%s" has the new temporary password "%s"' % (user, pwd))
+    return ok
+
+
 def revoke_user(user: str) -> bool:
     # Connect to the database
     sql = db_connect()
@@ -729,71 +813,6 @@ def revoke_user(user: str) -> bool:
     return True
 
 
-def clear_cache(project: str) -> bool:
-    # Connect to the database
-    sql = db_connect()
-    if sql is None:
-        return False
-
-    # Clear the cache
-    project = _safeName(project)
-    if project != '':
-        sql.execute('DELETE FROM cache WHERE project = ?', (project, ))
-    else:
-        sql.execute('DELETE FROM cache')
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                     'event': 'clear-cache',
-                     'project': project})
-    db_commit()
-    print('The cache is cleared. Do expect a workload of regeneration for a short period time.')
-    return True
-
-
-def reset_password(user: str) -> bool:
-    # Check if the user is administrator
-    sql = db_connect()
-    if sql is None:
-        return False
-    user = _safeName(user, extra='')
-    if user[:4] == 'pwic':
-        print('Error: invalid user')
-        return False
-    sql.execute(''' SELECT COUNT(*) AS total
-                    FROM roles
-                    WHERE user  = ?
-                      AND admin = "X"''',
-                (user, ))
-    if sql.fetchone()[0] > 0:
-        print("The user '%s' has administrative rights on some projects." % user)
-        print("For that reason, you must provide a manual password.")
-        print("Type the new temporary password with 8 characters at least: ", end='')
-        pwd = input()
-        if len(pwd) < 8:
-            print('Error: password too short')
-            return False
-    else:
-        pwd = PWIC_DEFAULT_PASSWORD
-
-    # Reset the password with no rights takedown else some projects may loose their administrators
-    ok = False
-    sql.execute(''' UPDATE users
-                    SET password = ?,
-                        initial = "X"
-                    WHERE user = ?''',
-                (_sha256(pwd), user))
-    if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                         'event': 'reset-password',
-                         'user': user})
-        db_commit()
-        ok = True
-    if not ok:
-        print('Error: unknown user')
-    else:
-        print('The user "%s" has the new temporary password "%s"' % (user, pwd))
-    return ok
-
-
 def show_log(dmin: int, dmax: int) -> bool:
     # Calculate the dates
     dmin = max(0, dmin)
@@ -831,6 +850,42 @@ def show_log(dmin: int, dmax: int) -> bool:
     return True
 
 
+def compress_static() -> bool:
+    # To reduce the bandwidth, aiohttp automatically delivers the static files as compressed if the .gz file is created
+    ok = False
+    path = './static/'
+    files = [(path + f) for f in os.listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
+    for fn in files:
+        with open(fn, 'rb') as src:
+            with gzip.open(fn + '.gz', 'wb') as dst:
+                print('Compressing "%s"' % fn)
+                copyfileobj(src, dst)
+                ok = True
+    if ok:
+        print('Finished')
+    return ok
+
+
+def clear_cache(project: str) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Clear the cache
+    project = _safeName(project)
+    if project != '':
+        sql.execute('DELETE FROM cache WHERE project = ?', (project, ))
+    else:
+        sql.execute('DELETE FROM cache')
+    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                     'event': 'clear-cache',
+                     'project': project})
+    db_commit()
+    print('The cache is cleared. Do expect a workload of regeneration for a short period time.')
+    return True
+
+
 def execute_sql() -> bool:
     # Warn the user
     print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
@@ -865,5 +920,8 @@ def execute_sql() -> bool:
     return False
 
 
-if not main():
+if main():
+    exit(0)
+else:
     print('\nThe operation failed')
+    exit(1)

@@ -29,9 +29,9 @@
 		{
 			fetch('/api/page/'+action, {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	action+'_project={{pwic.project|urlencode}}&' +
-												action+'_page={{pwic.page|urlencode}}&' +
-												action+'_revision={{pwic.revision|urlencode}}',
+										body:	'project={{pwic.project|urlencode}}&' +
+												'page={{pwic.page|urlencode}}&' +
+												'revision={{pwic.revision|urlencode}}',
 										credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
@@ -52,10 +52,10 @@
 	function page_export(format) {
 		fetch('/api/page/export', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body:	'export_project={{pwic.project|urlencode}}&' +
-											'export_page={{pwic.page|urlencode}}&' +
-											'export_revision={{pwic.revision|urlencode}}&'+
-											'export_format=' + encodeURIComponent(format),
+									body:	'project={{pwic.project|urlencode}}&' +
+											'page={{pwic.page|urlencode}}&' +
+											'revision={{pwic.revision|urlencode}}&'+
+											'format=' + encodeURIComponent(format),
 									credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)

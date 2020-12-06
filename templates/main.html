@@ -101,15 +101,17 @@
 		}
 
 		function pwic_slash(value) {
-			// https://stackoverflow.com/questions/18251399/why-doesnt-encodeuricomponent-encode-single-quotes-apostrophes
+			{# stackoverflow.com/questions/18251399 #}
 			return value.split("'").join("\\'").split('"').join('\\"');
 		}
 
 		function pwic_url_status(success, failed) {
-			if (window.location.toString().indexOf('?success') !== -1)
+			if ((window.location.toString().indexOf('?success') !== -1)
+			 || (window.location.toString().indexOf('&success') !== -1))
 				alert(success);
 			else
-				if (window.location.toString().indexOf('?failed') !== -1)
+				if ((window.location.toString().indexOf('?failed') !== -1)
+				 || (window.location.toString().indexOf('&failed') !== -1))
 					alert(failed);
 		}
 	</script>

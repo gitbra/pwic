@@ -36,17 +36,17 @@ paths:
           description: Redirect to the next screen
           required: false
         - in: formData
-          name: logon_user
+          name: user
           type: string
           description: Name of the user
           required: true
         - in: formData
-          name: logon_password
+          name: password
           type: string
           description: Password of the user
           required: false
         - in: formData
-          name: logon_language
+          name: language
           type: string
           description: Language
           required: false
@@ -84,19 +84,19 @@ paths:
       parameters:
         # https://swagger.io/docs/specification/2-0/file-upload/
         - in: formData
-          name: document_project
+          name: project
           type: string
           required: true
         - in: formData
-          name: document_page
+          name: page
           type: string
           required: true
         - in: formData
-          name: document_mime
+          name: mime
           type: string
           required: false
         - in: formData
-          name: document_content
+          name: content
           type: file
           required: true
       responses:
@@ -123,22 +123,22 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: document_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: document_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: document_id
+          name: id
           type: integer
           description: Identifier of the document
           required: true
         - in: formData
-          name: document_filename
+          name: filename
           type: string
           description: File name of the document to make sure that you delete the right document
           required: true
@@ -162,12 +162,12 @@ paths:
         - application/json
       parameters:
         - in: formData
-          name: document_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: document_page
+          name: page
           type: string
           description: Name of the page
           required: true
@@ -212,11 +212,12 @@ paths:
         - text/plain
       parameters:
         - in: formData
-          name: markdown_project
+          name: project
           type: string
+          description: Name of the project
           required: true
         - in: formData
-          name: markdown_content
+          name: content
           type: string
           description: Content written in Markdown
           required: false
@@ -236,42 +237,42 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: create_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: create_kbid
+          name: kbid
           type: string
           description: Checkbox to generate a knowledge base article
           required: false
         - in: formData
-          name: create_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: create_milestone
+          name: milestone
           type: string
           description: Planned milestone for the new page
           required: false
         - in: formData
-          name: create_tags
+          name: tags
           type: string
           description: Tags separated by a space and with no hash
           required: false
         - in: formData
-          name: create_ref_project
+          name: ref_project
           type: string
           description: Reference project
           required: false
         - in: formData
-          name: create_ref_page
+          name: ref_page
           type: string
           description: Reference page
           required: false
         - in: formData
-          name: create_ref_tags
+          name: ref_tags
           type: string
           description: Copy the tags of the reference page
           required: false
@@ -293,17 +294,17 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: delete_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: delete_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: delete_revision
+          name: revision
           type: integer
           description: Revision of the page
           required: true
@@ -325,57 +326,57 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: edit_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: edit_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: edit_title
+          name: title
           type: string
           description: Title of the page
           required: true
         - in: formData
-          name: edit_markdown
+          name: markdown
           type: string
           description: Content of the page
           required: false
         - in: formData
-          name: edit_tags
+          name: tags
           type: string
           description: Tags separated by a space and with no hash
           required: false
         - in: formData
-          name: edit_comment
+          name: comment
           type: string
           description: Explanation of the modification
           required: true
         - in: formData
-          name: edit_milestone
+          name: milestone
           type: string
           description: Planned milestone
           required: false
         - in: formData
-          name: edit_draft
+          name: draft
           type: string
           description: Save as draft
           required: false
         - in: formData
-          name: edit_final
+          name: final
           type: string
           description: Save as final
           required: false
         - in: formData
-          name: edit_protection
+          name: protection
           type: string
           description: Protect the page
           required: false
         - in: formData
-          name: edit_header
+          name: header
           type: string
           description: Attach the page to the headers
           required: false
@@ -397,22 +398,22 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: export_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: export_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: export_revision
+          name: revision
           type: integer
           description: Revision of the page
           required: false
         - in: formData
-          name: export_format
+          name: format
           type: string
           enum: [html, md, odt]
           description: Format of the export
@@ -439,17 +440,17 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: validate_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: validate_page
+          name: page
           type: string
           description: Name of the page
           required: true
         - in: formData
-          name: validate_revision
+          name: revision
           type: integer
           description: Revision of the page
           required: true
@@ -469,17 +470,17 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: env_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: env_key
+          name: key
           type: string
           description: Name of the option (refer to /help)
           required: true
         - in: formData
-          name: env_value
+          name: value
           type: string
           description: Value of the option
           required: false
@@ -492,7 +493,7 @@ paths:
           description: Unsufficient authorizations
   /api/project/info/get:
     post:
-      summary: Details about the project or a page
+      summary: Get details about the project or a page
       tags:
         - project
       consumes:
@@ -501,17 +502,17 @@ paths:
         - application/json
       parameters:
         - in: formData
-          name: info_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: info_page
+          name: page
           type: string
           description: Name of the page
           required: false
         - in: formData
-          name: info_all
+          name: all
           type: string
           description: Include the all the revisions of the pages
           required: false
@@ -535,12 +536,12 @@ paths:
         - application/json
       parameters:
         - in: formData
-          name: progress_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: progress_tags
+          name: tags
           type: string
           description: List of the tags separated with a space
           required: true
@@ -562,7 +563,7 @@ paths:
         - text/vnd.graphviz
       parameters:
         - in: formData
-          name: graph_project
+          name: project
           type: string
           description: Name of the project
           required: true
@@ -575,7 +576,7 @@ paths:
           description: Unsufficient authorizations
   /api/server/env/get:
     post:
-      summary: Details about the environment variables
+      summary: Get details about the environment variables
       tags:
         - server
       consumes:
@@ -584,7 +585,7 @@ paths:
         - application/json
       parameters:
         - in: formData
-          name: env_project
+          name: project
           type: string
           description: Name of the project
           required: false
@@ -609,19 +610,19 @@ paths:
           description: Session not active
   /api/user/create:
     post:
-      summary: Creation of a user
+      summary: Create or assign a user to a project
       tags:
         - user
       consumes:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: create_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: create_user
+          name: user
           type: string
           description: Name of the user
           required: true
@@ -645,17 +646,17 @@ paths:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: user_password_current
+          name: password_current
           type: string
           description: Current password
           required: true
         - in: formData
-          name: user_password_new1
+          name: password_new1
           type: string
           description: New password
           required: true
         - in: formData
-          name: user_password_new2
+          name: password_new2
           type: string
           description: New password (confirmation)
           required: true
@@ -681,17 +682,17 @@ paths:
         - text/plain
       parameters:
         - in: formData
-          name: user_project
+          name: project
           type: string
           description: Name of the project
           required: true
         - in: formData
-          name: user_name
+          name: name
           type: string
           description: Name of the user
           required: true
         - in: formData
-          name: user_role
+          name: role
           type: string
           enum: [admin, manager, editor, validator, reader, disabled, delete]
           description: Role to toggle

@@ -123,9 +123,9 @@
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
 					<td>
-						- List of IP addresses separated by <code>;</code>. The unauthorized addresses are prefixed by <code>~</code> and used as <em>AND</em> conditions, else as <em>OR</em> conditions.
-						<br/>- To be fully effective, the server should be restarted when the value is changed. The current sessions will be terminated.
+						- List of IP addresses separated by a space. The unauthorized addresses are prefixed by <code>-</code> and used as <em>AND</em> conditions, else as <em>OR</em> conditions.
 						<br/>- The IP check applies to the host that connected, not with forward proxy configuration.
+						<br/>- To be fully effective, the server must be restarted when the value is changed. The current sessions will be terminated.
 					</td>
 				</tr>
 				<tr>
@@ -139,6 +139,21 @@
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
 					<td>Managed counter to allocate an identifier to a knowledge base article.</td>
+				</tr>
+				<tr>
+					<td><code>http_log_file</code></td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
+					<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
+						<br/>- The option is effective upon the restart of the server.
+						<br/>- Since the log file is exclusively locked, you must terminate Pwic before you can archive the file.
+						<br/>- The log file includes neither user names, nor detailed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
+				</tr>
+				<tr>
+					<td><code>http_log_format</code></td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
+					<td>The format of the HTTP log file can be modified according to <a href="https://docs.aiohttp.org/en/stable/logging.html#format-specification">this specification</a>.</td>
 				</tr>
 				<tr>
 					<td><code>legal_notice</code></td>
@@ -199,6 +214,12 @@
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
 					<td>Skip the logon screen and assign the anonymous role to any visitor. As per the default behavior of the user account <code>{{pwic.constants.anonymous_user}}</code>, Pwic becomes public, read-only and you update the instance by transferring the folder <code>{{pwic.constants.db_path}}</code> administratively. The server must be restarted when the option is changed.</td>
+				</tr>
+				<tr>
+					<td><code>no_new_user_online</code></td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
+					<td>When the option is enabled, you can assign existing user accounts only to your project. To create a new user account, use the administration console to reset its password that will be created.</td>
 				</tr>
 				<tr>
 					<td><code>no_printing</code></td>
@@ -582,6 +603,12 @@
 				<td>2.7.1</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/pygments/pygments/master/README.rst">BSD-2-Clause License</a></td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/richleland/pygments-css">pygments CSS</a></td>
+				<td>-</td>
+				<td class="pwic_desktop">Cascading style sheets (CSS)</td>
+				<td><a href="https://raw.githubusercontent.com/richleland/pygments-css/master/UNLICENSE.txt">Unlicense License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/python/cpython/">Python</a></td>

@@ -56,10 +56,11 @@ Who can do the most can do the least!
 
 - Low technical requirements and bandwidth
 - Affordable solution based on open-source applications
-- Complete setup with Python in 10 minutes (no LAMP setup)
+- Fast setup with Python in 10 minutes
 - Local storage of the uploaded files and SQLite database
 - Support for HTTP and HTTPS
 - Unicode content and URL
+- HTTP logging
 - IP filtering
 
 **Pwic**
@@ -87,7 +88,7 @@ The following features are **not** available yet:
 - Install Python: `apt-get install python3`
 	- Depending on your operating system, use `python` or `python3` to invoke Python version 3 later
 - Install the dependencies: `python -m pip install aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
-- Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py ssl`
+- Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py generate-ssl`
 - Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Make sure that the subfolder `db/` is writable
 - Initialize the SQLite database: `python pwic_admin.py init-db`
@@ -134,6 +135,7 @@ Copyright (C) Alexandre Bréard, 2020
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
+- [pygments CSS](https://github.com/richleland/pygments-css) is released under Unlicense License
 - [Python](https://github.com/python/cpython/) is released under Python Software Foundation License
 - [SQLite](https://www.sqlite.org) is released in the public domain
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License

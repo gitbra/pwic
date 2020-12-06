@@ -29,7 +29,8 @@
 			{
 				var options = {	method: 'POST',
 								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-								body: 'progress_project={{pwic.project|urlencode}}&progress_tags='+encodeURIComponent(tags),
+								body:	'project={{pwic.project|urlencode}}' +
+										'&tags='+encodeURIComponent(tags),
 								credentials: 'same-origin' };
 				try {
 					var request = await fetch('/api/project/progress/get', options);

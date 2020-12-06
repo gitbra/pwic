@@ -7,9 +7,9 @@
 		{
 			element.toggleClass('pwic_hidden');				// Hide until the request is completed
 			fetch('/api/user/roles/set', {	method: 'POST',
-											body:	'user_project='+encodeURIComponent(project) +
-													'&user_name='+encodeURIComponent(user) +
-													'&user_role='+encodeURIComponent(role),
+											body:	'project='+encodeURIComponent(project) +
+													'&name='+encodeURIComponent(user) +
+													'&role='+encodeURIComponent(role),
 											credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)

@@ -26,6 +26,7 @@ PWIC_DEFAULT_PASSWORD = 'initial'
 PWIC_DEFAULT_LANGUAGE = 'en'
 PWIC_DEFAULT_PAGE = 'home'
 PWIC_DEFAULT_HEADING = '1.1.1.1.1.1.'
+PWIC_DEFAULT_LOGGING_FORMAT = '%a %t "%r" %s %b'
 
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
@@ -37,14 +38,14 @@ PWIC_REGEX_DOCUMENT_IMGSRC = r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'     
 PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                          # Check the format of the mime
 PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                                     # Find a HTML tag
 
-PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'ip_filter', 'maintenance', 'mime_enforcement',
-                                'no_logon', 'password_regex', 'safe_mode', 'ssl']
+PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_format', 'ip_filter', 'maintenance',
+                                'mime_enforcement', 'no_logon', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'css', 'css_dark', 'dark_mode', 'disabled_formats',
                               'document_name_regex', 'export_project_revisions', 'heading_mask', 'kbid',
                               'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'mde',
-                              'no_export_project', 'no_history', 'no_printing', 'no_search', 'no_text_selection',
-                              'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'validated_only']
+                              'no_export_project', 'no_history', 'no_new_user_online', 'no_printing', 'no_search',
+                              'no_text_selection', 'odt_page_height', 'odt_page_width', 'robots', 'support_email',
+                              'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'dark_mode', 'disabled_formats', 'heading_mask', 'mathjax',
                                      'mde', 'no_history', 'no_printing', 'no_search', 'no_text_selection',
                                      'odt_page_height', 'odt_page_width', 'support_email', 'support_phone',
@@ -73,6 +74,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'hammer': '&#x1F528;',
                'headphone': '&#x1F3A7;',
                'help': '&#x1F4DA;',
+               'home': '&#x1F3E0;',
                'hourglass': '&#x23F3;',
                'image': '&#x1F4F8;',                # 1F5BC
                'inbox': '&#x1F4E5;',

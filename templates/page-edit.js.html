@@ -207,7 +207,8 @@
 	async function edit_refresh_documents() {
 		var options = {	method: 'POST',
 						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-						body: 'document_project={{pwic.project|urlencode}}&document_page={{pwic.page|urlencode}}',
+						body:	'project={{pwic.project|urlencode}} ' +
+								'&page={{pwic.page|urlencode}}',
 						credentials: 'same-origin' };
 		try {
 			var request = await fetch('/api/document/list', options);
@@ -253,9 +254,9 @@
 			{
 				// Fields
 				var form = new FormData();
-				form.append('document_project', '{{pwic.project|escape}}');
-				form.append('document_page', '{{pwic.page|escape}}');
-				form.append('document_content', files[i]);
+				form.append('project', '{{pwic.project|escape}}');
+				form.append('page', '{{pwic.page|escape}}');
+				form.append('content', files[i]);
 
 				// Request
 				fetch('/api/document/create', {	method: 'POST',
@@ -297,10 +298,10 @@
 		{
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body:	'document_project={{pwic.project|urlencode}}'+
-													'&document_page={{pwic.page|urlencode}}' +
-													'&document_id='+encodeURIComponent(id) +
-													'&document_filename='+encodeURIComponent(filename),
+											body:	'project={{pwic.project|urlencode}}'+
+													'&page={{pwic.page|urlencode}}' +
+													'&id='+encodeURIComponent(id) +
+													'&filename='+encodeURIComponent(filename),
 											credentials: 'same-origin' })
 				.then(function(response) {
 					if (response.status != 200)
@@ -353,8 +354,8 @@
 							// Query the current revision of the modified page
 							fetch('/api/project/info/get', {	method: 'POST',
 																headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-																body:	'info_project={{pwic.project|urlencode}}'+
-																		'&info_page={{pwic.page|urlencode}}',
+																body:	'project={{pwic.project|urlencode}}'+
+																		'&page={{pwic.page|urlencode}}',
 																credentials: 'same-origin' })
 								.then(function(response) {
 									if (response.status != 200)
@@ -388,8 +389,8 @@
 			se = ta.selectionEnd;
 		fetch('/api/markdown/convert', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body:	'markdown_project={{pwic.project|urlencode}}' +
-													'&markdown_content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+											body:	'project={{pwic.project|urlencode}}' +
+													'&content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
 											credentials: 'same-origin' })
 			.then(function(response) {
 				if (response.status != 200)
