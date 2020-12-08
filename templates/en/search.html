@@ -11,13 +11,17 @@
 	<article>
 		<h1>{{pwic.pages|count + pwic.documents|count}} results</h1>
 
-		<p>Search terms: <input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" /></p>
+		<p>Search terms:
+			<input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" />
+			<span style="pwic_nowrap"><input id="page_search_withrev" type="checkbox" {% if 'rev' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()" /> <label for="page_search_withrev">Include the past revisions</label></div>
+		</p>
 
 		{% if pwic.pages|count > 0 %}
 			<h2>Pages</h2>
 			<table>
 				<tr>
 					<th>Page</th>
+					<th class="pwic_desktop">Revision</th>
 					<th>Title</th>
 					<th>Flags</th>
 					<th class="pwic_desktop">Author</th>
@@ -29,7 +33,8 @@
 				{% for page in pwic.pages %}
 					<tr>
 						<td>{{page.page|escape}}</td>
-						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td class="pwic_desktop">{{page.revision|escape}}</td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}/rev{{page.revision|urlencode}}">{{page.title|escape}}</a></td>
 						<td>
 							{% if page.draft %}
 								<span title="Draft">{{pwic.emojis.hourglass}}</span>
@@ -39,6 +44,9 @@
 							{% endif %}
 							{% if page.valuser != '' %}
 								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							{% endif %}
+							{% if page.latest %}
+								<span title="Latest">{{pwic.emojis.star}}</span>
 							{% endif %}
 						</td>
 						<td class="pwic_desktop"><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>

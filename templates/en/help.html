@@ -132,7 +132,7 @@
 					<td><code>heading_mask</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">Yes</td>
-					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (ex: <code>#pi.1.a.a.</code>).</td>
+					<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (<code>#pi.1.a.a.</code>).</td>
 				</tr>
 				<tr>
 					<td><code>kbid</code></td>
@@ -219,7 +219,7 @@
 					<td><code>no_new_user_online</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>When the option is enabled, you can assign existing user accounts only to your project. To create a new user account, use the administration console to reset its password that will be created.</td>
+					<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console to reset its password that will be created.</td>
 				</tr>
 				<tr>
 					<td><code>no_printing</code></td>
@@ -261,7 +261,7 @@
 					<td><code>robots</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
-					<td>The meta information <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute"><code>robots</code></a> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</td>
+					<td>The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</td>
 				</tr>
 				<tr>
 					<td><code>safe_mode</code></td>
@@ -304,6 +304,12 @@
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">Yes</td>
 					<td>Force the default redirection of the pure readers to the last validated revision of a page if it exists. This feature allows the editors to prepare the upcoming revisions of a page without showing them by default, and to publish only validated pages to the end-users. As a complement, use the option <code>no_history</code> to hide the history of the page.</td>
+				</tr>
+				<tr>
+					<td><code>xff</code></td>
+					<td class="pwic_desktop">No</td>
+					<td class="pwic_desktop">No</td>
+					<td>Use the HTTP header <code>X-Forwarded-For</code> to filter the inbound connections by IP address. The server must be restarted when the option is changed.</td>
 				</tr>
 			</table>
 		<p>The project-independent variables generally require a restart of the server. Beware that doing that closes all the current sessions. The users will have to reconnect from another tab when the server is back in order to be able to save their work in progress.</p>
@@ -465,8 +471,9 @@
 				<li><code>term</code> searches in the content of the page, or for the exact page identifier. This is the default behavior seen above.</li>
 				<li><code>author:term</code> checks the term against the author of the latest revision.</li>
 				<li><code>title:term</code> checks the term in the title of the page.</li>
-				<li><code>:draft</code> searches for draft copies.</li>
-				<li><code>:final</code> searches for final copies.</li>
+				<li><code>:latest</code> searches for the most recent page.</li>
+				<li><code>:draft</code> searches for drafts.</li>
+				<li><code>:final</code> searches for final pages.</li>
 				<li><code>:validated</code> checks that the page is validated, whoever is the validator.</li>
 				<li><code>validator:term</code> checks the term against the validator of the latest revision. If the term is empty, the check returns a match, so do prefer the keyword <code>:validated</code> in that case.</li>
 				<li><code>:document</code> checks that the page has at least one document attached.</li>
@@ -474,7 +481,6 @@
 			</ul>
 		<p>At the end, the pages are sorted by the number of occurrences of the search terms. Each term that is not negated contribute to the score as a sum. Because of that, your search terms should be at least 3- or 4-character long.</p>
 		<p>The search is case-insensitive.</p>
-		<p>Searching in the old revisions is not possible.</p>
 
 
 		<h1 id="help_searchdoc"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Search across the documents</h1>

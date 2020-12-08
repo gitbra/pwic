@@ -39,7 +39,7 @@ PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                  
 PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                                     # Find a HTML tag
 
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_format', 'ip_filter', 'maintenance',
-                                'mime_enforcement', 'no_logon', 'password_regex', 'safe_mode', 'ssl']
+                                'mime_enforcement', 'no_logon', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'css', 'css_dark', 'dark_mode', 'disabled_formats',
                               'document_name_regex', 'export_project_revisions', 'heading_mask', 'kbid',
                               'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'mde',

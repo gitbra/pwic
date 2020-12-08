@@ -7,13 +7,13 @@ import re
 import gzip
 import datetime
 import os
-from os.path import isdir, isfile, join
+from os.path import getsize, isdir, isfile, join
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USER_ANONYMOUS, \
-    PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, \
-    PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
+from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, \
+    PWIC_USER_ANONYMOUS, PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
+    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
     _dt, _sha256, _safeName, pwic_audit
 
 
@@ -61,6 +61,7 @@ def main() -> bool:
 
     parser_deluser = subparsers.add_parser('revoke-user', help='Revoke a user')
     parser_deluser.add_argument('user', default='', help='User name')
+    parser_deluser.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
 
     parser_log = subparsers.add_parser('show-log', help='Show the log of the database (no HTTP traffic)')
     parser_log.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
@@ -98,7 +99,7 @@ def main() -> bool:
     elif args.command == 'reset-password':
         return reset_password(args.user)
     elif args.command == 'revoke-user':
-        return revoke_user(args.user)
+        return revoke_user(args.user, args.force)
     elif args.command == 'show-log':
         return show_log(args.min, args.max)
     elif args.command == 'compress-static':
@@ -501,7 +502,8 @@ def create_project(project: str, description: str, admin: str) -> bool:
     project = _safeName(project)
     description = description.strip()
     admin = _safeName(admin, extra='')
-    if project in ['api', 'special'] or '' in [project, description, admin] or project[:4] == 'pwic' or admin[:4] == 'pwic':
+    if project in ['api', 'special'] or '' in [project, description, admin] or \
+       project[:4] == 'pwic' or admin[:4] == 'pwic':
         print('Error: invalid arguments')
         return False
 
@@ -579,7 +581,7 @@ def takeover_project(project: str, admin: str) -> bool:
     if sql is None:
         return False
 
-    # Verify that the project exists yet
+    # Verify that the project exists
     project = _safeName(project)
     if project == '' or sql.execute(''' SELECT project
                                         FROM projects
@@ -678,7 +680,7 @@ def create_user(user: str) -> bool:
 
     # Verify the user account
     user = _safeName(user, extra='')
-    if (user == '') or (user[:4] == 'pwic'):
+    if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
     sql.execute('SELECT user FROM users WHERE user = ?', (user, ))
@@ -705,7 +707,7 @@ def reset_password(user: str) -> bool:
 
     # Check if the user is administrator
     user = _safeName(user, extra='')
-    if user[:4] == 'pwic':
+    if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
     sql.execute(''' SELECT COUNT(*) AS total
@@ -744,7 +746,7 @@ def reset_password(user: str) -> bool:
     return ok
 
 
-def revoke_user(user: str) -> bool:
+def revoke_user(user: str, force: bool) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -786,19 +788,24 @@ def revoke_user(user: str) -> bool:
             tab.field_names = ['Project', 'Description']
             for f in tab.field_names:
                 tab.align[f] = 'l'
-            print('Error: organize a transfer of ownership for the following projects before revoking the user')
+            if force:
+                print('Warning: the following projects will have no administrator anymore')
+            else:
+                print('Error: organize a transfer of ownership for the following projects before revoking the user')
         tab.add_row([row[0], row[1]])
     if found:
         tab.header = False
         tab.border = False
         print(tab.get_string())
-        return False
+        if not force:
+            return False
 
     # Confirm
-    print('This operation in mass needs your confirmation.')
-    print('Type "YES" in uppercase to confirm the revocation of the user "%s": ' % user, end='')
-    if input() != 'YES':
-        return False
+    if not force:
+        print('This operation in mass needs your confirmation.')
+        print('Type "YES" in uppercase to confirm the revocation of the user "%s": ' % user, end='')
+        if input() != 'YES':
+            return False
 
     # Disable the user for every project
     sql.execute('SELECT project FROM roles WHERE user = ?', (user, ))
@@ -809,7 +816,7 @@ def revoke_user(user: str) -> bool:
                          'user': user})
     sql.execute('DELETE FROM roles WHERE user = ?', (user, ))
     db_commit()
-    print('The user "%s" is fully unassigned to the projects' % user)
+    print('The user "%s" is fully unassigned to the projects but remains known in the database' % user)
     return True
 
 
@@ -852,15 +859,17 @@ def show_log(dmin: int, dmax: int) -> bool:
 
 def compress_static() -> bool:
     # To reduce the bandwidth, aiohttp automatically delivers the static files as compressed if the .gz file is created
+    # Despite the files do not change, many responses 304 are generated with some browsers
     ok = False
     path = './static/'
     files = [(path + f) for f in os.listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
     for fn in files:
-        with open(fn, 'rb') as src:
-            with gzip.open(fn + '.gz', 'wb') as dst:
-                print('Compressing "%s"' % fn)
-                copyfileobj(src, dst)
-                ok = True
+        if getsize(fn) >= 25600:
+            with open(fn, 'rb') as src:
+                with gzip.open(fn + '.gz', 'wb') as dst:
+                    print('Compressing "%s"' % fn)
+                    copyfileobj(src, dst)
+                    ok = True
     if ok:
         print('Finished')
     return ok

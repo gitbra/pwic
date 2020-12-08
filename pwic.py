@@ -154,12 +154,19 @@ class PwicServer():
                     break
         return obj['mime'] != ''
 
-    def _checkIP(self: object, ip: str) -> None:
+    def _getip(self: object, request: web.Request) -> str:
+        if request is None:
+            return ''
+        else:
+            return request.headers.get('X-Forwarded-For', request.remote) if app['xff'] else request.remote
+
+    def _checkIP(self: object, request: web.Request) -> None:
         ''' Check if the IP address is authorized '''
         # Initialization
         okIncl = False
         hasIncl = False
         koExcl = False
+        ip = self._getip(request)
 
         # Apply the rules
         for mask in app['ip_filter']:
@@ -185,7 +192,7 @@ class PwicServer():
 
     async def _suser(self: object, request: web.Request) -> str:
         ''' Retrieve the logged user '''
-        self._checkIP(request.remote)
+        self._checkIP(request)
         if app['no_logon']:
             return PWIC_USER_ANONYMOUS
         else:
@@ -239,6 +246,8 @@ class PwicServer():
                                                  'global': global_}
 
         # Render the template
+        pwic['template'] = name
+        pwic['args'] = request.rel_url.query
         session = await get_session(request)
         pwic['language'] = session.get('language', PWIC_DEFAULT_LANGUAGE)
         template_name = '%s/%s.html' % (pwic['language'], name)
@@ -879,6 +888,7 @@ class PwicServer():
             query = None
         else:
             query = pwic_search_parse(request.rel_url.query.get('q', ''))
+            with_rev = 'rev' in request.rel_url.query
         if query is None:
             raise web.HTTPTemporaryRedirect('/%s' % project)
 
@@ -902,9 +912,9 @@ class PwicServer():
                 'documents': []}
 
         # Search for a page
-        sql.execute(''' SELECT a.project, a.page, a.draft, a.final, a.author,
-                               a.date, a.time, a.title, LOWER(a.markdown), a.tags,
-                               a.valuser, a.valdate, a.valtime, b.document_count
+        sql.execute(''' SELECT a.project, a.page, a.revision, a.latest, a.draft, a.final,
+                               a.author, a.date, a.time, a.title, LOWER(a.markdown),
+                               a.tags, a.valuser, a.valdate, a.valtime, b.document_count
                         FROM pages AS a
                             LEFT JOIN (
                                 SELECT project, page, COUNT(id) AS document_count
@@ -915,49 +925,52 @@ class PwicServer():
                                 ON  b.project = a.project
                                 AND b.page    = a.page
                         WHERE a.project = ?
-                          AND a.latest  = 'X'
+                          AND a.latest IN ('%sX')
                         ORDER BY a.date DESC,
-                                 a.time DESC''',
+                                 a.time DESC''' % ("','" if with_rev else ''),
                     (project, project))
         for row in sql.fetchall():
-            tagList = row[9].split(' ')
+            tagList = row[11].split(' ')
 
             # Apply the filters
             ok = True
             score = 0
             for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
-                if (q == ':draft' and _xb(row[2]))                              \
-                   or (q == ':final' and _xb(row[3]))                           \
-                   or (q[:7] == 'author:' and q[7:] in row[4].lower())          \
-                   or (q[:6] == 'title:' and q[6:] in row[7].lower())           \
-                   or (q == ':validated' and row[10] != '')                     \
-                   or (q[:10] == 'validator:' and q[10:] in row[10].lower())    \
-                   or (q == ':document' and _int(row[13]) > 0)                  \
+                if (q == ':latest' and _xb(row[3]))                             \
+                   or (q == ':draft' and _xb(row[4]))                           \
+                   or (q == ':final' and _xb(row[5]))                           \
+                   or (q[:7] == 'author:' and q[7:] in row[6].lower())          \
+                   or (q[:6] == 'title:' and q[6:] in row[9].lower())           \
+                   or (q == ':validated' and row[12] != '')                     \
+                   or (q[:10] == 'validator:' and q[10:] in row[12].lower())    \
+                   or (q == ':document' and _int(row[15]) > 0)                  \
                    or (q[1:] in tagList if q[:1] == '#' else False)             \
                    or (q == row[1].lower())                                     \
-                   or (q in row[8]):
+                   or (q in row[10]):
                     ok = False
                     break
             if ok:
                 for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
-                    if q == ':draft':
-                        count = _int(_xb(row[2]))
-                    elif q == ':final':
+                    if q == ':latest':
                         count = _int(_xb(row[3]))
+                    elif q == ':draft':
+                        count = _int(_xb(row[4]))
+                    elif q == ':final':
+                        count = _int(_xb(row[5]))
                     elif q[:7] == 'author:':
-                        count = row[4].lower().count(q[7:])
+                        count = row[6].lower().count(q[7:])
                     elif q[:6] == 'title:':
-                        count = row[7].lower().count(q[6:])
+                        count = row[9].lower().count(q[6:])
                     elif q == ':validated':
-                        count = _int(row[10] != '')
+                        count = _int(row[12] != '')
                     elif q[:10] == 'validator:':
-                        count = _int(q[10:] in row[10].lower())
+                        count = _int(q[10:] in row[12].lower())
                     elif q == ':document':
-                        count = _int(_int(row[13]) > 0)
+                        count = _int(_int(row[15]) > 0)
                     elif (q[1:] in tagList if q[:1] == '#' else False):
                         count = 5               # A tag counts more
                     else:
-                        count = _int(q == row[1].lower()) + row[8].count(q)
+                        count = 5 * _int(q == row[1].lower()) + row[10].count(q)
                     if count == 0:
                         ok = False
                         break
@@ -969,15 +982,17 @@ class PwicServer():
             # Save the found result
             pwic['pages'].append({'project': row[0],
                                   'page': row[1],
-                                  'draft': _xb(row[2]),
-                                  'final': _xb(row[3]),
-                                  'author': row[4],
-                                  'date': row[5],
-                                  'time': row[6],
-                                  'title': row[7],
-                                  'valuser': row[10],
-                                  'valdate': row[11],
-                                  'valtime': row[12],
+                                  'revision': row[2],
+                                  'latest': _xb(row[3]),
+                                  'draft': _xb(row[4]),
+                                  'final': _xb(row[5]),
+                                  'author': row[6],
+                                  'date': row[7],
+                                  'time': row[8],
+                                  'title': row[9],
+                                  'valuser': row[12],
+                                  'valdate': row[13],
+                                  'valtime': row[14],
                                   'score': score})
 
         # Search for documents
@@ -1017,8 +1032,7 @@ class PwicServer():
                                       'date': row[7],
                                       'time': row[8]})
 
-        # Show the pages by score desc and title asc
-        pwic['pages'].sort(key=lambda x: x['title'])
+        # Show the pages by score desc, date desc and time desc
         pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
         return await self._handleOutput(request, 'search', pwic=pwic)
 
@@ -1418,7 +1432,7 @@ class PwicServer():
         # Checks
         if app['no_logon']:
             raise web.HTTPBadRequest()
-        self._checkIP(request.remote)
+        self._checkIP(request)
 
         # Fetch the submitted data
         post = await self._handlePost(request)
@@ -1567,12 +1581,12 @@ class PwicServer():
                             INNER JOIN pages AS b
                                 ON  b.project = a.project
                                 AND (b.page = ? OR '' = ?)
-                                AND b.latest IN ("%sX")
+                                AND b.latest IN ('%sX')
                         WHERE a.project  = ?
                           AND a.user     = ?
                           AND a.disabled = ''
                         ORDER BY b.page ASC,
-                                 b.revision DESC''' % ('","' if all else '', ),
+                                 b.revision DESC''' % ("','" if all else '', ),
                     (page, page, project, user))
         for row in sql.fetchall():
             if row[0] not in data:
@@ -2935,7 +2949,7 @@ def main() -> bool:
                                safe_mode=app['pwic']._readEnv(sql, '', 'safe_mode') is not None)
 
     # Routes
-    app.router.add_static('/static/', path='./static/')
+    app.router.add_static('/static/', path='./static/', append_version=False)
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
@@ -3035,6 +3049,7 @@ def main() -> bool:
                 app['ip_filter'].append(item)
 
     _compile_ip()
+    app['xff'] = app['pwic']._readEnv(sql, '', 'xff') is not None
 
     # Logging
     logfile = app['pwic']._readEnv(sql, '', 'http_log_file', '')
