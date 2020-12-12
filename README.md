@@ -93,7 +93,7 @@ The following features are **not** available yet:
 - Make sure that the subfolder `db/` is writable
 - Initialize the SQLite database: `python pwic_admin.py init-db`
 - Create a new project: `python pwic_admin.py create-project --help`
-- Optionally define the global and project-dependent variables: `python pwic_admin.py set-env --help` (details available in the help page)
+- Define the global and project-dependent variables, at least `base_url`: `python pwic_admin.py set-env --help` (details available in the help page)
 - Run the server: `python pwic.py`
 	- The bind address and port can be modified in the command line if you need a public exposure for your server
 - Open your browser at `http://127.0.0.1:8080`

@@ -21,48 +21,47 @@
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 									body: 'project={{pwic.project|urlencode}}',
 									credentials: 'same-origin' })
-	.then(function(response) {
-		if (response.status != 200)
-			throw Error(response.status + ' ' + response.statusText);
-		else
-			response.json().then(function(data) {
-				var key, item, element;
-				for (key in data)
-				{
-					item = data[key];
-					element = $('INPUT[type=text][data-key='+key+']');
-					if (element.length > 0)
+		.then(function(response) {
+			if (response.status != 200)
+				throw Error(response.status + ' ' + response.statusText);
+			else
+				response.json().then(function(data) {
+					var key, item, element;
+					for (key in data)
 					{
-						if (item['global'])
-							element.attr('placeholder', item['value']);
-						else
-							element.val(item['value']);
+						item = data[key];
+						element = $('INPUT[type=text][data-key='+key+']');
+						if (element.length > 0)
+						{
+							if (item['global'])
+								element.attr('placeholder', item['value']);
+							else
+								element.val(item['value']);
+						}
 					}
-				}
-				$('INPUT[type=text]').removeAttr('readonly').removeClass('pwic_disabled_bg');
-			});
-	})
-	.catch(function(error) {
-		alert(error);
-	});
+					$('INPUT[type=text]').removeAttr('readonly').removeClass('pwic_disabled_bg');
+				});
+		})
+		.catch(function(error) {
+			alert(error);
+		});
 
 	// Action when the save button is pressed
-	function env_set(key, value)
-	{
+	function env_set(key, value) {
 		fetch('/api/project/env/set', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 										body:	'project={{pwic.project|urlencode}}' +
 												'&key=' + encodeURIComponent(key) +
 												'&value=' + encodeURIComponent(value),
 										credentials: 'same-origin' })
-		.then(function(response) {
-			if (response.status == 200)
-				$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
-			else
-				throw Error(response.status + ' ' + response.statusText);
-		})
-		.catch(function(error) {
-			alert(error);
-		});
+			.then(function(response) {
+				if (response.status == 200)
+					$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
+				else
+					throw Error(response.status + ' ' + response.statusText);
+			})
+			.catch(function(error) {
+				alert(error);
+			});
 	}
 </script>

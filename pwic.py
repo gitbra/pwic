@@ -2823,6 +2823,12 @@ class PwicServer():
 
         # Read the documents
         sql = app['sql'].cursor()
+        markdown = sql.execute(''' SELECT markdown
+                                   FROM pages
+                                   WHERE project = ?
+                                     AND page    = ?
+                                     AND latest  = 'X' ''',
+                               (project, page)).fetchone()[0]
         sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time
                         FROM roles AS a
                             INNER JOIN documents AS b
@@ -2843,7 +2849,8 @@ class PwicServer():
                            'hash': row[4],
                            'author': row[5],
                            'date': row[6],
-                           'time': row[7]})
+                           'time': row[7],
+                           'used': ('(/special/document/%d)' % row[0]) in markdown or ('(/special/document/%d "' % row[0]) in markdown})
         return web.Response(text=json.dumps(result), content_type=MIME_JSON)
 
     async def api_document_delete(self: object, request: web.Request) -> None:

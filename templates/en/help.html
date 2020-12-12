@@ -116,15 +116,15 @@
 					<td><code>export_project_revisions</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
-					<td>Add the revisions of the pages when you export a project as a ZIP file.</td>
+					<td>Include all the revisions of the pages when you export a project as a ZIP file.</td>
 				</tr>
 				<tr>
 					<td><code>ip_filter</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
 					<td>
-						- List of IP addresses separated by a space. The unauthorized addresses are prefixed by <code>-</code> and used as <em>AND</em> conditions, else as <em>OR</em> conditions.
-						<br/>- The IP check applies to the host that connected, not with forward proxy configuration.
+						- List of IP addresses separated by a space. The unauthorized addresses are prefixed by the minus sign <code>-</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once.
+						<br/>- The IP check applies to the host that connected unless you use <code>xff</code>.
 						<br/>- To be fully effective, the server must be restarted when the value is changed. The current sessions will be terminated.
 					</td>
 				</tr>
@@ -138,7 +138,7 @@
 					<td><code>kbid</code></td>
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
-					<td>Managed counter to allocate an identifier to a knowledge base article.</td>
+					<td>Self-managed counter to allocate an identifier to a knowledge base article.</td>
 				</tr>
 				<tr>
 					<td><code>http_log_file</code></td>
@@ -147,7 +147,7 @@
 					<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
 						<br/>- The option is effective upon the restart of the server.
 						<br/>- Since the log file is exclusively locked, you must terminate Pwic before you can archive the file.
-						<br/>- The log file includes neither user names, nor detailed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
+						<br/>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
 				</tr>
 				<tr>
 					<td><code>http_log_format</code></td>
@@ -165,7 +165,7 @@
 					<td><code>maintenance</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>The value is displayed on the pages to inform the users of a planned maintenance. The upload of documents is immediately disabled.</td>
+					<td>The value is displayed on the pages to inform the users of a planned maintenance. The upload of the documents is immediately disabled.</td>
 				</tr>
 				<tr>
 					<td><code>mathjax</code></td>
@@ -184,12 +184,6 @@
 					<td class="pwic_desktop">Yes</td>
 					<td class="pwic_desktop">No</td>
 					<td>Define the maximal disk space allowed for all the attached documents of a project.</td>
-				</tr>
-				<tr>
-					<td><code>mde</code></td>
-					<td class="pwic_desktop">Yes</td>
-					<td class="pwic_desktop">Yes</td>
-					<td>Activate the visual <em>wysiwyg</em> Markdown editor.</td>
 				</tr>
 				<tr>
 					<td><code>mime_enforcement</code></td>
@@ -216,10 +210,16 @@
 					<td>Skip the logon screen and assign the anonymous role to any visitor. As per the default behavior of the user account <code>{{pwic.constants.anonymous_user}}</code>, Pwic becomes public, read-only and you update the instance by transferring the folder <code>{{pwic.constants.db_path}}</code> administratively. The server must be restarted when the option is changed.</td>
 				</tr>
 				<tr>
+					<td><code>no_mde</code></td>
+					<td class="pwic_desktop">Yes</td>
+					<td class="pwic_desktop">Yes</td>
+					<td>Disable the visual <em>wysiwyg</em> Markdown editor.</td>
+				</tr>
+				<tr>
 					<td><code>no_new_user_online</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console to reset its password that will be created.</td>
+					<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console of Pwic.</td>
 				</tr>
 				<tr>
 					<td><code>no_printing</code></td>
@@ -267,13 +267,13 @@
 					<td><code>safe_mode</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues.</td>
+					<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues. Not using the safe mode may corrupt the export to OpenDocument.</td>
 				</tr>
 				<tr>
 					<td><code>ssl</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>Enable HTTPS for Pwic provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
+					<td>Enable HTTP<strong>S</strong> for Pwic provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
 				</tr>
 				<tr>
 					<td><code>support_email</code></td>
@@ -309,7 +309,7 @@
 					<td><code>xff</code></td>
 					<td class="pwic_desktop">No</td>
 					<td class="pwic_desktop">No</td>
-					<td>Use the HTTP header <code>X-Forwarded-For</code> to filter the inbound connections by IP address. The server must be restarted when the option is changed.</td>
+					<td>When it is available, use the HTTP header <code>X-Forwarded-For</code> to filter the inbound connections by IP address. In that case, Pwic must communicate with an internal proxy only. The server must be restarted when the option is changed.</td>
 				</tr>
 			</table>
 		<p>The project-independent variables generally require a restart of the server. Beware that doing that closes all the current sessions. The users will have to reconnect from another tab when the server is back in order to be able to save their work in progress.</p>

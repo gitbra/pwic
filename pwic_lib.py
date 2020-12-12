@@ -42,12 +42,12 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_f
                                 'mime_enforcement', 'no_logon', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'css', 'css_dark', 'dark_mode', 'disabled_formats',
                               'document_name_regex', 'export_project_revisions', 'heading_mask', 'kbid',
-                              'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'mde',
-                              'no_export_project', 'no_history', 'no_new_user_online', 'no_printing', 'no_search',
+                              'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'no_export_project',
+                              'no_history', 'no_mde', 'no_new_user_online', 'no_printing', 'no_search',
                               'no_text_selection', 'odt_page_height', 'odt_page_width', 'robots', 'support_email',
                               'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'dark_mode', 'disabled_formats', 'heading_mask', 'mathjax',
-                                     'mde', 'no_history', 'no_printing', 'no_search', 'no_text_selection',
+                                     'no_history', 'no_mde', 'no_printing', 'no_search', 'no_text_selection',
                                      'odt_page_height', 'odt_page_width', 'support_email', 'support_phone',
                                      'support_text', 'support_url', 'validated_only']
 

@@ -29,48 +29,51 @@ def main() -> bool:
 
     subparsers.add_parser('init-db', help='Initialize the database once')
 
-    subparsers.add_parser('show-env', help='Show the current configuration')
+    spb = subparsers.add_parser('show-env', help='Show the current configuration')
+    spb.add_argument('--var', default='', help='Name of the variable for exclusive display')
 
-    parser_env = subparsers.add_parser('set-env', help='Set a global or a project-dependent parameter')
-    parser_env.add_argument('--project', default='', help='Name of the project (if project-dependent)')
-    parser_env.add_argument('name', default='', help='Name of the variable')
-    parser_env.add_argument('value', default='', help='Value of the variable')
-    parser_env.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
+    spb = subparsers.add_parser('set-env', help='Set a global or a project-dependent parameter')
+    spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    spb.add_argument('name', default='', help='Name of the variable')
+    spb.add_argument('value', default='', help='Value of the variable')
+    spb.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
 
     subparsers.add_parser('show-mime', help='Show the MIME types defined on the server (Windows only)')
 
     subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
-    parser_newproj = subparsers.add_parser('create-project', help='Create a new project')
-    parser_newproj.add_argument('project', default='', help='Project name')
-    parser_newproj.add_argument('description', default='', help='Project description')
-    parser_newproj.add_argument('admin', default='', help='User name of the administrator of the project')
+    subparsers.add_parser('show-projects', help='Show the existing projects')
 
-    parser_ownproj = subparsers.add_parser('takeover-project', help='Assign an administrator to a project')
-    parser_ownproj.add_argument('project', default='', help='Project name')
-    parser_ownproj.add_argument('admin', default='', help='User name of the administrator')
+    spb = subparsers.add_parser('create-project', help='Create a new project')
+    spb.add_argument('project', default='', help='Project name')
+    spb.add_argument('description', default='', help='Project description')
+    spb.add_argument('admin', default='', help='User name of the administrator of the project')
 
-    parser_delproj = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
-    parser_delproj.add_argument('project', default='', help='Project name')
+    spb = subparsers.add_parser('takeover-project', help='Assign an administrator to a project')
+    spb.add_argument('project', default='', help='Project name')
+    spb.add_argument('admin', default='', help='User name of the administrator')
 
-    parser_create_user = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
-    parser_create_user.add_argument('user', default='', help='User name')
+    spb = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
+    spb.add_argument('project', default='', help='Project name')
 
-    parser_reset_user = subparsers.add_parser('reset-password', help='Reset the password of a user')
-    parser_reset_user.add_argument('user', default='', help='User name')
+    spb = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
+    spb.add_argument('user', default='', help='User name')
 
-    parser_deluser = subparsers.add_parser('revoke-user', help='Revoke a user')
-    parser_deluser.add_argument('user', default='', help='User name')
-    parser_deluser.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
+    spb = subparsers.add_parser('reset-password', help='Reset the password of a user')
+    spb.add_argument('user', default='', help='User name')
 
-    parser_log = subparsers.add_parser('show-log', help='Show the log of the database (no HTTP traffic)')
-    parser_log.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
-    parser_log.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
+    spb = subparsers.add_parser('revoke-user', help='Revoke a user')
+    spb.add_argument('user', default='', help='User name')
+    spb.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
+
+    spb = subparsers.add_parser('show-log', help='Show the log of the database (no HTTP traffic)')
+    spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
+    spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
 
     subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
 
-    parser_cache = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
-    parser_cache.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
+    spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
@@ -81,13 +84,15 @@ def main() -> bool:
     elif args.command == 'init-db':
         return init_db()
     elif args.command == 'show-env':
-        return show_env()
+        return show_env(args.var)
     elif args.command == 'set-env':
         return set_env(args.project, args.name, args.value, args.override)
     elif args.command == 'show-mime':
         return show_mime()
     elif args.command == 'create-backup':
         return create_backup()
+    elif args.command == 'show-projects':
+        return show_projects()
     elif args.command == 'create-project':
         return create_project(args.project, args.description, args.admin)
     elif args.command == 'takeover-project':
@@ -141,12 +146,15 @@ def generate_ssl() -> bool:
         return False
 
     # Imports
-    from cryptography.hazmat.backends import default_backend
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography import x509
-    from cryptography.x509.oid import NameOID
-    from cryptography.hazmat.primitives import hashes
+    try:
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.primitives import hashes
+    except ImportError:
+        return False
 
     # Private key
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
@@ -213,7 +221,6 @@ CREATE TABLE "env" (
     FOREIGN KEY("project") REFERENCES "projects"("project"),
     PRIMARY KEY("key","project")
 )''')
-            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'mde', 'X')")
             sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')")
             sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
             # Table USERS
@@ -343,36 +350,45 @@ END''')
     return False
 
 
-def show_env() -> bool:
+def show_env(var: str = '') -> bool:
     # Package info
-    try:
-        from importlib.metadata import PackageNotFoundError, version
-        print('Python packages:\n')
-        tab = PrettyTable()
-        tab.field_names = ['Package', 'Version']
-        tab.align[tab.field_names[0]] = 'l'
-        tab.align[tab.field_names[1]] = 'r'
-        tab.header = True
-        tab.border = True
-        for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
-                        'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
-            try:
-                tab.add_row([package, version(package)])
-            except PackageNotFoundError:
-                pass
-        print(tab.get_string())
-    except ImportError:
-        pass
+    if var == '':
+        try:
+            from importlib.metadata import PackageNotFoundError, version
+            print('Python packages:\n')
+            tab = PrettyTable()
+            tab.field_names = ['Package', 'Version']
+            tab.align[tab.field_names[0]] = 'l'
+            tab.align[tab.field_names[1]] = 'r'
+            tab.header = True
+            tab.border = True
+            for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
+                            'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
+                try:
+                    tab.add_row([package, version(package)])
+                except PackageNotFoundError:
+                    pass
+            print(tab.get_string())
+        except ImportError:
+            pass
 
     # Environment variables
-    print('\nProject-dependent Pwic variables:\n')
     sql = db_connect()
     if sql is None:
         return False
-    sql.execute(''' SELECT project, key, value
-                    FROM env
-                    WHERE value <> ''
-                    ORDER BY project, key''')
+    if var != '':
+        sql.execute(''' SELECT project, key, value
+                        FROM env
+                        WHERE key LIKE ?
+                          AND value <> ''
+                        ORDER BY project, key''',
+                    ('%%%s%%' % var.replace('*', '%'), ))
+    else:
+        sql.execute(''' SELECT project, key, value
+                        FROM env
+                        WHERE value <> ''
+                        ORDER BY project, key''')
+    found = False
     tab = PrettyTable()
     tab.field_names = ['Project', 'Key', 'Value']
     for f in tab.field_names:
@@ -381,8 +397,13 @@ def show_env() -> bool:
     tab.border = True
     for row in sql.fetchall():
         tab.add_row([row[0], row[1], row[2]])
-    print(tab.get_string())
-    return True
+        found = True
+    if found:
+        print('\nGlobal and project-dependent Pwic variables:\n')
+        print(tab.get_string())
+        return True
+    else:
+        return var == ''
 
 
 def set_env(project: str, key: str, value: str, override: bool) -> bool:
@@ -392,7 +413,7 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
         return False
     merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if key not in merged:
-        print('Error: the name of the variable must be one of: %s' % ', '.join(merged))
+        print('Error: the name of the variable must be one of <%s>' % ', '.join(merged))
         return False
     if project != '' and key in PWIC_ENV_PROJECT_INDEPENDENT:
         print('Error: the parameter is project-independent')
@@ -495,6 +516,41 @@ def create_backup() -> bool:
     except Exception as e:
         print(str(e))
         return False
+
+
+def show_projects() -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Select the projects
+    sql.execute(''' SELECT a.project, a.description, b.user
+                    FROM projects AS a
+                        INNER JOIN roles AS b
+                            ON  b.project  = a.project
+                            AND b.admin    = 'X'
+                            AND b.disabled = ''
+                    ORDER BY a.project ASC,
+                             b.user    ASC''')
+    data = {}
+    for row in sql.fetchall():
+        if row[0] not in data:
+            data[row[0]] = {'description': row[1],
+                            'admin': []}
+        data[row[0]]['admin'].append(row[2])
+
+    # Display the entries
+    tab = PrettyTable()
+    tab.field_names = ['Project', 'Description', 'Administrators']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    tab.header = True
+    tab.border = True
+    for key in data:
+        tab.add_row([key, data[key]['description'], ', '.join(data[key]['admin'])])
+    print(tab.get_string())
+    return True
 
 
 def create_project(project: str, description: str, admin: str) -> bool:

@@ -197,6 +197,9 @@ paths:
                   type: string
                 time:
                   type: string
+                used:
+                  type: boolean
+                  description: According to a static detection
         400:
           description: Invalid parameters
         401:
