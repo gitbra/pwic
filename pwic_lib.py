@@ -13,7 +13,7 @@ from parsimonious.nodes import NodeVisitor
 #  Constants
 # ===================================================
 
-PWIC_VERSION = '1.0-rc3'
+PWIC_VERSION = '1.0-rc4'
 PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
@@ -413,8 +413,6 @@ def pwic_extended_syntax(markdown: str, mask: str, headerNumbering: bool = True)
     # For each line
     for i in range(len(lines)):
         line = lines[i]
-
-        # Parse
         match = reg_header.match(line)
         if match is not None:
             depth = int(match.group(1))
