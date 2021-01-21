@@ -66,7 +66,9 @@ def main() -> bool:
     spb.add_argument('user', default='', help='User name')
     spb.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
 
-    spb = subparsers.add_parser('show-log', help='Show the log of the database (no HTTP traffic)')
+    subparsers.add_parser('show-logon', help='Show the last logons of the users')
+
+    spb = subparsers.add_parser('show-audit', help='Show the log of the database (no HTTP traffic)')
     spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
     spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
 
@@ -105,8 +107,10 @@ def main() -> bool:
         return reset_password(args.user)
     elif args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
-    elif args.command == 'show-log':
-        return show_log(args.min, args.max)
+    elif args.command == 'show-logon':
+        return show_logon()
+    elif args.command == 'show-audit':
+        return show_audit(args.min, args.max)
     elif args.command == 'compress-static':
         return compress_static()
     elif args.command == 'clear-cache':
@@ -876,7 +880,40 @@ def revoke_user(user: str, force: bool) -> bool:
     return True
 
 
-def show_log(dmin: int, dmax: int) -> bool:
+def show_logon() -> bool:
+    # Select the data
+    sql = db_connect()
+    if sql is None:
+        return False
+    sql.execute(''' SELECT a.user, c.date, c.time, b.events
+                    FROM users AS a
+                        INNER JOIN (
+                            SELECT author, MAX(id) AS id, COUNT(id) AS events
+                            FROM audit
+                            WHERE event = 'logon'
+                            GROUP BY author
+                        ) AS b
+                            ON b.author = a.user
+                        INNER JOIN audit AS c
+                            ON c.id = b.id
+                    ORDER BY c.date DESC,
+                             c.time DESC,
+                             a.user ASC''')
+
+    # Report the log
+    tab = PrettyTable()
+    tab.field_names = ['User', 'Date', 'Time', 'Events']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    for row in sql.fetchall():
+        tab.add_row([row[0], row[1], row[2], row[3]])
+    tab.header = True
+    tab.border = False
+    print(tab.get_string(), flush=True)
+    return True
+
+
+def show_audit(dmin: int, dmax: int) -> bool:
     # Calculate the dates
     dmin = max(0, dmin)
     dmax = max(0, dmax)
@@ -893,7 +930,7 @@ def show_log(dmin: int, dmax: int) -> bool:
     if sql is None:
         return False
     sql.execute(''' SELECT id, date, time, author, event, user,
-                           project, page, revision, count, ip, string
+                           project, page, revision, ip, string
                     FROM audit
                     WHERE date >= ? AND date <= ?
                     ORDER BY id ASC''',
@@ -905,8 +942,7 @@ def show_log(dmin: int, dmax: int) -> bool:
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
-        tab.add_row([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],
-                     '' if row[8] == 0 else row[8], row[9], row[10]])
+        tab.add_row([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10]])
     tab.header = True
     tab.border = False
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)

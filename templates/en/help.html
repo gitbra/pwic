@@ -492,7 +492,7 @@
 		<h1 id="help_log"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity log</h1>
 		<p>Pwic logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better overview of the situation.</p>
 		<p>Online, the administrator of a project can see the events related to the project only, like the creation of a page, a deletion, a validation...</p>
-		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py show-log 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
+		<p>At system level, it is possible to display all the events, including the ones not related to a dedicated project. The listing can be filtered out like this: <code>python pwic_admin.py show-audit 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
 
 		<h1 id="help_log_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity of a user</h1>
