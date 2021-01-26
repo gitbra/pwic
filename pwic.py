@@ -4,7 +4,8 @@ import argparse
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from urllib.parse import parse_qs, quote
+from urllib.parse import parse_qs, quote, urlencode
+from urllib.request import Request, urlopen
 from jinja2 import Environment, FileSystemLoader
 import sqlite3
 from difflib import HtmlDiff
@@ -19,15 +20,15 @@ from ipaddress import ip_network, ip_address
 from bisect import insort, bisect_left
 from multidict import MultiDict
 from html import escape
-from base64 import b64encode
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, \
     PWIC_USER_ANONYMOUS, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
     PWIC_DEFAULT_LOGGING_FORMAT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, \
+    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
-    _x, _xb, _int, _dt, _recursiveReplace, _sha256, _safeName, _safeFileName, _size2str, _sqlprint, \
+    _x, _xb, _attachmentName, _dt, _int, _list, _mime2icon, _randomHash, _sha256, _safeName, _safeFileName, _size2str, _sqlprint, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -67,8 +68,8 @@ class PwicServer():
         app['sql'].rollback()
 
     def _sanitizeTags(self: object, tags: str) -> str:
-        tags = _recursiveReplace(tags.replace('#', '').replace('\t', ' ').strip().lower(), '  ', ' ')
-        return ' '.join(sorted(list(set(tags.split(' ')))))
+        ''' Reorder a list of tags written as a string '''
+        return ' '.join(sorted(_list(tags.replace('#', ''))))
 
     def _md2html(self: object, sql: object, project: str, page: str, markdown: str, cache: bool = True, headerNumbering: bool = True) -> (str, object):
         ''' Convert the text from Markdown to HTML '''
@@ -96,23 +97,6 @@ class PwicServer():
         return pwic_extended_syntax(html,
                                     self._readEnv(sql, project, 'heading_mask'),
                                     headerNumbering=headerNumbering)
-
-    def _mime2icon(self: object, mime: str) -> str:
-        ''' Return the emojis that corresponds to the MIME '''
-        if mime[:6] == 'image/':
-            return PWIC_EMOJIS['image']
-        elif mime[:6] == 'video/':
-            return PWIC_EMOJIS['camera']
-        elif mime[:6] == 'audio/':
-            return PWIC_EMOJIS['headphone']
-        elif mime[:12] == 'application/':
-            return PWIC_EMOJIS['server']
-        else:
-            return PWIC_EMOJIS['sheet']
-
-    def _attachmentName(self: object, name: str) -> str:
-        ''' Return the file name for a proper download '''
-        return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
     def _readEnv(self: object, sql: object, project: str, name: str, default: str = None) -> str:
         ''' Read a variable from the table ENV '''
@@ -211,6 +195,8 @@ class PwicServer():
 
     async def _handleLogon(self: object, request: web.Request) -> str:
         ''' Show the logon page '''
+        session = await new_session(request)
+        session['user_secret'] = _randomHash()
         return await self._handleOutput(request, 'logon', {'title': 'Connect to Pwic'})
 
     async def _handleOutput(self: object, request: web.Request, name: str, pwic: object) -> web.Response:
@@ -238,6 +224,8 @@ class PwicServer():
         pwic['env'] = {}
         for row in sql.fetchall():
             (global_, key, value) = (row[0] == '', row[1], row[2])
+            if key in PWIC_ENV_PRIVATE:
+                value = None
             if key not in pwic['env']:
                 pwic['env'][key] = {'value': value,
                                     'global': global_}
@@ -245,10 +233,13 @@ class PwicServer():
                     pwic['env'][key + '_str'] = {'value': _size2str(_int(value)),
                                                  'global': global_}
 
+        # Session
+        session = await get_session(request)
+        pwic['session'] = {'user_secret': session.get('user_secret', None)}
+
         # Render the template
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
-        session = await get_session(request)
         pwic['language'] = session.get('language', PWIC_DEFAULT_LANGUAGE)
         template_name = '%s/%s.html' % (pwic['language'], name)
         if (pwic['language'] != PWIC_DEFAULT_LANGUAGE) and not isfile(PWIC_TEMPLATES_PATH + template_name):
@@ -446,13 +437,8 @@ class PwicServer():
                 sql.execute(''' SELECT user, admin, manager, editor, validator, reader, disabled
                                 FROM roles
                                 WHERE project = ?
-                                ORDER BY disabled  DESC,
-                                         admin     DESC,
-                                         manager   DESC,
-                                         editor    DESC,
-                                         validator DESC,
-                                         reader    DESC,
-                                         user      ASC''',
+                                ORDER BY disabled DESC,
+                                         user     ASC''',
                             (project, ))
                 pwic['admins'] = []
                 pwic['managers'] = []
@@ -560,7 +546,7 @@ class PwicServer():
                                               'page': row[2],
                                               'filename': row[3],
                                               'mime': row[4],
-                                              'mime_icon': self._mime2icon(row[4]),
+                                              'mime_icon': _mime2icon(row[4]),
                                               'size': _size2str(row[5]),
                                               'hash': row[6],
                                               'author': row[7],
@@ -765,14 +751,14 @@ class PwicServer():
         # Fetch the information of the user
         sql = app['sql'].cursor()
         userpage = _safeName(request.match_info.get('userpage', None), extra='')
-        sql.execute('SELECT initial FROM users WHERE user = ?', (userpage, ))
-        row = sql.fetchone()
+        row = sql.execute('SELECT password, initial FROM users WHERE user = ?', (userpage, )).fetchone()
         if row is None:
             raise web.HTTPNotFound()
         pwic = {'title': 'User profile',
                 'user': user,
                 'userpage': userpage,
-                'initial_password': _xb(row[0]),
+                'password_oauth': row[0] == PWIC_MAGIC_OAUTH,
+                'password_initial': _xb(row[1]),
                 'projects': [],
                 'documents': [],
                 'pages': []}
@@ -819,7 +805,7 @@ class PwicServer():
                                       'page': row[2],
                                       'filename': row[3],
                                       'mime': row[4],
-                                      'mime_icon': self._mime2icon(row[4]),
+                                      'mime_icon': _mime2icon(row[4]),
                                       'size': _size2str(row[5]),
                                       'hash': row[6],
                                       'author': row[7],
@@ -1026,7 +1012,7 @@ class PwicServer():
                                       'page': row[2],
                                       'filename': row[3],
                                       'mime': row[4],
-                                      'mime_icon': self._mime2icon(row[4]),
+                                      'mime_icon': _mime2icon(row[4]),
                                       'size': _size2str(row[5]),
                                       'author': row[6],
                                       'date': row[7],
@@ -1388,7 +1374,7 @@ class PwicServer():
         # Return the file
         content = inmemory.getvalue()
         inmemory.close()
-        return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'attachment; filename="%s"' % self._attachmentName(project + '.zip')}))
+        return web.Response(body=content, headers=MultiDict({'Content-Disposition': 'attachment; filename="%s"' % _attachmentName(project + '.zip')}))
 
     async def document_get(self: object, request: web.Request) -> web.Response:
         ''' Download a document '''
@@ -1424,7 +1410,7 @@ class PwicServer():
         headers = {'Content-Type': row[2],
                    'Content-Length': str(row[3])}
         if request.rel_url.query.get('attachment', None) is not None:
-            headers['Content-Disposition'] = 'attachment; filename="%s"' % self._attachmentName(row[1])
+            headers['Content-Disposition'] = 'attachment; filename="%s"' % _attachmentName(row[1])
         return web.Response(body=content, headers=MultiDict(headers))
 
     async def api_logon(self: object, request: web.Request) -> web.Response:
@@ -1488,6 +1474,181 @@ class PwicServer():
         session.invalidate()
         return await self._handleOutput(request, 'logout', {'title': 'Disconnected from Pwic'})
 
+    async def api_oauth(self: object, request: web.Request) -> web.Response:
+        ''' Manage the federated authentication '''
+
+        def _oauth_failed():
+            raise web.HTTPTemporaryRedirect('/?failed')
+
+        def _fetch_token(url, query):
+            try:
+                response = urlopen(Request(url,
+                                           urlencode(query).encode(),
+                                           method='POST',
+                                           headers={'Accept': 'application/json'}))
+                data = response.read()
+                data = data.decode(response.info().get_content_charset())
+                data = json.loads(data)
+                token = data.get('access_token', None)
+                if token is None:
+                    raise Exception()
+                return data.get('token_type', 'Bearer'), token
+            except Exception:
+                _oauth_failed()
+
+        def _call_api(url, token_type, token):
+            try:
+                response = urlopen(Request(url, headers={'Authorization': '%s %s' % (token_type, token)}))
+                data = response.read()
+                data = data.decode(response.info().get_content_charset())
+                data = json.loads(data)
+                if data is None:
+                    raise Exception()
+                return data
+            except Exception:
+                _oauth_failed()
+
+        # Checks
+        if app['no_logon']:
+            raise web.HTTPBadRequest()
+        self._checkIP(request)
+
+        # Get the callback parameters
+        error = request.rel_url.query.get('error', '')
+        code = request.rel_url.query.get('code', None)
+        state = request.rel_url.query.get('state', None)
+        if (error != '') or (None in [code, state]):
+            _oauth_failed()
+
+        # Check the state
+        session = await get_session(request)
+        state_current = session.get('user_secret', '')
+        if state != state_current:
+            session['user_secret'] = _randomHash()
+            _oauth_failed()
+
+        # Call the provider
+        sql = app['sql'].cursor()
+        oauth = app['oauth']
+        no_domain = (len(oauth['domains']) == 0)
+        emails = []
+        if oauth['provider'] == 'github':
+            # Fetch an authentication token
+            query = {'client_id': oauth['identifier'],
+                     'client_secret': oauth['server_secret'],
+                     'code': code,
+                     'state': state}
+            _, token = _fetch_token('https://github.com/login/oauth/access_token', query)
+
+            # Fetch the emails of the user
+            data = _call_api('https://api.github.com/user/emails', 'token', token)
+            for entry in data:
+                if entry.get('verified', False) is True:
+                    if no_domain and not entry.get('primary', False):   # If the domain is not verified, only the primary email is targeted
+                        continue
+                    item = entry.get('email', '')
+                    if '@' in item:
+                        emails.append(item.strip().lower())
+                        if no_domain:                                   # If the domain is not verified, the primary email is found
+                            break
+
+        elif oauth['provider'] == 'google':
+            # Fetch an authentication token
+            query = {'client_id': oauth['identifier'],
+                     'grant_type': 'authorization_code',
+                     'code': code,
+                     'redirect_uri': self._readEnv(sql, '', 'base_url', '') + '/api/oauth',
+                     'client_secret': oauth['server_secret']}
+            token_type, token = _fetch_token('https://oauth2.googleapis.com/token', query)
+
+            # Fetch the email of the user
+            data = _call_api('https://www.googleapis.com/userinfo/v2/me', token_type, token)
+            if data.get('verified_email', False) is True:
+                item = data.get('email', '').strip().lower()
+                if '@' in item and '+' not in item:
+                    emails.append(item)
+
+        elif oauth['provider'] == 'microsoft':
+            # Fetch an authentication token
+            query = {'client_id': oauth['identifier'],
+                     'grant_type': 'authorization_code',
+                     'scope': 'https://graph.microsoft.com/user.read',
+                     'code': code,
+                     'redirect_uri': self._readEnv(sql, '', 'base_url', '') + '/api/oauth',
+                     'client_secret': oauth['server_secret']}
+            token_type, token = _fetch_token('https://login.microsoftonline.com/%s/oauth2/v2.0/token' % oauth['tenant'], query)
+
+            # Fetch the email of the user
+            data = _call_api('https://graph.microsoft.com/v1.0/me/', token_type, token)
+            item = data.get('mail', '').strip().lower()
+            if '@' in item:
+                emails.append(item)
+
+        else:
+            raise web.HTTPNotImplemented()
+
+        # Select the authorized email
+        if len(emails) == 0:
+            _oauth_failed()
+        if no_domain:
+            user = emails[0]
+        else:
+            user = ''
+            cursor = len(oauth['domains'])
+            for item in emails:
+                domain = item[item.find('@') + 1:]
+                try:
+                    index = oauth['domains'].index(domain)
+                except ValueError:
+                    continue
+                if index < cursor:
+                    user = item
+                    cursor = index
+        user = _safeName(user, extra='')
+        if user[:4] in ['', 'pwic']:
+            _oauth_failed()
+        assert('@' in user)
+
+        # Create the default user account
+        if sql.execute('SELECT 1 FROM users WHERE user = ?', (user, )).fetchone() is None:
+            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, ?, '')", (user, PWIC_MAGIC_OAUTH))
+            # Remarks:
+            # - PWIC_DEFAULT_PASSWORD is not set because the user will forget to change it
+            # - The user cannot change the internal password because the current password will not be hashed correctly
+            # - The password can be reset from the administration console only
+            # - Then the two authentications methods can coexist
+            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                             'event': 'create-user',
+                             'user': user,
+                             'string': PWIC_MAGIC_OAUTH},
+                       request)
+
+            # Grant the default rights as reader
+            for project in oauth['projects']:
+                if sql.execute('SELECT 1 FROM projects WHERE project = ?', (project, )).fetchone() is not None:
+                    sql.execute("INSERT INTO roles (project, user, reader) VALUES (?, ?, 'X')", (project, user))
+                    if sql.rowcount > 0:
+                        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                                         'event': 'grant-reader',
+                                         'project': project,
+                                         'user': user,
+                                         'string': PWIC_MAGIC_OAUTH},
+                                   request)
+
+        # Register the session
+        session = await new_session(request)
+        session['user'] = user
+        session['language'] = PWIC_DEFAULT_LANGUAGE  # TODO The language is not selectable
+        session['user_secret'] = _randomHash()
+        pwic_audit(sql, {'author': user,
+                         'event': 'logon',
+                         'string': PWIC_MAGIC_OAUTH},
+                   request)
+        self._commit()
+
+        # Final redirection (do not use "raise")
+        return web.HTTPFound('/')
+
     async def api_server_env_get(self: object, request: web.Request) -> web.Response:
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
@@ -1523,6 +1684,8 @@ class PwicServer():
         data = {}
         for row in sql.fetchall():
             (global_, key, value) = (row[0] == '', row[1], row[2])
+            if key in PWIC_ENV_PRIVATE:
+                value = None
             if key not in data:
                 data[key] = {'value': value,
                              'global': global_}
@@ -1674,7 +1837,8 @@ class PwicServer():
         pwic_audit(sql, {'author': user,
                          'event': '%sset-%s' % ('un' if value == '' else '', key),
                          'project': project,
-                         'string': value})
+                         'string': value},
+                   request)
         self._commit()
         raise web.HTTPOk()
 
@@ -2273,7 +2437,7 @@ class PwicServer():
         dt = _dt()
         baseUrl = self._readEnv(sql, '', 'base_url', '')
         pageUrl = '%s/%s/%s/rev%d' % (baseUrl, project, page, row[0])
-        endname = self._attachmentName('%s_%s_rev%d.%s' % (project, page, row[0], format))
+        endname = _attachmentName('%s_%s_rev%d.%s' % (project, page, row[0], format))
 
         # Fetch the legal notice
         legal_notice = self._readEnv(sql, project, 'legal_notice', '').strip()
@@ -2844,7 +3008,7 @@ class PwicServer():
             result.append({'id': row[0],
                            'filename': row[1],
                            'mime': row[2],
-                           'mime_icon': self._mime2icon(row[2]),
+                           'mime_icon': _mime2icon(row[2]),
                            'size': _size2str(row[3]),
                            'hash': row[4],
                            'author': row[5],
@@ -2959,6 +3123,7 @@ def main() -> bool:
     app.router.add_static('/static/', path='./static/', append_version=False)
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
                     web.get('/api/logout', app['pwic'].api_logout),
+                    web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/project/info/get', app['pwic'].api_project_info_get),
@@ -3024,8 +3189,14 @@ def main() -> bool:
         for route in list(app.router.routes()):
             app['cors'].add(route)
 
-    # No logon
+    # General options of the server
     app['no_logon'] = app['pwic']._readEnv(sql, '', 'no_logon') is not None
+    app['oauth'] = {'provider': app['pwic']._readEnv(sql, '', 'oauth_provider', None),
+                    'tenant': app['pwic']._readEnv(sql, '', 'oauth_tenant', ''),
+                    'identifier': app['pwic']._readEnv(sql, '', 'oauth_identifier', ''),
+                    'server_secret': app['pwic']._readEnv(sql, '', 'oauth_secret', ''),
+                    'domains': _list(app['pwic']._readEnv(sql, '', 'oauth_domains')),
+                    'projects': _list(app['pwic']._readEnv(sql, '', 'oauth_projects'))}
 
     # Compile the IP filters
     def _compile_ip():

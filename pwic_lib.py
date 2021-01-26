@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 import re
+from collections import OrderedDict
 import datetime
+from os import urandom
 from hashlib import sha256
+from base64 import b64encode
 from html import escape
 from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
@@ -39,7 +42,8 @@ PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                  
 PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                                     # Find a HTML tag
 
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_format', 'ip_filter', 'maintenance',
-                                'mime_enforcement', 'no_logon', 'password_regex', 'safe_mode', 'ssl', 'xff']
+                                'mime_enforcement', 'no_logon', 'oauth_domains', 'oauth_identifier', 'oauth_provider',
+                                'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'css', 'css_dark', 'dark_mode', 'disabled_formats',
                               'document_name_regex', 'export_project_revisions', 'heading_mask', 'kbid',
                               'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'no_export_project',
@@ -50,6 +54,7 @@ PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'dark_mode', 'disabled_forma
                                      'no_history', 'no_mde', 'no_printing', 'no_search', 'no_text_selection',
                                      'odt_page_height', 'odt_page_width', 'support_email', 'support_phone',
                                      'support_text', 'support_url', 'validated_only']
+PWIC_ENV_PRIVATE = ['oauth_secret']
 
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
@@ -76,6 +81,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'help': '&#x1F4DA;',
                'home': '&#x1F3E0;',
                'hourglass': '&#x23F3;',
+               'id': '&#x1F194;',
                'image': '&#x1F4F8;',                # 1F5BC
                'inbox': '&#x1F4E5;',
                'key': '&#x1F511;',
@@ -110,6 +116,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'wave': '&#x1F30A;',
                'world': '&#x1F5FA;'}
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
+PWIC_MAGIC_OAUTH = 'OAuth'
 
 
 # ===================================================
@@ -260,12 +267,9 @@ def _xb(value: str) -> bool:
     return value == 'X'
 
 
-def _int(value: str) -> int:
-    ''' Safe conversion to integer '''
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return 0
+def _attachmentName(name: str) -> str:
+    ''' Return the file name for a proper download '''
+    return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
 
 def _dt(drange: int = 0) -> object:
@@ -278,7 +282,43 @@ def _dt(drange: int = 0) -> object:
             'time': dts[11:19]}
 
 
+def _int(value: str) -> int:
+    ''' Safe conversion to integer '''
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return 0
+
+
+def _list(input: str, separator: str = ' ') -> str:
+    ''' Build a list of unique values from a string and keep the initial order '''
+    if input is None:
+        input = ''
+    input = _recursiveReplace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
+    return [] if input == '' else list(OrderedDict((item, None) for item in input.split(separator)))
+
+
+def _mime2icon(mime: str) -> str:
+    ''' Return the emoji that corresponds to the MIME '''
+    if mime[:6] == 'image/':
+        return PWIC_EMOJIS['image']
+    elif mime[:6] == 'video/':
+        return PWIC_EMOJIS['camera']
+    elif mime[:6] == 'audio/':
+        return PWIC_EMOJIS['headphone']
+    elif mime[:12] == 'application/':
+        return PWIC_EMOJIS['server']
+    else:
+        return PWIC_EMOJIS['sheet']
+
+
+def _randomHash() -> str:
+    ''' Generate a random 64-char-long string '''
+    return _sha256(str(urandom(64)))[:32] + _sha256(str(urandom(64)))[32:]
+
+
 def _recursiveReplace(text: str, search: str, replace: str) -> str:
+    ''' Replace a string recursively '''
     while True:
         curlen = len(text)
         text = text.replace(search, replace)
@@ -298,6 +338,7 @@ def _sha256(value: str, salt: bool = True) -> str:
 
 
 def _safeName(name: str, extra: str = '.@') -> str:
+    ''' Ensure that a string will not collide with the reserved characters of the operating system '''
     chars = PWIC_CHARS_UNSAFE + extra
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
@@ -305,6 +346,7 @@ def _safeName(name: str, extra: str = '.@') -> str:
 
 
 def _safeFileName(name: str) -> str:
+    ''' Ensure that a file name is acceptable '''
     name = _safeName(name, extra='').replace(' ', '_')
     while True:
         curlen = len(name)

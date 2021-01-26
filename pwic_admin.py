@@ -14,7 +14,7 @@ from stat import S_IREAD
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, \
     PWIC_USER_ANONYMOUS, PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    _dt, _sha256, _safeName, pwic_audit
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _sha256, _safeName, pwic_audit
 
 
 db = None
@@ -61,6 +61,7 @@ def main() -> bool:
 
     spb = subparsers.add_parser('reset-password', help='Reset the password of a user')
     spb.add_argument('user', default='', help='User name')
+    spb.add_argument('--oauth', action='store_true', help='Force the federated authentication')
 
     spb = subparsers.add_parser('revoke-user', help='Revoke a user')
     spb.add_argument('user', default='', help='User name')
@@ -104,7 +105,7 @@ def main() -> bool:
     elif args.command == 'create-user':
         return create_user(args.user)
     elif args.command == 'reset-password':
-        return reset_password(args.user)
+        return reset_password(args.user, args.oauth)
     elif args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
     elif args.command == 'show-logon':
@@ -400,7 +401,8 @@ def show_env(var: str = '') -> bool:
     tab.header = True
     tab.border = True
     for row in sql.fetchall():
-        tab.add_row([row[0], row[1], row[2]])
+        value = '(Secret value not displayed)' if row[1] in PWIC_ENV_PRIVATE else row[2]
+        tab.add_row([row[0], row[1], value])
         found = True
     if found:
         print('\nGlobal and project-dependent Pwic variables:\n')
@@ -450,7 +452,7 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': '%sset-%s' % ('un' if value == '' else '', key),
                      'project': project,
-                     'string': value})
+                     'string': '' if key in PWIC_ENV_PRIVATE else value})
     db_commit()
     if project != '':
         print('Variable updated for the project "%s"' % project)
@@ -759,50 +761,60 @@ def create_user(user: str) -> bool:
     return True
 
 
-def reset_password(user: str) -> bool:
+def reset_password(user: str, oauth: bool) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
         return False
 
-    # Check if the user is administrator
+    # Warn if the user is an administrator
     user = _safeName(user, extra='')
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
-    sql.execute(''' SELECT COUNT(*) AS total
-                    FROM roles
-                    WHERE user  = ?
-                      AND admin = 'X' ''',
-                (user, ))
-    if sql.fetchone()[0] > 0:
-        print("The user '%s' has administrative rights on some projects." % user)
-        print("For that reason, you must provide a manual password.")
-        print("Type the new temporary password with 8 characters at least: ", end='')
-        pwd = input()
+    if sql.execute(''' SELECT user
+                       FROM roles
+                       WHERE user  = ?
+                         AND admin = 'X'
+                       LIMIT 1''',
+                   (user, )).fetchone() is not None:
+        print("The user '%s' has administrative rights on some projects" % user)
+
+    # Ask for a new password
+    if oauth:
+        if '@' not in user:
+            print('Error: the user account is not an email')
+            return False
+        print('The user must use the federated authentication to log in')
+        pwd = PWIC_MAGIC_OAUTH
+        initial = ''
+    else:
+        print('Type the new temporary password with 8 characters at least: ', end='')
+        pwd = input().strip()
         if len(pwd) < 8:
             print('Error: password too short')
             return False
-    else:
-        pwd = PWIC_DEFAULT_PASSWORD
+        pwd = _sha256(pwd)
+        initial = 'X'
 
     # Reset the password with no rights takedown else some projects may loose their administrators
     ok = False
     sql.execute(''' UPDATE users
                     SET password = ?,
-                        initial  = 'X'
+                        initial  = ?
                     WHERE user = ?''',
-                (_sha256(pwd), user))
+                (pwd, initial, user))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                          'event': 'reset-password',
-                         'user': user})
+                         'user': user,
+                         'string': PWIC_MAGIC_OAUTH if pwd == PWIC_MAGIC_OAUTH else ''})
         db_commit()
         ok = True
     if not ok:
         print('Error: unknown user')
     else:
-        print('The user "%s" has the new temporary password "%s"' % (user, pwd))
+        print('The password has been changed for the user "%s"' % (user, ))
     return ok
 
 

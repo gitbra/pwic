@@ -67,20 +67,13 @@ Who can do the most can do the least!
 
 - Multi-projects with dedicated user authorizations
 - Global and project-dependent settings
+- OAuth2-based federated authentication with control of the state
 - Management of the attached documents by name, mime and size
 - Private and public modes
 - Custom CSS and templates
 - Export of a project to Markdown and HTML
 - Traceable activities
 - API and command line to automate the classical operations
-
-## Future ideas
-
-The following features are **not** available yet:
-
-- Internationalization through GetText
-- Authentication with SAML/oAuth
-- IP logon
 
 
 ## Install
@@ -118,7 +111,7 @@ Please use the issue tracker on Github to ask questions, report bugs or request 
 ## Licenses
 
 Proprietary software
-Copyright (C) Alexandre Bréard, 2020
+Copyright (C) Alexandre Bréard, 2020-2021
 
 - [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License

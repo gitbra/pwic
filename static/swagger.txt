@@ -73,6 +73,29 @@ paths:
       responses:
         200:
           description: Resulting page
+  /api/oauth:
+    get:
+      summary: Connect through a third-party identity provider
+      description: This path is used for the technical implementation of the OAuth protocol. You should not call it voluntarily.
+      tags:
+        - connection
+      consumes:
+        - application/json
+      parameters:
+        description: The parameters are fed by the third-party identity provider automatically
+      responses:
+        200:
+          description: Successful logon
+        302:
+          description: Successful logon
+        307:
+          description: Redirection with the parameter ?failed if the credentials were rejected
+        400:
+          description: Logon is disabled
+        401:
+          description: Unsufficient authorizations
+        501:
+          description: Invalid OAuth provider
   /api/document/create:
     post:
       summary: Attach a document to a page
@@ -595,6 +618,8 @@ paths:
       responses:
         200:
           description: Successful operation
+          schema:
+            description: The values equal to null correspond to the protected variables
         401:
           description: Unsufficient authorizations, or not found
   /api/server/ping:

@@ -16,6 +16,49 @@
 		return true;
 	}
 
+{% if pwic.env.oauth_provider %}
+	function logon_oauth() {
+		{% if pwic.env.oauth_provider.value == 'github' %}
+			window.location = 'https://github.com/login/oauth/authorize' +
+								'?client_id={{pwic.env.oauth_identifier.value|urlencode}}' +
+								'&redirect_uri=' + encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
+								'&login=' + encodeURIComponent($('#logon_user').val()) +
+								'&scope=user%3Aemail' +
+								'&state={{pwic.session.user_secret|urlencode}}' +
+								'&allow_signup=false';
+
+		{% elif pwic.env.oauth_provider.value == 'google' %}
+			window.location = 'https://accounts.google.com/o/oauth2/v2/auth' +
+								'?client_id={{pwic.env.oauth_identifier.value|urlencode}}' +
+								'&redirect_uri=' + encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
+								'&scope=' + encodeURIComponent('https://www.googleapis.com/auth/userinfo.email') +
+								'&access_type=online' +
+								'&state={{pwic.session.user_secret|urlencode}}' +
+								'&login_hint=' + encodeURIComponent($('#logon_user').val()) +
+								'&response_type=code';
+
+		{% elif pwic.env.oauth_provider.value == 'microsoft' %}
+			var url = 'https://login.microsoftonline.com/{{pwic.env.oauth_tenant.value|urlencode}}/oauth2/v2.0/authorize?' +
+						'?client_id={{pwic.env.oauth_identifier.value|urlencode}}' +
+						'&response_type=code' +
+						'&redirect_uri=' + encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
+						'&scope=' + encodeURIComponent('https://graph.microsoft.com/user.read') +
+						'&response_mode=query' +
+						'&state={{pwic.session.user_secret|urlencode}}' +
+						'&login_hint=' + encodeURIComponent($('#logon_user').val());
+			{% if pwic.env.oauth_domains %}
+				var main = '{{pwic.env.oauth_domains.value|escape}}'.trim().split(' ')[0];
+				if (main.length > 0)
+					url += '&domain_hint=' + main;
+			{% endif %}
+			window.location = url;
+
+		{% else %}
+			throw 'Internal error - Invalid OAuth provider';
+		{% endif %}
+	}
+{% endif %}
+
 	if (window.fetch)
 		$('#logon_js').addClass('pwic_hidden');
 </script>

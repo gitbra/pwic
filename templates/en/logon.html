@@ -32,7 +32,10 @@
 				</p>
 				<p>
 					<input type="submit" value="{{pwic.emojis.plug}} Log on" />
-					<input type="button" value="{{pwic.emojis.alien}} Anonymous logon" onclick="logon_anonymous()"/>
+					<input type="button" value="{{pwic.emojis.alien}} Anonymous logon" onclick="logon_anonymous()" />
+					{% if pwic.env.oauth_provider %}
+						<input type="button" value="{{pwic.emojis.id}} Federated logon" onclick="logon_oauth()" />
+					{% endif %}
 				</p>
 			</form>
 		{% endif %}
