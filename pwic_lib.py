@@ -787,6 +787,8 @@ class pwic_html2odt(HTMLParser):
                                                     if docid is not None:
                                                         docid = _int(docid.group(1))
                                                         if docid in self.pictMeta:
+                                                            if self.pictMeta[docid]['link'] == value:
+                                                                value = self.pictMeta[docid]['link_odt_img']
                                                             self._replace_marker('{$w}', self.pictMeta[docid]['width'])
                                                             self._replace_marker('{$h}', self.pictMeta[docid]['height'])
 

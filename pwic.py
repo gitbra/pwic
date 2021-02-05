@@ -2512,8 +2512,9 @@ class PwicServer():
                         w, h = 50, 50  # Default area
                     pictMeta[rowdoc[0]] = {'filename': fn,
                                            'link': 'special/document/%d' % rowdoc[0],
+                                           'link_odt_img': 'special/document_%d' % rowdoc[0],  # LibreOffice does not support the paths with multiple folders
                                            'uncompressed': rowdoc[4] in [MIME_BMP, MIME_SVG],
-                                           'manifest': '<manifest:file-entry manifest:full-path="special/document/%d" manifest:media-type="%s" />' % (rowdoc[0], rowdoc[4]),
+                                           'manifest': '<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc[0], rowdoc[4]),
                                            'width': _int(w),
                                            'height': _int(h)}
 
@@ -2538,9 +2539,9 @@ class PwicServer():
                 with open(meta['filename'], 'rb') as f:
                     content = f.read()
                 if meta['uncompressed']:
-                    odt.writestr(meta['link'], content)
+                    odt.writestr(meta['link_odt_img'], content)
                 else:
-                    odt.writestr(meta['link'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
+                    odt.writestr(meta['link_odt_img'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
                 del content
                 attachments += '%s\n' % meta['manifest']
             odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', attachments))
