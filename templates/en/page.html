@@ -51,7 +51,7 @@
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 			{% endif %}
 
-			<a href="#" onclick="page_email()">{{pwic.emojis.outbox}} Email</a>
+			<a href="#" onclick="page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
 			{% if not pwic.env.no_printing %}
 				<a href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}

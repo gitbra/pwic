@@ -1037,9 +1037,10 @@ class PwicServer():
         sql = app['sql'].cursor()
         if sql.execute(''' SELECT user
                            FROM roles
-                           WHERE project = ?
-                             AND user    = ?
-                             AND admin   = 'X' ''',
+                           WHERE project  = ?
+                             AND user     = ?
+                             AND admin    = 'X'
+                             AND disabled = '' ''',
                        (project, user)).fetchone() is None:
             raise web.HTTPUnauthorized()
 
@@ -1729,7 +1730,8 @@ class PwicServer():
                               AND manager   = ''
                               AND editor    = ''
                               AND validator = ''
-                              AND reader    = 'X' ''',
+                              AND reader    = 'X'
+                              AND disabled  = '' ''',
                         (project, user))
             if sql.fetchone() is not None:
                 raise web.HTTPForbidden()
@@ -1823,9 +1825,10 @@ class PwicServer():
         sql = app['sql'].cursor()
         if sql.execute(''' SELECT user
                            FROM roles
-                           WHERE project = ?
-                             AND user    = ?
-                             AND admin   = 'X' ''',
+                           WHERE project  = ?
+                             AND user     = ?
+                             AND admin    = 'X'
+                             AND disabled = '' ''',
                        (project, user)).fetchone() is None:
             raise web.HTTPUnauthorized()
 
@@ -2632,7 +2635,8 @@ class PwicServer():
         # Verify that the user is administrator of the provided project
         ok = False
         sql = app['sql'].cursor()
-        sql.execute(''' SELECT user FROM roles
+        sql.execute(''' SELECT user
+                        FROM roles
                         WHERE project  = ?
                           AND user     = ?
                           AND admin    = 'X'

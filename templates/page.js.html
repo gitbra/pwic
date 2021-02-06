@@ -7,8 +7,16 @@
 		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
 	}
 
-	function page_email() {
-		window.location = "mailto:?subject={{pwic.title|urlencode}}&body="+encodeURIComponent('\n\n'+window.location);
+	function page_email(draft_msg) {
+		{% if pwic.draft %}
+			if (confirm(draft_msg))
+		{% endif %}
+		{
+			var url = window.location.toString();
+			if (url.endsWith('#'))
+				url = url.substring(0, url.length - 1);
+			window.location = "mailto:?subject={{pwic.title|urlencode}}&body="+encodeURIComponent('\n\n'+url);
+		}
 		return false;
 	}
 

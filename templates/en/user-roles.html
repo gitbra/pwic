@@ -15,6 +15,8 @@
 			<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
 		</p>
 
+		<p class="pwic_italic">Reminder: the password of a user must be changed before his roles can be changed.</p>
+
 		<table class="pwic_zebra">
 			<tr>
 				<th>User</th>
@@ -37,6 +39,8 @@
 							<span title="Special account">{{pwic.emojis.star}}</span>
 						{% elif role.initial %}
 							<span title="The user must change its password">{{pwic.emojis.unlocked}}</span>
+						{% else %}
+							{{pwic.emojis.green_check}}
 						{% endif %}
 					</td>
 					<td>
