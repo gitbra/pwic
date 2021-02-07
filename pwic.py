@@ -233,6 +233,22 @@ class PwicServer():
                     pwic['env'][key + '_str'] = {'value': _size2str(_int(value)),
                                                  'global': global_}
 
+        # Dynamic settings
+        if name == 'page' and 'no_index_rev' in pwic['env'] and not pwic['latest']:
+            robots = _list(pwic['env'].get('robots', {'value': ''})['value'].lower().replace(',', ' '))
+            if 'archive' in robots:
+                robots.remove('archive')
+            if 'noarchive' not in robots:
+                robots.append('noarchive')
+            if 'index' in robots:
+                robots.remove('index')
+            if 'noindex' not in robots:
+                robots.append('noindex')
+            if 'robots' not in pwic['env']:
+                pwic['env']['robots'] = {'value': '',
+                                         'global': True}
+            pwic['env']['robots']['value'] = ', '.join(robots)
+
         # Session
         session = await get_session(request)
         pwic['session'] = {'user_secret': session.get('user_secret', None)}

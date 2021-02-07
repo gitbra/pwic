@@ -206,6 +206,12 @@
 						<td>Disable the ability to see the revisions of a page (a fortiori to access one of its revisions explicitly) when the user is a pure reader. In other words, the pure readers only see the latest revision, or the latest validated revision if the option <code>validated_only</code> is used too.</td>
 					</tr>
 					<tr>
+						<td><code>no_index_rev</code></td>
+						<td class="pwic_desktop">Yes</td>
+						<td class="pwic_desktop">No</td>
+						<td>The old revisions of a page are automatically marked as non-indexable for the public search engines. A dynamic rule overrides some values defined in the option <code>robots</code>.</td>
+					</tr>
+					<tr>
 						<td><code>no_logon</code></td>
 						<td class="pwic_desktop">No</td>
 						<td class="pwic_desktop">No</td>
@@ -263,7 +269,10 @@
 						<td><code>robots</code></td>
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">No</td>
-						<td>The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>. The option is technically non-restricting. Several values separated with a coma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.</td>
+						<td>
+							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>.
+							<br/>- The option is technically non-restricting. Several values separated with a comma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.
+							<br/>- Refer also to the related option <code>no_index_rev</code>.</td>
 					</tr>
 					<tr>
 						<td><code>safe_mode</code></td>
@@ -362,7 +371,7 @@
 				</tr>
 				<tr>
 					<td><code>oauth_secret</code></td>
-					<td>Secret password that Pwic should use to connect to the third-party identity provider. The saved value is protected in Pwic.</td>
+					<td>Secret password that Pwic should use to connect to the third-party identity provider. The saved value is protected in Pwic against its public exposure.</td>
 					<td>Yes</td>
 					<td>Yes</td>
 					<td>Yes</td>
