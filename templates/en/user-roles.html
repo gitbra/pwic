@@ -37,6 +37,8 @@
 					<td>
 						{% if role.user[:4] == 'pwic' %}
 							<span title="Special account">{{pwic.emojis.star}}</span>
+						{% elif role.oauth %}
+							<span title="Federated authentication">{{pwic.emojis.id}}</span>
 						{% elif role.initial %}
 							<span title="The user must change its password">{{pwic.emojis.unlocked}}</span>
 						{% else %}

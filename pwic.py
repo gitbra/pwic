@@ -28,7 +28,8 @@ from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH,
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, \
     PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
     MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
-    _x, _xb, _attachmentName, _dt, _int, _list, _mime2icon, _randomHash, _sha256, _safeName, _safeFileName, _size2str, _sqlprint, \
+    _x, _xb, _apostrophe, _attachmentName, _dt, _int, _list, _mime2icon, _randomHash, _sha256, _safeName, \
+    _safeFileName, _size2str, _sqlprint, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -533,7 +534,8 @@ class PwicServer():
                 tags = ''
                 for row in sql.fetchall():
                     tags += ' ' + row[0]
-                pwic['tags'] = sorted(list(set(tags.strip().split(' '))))
+                tags = tags.strip()
+                pwic['tags'] = [] if tags == '' else sorted(_list(tags))
 
                 # Fetch the documents of the project
                 sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
@@ -1084,8 +1086,8 @@ class PwicServer():
                 'roles': []}
 
         # Fetch the roles
-        sql.execute(''' SELECT a.user, c.initial, a.admin, a.manager,
-                               a.editor, a.validator, a.reader, a.disabled
+        sql.execute(''' SELECT a.user, c.initial, c.password == '%s',
+                               a.admin, a.manager, a.editor, a.validator, a.reader, a.disabled
                         FROM roles AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
@@ -1093,19 +1095,20 @@ class PwicServer():
                                 AND b.admin    = 'X'
                                 AND b.disabled = ''
                             INNER JOIN users AS c
-                                ON  c.user    = a.user
+                                ON  c.user = a.user
                         WHERE a.project = ?
-                        ORDER BY a.user''',
+                        ORDER BY a.user''' % _apostrophe(PWIC_MAGIC_OAUTH),
                     (user, project))
         for row in sql.fetchall():
             pwic['roles'].append({'user': row[0],
                                   'initial': _xb(row[1]),
-                                  'admin': _xb(row[2]),
-                                  'manager': _xb(row[3]),
-                                  'editor': _xb(row[4]),
-                                  'validator': _xb(row[5]),
-                                  'reader': _xb(row[6]),
-                                  'disabled': _xb(row[7])})
+                                  'oauth': row[2] == 1,
+                                  'admin': _xb(row[3]),
+                                  'manager': _xb(row[4]),
+                                  'editor': _xb(row[5]),
+                                  'validator': _xb(row[6]),
+                                  'reader': _xb(row[7]),
+                                  'disabled': _xb(row[8])})
 
         # Display the page
         if len(pwic['roles']) == 0:
@@ -2127,9 +2130,9 @@ class PwicServer():
         # Handle the creation of the page
         dt = _dt()
         revision = 1
-        sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, tags, comment, milestone)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision, user, dt['date'], dt['time'], page, default_markdown,
+        sql.execute(''' INSERT INTO pages (project, page, revision, latest, author, date, time, title, markdown, tags, comment, milestone)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (project, page, revision, 'X', user, dt['date'], dt['time'], page, default_markdown,
                      self._sanitizeTags(tags + ' ' + default_tags), 'Initial', milestone))
         assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': user,

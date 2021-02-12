@@ -267,6 +267,11 @@ def _xb(value: str) -> bool:
     return value == 'X'
 
 
+def _apostrophe(value: str) -> str:
+    ''' Escape a string to prepare an SQL query '''
+    return '' if value is None else value.replace("'", "\\'")
+
+
 def _attachmentName(name: str) -> str:
     ''' Return the file name for a proper download '''
     return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())

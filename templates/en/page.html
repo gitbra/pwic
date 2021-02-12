@@ -106,7 +106,11 @@
 		{% if pwic.tags|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for tag in pwic.tags %}
-					<a href="/{{pwic.project|urlencode}}/special/search?q=%23{{tag|urlencode}}" title="Search for related classified pages">#{{tag|escape}}</a>
+					{% if pwic.env.no_search %}
+						<a href="#" onclick="return false">#{{tag|escape}}</a>
+					{% else %}
+						<a href="/{{pwic.project|urlencode}}/special/search?q=%23{{tag|urlencode}}" title="Search for related classified pages">#{{tag|escape}}</a>
+					{% endif %}
 				{% endfor %}
 			</div>
 		{% endif %}

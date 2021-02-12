@@ -52,7 +52,7 @@
 	}
 
 	function edit_prepend(tag) {
-		var	ta = $('edit_markdown')[0],
+		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 		if (ss > se)
@@ -104,7 +104,7 @@
 		}
 
 		// Apply the text
-		if (easyMDE)
+		if (typeof easyMDE !== 'undefined')
 		{
 			easyMDE.codemirror.replaceSelection(buffer);
 			easyMDE.codemirror.focus();
@@ -160,7 +160,7 @@
 			buffer = '['+filename+'](/special/document/'+id+'?attachment)'
 
 		// Set the value
-		if (easyMDE)
+		if (typeof easyMDE !== 'undefined')
 		{
 			easyMDE.codemirror.replaceSelection(buffer);
 			easyMDE.codemirror.focus();

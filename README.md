@@ -86,6 +86,7 @@ Who can do the most can do the least!
 - Make sure that the subfolder `db/` is writable
 - Initialize the SQLite database: `python pwic_admin.py init-db`
 - Create a new project: `python pwic_admin.py create-project --help`
+	- The default password of the users is `initial` as defined in `PWIC_DEFAULT_PASSWORD`.
 - Define the global and project-dependent variables, at least `base_url`: `python pwic_admin.py set-env --help` (details available in the help page)
 - Run the server: `python pwic.py`
 	- The bind address and port can be modified in the command line if you need a public exposure for your server

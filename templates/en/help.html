@@ -416,6 +416,7 @@
 		<p>The users are created by default as readers. The default password is predetermined by the general configuration variable <code>PWIC_DEFAULT_PASSWORD</code>.</p>
 		<p>The users must change their password before you can change their authorizations. This ensures that the default password is not hijacked.</p>
 		<p>It is not possible to delete a user account to ensure the consistency of the documentation and the audit tables.</p>
+		<p>With the federated authentication, the user accounts are created automatically. You don't need to create them in advance else two password managements will exist simultaneously. To force the use of OAuth, you must reset the password in the console.</p>
 
 
 		<h1 id="help_pass1"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change own password</h1>
@@ -597,7 +598,7 @@
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp">aiohttp</a></td>
-				<td>3.7.2</td>
+				<td>3.7.3</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>

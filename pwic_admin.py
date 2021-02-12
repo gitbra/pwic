@@ -616,8 +616,8 @@ def create_project(project: str, description: str, admin: str) -> bool:
     sql.execute("INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')", (project, PWIC_USER_ANONYMOUS))
 
     # Add a default homepage
-    sql.execute(''' INSERT INTO pages (project, page, revision, author, date, time, title, markdown, comment)
-                    VALUES (?, ?, 1, ?, ?, ?, "Home page", "Thanks for using Pwic. This is the homepage.", "Initial commit")''',
+    sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
+                    VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using Pwic. This is the homepage.', 'Initial commit')''',
                 (project, PWIC_DEFAULT_PAGE, admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,

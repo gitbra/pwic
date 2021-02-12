@@ -17,7 +17,7 @@
 
 				<p><strong>Tags:</strong> <input id="edit_tags" class="pwic_fill" type="text" name="tags" value="{{pwic.tags|escape}}" title="No hash and separated by a space" /></p>
 
-				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
+				<div id="edit_toolbar" {% if not pwic.env.no_mde %} class="pwic_hidden" {% endif %}>
 					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**')" />
 					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*')" />
 					<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--')" />
@@ -46,7 +46,7 @@
 
 				<textarea id="edit_markdown" name="markdown">{{pwic.markdown|escape}}</textarea>
 
-				{% if pwic.env.mde %}
+				{% if not pwic.env.no_mde %}
 					{% include 'page-edit-easymde.js.html' %}
 				{% endif %}
 
