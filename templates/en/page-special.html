@@ -45,6 +45,7 @@
 				{% endif %}
 				{% if pwic.admin %}
 					<a href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>
+					<a href="/api">{{pwic.emojis.truck}} API</a>
 				{% endif %}
 			</p>
 		{% endif %}
@@ -148,6 +149,9 @@
 
 		{% if (pwic.pages|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 			<h1>All the pages of the project</h1>
+			<p class="pwic_action_bar">
+				<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} Random page</a>
+			</p>
 			<table>
 				<tr>
 					<th>Page</th>

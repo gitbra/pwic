@@ -16,12 +16,12 @@ Who can do the most can do the least!
 - Lightweight user interface illustrated with emojis
 - Dark mode
 - Homogeneous look and feel across the pages
-- Encyclopedic mode to browse the latest (non-)validated revisions only
+- Encyclopedic mode to browse the latest validated revisions only
 - Automatic summary of the page
 - In-text search with inclusion, exclusion, hash tags and special keywords
 - Highlight of the lines of code
 - Export of a page to OpenDocument (*.odt)
-- Export of a page to Markdown
+- Export of a page to Markdown (*.md)
 - Share by link
 - Share by email
 - Internationalization (English only for now)
@@ -68,10 +68,10 @@ Who can do the most can do the least!
 - Multi-projects with dedicated user authorizations
 - Global and project-dependent settings
 - OAuth2-based federated authentication with control of the state
-- Management of the attached documents by name, mime and size
+- Management of the attached documents by name, mime, size and magic bytes
 - Private and public modes
 - Custom CSS and templates
-- Export of a project to Markdown and HTML
+- Export of an entire project to Markdown and HTML
 - Traceable activities
 - API and command line to automate the classical operations
 

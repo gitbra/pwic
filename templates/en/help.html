@@ -88,16 +88,22 @@
 						<td><code>css</code></td>
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">No</td>
-						<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>.</td>
+						<td>Define absolute or relative HTTP locations for additional CSS files separated by <code>;</code>. This applies as a default theme.</td>
 					</tr>
 					<tr>
 						<td><code>css_dark</code></td>
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">No</td>
-						<td>Define absolute or relative HTTP locations for additional CSS files of your choice and separated by <code>;</code>. This applies only if <code>dark_mode</code> is activated.</td>
+						<td>Define absolute or relative HTTP locations for additional CSS files separated by <code>;</code>. This applies as an overlay of the default theme and if <code>dark_theme</code> is activated.</td>
 					</tr>
 					<tr>
-						<td><code>dark_mode</code></td>
+						<td><code>css_printing</code></td>
+						<td class="pwic_desktop">Yes</td>
+						<td class="pwic_desktop">No</td>
+						<td>Define absolute or relative HTTP locations for additional CSS files separated by <code>;</code>. This applies as an overlay of the default theme (the dark theme doesn't apply here) when the user prints the page. This option has no effect on <code>no_printing</code>.</td>
+					</tr>
+					<tr>
+						<td><code>dark_theme</code></td>
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">Yes</td>
 						<td>Enable the dark mode that is less aggressive in terms of brightness.</td>
@@ -664,7 +670,7 @@
 			</tr>
 			<tr>
 				<td><a href="https://github.com/trentm/python-markdown2">Markdown2</a></td>
-				<td>2.3.10 (modified, >=2.3.10)</td>
+				<td>2.4.0 (modified, >=2.3.10)</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/trentm/python-markdown2/master/LICENSE.txt">MIT License</a></td>
 			</tr>

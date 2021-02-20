@@ -20,6 +20,7 @@ from ipaddress import ip_network, ip_address
 from bisect import insort, bisect_left
 from multidict import MultiDict
 from html import escape
+from random import randint
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, \
@@ -60,6 +61,9 @@ IPR_EQ, IPR_NET, IPR_REG = range(3)
 # ===================================================
 
 class PwicServer():
+    def _connect(self: object) -> sqlite3.Cursor:
+        return app['sql'].cursor()
+
     def _commit(self: object) -> None:
         ''' Commit the current transactions '''
         app['sql'].commit()
@@ -213,7 +217,7 @@ class PwicServer():
                              'version': PWIC_VERSION}
 
         # The project-dependent variables have the priority
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT project, key, value
                         FROM env
                         WHERE value <> ''
@@ -282,7 +286,7 @@ class PwicServer():
         dt = _dt()
 
         # Fetch the name of the project...
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if project != '':
             # Verify if the project exists
             sql.execute(''' SELECT description
@@ -592,6 +596,8 @@ class PwicServer():
                               AND latest  = 'X' ''',
                         (project, page))
             row = sql.fetchone()
+            if row is None:
+                raise web.HTTPBadRequest()
             pwic['revision'] = row[0]
             pwic['draft'] = _xb(row[1])
             pwic['final'] = _xb(row[2])
@@ -641,6 +647,40 @@ class PwicServer():
         else:
             raise web.HTTPNotFound()
 
+    async def page_random(self: object, request: web.Request) -> web.Response:
+        ''' Serve a random page '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            return await self._handleLogon(request)
+
+        # Check the authorizations
+        project = _safeName(request.match_info.get('project', ''))
+        sql = self._connect()
+        sql.execute(''' SELECT COUNT(*)
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON  b.project = a.project
+                                AND b.latest  = 'X'
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = '' ''',
+                    (project, user))
+        n = sql.fetchone()[0]
+        if n == 0:
+            raise web.HTTPUnauthorized()
+
+        # Show a random page
+        n = randint(0, n - 1)
+        sql.execute(''' SELECT page
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                        LIMIT 1
+                        OFFSET ?''',
+                    (project, n))
+        raise web.HTTPTemporaryRedirect('/%s/%s' % (project, sql.fetchone()[0]))
+
     async def page_audit(self: object, request: web.Request) -> web.Response:
         ''' Serve the page to monitor the settings and the activty '''
         # Verify that the user is connected
@@ -650,7 +690,7 @@ class PwicServer():
 
         # Fetch the parameters
         project = _safeName(request.match_info.get('project', ''))
-        sql = app['sql'].cursor()
+        sql = self._connect()
         drange = max(-1, _int(self._readEnv(sql, project, 'audit_range', 30)))
         dt = _dt(drange)
 
@@ -714,7 +754,7 @@ class PwicServer():
         pwic = {'title': 'Create a page',
                 'default_project': request.rel_url.query.get('project', ''),
                 'projects': []}
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -742,7 +782,7 @@ class PwicServer():
         pwic = {'title': 'Create a user',
                 'default_project': request.rel_url.query.get('project', ''),
                 'projects': []}
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -767,7 +807,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Fetch the information of the user
-        sql = app['sql'].cursor()
+        sql = self._connect()
         userpage = _safeName(request.match_info.get('userpage', None), extra='')
         row = sql.execute('SELECT password, initial FROM users WHERE user = ?', (userpage, )).fetchone()
         if row is None:
@@ -886,7 +926,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Parse the query
-        sql = app['sql'].cursor()
+        sql = self._connect()
         project = _safeName(request.match_info.get('project', ''))
         if self._readEnv(sql, project, 'no_search') is not None:
             query = None
@@ -1052,7 +1092,7 @@ class PwicServer():
         project = _safeName(request.match_info.get('project', ''))
 
         # Verify that the user is an administrator
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if sql.execute(''' SELECT user
                            FROM roles
                            WHERE project  = ?
@@ -1078,7 +1118,7 @@ class PwicServer():
 
         # Fetch the name of the project
         project = _safeName(request.match_info.get('project', ''))
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute('SELECT description FROM projects WHERE project = ?', (project, ))
         pwic = {'title': 'Roles',
                 'project': project,
@@ -1125,7 +1165,7 @@ class PwicServer():
 
         # Fetch the parameters
         project = _safeName(request.match_info.get('project', ''))
-        sql = app['sql'].cursor()
+        sql = self._connect()
 
         # Fetch the documents of the project
         sql.execute('SELECT id FROM documents ORDER BY id')
@@ -1212,7 +1252,7 @@ class PwicServer():
 
         # Check the authorizations
         project = _safeName(request.match_info.get('project', ''))
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE project  = ?
@@ -1238,7 +1278,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Fetch the pages
-        sql = app['sql'].cursor()
+        sql = self._connect()
         project = _safeName(request.match_info.get('project', ''))
         page = _safeName(request.match_info.get('page', ''))
         new_revision = _int(request.match_info.get('new_revision', ''))
@@ -1290,7 +1330,7 @@ class PwicServer():
             return await self._handleLogon(request)
 
         # Verify that the export is authorized
-        sql = app['sql'].cursor()
+        sql = self._connect()
         project = _safeName(request.match_info.get('project', ''))
         if self._readEnv(sql, project, 'no_export_project') is not None:
             raise web.HTTPUnauthorized()
@@ -1405,7 +1445,7 @@ class PwicServer():
 
         # Read the properties of the requested document
         id = _int(request.match_info.get('id', 0))
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT a.project, a.filename, a.mime, a.size
                         FROM documents AS a
                             INNER JOIN roles AS b
@@ -1450,7 +1490,7 @@ class PwicServer():
 
         # Logon with the credentials
         ok = False
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT COUNT(a.user)
                         FROM users AS a
                             INNER JOIN roles AS b
@@ -1484,8 +1524,8 @@ class PwicServer():
         # is fully lost upon server restart because a new key is generated.
         user = await self._suser(request)
         if user not in ['', PWIC_USER_ANONYMOUS]:
-            pwic_audit(app['sql'].cursor(), {'author': user,
-                                             'event': 'logout'},
+            pwic_audit(self._connect(), {'author': user,
+                                         'event': 'logout'},
                        request)
             self._commit()
 
@@ -1548,7 +1588,7 @@ class PwicServer():
             _oauth_failed()
 
         # Call the provider
-        sql = app['sql'].cursor()
+        sql = self._connect()
         oauth = app['oauth']
         no_domain = (len(oauth['domains']) == 0)
         emails = []
@@ -1681,7 +1721,7 @@ class PwicServer():
         project = _safeName(post.get('project', ''))
 
         # Verify that the user is authorized for the project
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if project != '':
             sql.execute(''' SELECT user
                             FROM roles
@@ -1738,7 +1778,7 @@ class PwicServer():
         data = {}
 
         # API not available to the pure readers when some options are activated
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if self._readEnv(sql, project, 'no_history') is not None or \
            self._readEnv(sql, project, 'validated_only') is not None:
             sql.execute(''' SELECT user
@@ -1841,7 +1881,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator of the project
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if sql.execute(''' SELECT user
                            FROM roles
                            WHERE project  = ?
@@ -1879,7 +1919,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is authorized for the project
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if sql.execute(''' SELECT user
                            FROM roles
                            WHERE project  = ?
@@ -1941,7 +1981,7 @@ class PwicServer():
 
         # Fetch the pages
         regex_page = re.compile(PWIC_REGEX_PAGE)
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2074,7 +2114,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Consume a KBid
-        sql = app['sql'].cursor()
+        sql = self._connect()
         if kb:
             sql.execute('BEGIN EXCLUSIVE TRANSACTION')
             kbid = int(self._readEnv(sql, project, 'kbid', 0)) + 1
@@ -2171,7 +2211,7 @@ class PwicServer():
             draft = False
 
         # Fetch the last revision of the page and the profile of the user
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT b.revision, b.header, b.protection, a.manager
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2264,7 +2304,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that it is possible to validate the page
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT b.page
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2316,7 +2356,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
@@ -2433,7 +2473,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Read the selected revision
-        sql = app['sql'].cursor()
+        sql = self._connect()
         disabled_formats = self._readEnv(sql, project, 'disabled_formats', '').split(' ')
         if format in disabled_formats or '*' in disabled_formats:
             raise web.HTTPForbidden()
@@ -2618,7 +2658,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is able to write
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE   project  = ?
@@ -2653,7 +2693,7 @@ class PwicServer():
 
         # Verify that the user is administrator of the provided project
         ok = False
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE project  = ?
@@ -2716,7 +2756,7 @@ class PwicServer():
         if '' not in [current, new1, new2] and (new1 == new2) and (new1 != current):
 
             # Verify the format of the new password
-            sql = app['sql'].cursor()
+            sql = self._connect()
             mask = self._readEnv(sql, '', 'password_regex', '')
             if mask != '':
                 try:
@@ -2764,7 +2804,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT a.user, a.admin, a.manager, a.editor,
                                a.validator, a.reader, a.disabled, c.initial
                         FROM roles AS a
@@ -2888,7 +2928,7 @@ class PwicServer():
             raise web.HTTPInternalServerError()
 
         # Verify the authorizations
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT b.revision
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -3010,7 +3050,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Read the documents
-        sql = app['sql'].cursor()
+        sql = self._connect()
         markdown = sql.execute(''' SELECT markdown
                                    FROM pages
                                    WHERE project = ?
@@ -3058,7 +3098,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
-        sql = app['sql'].cursor()
+        sql = self._connect()
         sql.execute(''' SELECT b.id
                         FROM roles AS a
                             INNER JOIN documents AS b
@@ -3180,6 +3220,7 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
                     web.get(r'/{project:[^\/]+}/special/graph', app['pwic'].page_graph),
                     web.get(r'/{project:[^\/]+}/special/export', app['pwic'].project_export),
+                    web.get(r'/{project:[^\/]+}/special/random', app['pwic'].page_random),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}', app['pwic'].page),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history}', app['pwic'].page),
