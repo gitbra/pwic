@@ -32,6 +32,7 @@ from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH,
     _x, _xb, _apostrophe, _attachmentName, _dt, _int, _list, _mime2icon, _randomHash, _sha256, _safeName, \
     _safeFileName, _size2str, _sqlprint, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
+from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
 IPR_EQ, IPR_NET, IPR_REG = range(3)
@@ -76,7 +77,7 @@ class PwicServer():
         ''' Reorder a list of tags written as a string '''
         return ' '.join(sorted(_list(tags.replace('#', ''))))
 
-    def _md2html(self: object, sql: object, project: str, page: str, markdown: str, cache: bool = True, headerNumbering: bool = True) -> (str, object):
+    def _md2html(self: object, sql: sqlite3.Cursor, project: str, page: str, markdown: str, cache: bool = True, headerNumbering: bool = True) -> (str, object):
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
         if page is None:
@@ -95,6 +96,9 @@ class PwicServer():
             html = row[0]
         else:
             html = app['markdown'].convert(markdown).replace('<span></span>', '')
+            done, new_html = app['extension'].on_html(sql, project, page, html)
+            if done and new_html is not None:
+                html = new_html
             if cache:
                 sql.execute('INSERT OR REPLACE INTO cache (project, page, html) VALUES (?, ?, ?)',
                             (project, page, html))
@@ -103,7 +107,7 @@ class PwicServer():
                                     self._readEnv(sql, project, 'heading_mask'),
                                     headerNumbering=headerNumbering)
 
-    def _readEnv(self: object, sql: object, project: str, name: str, default: str = None) -> str:
+    def _readEnv(self: object, sql: sqlite3.Cursor, project: str, name: str, default: str = None) -> str:
         ''' Read a variable from the table ENV '''
         if sql is None:
             return None
@@ -147,7 +151,7 @@ class PwicServer():
         if request is None:
             return ''
         else:
-            return request.headers.get('X-Forwarded-For', request.remote) if app['xff'] else request.remote
+            return request.headers.get(app['extension'].on_ip_header(request), request.remote) if app['xff'] else request.remote
 
     def _checkIP(self: object, request: web.Request) -> None:
         ''' Check if the IP address is authorized '''
@@ -176,7 +180,11 @@ class PwicServer():
                 hasIncl = True
 
         # Validate the access
-        if koExcl or (hasIncl != okIncl):
+        unauth = koExcl or (hasIncl != okIncl)
+        done, new_auth = app['extension'].on_ip_check(ip, not unauth)
+        if done:
+            unauth = not new_auth
+        if unauth:
             raise web.HTTPUnauthorized()
 
     async def _suser(self: object, request: web.Request) -> str:
@@ -265,6 +273,7 @@ class PwicServer():
         template_name = '%s/%s.html' % (pwic['language'], name)
         if (pwic['language'] != PWIC_DEFAULT_LANGUAGE) and not isfile(PWIC_TEMPLATES_PATH + template_name):
             template_name = '%s/%s.html' % (PWIC_DEFAULT_LANGUAGE, name)
+        app['extension'].on_render(app, sql, pwic)
         return web.Response(text=app['jinja'].get_template(template_name).render(pwic=pwic), content_type='text/html')
 
     async def page(self: object, request: web.Request) -> web.Response:
@@ -933,6 +942,7 @@ class PwicServer():
         else:
             query = pwic_search_parse(request.rel_url.query.get('q', ''))
             with_rev = 'rev' in request.rel_url.query
+            app['extension'].on_search_terms(sql, project, user, query, with_rev)
         if query is None:
             raise web.HTTPTemporaryRedirect('/%s' % project)
 
@@ -1244,7 +1254,7 @@ class PwicServer():
         return await self._handleOutput(request, 'page-links', pwic=pwic)
 
     async def page_graph(self: object, request: web.Request) -> web.Response:
-        ''' Serve the check of the links '''
+        ''' Serve the visual representation of the links '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -1410,6 +1420,7 @@ class PwicServer():
             del content
 
             # Attached documents
+            app['extension'].on_project_export_documents(sql, project, user, documents)
             for doc in documents:
                 fn = (PWIC_DOCUMENTS_PATH % project) + doc['filename']
                 if isfile(fn):
@@ -1463,6 +1474,7 @@ class PwicServer():
         if getsize(filename) != row[3]:
             raise web.HTTPConflict()  # Size mismatch causes an infinite download time
         try:
+            app['extension'].on_document_get(sql, row[0], user, row[1], row[2], row[3])
             with open(filename, 'rb') as f:
                 content = f.read()
         except FileNotFoundError:
@@ -1491,6 +1503,9 @@ class PwicServer():
         # Logon with the credentials
         ok = False
         sql = self._connect()
+        done, new_auth = app['extension'].on_logon(sql, user, pwd, lang)
+        if done and not new_auth:
+            return web.HTTPFound('/?failed')
         sql.execute(''' SELECT COUNT(a.user)
                         FROM users AS a
                             INNER JOIN roles AS b
@@ -1648,6 +1663,7 @@ class PwicServer():
             raise web.HTTPNotImplemented()
 
         # Select the authorized email
+        app['extension'].on_oauth(sql, emails)
         if len(emails) == 0:
             _oauth_failed()
         if no_domain:
@@ -1667,7 +1683,8 @@ class PwicServer():
         user = _safeName(user, extra='')
         if user[:4] in ['', 'pwic']:
             _oauth_failed()
-        assert('@' in user)
+        if '@' not in user:
+            _oauth_failed()
 
         # Create the default user account
         if sql.execute('SELECT 1 FROM users WHERE user = ?', (user, )).fetchone() is None:
@@ -1863,6 +1880,7 @@ class PwicServer():
                                               'url': '/special/document/%d/%s?attachment' % (row[0], quote(row[1]))})
 
         # Final result
+        app['extension'].on_api_project_info_get(sql, project, user, page, data)
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
     async def api_project_env_set(self: object, request: web.Request) -> web.Response:
@@ -2015,7 +2033,7 @@ class PwicServer():
             else:
                 return 'n%d' % (pos + 1)
 
-        def _getNodeTitle(sql: object, project: str, page: str) -> str:
+        def _getNodeTitle(sql: sqlite3.Cursor, project: str, page: str) -> str:
             # TODO Possible technical improvement here to avoid selects in loops
             sql.execute(''' SELECT title
                             FROM pages
@@ -2305,6 +2323,9 @@ class PwicServer():
 
         # Verify that it is possible to validate the page
         sql = self._connect()
+        done, new_validable = app['extension'].on_api_page_validate(sql, project, user, page, revision)
+        if done and not new_validable:
+            raise web.HTTPUnauthorized()
         sql.execute(''' SELECT b.page
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2321,8 +2342,7 @@ class PwicServer():
                           AND a.validator = 'X'
                           AND a.disabled  = '' ''',
                     (page, revision, project, user))
-        row = sql.fetchone()
-        if row is None:
+        if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
 
         # Update the page
@@ -2357,6 +2377,9 @@ class PwicServer():
 
         # Verify that the deletion is possible
         sql = self._connect()
+        done, new_deletable = app['extension'].on_api_page_delete(sql, project, user, page, revision)
+        if done and not new_deletable:
+            raise web.HTTPUnauthorized()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
@@ -2496,6 +2519,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Initialization
+        app['extension'].on_api_page_export_start(sql, project, user, page, revision, format)
         dt = _dt()
         baseUrl = self._readEnv(sql, '', 'base_url', '')
         pageUrl = '%s/%s/%s/rev%d' % (baseUrl, project, page, row[0])
@@ -2528,7 +2552,7 @@ class PwicServer():
 
         # Format ODT
         elif format == 'odt':
-            # MD --> HTML --> ODT
+            # MarkDown --> HTML --> ODT
             html = self._md2html(sql, project, page, row[6],
                                  cache=False,  # No cache to recalculate the headers through the styles
                                  headerNumbering=False)[0]
@@ -2559,9 +2583,8 @@ class PwicServer():
                 fn = (PWIC_DOCUMENTS_PATH % project) + rowdoc[3]
                 if isfile(fn):
                     try:
-                        w, h = imagesize.get(fn)
-
                         # Optimize the maximal size
+                        w, h = imagesize.get(fn)
                         MAX_W = 600  # px
                         MAX_H = 900  # px
                         if w > MAX_W:
@@ -2684,12 +2707,11 @@ class PwicServer():
         # Fetch the submitted data
         post = await self._handlePost(request)
         project = _safeName(post.get('project', ''))
+        error_url = '/special/create-user?project=%s&failed' % escape(project)
         wisheduser = post.get('user', '').strip().lower()
         newuser = _safeName(post.get('user', ''), extra='')
-        if '' in [project, newuser] or (newuser[:4] == 'pwic'):
-            raise web.HTTPBadRequest()
-        if wisheduser != newuser:  # Invalid chars spotted
-            raise web.HTTPFound('/special/create-user?project=%s&failed' % escape(project))
+        if (wisheduser != newuser) or ('' in [project, newuser]) or (newuser[:4] == 'pwic'):
+            raise web.HTTPFound(error_url)
 
         # Verify that the user is administrator of the provided project
         ok = False
@@ -2705,13 +2727,15 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Create the new user
+        if not app['extension'].on_api_user_create(sql, project, user, newuser):
+            raise web.HTTPFound(error_url)
         if self._readEnv(sql, '', 'no_new_user_online') is not None:
             sql.execute(''' SELECT user
                             FROM users
                             WHERE user = ?''',
                         (newuser, ))
             if sql.fetchone() is None:
-                raise web.HTTPFound('/special/create-user?project=%s&failed' % escape(project))
+                raise web.HTTPFound(error_url)
         else:
             sql.execute(''' INSERT INTO users (user, password)
                             SELECT ?, ?
@@ -2827,6 +2851,7 @@ class PwicServer():
 
         # Delete a user
         if delete:
+            app['extension'].on_api_user_roles_set(sql, project, user, userpost, 'delete', None)
             sql.execute(''' DELETE FROM roles
                             WHERE project = ?
                               AND user    = ?
@@ -2848,6 +2873,7 @@ class PwicServer():
             newvalue = {'X': '', '': 'X'}[row[roleid + 1]]
             if roleid == 0 and newvalue != 'X' and user == userpost:
                 raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
+            app['extension'].on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue)
             try:
                 sql.execute(''' UPDATE roles
                                 SET %s = ?
@@ -2873,6 +2899,11 @@ class PwicServer():
         user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
+
+        # Verify that there is no maintenance message that may prevent the file from being saved
+        sql = self._connect()
+        if self._readEnv(sql, '', 'maintenance') is not None:
+            raise web.HTTPServiceUnavailable()
 
         # Parse the submitted multipart/form-data
         try:
@@ -2920,6 +2951,7 @@ class PwicServer():
                     doc[name] = await part.text()
         except Exception:
             raise web.HTTPBadRequest()
+        app['extension'].on_api_document_create(sql, doc)
         if doc['content'] is None or len(doc['content']) == 0 or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later
             raise web.HTTPBadRequest()
 
@@ -2928,7 +2960,6 @@ class PwicServer():
             raise web.HTTPInternalServerError()
 
         # Verify the authorizations
-        sql = self._connect()
         sql.execute(''' SELECT b.revision
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2980,10 +3011,6 @@ class PwicServer():
             # ... verify the size
             if current_project_size - current_file_size + len(doc['content']) > max_project_size:
                 raise web.HTTPRequestEntityTooLarge(max_project_size - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
-
-        # Verify that there is no maintenance message that may prevent the file from being saved
-        if self._readEnv(sql, '', 'maintenance') is not None:
-            raise web.HTTPServiceUnavailable()
 
         # At last, verify that the document doesn't exist yet (not related to a given page)
         forcedId = None
@@ -3067,19 +3094,20 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY b.filename''',
                     (page, project, user))
-        result = []
+        documents = []
         for row in sql.fetchall():
-            result.append({'id': row[0],
-                           'filename': row[1],
-                           'mime': row[2],
-                           'mime_icon': _mime2icon(row[2]),
-                           'size': _size2str(row[3]),
-                           'hash': row[4],
-                           'author': row[5],
-                           'date': row[6],
-                           'time': row[7],
-                           'used': ('(/special/document/%d)' % row[0]) in markdown or ('(/special/document/%d "' % row[0]) in markdown})
-        return web.Response(text=json.dumps(result), content_type=MIME_JSON)
+            documents.append({'id': row[0],
+                              'filename': row[1],
+                              'mime': row[2],
+                              'mime_icon': _mime2icon(row[2]),
+                              'size': _size2str(row[3]),
+                              'hash': row[4],
+                              'author': row[5],
+                              'date': row[6],
+                              'time': row[7],
+                              'used': ('(/special/document/%d)' % row[0]) in markdown or ('(/special/document/%d "' % row[0]) in markdown})
+        app['extension'].on_api_document_list(sql, project, page, documents)
+        return web.Response(text=json.dumps(documents), content_type=MIME_JSON)
 
     async def api_document_delete(self: object, request: web.Request) -> None:
         ''' Delete a document '''
@@ -3114,6 +3142,7 @@ class PwicServer():
                     (id, page, filename, project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()  # Or not found
+        app['extension'].on_api_document_delete(sql, project, user, page, id, filename)
 
         # Delete the file
         fn = (PWIC_DOCUMENTS_PATH % project) + filename
@@ -3158,6 +3187,8 @@ def main() -> bool:
 
     # Modules
     app = web.Application()
+    # ... user exits
+    app['extension'] = PwicExtension()
     # ... launch time
     app['up'] = _dt()
     # ... languages
@@ -3300,6 +3331,11 @@ def main() -> bool:
     if logfile != '':
         import logging
         logging.basicConfig(filename=logfile, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
+
+    # User-exit
+    done, result = app['extension'].on_server_ready(app, sql)
+    if done and not result:
+        return False
 
     # Launch the server
     del sql

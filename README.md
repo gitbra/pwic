@@ -74,6 +74,7 @@ Who can do the most can do the least!
 - Export of an entire project to Markdown and HTML
 - Traceable activities
 - API and command line to automate the classical operations
+- Extension points in the code
 
 
 ## Install

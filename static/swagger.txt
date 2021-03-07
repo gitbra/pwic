@@ -659,12 +659,8 @@ paths:
           description: Successful or failed operation
         302:
           description: Successful or failed operation
-        400:
-          description: Invalid parameters
         401:
           description: Unsufficient authorizations
-        405:
-          description: Invalid characters
   /api/user/password/change:
     post:
       summary: Change the password of the logged user
