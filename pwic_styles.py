@@ -1,4 +1,5 @@
 
+from typing import Optional
 from pwic_lib import PWIC_DEFAULT_HEADING
 
 
@@ -8,7 +9,7 @@ from pwic_lib import PWIC_DEFAULT_HEADING
 
 
 class pwic_styles_html:
-    def __init__(self: object) -> None:
+    def __init__(self) -> None:
         self.mime = 'text/html'
         self.css = 'static/styles.css'
         self.html = '''<!DOCTYPE html>
@@ -26,7 +27,7 @@ class pwic_styles_html:
 </body>
 </html>'''
 
-    def getCss(self: object, rel: bool) -> str:
+    def getCss(self, rel: bool) -> str:
         if rel:
             return '<link rel="stylesheet" type="text/css" href="%s" />' % self.css
         else:
@@ -42,7 +43,7 @@ class pwic_styles_html:
 
 
 class pwic_styles_odt:
-    def __init__(self: object) -> None:
+    def __init__(self) -> None:
         self.mime = 'application/vnd.oasis.opendocument.text'
 
         self.manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -660,7 +661,7 @@ class pwic_styles_odt:
     </office:body>
 </office:document-content>'''
 
-    def getOptimizedCodeStyles(self: object, code: str) -> str:
+    def getOptimizedCodeStyles(self, code: str) -> str:
         output = ''
         for line in self.styles_code:
             ref = '<span class="%s">' % (line[30:34].replace('"', '').strip())
@@ -668,7 +669,7 @@ class pwic_styles_odt:
                 output += line + '\n'
         return output
 
-    def getHeadingStyles(self: object, mask: str) -> str:
+    def getHeadingStyles(self, mask: Optional[str]) -> str:
         # Complete the mask
         if mask is None:
             mask = ''

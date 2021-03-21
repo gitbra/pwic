@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
+from typing import Any, Dict, List, Optional, Tuple, Union
+import sqlite3
 import re
 from collections import OrderedDict
 import datetime
 from os import urandom
 from hashlib import sha256
 from base64 import b64encode
+from aiohttp import web
 from html import escape
 from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
@@ -279,7 +282,7 @@ def _attachmentName(name: str) -> str:
     return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
 
-def _dt(drange: int = 0) -> object:
+def _dt(drange: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
     dts = str(datetime.datetime.now())
     return {'date': dts[:10],
@@ -289,7 +292,7 @@ def _dt(drange: int = 0) -> object:
             'time': dts[11:19]}
 
 
-def _int(value: str) -> int:
+def _int(value: Any) -> int:
     ''' Safe conversion to integer '''
     try:
         return int(value)
@@ -297,7 +300,7 @@ def _int(value: str) -> int:
         return 0
 
 
-def _list(input: str, separator: str = ' ') -> str:
+def _list(input: str, separator: str = ' ') -> List[str]:
     ''' Build a list of unique values from a string and keep the initial order '''
     if input is None:
         input = ''
@@ -334,13 +337,13 @@ def _recursiveReplace(text: str, search: str, replace: str) -> str:
     return text.strip()
 
 
-def _sha256(value: str, salt: bool = True) -> str:
+def _sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:
         assert(salt is False)
         return sha256(value).hexdigest()
     else:
-        text = (PWIC_SALT if salt else '') + value
+        text = (PWIC_SALT if salt else '') + str(value)
         return sha256(text.encode()).hexdigest()
 
 
@@ -363,17 +366,17 @@ def _safeFileName(name: str) -> str:
     return name
 
 
-def _size2str(size: int) -> str:
+def _size2str(size: Union[int, float]) -> str:
     ''' Convert a size to a readable format '''
     units = ' kMGTPEZ'
     for i in range(len(units)):
         if size < 1024:
             break
         size /= 1024
-    return ('%.1f %sB' % (size, units[i].strip())).replace('.0 B', ' B')
+    return ('%.1f %sB' % (size, units[i].strip())).replace('.0 ', ' ')
 
 
-def _sqlprint(query: str) -> str:
+def _sqlprint(query: str) -> None:
     ''' Quick and dirty callback to print the SQL queries on a single line for debugging purposes '''
     if query is not None:
         dt = _dt()
@@ -386,7 +389,7 @@ def _sqlprint(query: str) -> str:
 #  Editor
 # ===================================================
 
-def pwic_extended_syntax(markdown: str, mask: str, headerNumbering: bool = True) -> (str, object):
+def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bool = True) -> Tuple[str, List[Dict]]:
     ''' Automatic numbering of the MD headers '''
     # Local functions
     def _numeric(value: int) -> str:
@@ -442,7 +445,7 @@ def pwic_extended_syntax(markdown: str, mask: str, headerNumbering: bool = True)
     # Initialisation
     reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)
     lines = markdown.replace('\r', '').split('\n')
-    numbering = []
+    numbering: List[int] = []
     last_depth = 0
     tmap = []
     tmask = {'1': _numeric,
@@ -502,14 +505,14 @@ def pwic_extended_syntax(markdown: str, mask: str, headerNumbering: bool = True)
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql: object, object: object, request: bool = None) -> bool:
+def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: web.Request = None) -> bool:
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = _dt()
     object['date'] = dt['date']
     object['time'] = dt['time']
     if request is not None:
-        object['ip'] = request.remote
+        object['ip'] = str(request.remote)
     assert(object.get('event', '') != '')
 
     # Log the event
@@ -534,8 +537,8 @@ def pwic_audit(sql: object, object: object, request: bool = None) -> bool:
 class PwicSearchVisitor(NodeVisitor):
     def __init__(self) -> None:
         self.negate = False
-        self.included = []
-        self.excluded = []
+        self.included: List[str] = []
+        self.excluded: List[str] = []
 
     def visit_decl(self, node, visited_children) -> None:
         pass
@@ -562,7 +565,7 @@ class PwicSearchVisitor(NodeVisitor):
         self.negate = False
 
 
-def pwic_search_parse(query: str) -> object:
+def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
     # Parse the query
     if query in ['', None]:
         return None
@@ -589,7 +592,7 @@ def pwic_search_parse(query: str) -> object:
         return None
 
 
-def pwic_search_tostring(query: str) -> str:
+def pwic_search_tostring(query: Dict[str, List[str]]) -> str:
     if query is None:
         return ''
     result = ''
@@ -607,7 +610,7 @@ def pwic_search_tostring(query: str) -> str:
 # ===================================================
 
 class pwic_html2odt(HTMLParser):
-    def __init__(self: object, baseUrl: str, project: str, page: str, pictMeta: object = None) -> None:
+    def __init__(self, baseUrl: str, project: str, page: str, pictMeta: Dict = None) -> None:
         # The parser can be feeded only once
         HTMLParser.__init__(self)
 
@@ -703,8 +706,8 @@ class pwic_html2odt(HTMLParser):
 
         # Processing
         self.regex_imgsrc = re.compile(PWIC_REGEX_DOCUMENT_IMGSRC)
-        self.tag_path = []
-        self.table_descriptors = []
+        self.tag_path: List[str] = []
+        self.table_descriptors: List[Dict[str, int]] = []
         self.blockquote_on = False
         self.blockcode_on = False
         self.has_code = False
@@ -714,12 +717,12 @@ class pwic_html2odt(HTMLParser):
         # Output
         self.odt = ''
 
-    def _replace_marker(self: object, joker: str, content: str) -> None:
+    def _replace_marker(self, joker: str, content: str) -> None:
         pos = self.odt.rfind(joker)
         if pos != -1:
             self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
 
-    def handle_starttag(self: object, tag: str, attrs: object) -> None:
+    def handle_starttag(self, tag: str, attrs) -> None:
         tag = tag.lower()
 
         # Rules
@@ -755,7 +758,7 @@ class pwic_html2odt(HTMLParser):
                     self.odt += self.extrasBefore[tag][0]
 
                 # Tag itself
-                self.odt += '<' + self.maps[tag]
+                self.odt += '<' + str(self.maps[tag])
                 if tag in self.attributes:
                     for property in self.attributes[tag]:
                         property_value = self.attributes[tag][property]
@@ -774,7 +777,7 @@ class pwic_html2odt(HTMLParser):
                                         # Fix the base URL for the links
                                         if tag == 'a' and key == 'href':
                                             if value[:1] in ['/']:
-                                                value = self.baseUrl + value
+                                                value = self.baseUrl + str(value)
                                             elif value[:1] in ['?', '#', '.']:
                                                 value = '%s/%s/%s%s' % (self.baseUrl, self.project, self.page, value)
                                             elif value[:2] == './' or value[:3] == '../':
@@ -790,9 +793,9 @@ class pwic_html2odt(HTMLParser):
                                                 if value[:1] == '/':
                                                     value = value[1:]
                                                 if self.pictMeta is not None:
-                                                    docid = self.regex_imgsrc.match(value)
-                                                    if docid is not None:
-                                                        docid = _int(docid.group(1))
+                                                    docid_re = self.regex_imgsrc.match(value)
+                                                    if docid_re is not None:
+                                                        docid = _int(docid_re.group(1))
                                                         if docid in self.pictMeta:
                                                             if self.pictMeta[docid]['link'] == value:
                                                                 value = self.pictMeta[docid]['link_odt_img']
@@ -822,7 +825,7 @@ class pwic_html2odt(HTMLParser):
         if tag in self.extrasAfter:
             self.odt += self.extrasAfter[tag][0]
 
-    def handle_endtag(self: object, tag: str) -> None:
+    def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
 
         # Rules
@@ -881,7 +884,7 @@ class pwic_html2odt(HTMLParser):
         if tag in self.extrasBefore:
             self.odt += self.extrasBefore[tag][1]
 
-    def handle_data(self: object, data: str) -> None:
+    def handle_data(self, data: str) -> None:
         # List item should be enclosed by <p>
         if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
             self.tag_path.append('p')

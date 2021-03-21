@@ -40,7 +40,7 @@
 						{% elif role.oauth %}
 							<span title="Federated authentication">{{pwic.emojis.id}}</span>
 						{% elif role.initial %}
-							<span title="The user must change its password">{{pwic.emojis.unlocked}}</span>
+							<span title="The user must change his password">{{pwic.emojis.unlocked}}</span>
 						{% else %}
 							{{pwic.emojis.green_check}}
 						{% endif %}
@@ -48,31 +48,83 @@
 					<td>
 						<input	id="roles_tag_{{u.value+1}}"
 								type="checkbox"
-								{% if (role.user == pwic.user) or (role.user[:4] == 'pwic') %}
-									disabled="disabled"
-								{% else %}
-									onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')"
-								{% endif %}
-								{% if role.admin %} checked="checked" {% endif %}
+							{% if (role.user == pwic.user) or (role.user[:4] == 'pwic') or role.initial %}
+								disabled="disabled"
+							{% else %}
+								onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')"
+							{% endif %}
+							{% if role.admin %}
+								checked="checked"
+							{% endif %}
 						/>
 					</td>
-					<td><input id="roles_tag_{{u.value+2}}" type="checkbox" onclick="return roles_toggle({{u.value+2}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'manager')" {% if role.manager %} checked="checked" {% endif %} /></td>
-					<td><input id="roles_tag_{{u.value+3}}" type="checkbox" onclick="return roles_toggle({{u.value+3}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'editor')" {% if role.editor %} checked="checked" {% endif %} /></td>
-					<td><input id="roles_tag_{{u.value+4}}" type="checkbox" onclick="return roles_toggle({{u.value+4}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'validator')" {% if role.validator %} checked="checked" {% endif %} /></td>
-					<td><input id="roles_tag_{{u.value+5}}" type="checkbox" onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')" {% if role.reader %} checked="checked" {% endif %} /></td>
+					<td>
+						<input	id="roles_tag_{{u.value+2}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+2}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'manager')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.manager %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+3}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+3}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'editor')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.editor %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+4}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+4}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'validator')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.validator %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+5}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.reader %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+6}}" type="checkbox"
-								{% if role.user == pwic.user %}
-									disabled="disabled"
-								{% else %}
-									onclick="return roles_toggle({{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'disabled')"
-								{% endif %}
-								{% if role.disabled %} checked="checked" {% endif %}
+							{% if (role.user == pwic.user) or role.initial %}
+								disabled="disabled"
+							{% else %}
+								onclick="return roles_toggle({{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'disabled')"
+							{% endif %}
+							{% if role.disabled %}
+								checked="checked"
+							{% endif %}
 						/>
 					</td>
 					<td>
 						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
-							<input type="button" onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')" value="{{pwic.emojis.trash}}" title="Delete {{role.user|escape}}" />
+							<input	type="button"
+									onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')"
+									value="{{pwic.emojis.trash}}"
+									title="Delete {{role.user|escape}}"
+							/>
 						{% endif %}
 					</td>
 				</tr>

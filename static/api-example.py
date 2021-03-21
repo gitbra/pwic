@@ -4,20 +4,24 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 import json
 
+# Changeable configuration
 host = 'http://127.0.0.1:8080'
-headers = {'Origin': host}
+user = 'your@user.name'
+password = 'your.password'
+project = 'your_project'
 
 # Authentication
+headers = {'Origin': host}
 response = urlopen(Request(host + '/api/logon',
-                           urlencode({'user': 'your@user.name',
-                                      'password': 'your.password'}).encode(),
+                           urlencode({'user': user,
+                                      'password': password}).encode(),
                            headers=headers,
                            method='POST'))
 headers['Cookie'] = response.headers.get('Set-Cookie', '')
 
 # Get some information
 response = urlopen(Request(host + '/api/project/info/get',
-                           urlencode({'project': 'your_project'}).encode(),
+                           urlencode({'project': project}).encode(),
                            headers=headers,
                            method='POST'))
 if response.status == 200:

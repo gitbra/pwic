@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from typing import Optional
 import argparse
 import sqlite3
 from prettytable import PrettyTable
@@ -70,8 +71,8 @@ def main() -> bool:
     subparsers.add_parser('show-logon', help='Show the last logons of the users')
 
     spb = subparsers.add_parser('show-audit', help='Show the log of the database (no HTTP traffic)')
-    spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar=30)
-    spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar=0)
+    spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar='30')
+    spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar='0')
 
     subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
 
@@ -123,7 +124,7 @@ def main() -> bool:
         return False
 
 
-def db_connect(init: bool = False) -> object:
+def db_connect(init: bool = False) -> Optional[sqlite3.Cursor]:
     global db
     if not init and not isfile(PWIC_DB_SQLITE):
         print('Error: the database is not created yet')
@@ -190,9 +191,11 @@ def generate_ssl() -> bool:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
     # Final output
-    pwic_audit(db_connect(), {'author': PWIC_USER_SYSTEM,
-                              'event': 'ssl-regen'})
-    db_commit()
+    sql = db_connect()
+    if sql is not None:
+        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                         'event': 'ssl-regen'})
+        db_commit()
     print('The certificates are generated:')
     print('- ' + PWIC_PRIVATE_KEY)
     print('- ' + PWIC_PUBLIC_KEY)
@@ -489,7 +492,7 @@ def show_mime() -> bool:
             try:
                 value, type = winreg.QueryValueEx(handle, 'Content Type')
             except FileNotFoundError:
-                value, type = None, None
+                value, type = None, winreg.REG_NONE
             winreg.CloseKey(handle)
 
             # Consider the mime if it exists
@@ -934,8 +937,8 @@ def show_audit(dmin: int, dmax: int) -> bool:
     if dmin == 0:
         print('Error: invalid parameters')
         return False
-    dmin = str(datetime.date.today() - datetime.timedelta(days=dmin))[:10]
-    dmax = str(datetime.date.today() - datetime.timedelta(days=dmax))[:10]
+    dmin_str = str(datetime.date.today() - datetime.timedelta(days=dmin))[:10]
+    dmax_str = str(datetime.date.today() - datetime.timedelta(days=dmax))[:10]
 
     # Select the data
     sql = db_connect()
@@ -946,7 +949,7 @@ def show_audit(dmin: int, dmax: int) -> bool:
                     FROM audit
                     WHERE date >= ? AND date <= ?
                     ORDER BY id ASC''',
-                (dmin, dmax))
+                (dmin_str, dmax_str))
 
     # Report the log
     tab = PrettyTable()

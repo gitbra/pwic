@@ -10,22 +10,23 @@
     if they are passed as a reference, else raise an exception.
 '''
 
+from typing import Any, Dict, List, Tuple
 from aiohttp import web
 import sqlite3
 
 
 class PwicExtension():
-    def __init__(self: object):
+    def __init__(self):
         ''' Initialize everything you need for the class. '''
         # self.my_value = 123
         pass
 
-    def on_html(self: object,
+    def on_html(self,
                 sql: sqlite3.Cursor,                        # Cursor to query the database
                 project: str,                               # Name of the project
                 page: str,                                  # Name of the page (may be None)
                 html: str,                                  # Current converted Markdown to HTML code
-                ) -> (bool, str):
+                ) -> Tuple[bool, str]:
         ''' Event when a page is converted to HTML.
             The first result tells if the HML code must be changed.
             The second result provides the new HTML code adapted from the first one.
@@ -34,7 +35,7 @@ class PwicExtension():
         '''
         return False, ''
 
-    def on_ip_header(self: object,
+    def on_ip_header(self,
                      request: web.Request,                  # HTTP request
                      ) -> str:
         ''' Event when the remote IP is retrieved from the HTTP headers if the option 'xff' is enabled.
@@ -42,17 +43,17 @@ class PwicExtension():
         '''
         return 'X-Forwarded-For'
 
-    def on_ip_check(self: object,
+    def on_ip_check(self,
                     ip: str,                                # Remote IP address
                     authorized: bool,                       # Current status of the authorization
-                    ) -> (bool, bool):
+                    ) -> Tuple[bool, bool]:
         ''' Event when the IP address of the user is checked.
             The first result tells if the authorization must be changed.
             The second result tells if the user is authorized.
         '''
         return False, True
 
-    def on_render(self: object,
+    def on_render(self,
                   app: object,                              # Access to the application (do not change)
                   sql: sqlite3.Cursor,                      # Cursor to query the database
                   pwic: object,                             # Content to be rendered (changeable)
@@ -63,7 +64,7 @@ class PwicExtension():
         '''
         pass
 
-    def on_search_terms(self: object,
+    def on_search_terms(self,
                         sql: sqlite3.Cursor,                # Cursor to query the database
                         project: str,                       # Name of the project
                         user: str,                          # Name of the user
@@ -75,18 +76,18 @@ class PwicExtension():
         '''
         pass
 
-    def on_project_export_documents(self: object,
-                                    sql: sqlite3.Cursor,    # Cursor to query the database
-                                    project: str,           # Name of the project
-                                    user: str,              # Name of the user
-                                    documents: list,        # List of the documents to be exported (changeable)
+    def on_project_export_documents(self,
+                                    sql: sqlite3.Cursor,                # Cursor to query the database
+                                    project: str,                       # Name of the project
+                                    user: str,                          # Name of the user
+                                    documents: List[Dict[str, Any]],    # List of the documents to be exported (changeable)
                                     ) -> None:
         ''' Event when a list of documents is to be exported as an archive for a given project.
             Modify the parameter 'documents' without reallocating it.
         '''
         pass
 
-    def on_document_get(self: object,
+    def on_document_get(self,
                         sql: sqlite3.Cursor,                # Cursor to query the database
                         project: str,                       # Name of the project
                         user: str,                          # Name of the user
@@ -99,28 +100,26 @@ class PwicExtension():
         '''
         pass
 
-    def on_logon(self: object,
+    def on_logon(self,
                  sql: sqlite3.Cursor,                       # Cursor to query the database
                  user: str,                                 # Name of the user
-                 password: str,                             # Hashed password
                  language: str,                             # Selected language
-                 ) -> (bool, bool):
-        ''' Event when a user wants to connect with a password out of the OAuth logic.
-            The first result tells if the status of the connection must be modified.
-            The second result tells if the connection is authorized.
+                 ) -> bool:
+        ''' Event when a user successfully connects to Pwic with a password.
+            The result overrides the acceptability of the connection.
         '''
-        return False, True
+        return True
 
-    def on_oauth(self: object,
+    def on_oauth(self,
                  sql: sqlite3.Cursor,                       # Cursor to query the database
-                 emails: list,                              # Array of candidate email addresses (changeable)
+                 emails: List[str],                         # Array of candidate email addresses (changeable)
                  ) -> None:
         ''' Event when email addresses are fetched from the remote OAuth server.
             Modify the parameter 'emails' without reallocating it.
         '''
         pass
 
-    def on_api_project_info_get(self: object,
+    def on_api_project_info_get(self,
                                 sql: sqlite3.Cursor,        # Cursor to query the database
                                 project: str,               # Name of the project
                                 user: str,                  # Name of the user
@@ -132,33 +131,33 @@ class PwicExtension():
         '''
         pass
 
-    def on_api_page_validate(self: object,
+    def on_api_page_validate(self,
                              sql: sqlite3.Cursor,           # Cursor to query the database
                              project: str,                  # Name of the project
                              user: str,                     # Name of the user
                              page: str,                     # Name of the page
                              revision: int,                 # Number of the revision
-                             ) -> (bool, bool):
+                             ) -> Tuple[bool, bool]:
         ''' Event when a given revision of a page is validated through the API.
             The first result tells if the status of the validation must be modified.
             The second result tells if the validation is possible.
         '''
         return False, True
 
-    def on_api_page_delete(self: object,
+    def on_api_page_delete(self,
                            sql: sqlite3.Cursor,             # Cursor to query the database
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
                            page: str,                       # Name of the page
                            revision: int,                   # Number of the revision
-                           ) -> (bool, bool):
+                           ) -> Tuple[bool, bool]:
         ''' Event when a given revision of a page is deleted through the API.
             The first result tells if the status of the deletion must be modified.
             The second result tells if the deletion is possible.
         '''
         return False, True
 
-    def on_api_page_export_start(self: object,
+    def on_api_page_export_start(self,
                                  sql: sqlite3.Cursor,       # Cursor to query the database
                                  project: str,              # Name of the project
                                  user: str,                 # Name of the user
@@ -171,7 +170,7 @@ class PwicExtension():
         '''
         pass
 
-    def on_api_user_create(self: object,
+    def on_api_user_create(self,
                            sql: sqlite3.Cursor,             # Cursor to query the database
                            project: str,                    # Name of the project
                            admin: str,                      # Name of the administrator
@@ -183,7 +182,7 @@ class PwicExtension():
         '''
         return True
 
-    def on_api_user_roles_set(self: object,
+    def on_api_user_roles_set(self,
                               sql: sqlite3.Cursor,          # Cursor to query the database
                               project: str,                 # Name of the project
                               admin: str,                   # Name of the administrator
@@ -196,7 +195,7 @@ class PwicExtension():
         '''
         pass
 
-    def on_api_document_create(self: object,
+    def on_api_document_create(self,
                                sql: sqlite3.Cursor,         # Cursor to query the database
                                document: object,            # Submitted document (changeable)
                                ) -> None:
@@ -206,18 +205,18 @@ class PwicExtension():
         '''
         pass
 
-    def on_api_document_list(self: object,
-                             sql: sqlite3.Cursor,           # Cursor to query the database
-                             project: str,                  # Name of the project
-                             page: str,                     # Name of the page
-                             documents: list,               # List of the documents (changeable)
+    def on_api_document_list(self,
+                             sql: sqlite3.Cursor,               # Cursor to query the database
+                             project: str,                      # Name of the project
+                             page: str,                         # Name of the page
+                             documents: List[Dict[str, Any]],   # List of the documents (changeable)
                              ):
         ''' Event when the list of the documents of a page is requested.
             Modify the parameter 'documents' without reallocating it.
         '''
         pass
 
-    def on_api_document_delete(self: object,
+    def on_api_document_delete(self,
                                sql: sqlite3.Cursor,         # Cursor to query the database
                                project: str,                # Name of the project
                                user: str,                   # Name of the user
@@ -230,10 +229,10 @@ class PwicExtension():
         '''
         pass
 
-    def on_server_ready(self: object,
+    def on_server_ready(self,
                         app: web.Application,               # Full access to the application (changeable)
                         sql: sqlite3.Cursor,                # Cursor to query the database
-                        ) -> (bool, bool):
+                        ) -> Tuple[bool, bool]:
         ''' Event when Pwic server is ready to start.
             The first result tells if the behavior must be changed.
             The second result tells if the server can start.
