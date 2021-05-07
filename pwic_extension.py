@@ -210,7 +210,7 @@ class PwicExtension():
                              project: str,                      # Name of the project
                              page: str,                         # Name of the page
                              documents: List[Dict[str, Any]],   # List of the documents (changeable)
-                             ):
+                             ) -> None:
         ''' Event when the list of the documents of a page is requested.
             Modify the parameter 'documents' without reallocating it.
         '''

@@ -398,12 +398,9 @@
 				</tr>
 			</table>
 
-			<h2>Browser settings</h2>
-			<p>In Firefox, the options based on <code>signon.autofillForms</code> interact with the management of the passwords.</p>
-
 
 		<h1 id="help_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
-		<p>First, it is recommended to shut down the server. Warn your users in advance by running the command <code>python pwic_admin.py set-env maintenance "Message"</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
+		<p>First, it is recommended to shut down the server and to <a href="#help_setup">define the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
 		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
 		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same.</p>
 		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
@@ -456,7 +453,7 @@
 		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
 		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft.</p>
 		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision is a milestone and can be deleted by an administrator only.</p>
-		<p>It is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code> or <code>&lt;iframe&gt;</code>.</p>
+		<p>Unless <code>safe_mode</code> is disabled, it is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code> or <code>&lt;iframe&gt;</code>.</p>
 		<p>If enabled by the administrator, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
 		<p>The tags are the base to classify the pages freely. The keywords are separated by a space. You can search for a tag in the search engine by usign a hash (ex: <code>#tag</code>). A tag counts a lot in the evaluation of the results.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
@@ -482,6 +479,7 @@
 		<h1 id="help_promote"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Promote to the header line</h1>
 		<p>The header line of the project allows a quick access to the pages that link to other thematic pages.</p>
 		<p>There is no limitation in the number of header items, but it is recommended to not exceed 10 items.</p>
+		<p>To achieve the promotion, you need to tick the checkbox <em>Header</em> when you edit a page.</p>
 
 
 		<h1 id="help_delete"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a revision</h1>
@@ -508,8 +506,8 @@
 
 			<h2>odt - OpenDocument</h2>
 			<p>This file format is public but it is not a DOCX document. The file can be edited in MS Word, LibreOffice and more.</p>
-			<p>The export is designed to be as lean as possible, which may cause slight differences of layout.</p>
-			<p>The exported document aims to be equivalent to a copy-paste of the page in your favorite text editor.</p>
+			<p>The export is designed to be very similar to the HTML rendering online, like as if you copied-pasted the text in your editor. However, slight differences of layout are expectable.</p>
+			<p>The success of the conversion can be altered if you disable the option <code>safe_mode</code>.</p>
 
 			<h2>pdf - Desktop PDF</h2>
 			<p>This format is not supported by Pwic, so it cannot be disabled in the options.</p>

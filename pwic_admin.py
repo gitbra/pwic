@@ -730,7 +730,8 @@ def delete_project(project: str) -> bool:
     sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
     sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                     'event': 'delete-project'})
+                     'event': 'delete-project',
+                     'project': project})
     db_commit()
     print('The project "%s" is deleted' % project)
     print('Warning: the file structure is now inconsistent with the old backups (if any)')

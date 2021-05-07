@@ -25,7 +25,7 @@
 						{% endfor %}
 					</select>
 				</p>
-				<p><strong>User name:</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus /></p>
+				<p><strong>User name:</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus required="true" spellcheck="false" /></p>
 				<p><input type="button" value="{{pwic.emojis.users}} Create the user" onclick="create_submit('The names are not acceptable.')" /></p>
 			</form>
 
