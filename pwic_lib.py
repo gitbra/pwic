@@ -337,6 +337,13 @@ def _recursiveReplace(text: str, search: str, replace: str) -> str:
     return text.strip()
 
 
+def _row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
 def _sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:

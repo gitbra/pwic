@@ -90,7 +90,7 @@ Who can do the most can do the least!
 	- The default password of the users is `initial` as defined in `PWIC_DEFAULT_PASSWORD`.
 - Define the global and project-dependent variables, at least `base_url`: `python pwic_admin.py set-env --help` (details available in the help page)
 - Run the server: `python pwic.py`
-	- The bind address and port can be modified in the command line if you need a public exposure for your server
+	- The bind address `0.0.0.0` and port can be modified in the command line if you need a public exposure for your server
 - Open your browser at `http://127.0.0.1:8080`
 
 If you intend to change the cascading style sheets (CSS), you need SASS:

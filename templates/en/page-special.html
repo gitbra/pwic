@@ -126,12 +126,12 @@
 				</li>
 			{% endif %}
 		</ul>
-		{% if (pwic.admin or pwic.manager) and (pwic.disabled_users|count > 0 or pwic.inactive_users|count > 0) %}
+		{% if (pwic.admin or pwic.manager) and (pwic.disableds|count > 0 or pwic.inactive_users|count > 0) %}
 			<p>By status:</p>
 			<ul>
-				{% if pwic.disabled_users|count > 0 %}
+				{% if pwic.disableds|count > 0 %}
 					<li><strong>Disabled users:</strong>
-						{% for user in pwic.disabled_users %}
+						{% for user in pwic.disableds %}
 							<a href="/special/user/{{user|urlencode}}">{{user|escape}}</a>
 						{% endfor %}
 					</li>

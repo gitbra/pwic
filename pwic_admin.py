@@ -15,7 +15,7 @@ from stat import S_IREAD
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, \
     PWIC_USER_ANONYMOUS, PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _sha256, _safeName, pwic_audit
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _row_factory, _sha256, _safeName, pwic_audit
 
 
 db = None
@@ -131,6 +131,7 @@ def db_connect(init: bool = False) -> Optional[sqlite3.Cursor]:
         return None
     try:
         db = sqlite3.connect(PWIC_DB_SQLITE)
+        db.row_factory = _row_factory
         return db.cursor()
     except sqlite3.OperationalError:
         print('Error: the database cannot be opened')
@@ -219,7 +220,7 @@ CREATE TABLE "projects" (
     "description" TEXT NOT NULL,
     PRIMARY KEY("project")
 )''')
-            sql.execute("INSERT INTO projects (project, description) VALUES ('', '')")  # Empty projects.project
+            sql.execute(''' INSERT INTO projects (project, description) VALUES ('', '')''')     # Empty projects.project
             # Table ENV
             sql.execute('''
 CREATE TABLE "env" (
@@ -229,8 +230,8 @@ CREATE TABLE "env" (
     FOREIGN KEY("project") REFERENCES "projects"("project"),
     PRIMARY KEY("key","project")
 )''')
-            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')")
-            sql.execute("INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')")
+            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')''')
+            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
             # Table USERS
             sql.execute('''
 CREATE TABLE "users" (
@@ -239,9 +240,9 @@ CREATE TABLE "users" (
     "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
     PRIMARY KEY("user")
 )''')
-            sql.execute("INSERT INTO users (user, password, initial) VALUES ('', '', '')")  # Empty pages.valuser
-            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_ANONYMOUS, ))
-            sql.execute("INSERT INTO users (user, password, initial) VALUES (?, '', '')", (PWIC_USER_GHOST, ))
+            sql.execute(''' INSERT INTO users (user, password, initial) VALUES ('', '', '')''')     # Empty pages.valuser
+            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USER_ANONYMOUS, ))
+            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USER_GHOST, ))
             # Table ROLES
             sql.execute('''
 CREATE TABLE "roles" (
@@ -404,8 +405,8 @@ def show_env(var: str = '') -> bool:
     tab.header = True
     tab.border = True
     for row in sql.fetchall():
-        value = '(Secret value not displayed)' if row[1] in PWIC_ENV_PRIVATE else row[2]
-        tab.add_row([row[0], row[1], value])
+        value = '(Secret value not displayed)' if row['key'] in PWIC_ENV_PRIVATE else row['value']
+        tab.add_row([row['project'], row['key'], value])
         found = True
     if found:
         print('\nGlobal and project-dependent Pwic variables:\n')
@@ -444,14 +445,14 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
         for row in sql.fetchall():
             pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                              'event': 'unset-%s' % key,
-                             'project': row[0]})
-        sql.execute('DELETE FROM env WHERE key = ?', (key, ))
+                             'project': row['project']})
+        sql.execute(''' DELETE FROM env WHERE key = ?''', (key, ))
 
     # Update the variable
     if value == '':
-        sql.execute('DELETE FROM env WHERE project = ? AND key = ?', (project, key))
+        sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
     else:
-        sql.execute('INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)', (project, key, value))
+        sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': '%sset-%s' % ('un' if value == '' else '', key),
                      'project': project,
@@ -544,10 +545,10 @@ def show_projects() -> bool:
                              b.user    ASC''')
     data = {}
     for row in sql.fetchall():
-        if row[0] not in data:
-            data[row[0]] = {'description': row[1],
-                            'admin': []}
-        data[row[0]]['admin'].append(row[2])
+        if row['project'] not in data:
+            data[row['project']] = {'description': row['description'],
+                                    'admin': []}
+        data[row['project']]['admin'].append(row['user'])
 
     # Display the entries
     tab = PrettyTable()
@@ -579,7 +580,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     dt = _dt()
 
     # Verify that the project does not exist yet
-    sql.execute('SELECT project FROM projects WHERE project = ?', (project, ))
+    sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, ))
     if sql.fetchone() is not None:
         print('Error: the project already exists')
         return False
@@ -603,20 +604,20 @@ def create_project(project: str, description: str, admin: str) -> bool:
                          'user': admin})
 
     # Add the project
-    sql.execute('INSERT INTO projects (project, description) VALUES (?, ?)', (project, description))
+    sql.execute(''' INSERT INTO projects (project, description) VALUES (?, ?)''', (project, description))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'create-project',
                      'project': project})
 
     # Add the role
-    sql.execute("INSERT INTO roles (project, user, admin, reader) VALUES (?, ?, 'X', 'X')", (project, admin))
+    sql.execute(''' INSERT INTO roles (project, user, admin, reader) VALUES (?, ?, 'X', 'X')''', (project, admin))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
-    sql.execute("INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')", (project, PWIC_USER_ANONYMOUS))
+    sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USER_ANONYMOUS))
 
     # Add a default homepage
     sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
@@ -675,7 +676,7 @@ def takeover_project(project: str, admin: str) -> bool:
                       AND user    = ?''',
                 (project, admin))
     if sql.rowcount == 0:
-        sql.execute("INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')", (project, admin))
+        sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'grant-admin',
                      'project': project,
@@ -693,7 +694,7 @@ def delete_project(project: str) -> bool:
 
     # Verify that the project exists yet
     project = _safeName(project)
-    if project == '' or sql.execute('SELECT project FROM projects WHERE project = ?', (project, )).fetchone() is None:
+    if project == '' or sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None:
         print('Error: the project "%s" does not exist' % project)
         return False
 
@@ -704,9 +705,9 @@ def delete_project(project: str) -> bool:
         return False
 
     # Remove the uploaded files
-    sql.execute('SELECT filename FROM documents WHERE project = ?', (project, ))
+    sql.execute(''' SELECT filename FROM documents WHERE project = ?''', (project, ))
     for row in sql.fetchall():
-        fn = (PWIC_DOCUMENTS_PATH % project) + row[0]
+        fn = (PWIC_DOCUMENTS_PATH % project) + row['filename']
         try:
             os.remove(fn)
         except (OSError, FileNotFoundError):
@@ -723,12 +724,12 @@ def delete_project(project: str) -> bool:
         return False
 
     # Delete
-    sql.execute('DELETE FROM env       WHERE project = ?', (project, ))
-    sql.execute('DELETE FROM documents WHERE project = ?', (project, ))
-    sql.execute('DELETE FROM pages     WHERE project = ?', (project, ))
-    sql.execute('DELETE FROM cache     WHERE project = ?', (project, ))
-    sql.execute('DELETE FROM roles     WHERE project = ?', (project, ))
-    sql.execute('DELETE FROM projects  WHERE project = ?', (project, ))
+    sql.execute(''' DELETE FROM env       WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM documents WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM pages     WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM cache     WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM roles     WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM projects  WHERE project = ?''', (project, ))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'delete-project',
                      'project': project})
@@ -749,13 +750,13 @@ def create_user(user: str) -> bool:
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
-    sql.execute('SELECT user FROM users WHERE user = ?', (user, ))
+    sql.execute(''' SELECT user FROM users WHERE user = ?''', (user, ))
     if sql.fetchone() is not None:
         print('Error: the user "%s" already exists' % user)
         return False
 
     # Create the user account
-    sql.execute('INSERT INTO users (user, password, initial) VALUES (?, ?, ?)',
+    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, ?)''',
                 (user, _sha256(PWIC_DEFAULT_PASSWORD), 'X'))
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'create-user',
@@ -833,7 +834,7 @@ def revoke_user(user: str, force: bool) -> bool:
     if user[:4] == 'pwic':
         print('Error: this user cannot be managed')
         return False
-    if sql.execute('SELECT user FROM users WHERE user = ?', (user, )).fetchone() is None:
+    if sql.execute(''' SELECT user FROM users WHERE user = ?''', (user, )).fetchone() is None:
         print('Error: the user "%s" does not exist' % user)
         return False
 
@@ -868,7 +869,7 @@ def revoke_user(user: str, force: bool) -> bool:
                 print('Warning: the following projects will have no administrator anymore')
             else:
                 print('Error: organize a transfer of ownership for the following projects before revoking the user')
-        tab.add_row([row[0], row[1]])
+        tab.add_row([row['project'], row['description']])
     if found:
         tab.header = False
         tab.border = False
@@ -884,13 +885,13 @@ def revoke_user(user: str, force: bool) -> bool:
             return False
 
     # Disable the user for every project
-    sql.execute('SELECT project FROM roles WHERE user = ?', (user, ))
+    sql.execute(''' SELECT project FROM roles WHERE user = ?''', (user, ))
     for row in sql.fetchall():
         pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                          'event': 'delete-user',
-                         'project': row[0],
+                         'project': row['project'],
                          'user': user})
-    sql.execute('DELETE FROM roles WHERE user = ?', (user, ))
+    sql.execute(''' DELETE FROM roles WHERE user = ?''', (user, ))
     db_commit()
     print('The user "%s" is fully unassigned to the projects but remains known in the database' % user)
     return True
@@ -922,7 +923,7 @@ def show_logon() -> bool:
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
-        tab.add_row([row[0], row[1], row[2], row[3]])
+        tab.add_row([row['user'], row['date'], row['time'], row['events']])
     tab.header = True
     tab.border = False
     print(tab.get_string(), flush=True)
@@ -958,7 +959,7 @@ def show_audit(dmin: int, dmax: int) -> bool:
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
-        tab.add_row([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10]])
+        tab.add_row([row['id'], row['date'], row['time'], row['author'], row['event'], row['user'], row['project'], row['page'], row['revision'], row['ip'], row['string']])
     tab.header = True
     tab.border = False
     print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
@@ -992,9 +993,9 @@ def clear_cache(project: str) -> bool:
     # Clear the cache
     project = _safeName(project)
     if project != '':
-        sql.execute('DELETE FROM cache WHERE project = ?', (project, ))
+        sql.execute(''' DELETE FROM cache WHERE project = ?''', (project, ))
     else:
-        sql.execute('DELETE FROM cache')
+        sql.execute(''' DELETE FROM cache''')
     pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
                      'event': 'clear-cache',
                      'project': project})
