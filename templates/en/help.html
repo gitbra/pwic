@@ -73,6 +73,12 @@
 						<td>Number of days in the past for the online visibility of the audit data that are restricted to the administrators. Define the value <code>-1</code> to switch off the listing.</td>
 					</tr>
 					<tr>
+						<td><code>auto_join</code></td>
+						<td class="pwic_desktop">Yes</td>
+						<td class="pwic_desktop">Yes</td>
+						<td>Any existing user is granted as a reader by default when a page is accessed. To exclude a user, you must disable it (not remove) from the management screen of the users. The option is useful when you need a public workspace for your team members but you don't want to manage the initial access.</td>
+					</tr>
+					<tr>
 						<td><code>base_url</code></td>
 						<td class="pwic_desktop">No</td>
 						<td class="pwic_desktop">No</td>
@@ -130,11 +136,7 @@
 						<td><code>ip_filter</code></td>
 						<td class="pwic_desktop">No</td>
 						<td class="pwic_desktop">No</td>
-						<td>
-							- List of IP addresses separated by a space. The unauthorized addresses are prefixed by the minus sign <code>-</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once.
-							<br/>- The check applies to the host that connected unless you use <code>xff</code>.
-							<br/>- To be fully effective, the server must be restarted when the value is changed. The current sessions will be terminated.
-						</td>
+						<td>List of IP addresses separated by a space. The unauthorized addresses are prefixed by the minus sign <code>-</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. The check applies to the host that connected unless you use <code>xff</code>.</td>
 					</tr>
 					<tr>
 						<td><code>heading_mask</code></td>
@@ -206,6 +208,12 @@
 						<td>Disable the export of the project as an archive for the online administrators.</td>
 					</tr>
 					<tr>
+						<td><code>no_graph</code></td>
+						<td class="pwic_desktop">Yes</td>
+						<td class="pwic_desktop">Yes</td>
+						<td>Disable the ability to render the pages of the project in a graph.</td>
+					</tr>
+					<tr>
 						<td><code>no_history</code></td>
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">Yes</td>
@@ -221,7 +229,11 @@
 						<td><code>no_logon</code></td>
 						<td class="pwic_desktop">No</td>
 						<td class="pwic_desktop">No</td>
-						<td>Skip the logon screen and assign the anonymous role to any visitor. As per the default behavior of the user account <code>{{pwic.constants.anonymous_user}}</code>, Pwic becomes public, read-only and you update the instance by transferring the folder <code>{{pwic.constants.db_path}}</code> administratively. The server must be restarted when the option is changed.</td>
+						<td>- Skip the logon screen and assign the anonymous role to your visitors.
+							<br/>- On contrary to the option <code>auto_join</code>, they don't need a user account to read the pages.
+							<br/>- You can hide a project by disabling the user account <code>{{pwic.constants.anonymous_user}}</code>.
+							<br/>- The option <code>robots</code> is recommended when the option is turned on.
+						</td>
 					</tr>
 					<tr>
 						<td><code>no_mde</code></td>
@@ -276,7 +288,7 @@
 						<td class="pwic_desktop">Yes</td>
 						<td class="pwic_desktop">No</td>
 						<td>
-							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your project in case it is made public through the option <code>no_logon</code>.
+							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your projects in case it is made public through the option <code>no_logon</code>.
 							<br/>- The option is technically non-restricting. Several values separated with a comma are available: <code>noarchive</code>, <code>nofollow</code>, <code>noindex</code> and <code>nosnippet</code>.
 							<br/>- Refer also to the related option <code>no_index_rev</code>.</td>
 					</tr>
@@ -385,13 +397,6 @@
 				<tr>
 					<td><code>oauth_domains</code></td>
 					<td>List of the authorized domains for the email of the user, separated by a space and ordered by descending priority.</td>
-					<td>Optional</td>
-					<td>Optional</td>
-					<td>Optional</td>
-				</tr>
-				<tr>
-					<td><code>oauth_projects</code></td>
-					<td>Upon the initialization of the new user account, automatically grant a read access to the listed projects separated by a space.</td>
 					<td>Optional</td>
 					<td>Optional</td>
 					<td>Optional</td>

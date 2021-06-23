@@ -192,11 +192,9 @@ class PwicServer():
     async def _suser(self, request: web.Request) -> str:
         ''' Retrieve the logged user '''
         self._checkIP(request)
-        if app['no_logon']:
-            return PWIC_USER_ANONYMOUS
-        else:
-            session = await get_session(request)
-            return session.get('user', '')
+        session = await get_session(request)
+        user = session.get('user', '')
+        return PWIC_USER_ANONYMOUS if (user == '') and app['no_logon'] else user
 
     async def _handlePost(self, request: web.Request) -> Dict[str, Any]:
         ''' Return the POST as a readable object.get() '''
@@ -309,6 +307,24 @@ class PwicServer():
                 raise web.HTTPTemporaryRedirect('/')  # Project not found
             pwic['project_description'] = row['description']
             pwic['title'] = row['description']
+
+            # Grant the default rights as a reader
+            if (user[:4] != 'pwic') and (self._readEnv(sql, project, 'auto_join') is not None):
+                if sql.execute(''' SELECT 1
+                                   FROM roles
+                                   WHERE project = ?
+                                     AND user    = ?''',
+                               (project, user)).fetchone() is None:
+                    sql.execute(''' INSERT INTO roles (project, user, reader)
+                                    VALUES (?, ?, 'X')''', (project, user))
+                    if sql.rowcount > 0:
+                        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                                         'event': 'grant-reader',
+                                         'project': project,
+                                         'user': user,
+                                         'string': 'auto_join'},
+                                   request)
+                        self._commit()
 
             # Verify the access
             sql.execute(''' SELECT admin, manager, editor, validator, reader
@@ -1155,9 +1171,11 @@ class PwicServer():
         if user == '':
             return await self._handleLogon(request)
 
-        # Check the authorizations
+        # Fetch the parameters
         project = _safeName(request.match_info.get('project', ''))
         sql = self._connect()
+
+        # Check the authorizations
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE project  = ?
@@ -1165,7 +1183,8 @@ class PwicServer():
                           AND manager  = 'X'
                           AND disabled = '' ''',
                     (project, user))
-        if sql.fetchone() is None:
+        if sql.fetchone() is None or \
+           (self._readEnv(sql, project, 'no_graph') is not None):
             raise web.HTTPUnauthorized()
 
         # Show the page
@@ -1386,8 +1405,6 @@ class PwicServer():
     async def api_logon(self, request: web.Request) -> web.Response:
         ''' API to log on people '''
         # Checks
-        if app['no_logon']:
-            raise web.HTTPBadRequest()
         self._checkIP(request)
 
         # Fetch the submitted data
@@ -1480,8 +1497,6 @@ class PwicServer():
                 _oauth_failed()
 
         # Checks
-        if app['no_logon']:
-            raise web.HTTPBadRequest()
         self._checkIP(request)
 
         # Get the callback parameters
@@ -1594,18 +1609,6 @@ class PwicServer():
                              'string': PWIC_MAGIC_OAUTH},
                        request)
 
-            # Grant the default rights as reader
-            for project in oauth['projects']:
-                if sql.execute(''' SELECT 1 FROM projects WHERE project = ?''', (project, )).fetchone() is not None:
-                    sql.execute(''' INSERT INTO roles (project, user, reader) VALUES (?, ?, 'X')''', (project, user))
-                    if sql.rowcount > 0:
-                        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
-                                         'event': 'grant-reader',
-                                         'project': project,
-                                         'user': user,
-                                         'string': PWIC_MAGIC_OAUTH},
-                                   request)
-
         # Register the session
         session = await new_session(request)
         session['user'] = user
@@ -1686,7 +1689,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
         page = _safeName(post.get('page', ''))
         all = post.get('all', None) is not None
-        data = {}
+        data: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
         # API not available to the pure readers when some options are activated
         sql = self._connect()
@@ -1882,9 +1885,13 @@ class PwicServer():
         if project == '':
             raise web.HTTPBadRequest()
 
+        # Verify the feature
+        sql = self._connect()
+        if self._readEnv(sql, project, 'no_graph') is not None:
+            raise web.HTTPUnauthorized()
+
         # Fetch the pages
         regex_page = re.compile(PWIC_REGEX_PAGE)
-        sql = self._connect()
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2756,8 +2763,8 @@ class PwicServer():
 
         # New role
         else:
-            newvalue = {'X': '', '': 'X'}[row[roles[roleid + 1]]]
-            if roleid == 0 and newvalue != 'X' and user == userpost:
+            newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
+            if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
                 raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
             app['extension'].on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue)
             try:
@@ -3095,6 +3102,7 @@ def main() -> bool:
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
     app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
+                    web.get('/api/logon', app['pwic']._handleLogon),
                     web.get('/api/logout', app['pwic'].api_logout),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
@@ -3169,8 +3177,7 @@ def main() -> bool:
                     'tenant': app['pwic']._readEnv(sql, '', 'oauth_tenant', ''),
                     'identifier': app['pwic']._readEnv(sql, '', 'oauth_identifier', ''),
                     'server_secret': app['pwic']._readEnv(sql, '', 'oauth_secret', ''),
-                    'domains': _list(app['pwic']._readEnv(sql, '', 'oauth_domains')),
-                    'projects': _list(app['pwic']._readEnv(sql, '', 'oauth_projects'))}
+                    'domains': _list(app['pwic']._readEnv(sql, '', 'oauth_domains'))}
 
     # Compile the IP filters
     def _compile_ip():

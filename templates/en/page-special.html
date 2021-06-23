@@ -41,7 +41,9 @@
 				{% endif %}
 				{% if pwic.manager %}
 					<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
-					<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
+					{% if not pwic.env.no_graph %}
+						<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
+					{% endif %}
 				{% endif %}
 				{% if pwic.admin %}
 					<a href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>

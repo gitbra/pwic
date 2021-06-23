@@ -56,8 +56,6 @@ paths:
           description: Successful operation if no body, else redirected page from 302
         302:
           description: Redirection with the parameter ?failed if the credentials were rejected
-        400:
-          description: Logon is disabled
         401:
           description: Unsufficient authorizations
   /api/logout:
@@ -90,8 +88,6 @@ paths:
           description: Successful logon
         307:
           description: Redirection with the parameter ?failed if the credentials were rejected
-        400:
-          description: Logon is disabled
         401:
           description: Unsufficient authorizations
         501:
@@ -599,7 +595,7 @@ paths:
         400:
           description: Invalid parameters
         401:
-          description: Unsufficient authorizations
+          description: Unsufficient authorizations or disabled feature
   /api/server/env/get:
     post:
       summary: Get details about the environment variables

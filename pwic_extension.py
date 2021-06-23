@@ -10,7 +10,7 @@
     if they are passed as a reference, else raise an exception.
 '''
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from aiohttp import web
 import sqlite3
 
@@ -54,9 +54,9 @@ class PwicExtension():
         return False, True
 
     def on_render(self,
-                  app: object,                              # Access to the application (do not change)
+                  app: web.Application,                     # Access to the application (do not change)
                   sql: sqlite3.Cursor,                      # Cursor to query the database
-                  pwic: object,                             # Content to be rendered (changeable)
+                  pwic: Dict[str, Any],                     # Content to be rendered (changeable)
                   ) -> None:
         ''' Event when a page is about to be rendered.
             The variable 'pwic' contains all the calculated data and you can interact with it.
@@ -65,11 +65,11 @@ class PwicExtension():
         pass
 
     def on_search_terms(self,
-                        sql: sqlite3.Cursor,                # Cursor to query the database
-                        project: str,                       # Name of the project
-                        user: str,                          # Name of the user
-                        query: object,                      # Not-null parsed search terms (changeable)
-                        with_rev: bool,                     # Search in the old revisions too?
+                        sql: sqlite3.Cursor,                            # Cursor to query the database
+                        project: str,                                   # Name of the project
+                        user: str,                                      # Name of the user
+                        query: Optional[Dict[str, List[str]]],          # Not-null parsed search terms (changeable)
+                        with_rev: bool,                                 # Search in the old revisions too?
                         ) -> None:
         ''' Event when a search is launched by a user.
             The variable 'query' is the changeable result.
@@ -120,11 +120,11 @@ class PwicExtension():
         pass
 
     def on_api_project_info_get(self,
-                                sql: sqlite3.Cursor,        # Cursor to query the database
-                                project: str,               # Name of the project
-                                user: str,                  # Name of the user
-                                page: str,                  # Name of a precise page
-                                data: object,               # Output data (changeable)
+                                sql: sqlite3.Cursor,                                # Cursor to query the database
+                                project: str,                                       # Name of the project
+                                user: str,                                          # Name of the user
+                                page: str,                                          # Name of a precise page
+                                data: Dict[str, Dict[str, List[Dict[str, Any]]]],   # Output data (changeable)
                                 ) -> None:
         ''' Event when the project information are queried through the API.
             Modify the parameter 'data' to change the returned content.
@@ -197,7 +197,7 @@ class PwicExtension():
 
     def on_api_document_create(self,
                                sql: sqlite3.Cursor,         # Cursor to query the database
-                               document: object,            # Submitted document (changeable)
+                               document: Dict[str, Any],    # Submitted document (changeable)
                                ) -> None:
         ''' Event when a new document is submitted and before many internal checks are executed.
             Raise an exception web.HTTP* to cancel the upload.
