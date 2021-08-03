@@ -25,37 +25,16 @@ from random import randint
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, \
-    PWIC_USER_ANONYMOUS, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_LANGUAGE, PWIC_DEFAULT_PAGE, \
-    PWIC_DEFAULT_LOGGING_FORMAT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, \
-    PWIC_REGEX_PAGE, PWIC_REGEX_DOCUMENT, PWIC_REGEX_MIME, PWIC_REGEX_HTML_TAG, \
+    PWIC_USERS, PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_REGEXES, \
     MIME_BMP, MIME_JSON, MIME_GENERIC, MIME_SVG, MIME_TEXT, PWIC_MIMES, \
     _x, _xb, _apostrophe, _attachmentName, _dt, _int, _list, _mime2icon, _randomHash, _row_factory, \
-    _sha256, _safeName, _safeFileName, _size2str, _sqlprint, \
+    _sha256, _safeName, _safeFileName, _safeUserName, _size2str, _sqlprint, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_tostring, pwic_html2odt
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
 IPR_EQ, IPR_NET, IPR_REG = range(3)
-
-
-# ===============
-#  Documentation
-#   - Jinja2            http://zetcode.com/python/jinja/
-#   - Markdown          https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
-#   - HTTP codes        https://docs.aiohttp.org/en/latest/web_exceptions.html
-#                       https://docs.pylonsproject.org/projects/pyramid/en/latest/api/httpexceptions.html
-#   - SSL               https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
-#   - PyParsing         https://github.com/pyparsing/pyparsing/blob/master/examples/searchparser.py
-#   - Parsimonious      https://github.com/erikrose/parsimonious
-#                       http://zderadicka.eu/writing-simple-parser-in-python/
-#   - HTML5 upload      https://www.smashingmagazine.com/2018/01/drag-drop-file-uploader-vanilla-js/
-#                       https://css-tricks.com/drag-and-drop-file-uploading/
-#                       https://docs.aiohttp.org/en/stable/multipart.html
-#   - Magic bytes       https://en.wikipedia.org/wiki/List_of_file_signatures
-#   - ODT               https://odfvalidator.org
-#   - Colors            https://www.w3schools.com/colors/colors_picker.asp
-# ===============
 
 
 # ===================================================
@@ -81,7 +60,7 @@ class PwicServer():
     def _md2html(self, sql: sqlite3.Cursor, project: str, page: Optional[str], markdown: str, cache: bool = True, headerNumbering: bool = True) -> Tuple[str, object]:
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
-        if page is None:
+        if (page is None) or (self._readEnv(sql, project, 'no_cache') is not None):
             cache = False
         if cache:
             row = sql.execute(''' SELECT html
@@ -98,7 +77,7 @@ class PwicServer():
         else:
             html = app['markdown'].convert(markdown).replace('<span></span>', '')
             done, new_html = app['extension'].on_html(sql, project, page, html)
-            if done and new_html is not None:
+            if done and isinstance(new_html, str):
                 html = new_html
             if cache:
                 sql.execute(''' INSERT OR REPLACE INTO cache (project, page, html) VALUES (?, ?, ?)''',
@@ -194,7 +173,7 @@ class PwicServer():
         self._checkIP(request)
         session = await get_session(request)
         user = session.get('user', '')
-        return PWIC_USER_ANONYMOUS if (user == '') and app['no_logon'] else user
+        return PWIC_USERS['anonymous'] if (user == '') and app['no_logon'] else user
 
     async def _handlePost(self, request: web.Request) -> Dict[str, Any]:
         ''' Return the POST as a readable object.get() '''
@@ -216,9 +195,9 @@ class PwicServer():
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
-        pwic['constants'] = {'anonymous_user': PWIC_USER_ANONYMOUS,
+        pwic['constants'] = {'anonymous_user': PWIC_USERS['anonymous'],
                              'db_path': PWIC_DB,
-                             'default_language': PWIC_DEFAULT_LANGUAGE,
+                             'default_language': PWIC_DEFAULTS['language'],
                              'changeable_env_variables': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE),
                              'languages': app['langs'],
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
@@ -231,7 +210,7 @@ class PwicServer():
                         WHERE value <> ''
                           AND ( project = ?
                              OR project = '' )
-                        ORDER BY key ASC,
+                        ORDER BY key     ASC,
                                  project DESC''',
                     (pwic.get('project', ''), ))
         pwic['env'] = {}
@@ -257,6 +236,10 @@ class PwicServer():
                 robots.remove('index')
             if 'noindex' not in robots:
                 robots.append('noindex')
+            if 'snippet' in robots:
+                robots.remove('snippet')
+            if 'nosnippet' not in robots:
+                robots.append('nosnippet')
             if 'robots' not in pwic['env']:
                 pwic['env']['robots'] = {'value': '',
                                          'global': True}
@@ -269,10 +252,10 @@ class PwicServer():
         # Render the template
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
-        pwic['language'] = session.get('language', PWIC_DEFAULT_LANGUAGE)
+        pwic['language'] = session.get('language', PWIC_DEFAULTS['language'])
         template_name = '%s/%s.html' % (pwic['language'], name)
-        if (pwic['language'] != PWIC_DEFAULT_LANGUAGE) and not isfile(PWIC_TEMPLATES_PATH + template_name):
-            template_name = '%s/%s.html' % (PWIC_DEFAULT_LANGUAGE, name)
+        if (pwic['language'] != PWIC_DEFAULTS['language']) and not isfile(PWIC_TEMPLATES_PATH + template_name):
+            template_name = '%s/%s.html' % (PWIC_DEFAULTS['language'], name)
         app['extension'].on_render(app, sql, pwic)
         return web.Response(text=app['jinja'].get_template(template_name).render(pwic=pwic), content_type='text/html')
 
@@ -285,7 +268,7 @@ class PwicServer():
 
         # Show the requested page
         project = _safeName(request.match_info.get('project', ''))
-        page = _safeName(request.match_info.get('page', PWIC_DEFAULT_PAGE))
+        page = _safeName(request.match_info.get('page', PWIC_DEFAULTS['page']))
         page_special = (page == 'special')
         revision = _int(request.match_info.get('revision', '0'))
         action = request.match_info.get('action', 'view')
@@ -318,7 +301,7 @@ class PwicServer():
                     sql.execute(''' INSERT INTO roles (project, user, reader)
                                     VALUES (?, ?, 'X')''', (project, user))
                     if sql.rowcount > 0:
-                        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                        pwic_audit(sql, {'author': PWIC_USERS['system'],
                                          'event': 'grant-reader',
                                          'project': project,
                                          'user': user,
@@ -371,7 +354,7 @@ class PwicServer():
         pwic['links'] = []
         for row in sql.fetchall():
             pwic['links'].append(row)
-            if row['page'] == PWIC_DEFAULT_PAGE:
+            if row['page'] == PWIC_DEFAULTS['page']:
                 pwic['links'].insert(0, pwic['links'].pop())    # Push to top of list because it is the home page
 
         # Verify that the page exists
@@ -579,7 +562,7 @@ class PwicServer():
         # Show the history of the page
         elif action == 'history':
             # Redirect the pure reader if the history is disabled
-            if pwic['pure_reader'] and option_nohist:
+            if option_nohist and pwic['pure_reader']:
                 raise web.HTTPTemporaryRedirect('/%s/%s' % (project, page))
 
             # Extract the revisions
@@ -755,7 +738,7 @@ class PwicServer():
 
         # Fetch the information of the user
         sql = self._connect()
-        userpage = _safeName(request.match_info.get('userpage', ''), extra='')
+        userpage = _safeUserName(request.match_info.get('userpage', ''))
         row = sql.execute(''' SELECT password, initial FROM users WHERE user = ?''', (userpage, )).fetchone()
         if row is None:
             raise web.HTTPNotFound()
@@ -881,7 +864,8 @@ class PwicServer():
                 'project_description': row['description'],
                 'terms': pwic_search_tostring(query),
                 'pages': [],
-                'documents': []}
+                'documents': [],
+                'with_rev': with_rev}
 
         # Search for a page
         sql.execute(''' SELECT a.project, a.page, a.revision, a.latest, a.draft, a.final,
@@ -1058,7 +1042,12 @@ class PwicServer():
                             INNER JOIN users AS c
                                 ON  c.user = a.user
                         WHERE a.project = ?
-                        ORDER BY a.user''' % _apostrophe(PWIC_MAGIC_OAUTH),
+                        ORDER BY a.admin     DESC,
+                                 a.manager   DESC,
+                                 a.editor    DESC,
+                                 a.validator DESC,
+                                 a.reader    DESC,
+                                 a.user      ASC''' % _apostrophe(PWIC_MAGIC_OAUTH),
                     (user, project))
         for row in sql.fetchall():
             pwic['roles'].append({'user': row['user'],
@@ -1109,9 +1098,9 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        regex_page = re.compile(PWIC_REGEX_PAGE)
-        regex_document = re.compile(PWIC_REGEX_DOCUMENT)
-        linkmap: Dict[str, List[str]] = {PWIC_DEFAULT_PAGE: []}
+        regex_page = re.compile(PWIC_REGEXES['page'])
+        regex_document = re.compile(PWIC_REGEXES['document'])
+        linkmap: Dict[str, List[str]] = {PWIC_DEFAULTS['page']: []}
         broken_docs: Dict[str, List[int]] = {}
         for row in sql.fetchall():
             ok = True
@@ -1120,8 +1109,8 @@ class PwicServer():
                 linkmap[page] = []
 
             # Generate a fake link at the home page for all the bookmarked pages
-            if _xb(row['header']) and page not in linkmap[PWIC_DEFAULT_PAGE]:
-                linkmap[PWIC_DEFAULT_PAGE].append(page)
+            if _xb(row['header']) and page not in linkmap[PWIC_DEFAULTS['page']]:
+                linkmap[PWIC_DEFAULTS['page']].append(page)
 
             # Find the links to the other pages
             subpages = regex_page.findall(row['markdown'])
@@ -1144,7 +1133,7 @@ class PwicServer():
         # Find the orphaned and broken links
         allpages = [key for key in linkmap]
         orphans = allpages.copy()
-        orphans.remove(PWIC_DEFAULT_PAGE)
+        orphans.remove(PWIC_DEFAULTS['page'])
         broken = []
         for link in linkmap:
             for page in linkmap[link]:
@@ -1409,11 +1398,11 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handlePost(request)
-        user = _safeName(post.get('user', ''), extra='')
-        pwd = '' if user == PWIC_USER_ANONYMOUS else _sha256(post.get('password', ''))
-        lang = post.get('language', PWIC_DEFAULT_LANGUAGE)
+        user = _safeUserName(post.get('user', ''))
+        pwd = '' if user == PWIC_USERS['anonymous'] else _sha256(post.get('password', ''))
+        lang = post.get('language', PWIC_DEFAULTS['language'])
         if lang not in app['langs']:
-            lang = PWIC_DEFAULT_LANGUAGE
+            lang = PWIC_DEFAULTS['language']
 
         # Logon with the credentials
         ok = False
@@ -1432,7 +1421,7 @@ class PwicServer():
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
-                if user != PWIC_USER_ANONYMOUS:
+                if user != PWIC_USERS['anonymous']:
                     pwic_audit(sql, {'author': user,
                                      'event': 'logon'},
                                request)
@@ -1451,7 +1440,7 @@ class PwicServer():
         # it is effectively destroyed by the user (his web browser generally does it). The session
         # is fully lost upon server restart because a new key is generated.
         user = await self._suser(request)
-        if user not in ['', PWIC_USER_ANONYMOUS]:
+        if user not in ['', PWIC_USERS['anonymous']]:
             pwic_audit(self._connect(), {'author': user,
                                          'event': 'logout'},
                        request)
@@ -1591,7 +1580,7 @@ class PwicServer():
                 if index < cursor:
                     user = item
                     cursor = index
-        user = _safeName(user, extra='')
+        user = _safeUserName(user)
         if (user[:4] in ['', 'pwic']) or ('@' not in user):
             _oauth_failed()
 
@@ -1599,11 +1588,11 @@ class PwicServer():
         if sql.execute(''' SELECT 1 FROM users WHERE user = ?''', (user, )).fetchone() is None:
             sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, '')''', (user, PWIC_MAGIC_OAUTH))
             # Remarks:
-            # - PWIC_DEFAULT_PASSWORD is not set because the user will forget to change it
+            # - PWIC_DEFAULTS['password'] is not set because the user will forget to change it
             # - The user cannot change the internal password because the current password will not be hashed correctly
             # - The password can be reset from the administration console only
             # - Then the two authentications methods can coexist
-            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
                              'event': 'create-user',
                              'user': user,
                              'string': PWIC_MAGIC_OAUTH},
@@ -1612,7 +1601,7 @@ class PwicServer():
         # Register the session
         session = await new_session(request)
         session['user'] = user
-        session['language'] = PWIC_DEFAULT_LANGUAGE  # TODO The language is not selectable
+        session['language'] = PWIC_DEFAULTS['language']     # TODO The language is not selectable
         session['user_secret'] = _randomHash()
         pwic_audit(sql, {'author': user,
                          'event': 'logon',
@@ -1627,7 +1616,7 @@ class PwicServer():
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user in ['', PWIC_USER_ANONYMOUS]:
+        if user in ['', PWIC_USERS['anonymous']]:
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -1679,7 +1668,7 @@ class PwicServer():
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user in ['', PWIC_USER_ANONYMOUS]:
+        if user in ['', PWIC_USERS['anonymous']]:
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -1891,7 +1880,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
-        regex_page = re.compile(PWIC_REGEX_PAGE)
+        regex_page = re.compile(PWIC_REGEXES['page'])
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -1943,7 +1932,7 @@ class PwicServer():
 
             # Assign the bookmarks to the home page
             if _xb(row['header']):
-                _makeLink(row['project'], PWIC_DEFAULT_PAGE, row['project'], row['page'])
+                _makeLink(row['project'], PWIC_DEFAULTS['page'], row['project'], row['page'])
 
             # Find the links to the other pages
             subpages = regex_page.findall(row['markdown'])
@@ -2419,7 +2408,7 @@ class PwicServer():
 
         # Fetch the legal notice
         legal_notice = str(self._readEnv(sql, project, 'legal_notice', '')).strip()
-        legal_notice = re.sub(PWIC_REGEX_HTML_TAG, '', legal_notice)
+        legal_notice = re.sub(PWIC_REGEXES['html_tag'], '', legal_notice)
         legal_notice = legal_notice.replace('\r', '')
 
         # Format MD
@@ -2456,7 +2445,7 @@ class PwicServer():
 
             # Extract the meta-informations of the embedded pictures
             docids = ['0']
-            subdocs = re.compile(PWIC_REGEX_DOCUMENT).findall(row['markdown'])
+            subdocs = re.compile(PWIC_REGEXES['document']).findall(row['markdown'])
             if subdocs is not None:
                 for sd in subdocs:
                     sd = str(_int(sd[0]))
@@ -2602,7 +2591,7 @@ class PwicServer():
         project = _safeName(post.get('project', ''))
         error_url = '/special/create-user?project=%s&failed' % escape(project)
         wisheduser = post.get('user', '').strip().lower()
-        newuser = _safeName(post.get('user', ''), extra='')
+        newuser = _safeUserName(post.get('user', ''))
         if (wisheduser != newuser) or ('' in [project, newuser]) or (newuser[:4] == 'pwic'):
             raise web.HTTPFound(error_url)
 
@@ -2633,7 +2622,7 @@ class PwicServer():
             sql.execute(''' INSERT INTO users (user, password)
                             SELECT ?, ?
                             WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
-                        (newuser, _sha256(PWIC_DEFAULT_PASSWORD), newuser))
+                        (newuser, _sha256(PWIC_DEFAULTS['password']), newuser))
             if sql.rowcount > 0:
                 pwic_audit(sql, {'author': user,
                                  'event': 'create-user',
@@ -2710,7 +2699,7 @@ class PwicServer():
         # Get the posted values
         post = await self._handlePost(request)
         project = _safeName(post.get('project', ''))
-        userpost = _safeName(post.get('name', ''), extra='')
+        userpost = _safeUserName(post.get('name', ''))
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
             roleid = roles.index(post.get('role', ''))
@@ -2832,7 +2821,7 @@ class PwicServer():
                     if fn_re is None:
                         continue
                     fn = _safeFileName(fn_re.group(1))
-                    if fn[:1] == '.':  # Hidden file
+                    if fn == '':
                         continue
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '')
@@ -2884,7 +2873,7 @@ class PwicServer():
         if self._readEnv(sql, '', 'mime_enforcement') is not None:
             if not self._checkMime(doc):
                 raise web.HTTPUnsupportedMediaType()
-        if re.compile(PWIC_REGEX_MIME).match(doc['mime']) is None:
+        if re.compile(PWIC_REGEXES['mime']).match(doc['mime']) is None:
             raise web.HTTPBadRequest()
 
         # Verify the maximal document size
@@ -3010,7 +2999,7 @@ class PwicServer():
         page = _safeName(post.get('page', ''))
         id = _int(post.get('id', 0))
         filename = _safeFileName(post.get('filename', ''))
-        if '' in [project, page, filename] or id == 0:
+        if ('' in [project, page, filename]) or (id == 0):
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
@@ -3077,7 +3066,7 @@ def main() -> bool:
     app['up'] = _dt()
     # ... languages
     app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if isdir(join(PWIC_TEMPLATES_PATH, f))])
-    if PWIC_DEFAULT_LANGUAGE not in app['langs']:
+    if PWIC_DEFAULTS['language'] not in app['langs']:
         print('Error: English template is missing')
         return False
     # ... templates
@@ -3089,7 +3078,7 @@ def main() -> bool:
         app['sql'].set_trace_callback(_sqlprint)
     sql = app['sql'].cursor()
     sql.execute('PRAGMA optimize')
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'start-server'})
     app['sql'].commit()
     # ... PWIC
@@ -3212,7 +3201,7 @@ def main() -> bool:
 
     # Logging
     logfile = app['pwic']._readEnv(sql, '', 'http_log_file', '')
-    logformat = app['pwic']._readEnv(sql, '', 'http_log_format', PWIC_DEFAULT_LOGGING_FORMAT)
+    logformat = app['pwic']._readEnv(sql, '', 'http_log_format', PWIC_DEFAULTS['logging_format'])
     if logfile != '':
         import logging
         logging.basicConfig(filename=logfile, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)

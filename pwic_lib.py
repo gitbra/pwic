@@ -19,46 +19,53 @@ from parsimonious.nodes import NodeVisitor
 #  Constants
 # ===================================================
 
+# Paths
 PWIC_VERSION = '1.0-rc4'
 PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
 PWIC_TEMPLATES_PATH = './templates/'
-PWIC_USER_ANONYMOUS = 'pwic-anonymous'
-PWIC_USER_GHOST = 'pwic-ghost'
-PWIC_USER_SYSTEM = 'pwic-system'
-PWIC_DEFAULT_PASSWORD = 'initial'
-PWIC_DEFAULT_LANGUAGE = 'en'
-PWIC_DEFAULT_PAGE = 'home'
-PWIC_DEFAULT_HEADING = '1.1.1.1.1.1.'
-PWIC_DEFAULT_LOGGING_FORMAT = '%a %t "%r" %s %b'
 
+# Security + SSL
 PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
+PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
+PWIC_MAGIC_OAUTH = 'OAuth'
 
-PWIC_REGEX_PAGE = r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'       # Find a page in Markdown
-PWIC_REGEX_DOCUMENT = r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'  # Find a document in Markdown
-PWIC_REGEX_DOCUMENT_IMGSRC = r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'             # Find the picture ID in IMG.SRC
-PWIC_REGEX_MIME = r'^[a-z]+\/[a-z0-9\.\+\-]+$'                                          # Check the format of the mime
-PWIC_REGEX_HTML_TAG = r'\<[^\>]+\>'                                                     # Find a HTML tag
+# Thematic constants
+PWIC_USERS = {'anonymous': 'pwic-anonymous',        # Account for the random visitors
+              'ghost': 'pwic-ghost',                # Account for the deleted users (not implemented)
+              'system': 'pwic-system'}              # Account for the technical operations
+PWIC_DEFAULTS = {'password': 'initial',
+                 'language': 'en',
+                 'page': 'home',
+                 'heading': '1.1.1.1.1.1.',
+                 'logging_format': '%a %t "%r" %s %b'}
+PWIC_REGEXES = {'page': r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)',        # Find a page in Markdown
+                'document': r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)',   # Find a document in Markdown
+                'document_imgsrc': r'^\/?special\/document\/([0-9]+)([\?\#].*)?$',              # Find the picture ID in IMG.SRC
+                'mime': r'^[a-z]+\/[a-z0-9\.\+\-]+$',                                           # Check the format of the mime
+                'html_tag': r'\<[^\>]+\>'}                                                      # Find a HTML tag
 
+# Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_format', 'ip_filter', 'maintenance',
                                 'mime_enforcement', 'no_logon', 'oauth_domains', 'oauth_identifier', 'oauth_provider',
                                 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'disabled_formats', 'document_name_regex', 'export_project_revisions', 'heading_mask',
-                              'kbid', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'no_export_project',
-                              'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online', 'no_printing', 'no_search',
-                              'no_text_selection', 'odt_page_height', 'odt_page_width', 'robots', 'support_email',
-                              'support_phone', 'support_text', 'support_url', 'validated_only']
+                              'kbid', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'no_cache',
+                              'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
+                              'no_printing', 'no_search', 'no_text_selection', 'odt_page_height', 'odt_page_width',
+                              'robots', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'disabled_formats', 'heading_mask',
                                      'mathjax', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
                                      'no_text_selection', 'odt_page_height', 'odt_page_width', 'support_email',
                                      'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
+# Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
                'bug': '&#x1F41B;',
@@ -116,12 +123,12 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'trash': '&#x1F5D1;',
                'truck': '&#x1F69A;',
                'unlocked': '&#x1F513;',
+               'updown': '&#x2195;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
+               'watch': '&#x231A;',
                'wave': '&#x1F30A;',
                'world': '&#x1F5FA;'}
-PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
-PWIC_MAGIC_OAUTH = 'OAuth'
 
 
 # ===================================================
@@ -364,13 +371,15 @@ def _safeName(name: str, extra: str = '.@') -> str:
 
 def _safeFileName(name: str) -> str:
     ''' Ensure that a file name is acceptable '''
-    name = _safeName(name, extra='').replace(' ', '_')
-    while True:
-        curlen = len(name)
-        name = name.replace('..', '.').replace('__', '_')
-        if len(name) == curlen:
-            break
-    return name
+    name = _safeName(name, extra='').strip().replace(' ', '_').replace('\t', '_')
+    name = _recursiveReplace(name, '..', '.')
+    name = _recursiveReplace(name, '__', '_')
+    return '' if name[:1] == '.' else name
+
+
+def _safeUserName(name: str) -> str:
+    ''' Ensure that a user name is acceptable '''
+    return _safeName(name, extra='')
 
 
 def _size2str(size: Union[int, float]) -> str:
@@ -465,9 +474,9 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
     if mask is None:
         mask = ''
     a = len(mask)
-    b = len(PWIC_DEFAULT_HEADING)
+    b = len(PWIC_DEFAULTS['heading'])
     if a < b:
-        mask += PWIC_DEFAULT_HEADING[a - b:]
+        mask += PWIC_DEFAULTS['heading'][a - b:]
 
     # For each line
     for i in range(len(lines)):
@@ -712,7 +721,7 @@ class pwic_html2odt(HTMLParser):
                             'th': ('<text:p>', '</text:p>')}
 
         # Processing
-        self.regex_imgsrc = re.compile(PWIC_REGEX_DOCUMENT_IMGSRC)
+        self.regex_imgsrc = re.compile(PWIC_REGEXES['document_imgsrc'])
         self.tag_path: List[str] = []
         self.table_descriptors: List[Dict[str, int]] = []
         self.blockquote_on = False

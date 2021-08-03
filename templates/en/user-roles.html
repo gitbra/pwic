@@ -7,8 +7,6 @@
 		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
 	</header>
 
-	{% include 'user-roles.js.html' %}
-
 	<article>
 		<p class="pwic_action_bar">
 			<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
@@ -17,7 +15,7 @@
 
 		<p class="pwic_italic">Reminder: the password of a user must be changed before his roles can be changed.</p>
 
-		<table class="pwic_zebra">
+		<table id="roles_table" class="pwic_zebra">
 			<tr>
 				<th>User</th>
 				<th>Password</th>
@@ -132,6 +130,8 @@
 			{% endfor %}
 		</table>
 	</article>
+
+	{% include 'user-roles.js.html' %}
 {% endblock %}
 
 

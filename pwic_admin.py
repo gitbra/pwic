@@ -7,21 +7,27 @@ from prettytable import PrettyTable
 import re
 import gzip
 import datetime
+import sys
 import os
 from os.path import getsize, isdir, isfile, join
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, \
-    PWIC_USER_ANONYMOUS, PWIC_USER_GHOST, PWIC_USER_SYSTEM, PWIC_DEFAULT_PASSWORD, PWIC_DEFAULT_PAGE, \
+from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _row_factory, _sha256, _safeName, pwic_audit
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _list, _row_factory, _sha256, _safeName, _safeUserName, pwic_audit
 
 
 db = None
 
 
 def main() -> bool:
+    # Default encoding
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
+
     # Prepare the command line
     parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console')
     subparsers = parser.add_subparsers(dest='command')
@@ -171,13 +177,20 @@ def generate_ssl() -> bool:
                                   encryption_algorithm=serialization.NoEncryption()))
 
     # Public key
+    def _ssl_input(topic: str, sample: str) -> str:
+        print('%s (ex: %s) : ' % (topic, sample), end='')
+        return input()
+
     issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, u'FR'),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u'France'),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, u'Paris'),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, u'Pwic'),
-        x509.NameAttribute(NameOID.COMMON_NAME, u'Pwic'),
+        x509.NameAttribute(NameOID.COUNTRY_NAME, _ssl_input('ISO code of the country on 2 characters', 'FR')),
+        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, _ssl_input('Full country', 'France')),
+        x509.NameAttribute(NameOID.LOCALITY_NAME, _ssl_input('Your town', 'Paris')),
+        x509.NameAttribute(NameOID.ORGANIZATION_NAME, _ssl_input('Your organization', 'Pwic')),
+        x509.NameAttribute(NameOID.COMMON_NAME, _ssl_input('Common name', 'Pwic')),
     ])
+    hosts = _list(_ssl_input('Your hosts separated by space', 'www.your.tld'))
+    if len(hosts) == 0:
+        return False
     cert = x509.CertificateBuilder() \
                .subject_name(issuer) \
                .issuer_name(issuer) \
@@ -185,8 +198,7 @@ def generate_ssl() -> bool:
                .serial_number(x509.random_serial_number()) \
                .not_valid_before(datetime.datetime.utcnow()) \
                .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365 * 5)) \
-               .add_extension(x509.SubjectAlternativeName([x509.DNSName(u'localhost'),
-                                                           x509.DNSName(u'127.0.0.1')]), critical=False) \
+               .add_extension(x509.SubjectAlternativeName([x509.DNSName(h) for h in hosts]), critical=False) \
                .sign(key, hashes.SHA256(), default_backend())
     with open(PWIC_PUBLIC_KEY, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
@@ -194,10 +206,10 @@ def generate_ssl() -> bool:
     # Final output
     sql = db_connect()
     if sql is not None:
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'ssl-regen'})
         db_commit()
-    print('The certificates are generated:')
+    print('\nThe SSL certificates are generated:')
     print('- ' + PWIC_PRIVATE_KEY)
     print('- ' + PWIC_PUBLIC_KEY)
     return True
@@ -241,8 +253,8 @@ CREATE TABLE "users" (
     PRIMARY KEY("user")
 )''')
             sql.execute(''' INSERT INTO users (user, password, initial) VALUES ('', '', '')''')     # Empty pages.valuser
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USER_ANONYMOUS, ))
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USER_GHOST, ))
+            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['anonymous'], ))
+            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['ghost'], ))
             # Table ROLES
             sql.execute('''
 CREATE TABLE "roles" (
@@ -351,7 +363,7 @@ BEGIN
 END''')
 
             # Trace
-            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
                              'event': 'init-db'})
             db_commit()
             print('The database is created at "%s"' % PWIC_DB_SQLITE)
@@ -443,7 +455,7 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
                           AND key      = ?''',
                     (key, ))
         for row in sql.fetchall():
-            pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
                              'event': 'unset-%s' % key,
                              'project': row['project']})
         sql.execute(''' DELETE FROM env WHERE key = ?''', (key, ))
@@ -453,7 +465,7 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
         sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
     else:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': '%sset-%s' % ('un' if value == '' else '', key),
                      'project': project,
                      'string': '' if key in PWIC_ENV_PRIVATE else value})
@@ -567,7 +579,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     # Check the arguments
     project = _safeName(project)
     description = description.strip()
-    admin = _safeName(admin, extra='')
+    admin = _safeUserName(admin)
     if project in ['api', 'special'] or '' in [project, description, admin] or \
        project[:4] == 'pwic' or admin[:4] == 'pwic':
         print('Error: invalid arguments')
@@ -597,37 +609,37 @@ def create_project(project: str, description: str, admin: str) -> bool:
     sql.execute(''' INSERT INTO users (user, password)
                     SELECT ?, ?
                     WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
-                (admin, _sha256(PWIC_DEFAULT_PASSWORD), admin))
+                (admin, _sha256(PWIC_DEFAULTS['password']), admin))
     if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'create-user',
                          'user': admin})
 
     # Add the project
     sql.execute(''' INSERT INTO projects (project, description) VALUES (?, ?)''', (project, description))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-project',
                      'project': project})
 
     # Add the role
     sql.execute(''' INSERT INTO roles (project, user, admin, reader) VALUES (?, ?, 'X', 'X')''', (project, admin))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
-    sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USER_ANONYMOUS))
+    sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USERS['anonymous']))
 
     # Add a default homepage
     sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
                     VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using Pwic. This is the homepage.', 'Initial commit')''',
-                (project, PWIC_DEFAULT_PAGE, admin, dt['date'], dt['time']))
+                (project, PWIC_DEFAULTS['page'], admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-page',
                      'project': project,
-                     'page': PWIC_DEFAULT_PAGE,
+                     'page': PWIC_DEFAULTS['page'],
                      'revision': 1})
 
     # Finalization
@@ -635,7 +647,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     print('The project is created:')
     print('- Project       : %s' % project)
     print('- Administrator : %s' % admin)
-    print('- Password      : "%s" or the existing password' % PWIC_DEFAULT_PASSWORD)
+    print('- Password      : "%s" or the existing password' % PWIC_DEFAULTS['password'])
     print('')
     print('Thanks for using Pwic!')
     return True
@@ -657,7 +669,7 @@ def takeover_project(project: str, admin: str) -> bool:
         return False
 
     # Verify that the user is valid and has changed his password
-    admin = _safeName(admin, extra='')
+    admin = _safeUserName(admin)
     if admin[:4] == 'pwic':
         return False
     if sql.execute(''' SELECT user
@@ -677,7 +689,7 @@ def takeover_project(project: str, admin: str) -> bool:
                 (project, admin))
     if sql.rowcount == 0:
         sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
@@ -730,7 +742,7 @@ def delete_project(project: str) -> bool:
     sql.execute(''' DELETE FROM cache     WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM roles     WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM projects  WHERE project = ?''', (project, ))
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'delete-project',
                      'project': project})
     db_commit()
@@ -746,7 +758,7 @@ def create_user(user: str) -> bool:
         return False
 
     # Verify the user account
-    user = _safeName(user, extra='')
+    user = _safeUserName(user)
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
@@ -757,12 +769,12 @@ def create_user(user: str) -> bool:
 
     # Create the user account
     sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, ?)''',
-                (user, _sha256(PWIC_DEFAULT_PASSWORD), 'X'))
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                (user, _sha256(PWIC_DEFAULTS['password']), 'X'))
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-user',
                      'user': user})
     db_commit()
-    print('The user "%s" is created with the default password "%s".' % (user, PWIC_DEFAULT_PASSWORD))
+    print('The user "%s" is created with the default password "%s".' % (user, PWIC_DEFAULTS['password']))
     return True
 
 
@@ -773,7 +785,7 @@ def reset_password(user: str, oauth: bool) -> bool:
         return False
 
     # Warn if the user is an administrator
-    user = _safeName(user, extra='')
+    user = _safeUserName(user)
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
@@ -810,7 +822,7 @@ def reset_password(user: str, oauth: bool) -> bool:
                     WHERE user = ?''',
                 (pwd, initial, user))
     if sql.rowcount > 0:
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'reset-password',
                          'user': user,
                          'string': PWIC_MAGIC_OAUTH if pwd == PWIC_MAGIC_OAUTH else ''})
@@ -830,7 +842,7 @@ def revoke_user(user: str, force: bool) -> bool:
         return False
 
     # Verify the user name
-    user = _safeName(user, extra='')
+    user = _safeUserName(user)
     if user[:4] == 'pwic':
         print('Error: this user cannot be managed')
         return False
@@ -887,7 +899,7 @@ def revoke_user(user: str, force: bool) -> bool:
     # Disable the user for every project
     sql.execute(''' SELECT project FROM roles WHERE user = ?''', (user, ))
     for row in sql.fetchall():
-        pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'delete-user',
                          'project': row['project'],
                          'user': user})
@@ -969,7 +981,7 @@ def show_audit(dmin: int, dmax: int) -> bool:
 def compress_static() -> bool:
     # To reduce the bandwidth, aiohttp automatically delivers the static files as compressed if the .gz file is created
     # Despite the files do not change, many responses 304 are generated with some browsers
-    ok = False
+    counter = 0
     path = './static/'
     files = [(path + f) for f in os.listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
     for fn in files:
@@ -978,10 +990,10 @@ def compress_static() -> bool:
                 with gzip.open(fn + '.gz', 'wb') as dst:
                     print('Compressing "%s"' % fn)
                     copyfileobj(src, dst)
-                    ok = True
-    if ok:
-        print('Finished')
-    return ok
+                    counter += 1
+    if counter > 0:
+        print('%d files were processed' % counter)
+    return counter > 0
 
 
 def clear_cache(project: str) -> bool:
@@ -996,11 +1008,11 @@ def clear_cache(project: str) -> bool:
         sql.execute(''' DELETE FROM cache WHERE project = ?''', (project, ))
     else:
         sql.execute(''' DELETE FROM cache''')
-    pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'clear-cache',
                      'project': project})
     db_commit()
-    print('The cache is cleared. Do expect a workload of regeneration for a short period time.')
+    print('The cache is cleared. Do expect a workload of regeneration for a short period of time.')
     return True
 
 
@@ -1025,7 +1037,7 @@ def execute_sql() -> bool:
                     return False
                 rownone = sql.execute(query).fetchone() is None
                 rowcount = sql.rowcount
-                pwic_audit(sql, {'author': PWIC_USER_SYSTEM,
+                pwic_audit(sql, {'author': PWIC_USERS['system'],
                                  'event': 'execute-sql',
                                  'string': query})
                 db_commit()

@@ -28,29 +28,26 @@
 			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</p>
 		{% endif %}
 
-		{% if pwic.admin or pwic.manager %}
-			<p class="pwic_action_bar">
-				{% if pwic.admin %}
-					<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
-					<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
-					<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
-					<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
+		<p class="pwic_action_bar">
+			{% if pwic.admin %}
+				<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
+				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Authorizations</a>
+				<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
+				<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
+			{% endif %}
+			{% if pwic.manager %}
+				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
+				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
+				{% if not pwic.env.no_graph %}
+					<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
 				{% endif %}
-				{% if pwic.manager %}
-					<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
-				{% endif %}
-				{% if pwic.manager %}
-					<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Verify the links</a>
-					{% if not pwic.env.no_graph %}
-						<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
-					{% endif %}
-				{% endif %}
-				{% if pwic.admin %}
-					<a href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>
-					<a href="/api">{{pwic.emojis.truck}} API</a>
-				{% endif %}
-			</p>
-		{% endif %}
+			{% endif %}
+			{% if pwic.admin %}
+				<a class="pwic_desktop" href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} Export</a>
+				<a href="/api">{{pwic.emojis.truck}} API</a>
+			{% endif %}
+			<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} Random page</a>
+		</p>
 
 
 		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
@@ -151,9 +148,6 @@
 
 		{% if (pwic.pages|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
 			<h1>All the pages of the project</h1>
-			<p class="pwic_action_bar">
-				<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} Random page</a>
-			</p>
 			<table>
 				<tr>
 					<th>Page</th>

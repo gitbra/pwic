@@ -1,6 +1,6 @@
 
 from typing import Optional
-from pwic_lib import PWIC_DEFAULT_HEADING
+from pwic_lib import PWIC_DEFAULTS
 
 
 # ===============================
@@ -210,7 +210,7 @@ class pwic_styles_odt:
                      style:default-outline-level="1">
             <style:paragraph-properties fo:margin-top="12pt"
                                         fo:margin-bottom="6pt"/>
-            <style:text-properties fo:font-size="22pt"
+            <style:text-properties fo:font-size="20pt"
                                    fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="H2"
@@ -674,9 +674,9 @@ class pwic_styles_odt:
         if mask is None:
             mask = ''
         a = len(mask)
-        b = len(PWIC_DEFAULT_HEADING)
+        b = len(PWIC_DEFAULTS['heading'])
         if a < b:
-            mask += PWIC_DEFAULT_HEADING[a - b:]
+            mask += PWIC_DEFAULTS['heading'][a - b:]
 
         # Build the XML section
         template = '''<text:outline-level-style text:level="%d"

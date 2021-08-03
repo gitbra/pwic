@@ -36,6 +36,9 @@
 						<td class="pwic_desktop">{{page.revision|escape}}</td>
 						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}/rev{{page.revision|urlencode}}">{{page.title|escape}}</a></td>
 						<td>
+							{% if pwic.with_rev and page.latest %}
+								<span title="Latest">{{pwic.emojis.watch}}</span>
+							{% endif %}
 							{% if page.draft %}
 								<span title="Draft">{{pwic.emojis.hourglass}}</span>
 							{% endif %}
@@ -44,9 +47,6 @@
 							{% endif %}
 							{% if page.valuser != '' %}
 								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
-							{% endif %}
-							{% if page.latest %}
-								<span title="Latest">{{pwic.emojis.star}}</span>
 							{% endif %}
 						</td>
 						<td class="pwic_desktop"><a href="/special/user/{{page.author|urlencode}}">{{page.author|escape}}</a></td>
