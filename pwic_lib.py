@@ -22,7 +22,7 @@ from pwic_extension import PwicExtension
 # ===================================================
 
 # Paths
-PWIC_VERSION = '1.0-rc4'
+PWIC_VERSION = '1.0-rc5'
 PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
