@@ -207,7 +207,7 @@ def generate_ssl() -> bool:
     sql = db_connect()
     if sql is not None:
         pwic_audit(sql, {'author': PWIC_USERS['system'],
-                         'event': 'ssl-regen'})
+                         'event': 'generate-ssl'})
         db_commit()
     print('\nThe SSL certificates are generated:')
     print('- ' + PWIC_PRIVATE_KEY)
@@ -430,14 +430,14 @@ def show_env(var: str = '') -> bool:
 
 def set_env(project: str, key: str, value: str, override: bool) -> bool:
     # Check the parameters
-    if override and project != '':
+    if override and (project != ''):
         print('Error: useless parameter --override if a project is indicated')
         return False
     merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if key not in merged:
         print('Error: the name of the variable must be one of <%s>' % ', '.join(merged))
         return False
-    if project != '' and key in PWIC_ENV_PROJECT_INDEPENDENT:
+    if (project != '') and (key in PWIC_ENV_PROJECT_INDEPENDENT):
         print('Error: the parameter is project-independent')
         return False
     value = value.strip().replace('\r', '')

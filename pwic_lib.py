@@ -14,6 +14,8 @@ from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
+from pwic_extension import PwicExtension
+
 
 # ===================================================
 #  Constants
@@ -361,9 +363,11 @@ def _sha256(value: Union[str, bytearray], salt: bool = True) -> str:
         return sha256(text.encode()).hexdigest()
 
 
-def _safeName(name: str, extra: str = '.@') -> str:
+def _safeName(name: Optional[str], extra: str = '.@') -> str:
     ''' Ensure that a string will not collide with the reserved characters of the operating system '''
     chars = PWIC_CHARS_UNSAFE + extra
+    if name is None:
+        name = ''
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
     return name.strip().lower()
@@ -521,7 +525,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: web.Request = None) -> bool:
+def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: web.Request = None) -> None:
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = _dt()
@@ -540,10 +544,8 @@ def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request:
         tups += '?, '
         tuple += (object[key], )
     sql.execute("INSERT INTO audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
-    if sql.rowcount == 1:
-        return True
-    else:
-        assert(False)
+    assert(sql.rowcount == 1)
+    PwicExtension.on_audit(sql, object, request is not None)
 
 
 # ===================================================

@@ -76,7 +76,7 @@ class PwicServer():
             html = row['html']
         else:
             html = app['markdown'].convert(markdown).replace('<span></span>', '')
-            done, new_html = app['extension'].on_html(sql, project, page, html)
+            done, new_html = PwicExtension.on_html(sql, project, str(page), html)
             if done and isinstance(new_html, str):
                 html = new_html
             if cache:
@@ -131,7 +131,7 @@ class PwicServer():
         if request is None:
             return ''
         else:
-            ip = request.headers.get(app['extension'].on_ip_header(request), request.remote) if app['xff'] else request.remote
+            ip = request.headers.get(PwicExtension.on_ip_header(request), request.remote) if app['xff'] else request.remote
             return str(ip)
 
     def _checkIP(self, request: web.Request) -> None:
@@ -162,7 +162,7 @@ class PwicServer():
 
         # Validate the access
         unauth = koExcl or (hasIncl != okIncl)
-        done, new_auth = app['extension'].on_ip_check(ip, not unauth)
+        done, new_auth = PwicExtension.on_ip_check(ip, not unauth)
         if done:
             unauth = not new_auth
         if unauth:
@@ -253,11 +253,15 @@ class PwicServer():
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
         pwic['language'] = session.get('language', PWIC_DEFAULTS['language'])
+        PwicExtension.on_render_pre(app, sql, request, pwic)
         template_name = '%s/%s.html' % (pwic['language'], name)
         if (pwic['language'] != PWIC_DEFAULTS['language']) and not isfile(PWIC_TEMPLATES_PATH + template_name):
             template_name = '%s/%s.html' % (PWIC_DEFAULTS['language'], name)
-        app['extension'].on_render(app, sql, pwic)
-        return web.Response(text=app['jinja'].get_template(template_name).render(pwic=pwic), content_type='text/html')
+        output = app['jinja'].get_template(template_name).render(pwic=pwic)
+        done, new_output = PwicExtension.on_render_post(app, sql, pwic, output)
+        if done:
+            output = new_output
+        return web.Response(text=output, content_type='text/html')
 
     async def page(self, request: web.Request) -> web.Response:
         ''' Serve the pages '''
@@ -843,7 +847,7 @@ class PwicServer():
         else:
             query = pwic_search_parse(request.rel_url.query.get('q', ''))
             with_rev = 'rev' in request.rel_url.query
-            app['extension'].on_search_terms(sql, project, user, query, with_rev)
+            PwicExtension.on_search_terms(sql, project, user, query, with_rev)
         if query is None:
             raise web.HTTPTemporaryRedirect('/%s' % project)
 
@@ -868,118 +872,124 @@ class PwicServer():
                 'with_rev': with_rev}
 
         # Search for a page
-        sql.execute(''' SELECT a.project, a.page, a.revision, a.latest, a.draft, a.final,
-                               a.author, a.date, a.time, a.title, LOWER(a.markdown) AS markdown,
-                               a.tags, a.valuser, a.valdate, a.valtime, b.document_count
-                        FROM pages AS a
-                            LEFT JOIN (
-                                SELECT project, page, COUNT(id) AS document_count
-                                FROM documents
-                                GROUP BY project, page
-                                HAVING project = ?
-                            ) AS b
-                                ON  b.project = a.project
-                                AND b.page    = a.page
-                        WHERE a.project = ?
-                          AND a.latest IN ('%sX')
-                        ORDER BY a.date DESC,
-                                 a.time DESC''' % ("','" if with_rev else ''),
-                    (project, project))
-        for row in sql.fetchall():
-            tagList = row['tags'].split(' ')
+        if not PwicExtension.on_search_pages(sql, user, pwic, query):
+            sql.execute(''' SELECT a.project, a.page, a.revision, a.latest, a.draft, a.final,
+                                   a.author, a.date, a.time, a.title, LOWER(a.markdown) AS markdown,
+                                   a.tags, a.valuser, a.valdate, a.valtime, b.document_count
+                            FROM pages AS a
+                                LEFT JOIN (
+                                    SELECT project, page, COUNT(id) AS document_count
+                                    FROM documents
+                                    GROUP BY project, page
+                                    HAVING project = ?
+                                ) AS b
+                                    ON  b.project = a.project
+                                    AND b.page    = a.page
+                            WHERE a.project = ?
+                              AND a.latest IN ('%sX')
+                            ORDER BY a.date DESC,
+                                     a.time DESC''' % ("','" if with_rev else ''),
+                        (project, project))
+            for row in sql.fetchall():
+                tagList = row['tags'].split(' ')
 
-            # Apply the filters
-            ok = True
-            score = 0
-            for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
-                if (q == ':latest' and _xb(row['latest']))                              \
-                   or (q == ':draft' and _xb(row['draft']))                             \
-                   or (q == ':final' and _xb(row['final']))                             \
-                   or (q[:7] == 'author:' and q[7:] in row['author'].lower())           \
-                   or (q[:6] == 'title:' and q[6:] in row['title'].lower())             \
-                   or (q == ':validated' and row['valuser'] != '')                      \
-                   or (q[:10] == 'validator:' and q[10:] in row['valuser'].lower())     \
-                   or (q == ':document' and _int(row['document_count']) > 0)            \
-                   or (q[1:] in tagList if q[:1] == '#' else False)                     \
-                   or (q == row['page'].lower())                                        \
-                   or (q in row['markdown']):
-                    ok = False
-                    break
-            if ok:
-                for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
-                    if q == ':latest':
-                        count = _int(_xb(row['latest']))
-                    elif q == ':draft':
-                        count = _int(_xb(row['draft']))
-                    elif q == ':final':
-                        count = _int(_xb(row['final']))
-                    elif q[:7] == 'author:':
-                        count = row['author'].lower().count(q[7:])
-                    elif q[:6] == 'title:':
-                        count = row['title'].lower().count(q[6:])
-                    elif q == ':validated':
-                        count = _int(row['valuser'] != '')
-                    elif q[:10] == 'validator:':
-                        count = _int(q[10:] in row['valuser'].lower())
-                    elif q == ':document':
-                        count = _int(_int(row['document_count']) > 0)
-                    elif (q[1:] in tagList if q[:1] == '#' else False):
-                        count = 5               # A tag counts more
-                    else:
-                        count = 5 * _int(q == row['page'].lower()) + row['markdown'].count(q)
-                    if count == 0:
+                # Apply the filters
+                ok = True
+                score = 0
+                for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
+                    if (q == ':latest' and _xb(row['latest']))                              \
+                       or (q == ':draft' and _xb(row['draft']))                             \
+                       or (q == ':final' and _xb(row['final']))                             \
+                       or (q[:7] == 'author:' and q[7:] in row['author'].lower())           \
+                       or (q[:6] == 'title:' and q[6:] in row['title'].lower())             \
+                       or (q == ':validated' and row['valuser'] != '')                      \
+                       or (q[:10] == 'validator:' and q[10:] in row['valuser'].lower())     \
+                       or (q == ':document' and _int(row['document_count']) > 0)            \
+                       or (q[1:] in tagList if q[:1] == '#' else False)                     \
+                       or (q == row['page'].lower())                                        \
+                       or (q in row['markdown']):
                         ok = False
                         break
-                    else:
-                        score += count
-            if not ok:
-                continue
+                if ok:
+                    for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
+                        if q == ':latest':
+                            count = _int(_xb(row['latest']))
+                        elif q == ':draft':
+                            count = _int(_xb(row['draft']))
+                        elif q == ':final':
+                            count = _int(_xb(row['final']))
+                        elif q[:7] == 'author:':
+                            count = row['author'].lower().count(q[7:])
+                        elif q[:6] == 'title:':
+                            count = row['title'].lower().count(q[6:])
+                        elif q == ':validated':
+                            count = _int(row['valuser'] != '')
+                        elif q[:10] == 'validator:':
+                            count = _int(q[10:] in row['valuser'].lower())
+                        elif q == ':document':
+                            count = _int(_int(row['document_count']) > 0)
+                        elif (q[1:] in tagList if q[:1] == '#' else False):
+                            count = 5               # A tag counts more
+                        else:
+                            count = 5 * _int(q == row['page'].lower()) + row['markdown'].count(q)
+                        if count == 0:
+                            ok = False
+                            break
+                        else:
+                            score += count
+                if not ok:
+                    continue
 
-            # Save the found result
-            pwic['pages'].append({'project': row['project'],
-                                  'page': row['page'],
-                                  'revision': row['revision'],
-                                  'latest': _xb(row['latest']),
-                                  'draft': _xb(row['draft']),
-                                  'final': _xb(row['final']),
-                                  'author': row['author'],
-                                  'date': row['date'],
-                                  'time': row['time'],
-                                  'title': row['title'],
-                                  'valuser': row['valuser'],
-                                  'valdate': row['valdate'],
-                                  'valtime': row['valtime'],
-                                  'score': score})
+                # Save the found result
+                pwic['pages'].append({'project': row['project'],
+                                      'page': row['page'],
+                                      'revision': row['revision'],
+                                      'latest': _xb(row['latest']),
+                                      'draft': _xb(row['draft']),
+                                      'final': _xb(row['final']),
+                                      'author': row['author'],
+                                      'date': row['date'],
+                                      'time': row['time'],
+                                      'title': row['title'],
+                                      'valuser': row['valuser'],
+                                      'valdate': row['valdate'],
+                                      'valtime': row['valtime'],
+                                      'score': score})
 
         # Search for documents
-        sql.execute(''' SELECT id, project, page, filename, mime, size, author, date, time
-                        FROM documents
-                        WHERE project = ?
-                        ORDER BY filename''',
-                    (project, ))
-        for row in sql.fetchall():
-            # Apply the filters
-            ok = True
-            for q in query['excluded']:
-                if ':' in q:
-                    continue
-                if q in row['page'] or q in row['filename'] or q in row['mime']:
-                    ok = False
-                    break
-            if ok:
-                for q in query['included']:
+        if not PwicExtension.on_search_documents(sql, user, pwic, query):
+            sql.execute(''' SELECT id, project, page, filename, mime, size, author, date, time
+                            FROM documents
+                            WHERE project = ?
+                            ORDER BY filename''',
+                        (project, ))
+            for row in sql.fetchall():
+                # Apply the filters
+                ok = True
+                for q in query['excluded']:
                     if ':' in q:
                         continue
-                    if q not in row['page'] and q not in row['filename'] and q not in row['mime']:
+                    if (q in row['page']) \
+                       or (q in row['filename']) \
+                       or (q in row['mime']):
                         ok = False
                         break
-            if not ok:
-                continue
+                if ok:
+                    for q in query['included']:
+                        if ':' in q:
+                            continue
+                        if (q not in row['page']) \
+                           and (q not in row['filename']) \
+                           and (q not in row['mime']):
+                            ok = False
+                            break
+                if not ok:
+                    continue
 
-            # Save the found document
-            row['mime_icon'] = _mime2icon(row['mime'])
-            row['size'] = _size2str(row['size'])
-            pwic['documents'].append(row)
+                # Save the found document
+                row['mime_icon'] = _mime2icon(row['mime'])
+                row['size'] = _size2str(row['size'])
+                pwic['documents'].append(row)
 
         # Show the pages by score desc, date desc and time desc
         pwic['pages'].sort(key=lambda x: x['score'], reverse=True)
@@ -1326,7 +1336,7 @@ class PwicServer():
             del content
 
             # Attached documents
-            app['extension'].on_project_export_documents(sql, project, user, documents)
+            PwicExtension.on_project_export_documents(sql, project, user, documents)
             for doc in documents:
                 fn = (PWIC_DOCUMENTS_PATH % project) + doc['filename']
                 if isfile(fn):
@@ -1380,7 +1390,7 @@ class PwicServer():
         if getsize(filename) != row['size']:
             raise web.HTTPConflict()  # Size mismatch causes an infinite download time
         try:
-            app['extension'].on_document_get(sql, row['project'], user, row['filename'], row['mime'], row['size'])
+            PwicExtension.on_document_get(sql, row['project'], user, row['filename'], row['mime'], row['size'])
             with open(filename, 'rb') as f:
                 content = f.read()
         except FileNotFoundError:
@@ -1416,7 +1426,7 @@ class PwicServer():
                           AND a.password = ?''',
                     (user, pwd))
         if sql.fetchone()['total'] > 0:
-            ok = app['extension'].on_logon(sql, user, lang)
+            ok = PwicExtension.on_logon(sql, user, lang)
             if ok:
                 session = await new_session(request)
                 session['user'] = user
@@ -1563,7 +1573,7 @@ class PwicServer():
             raise web.HTTPNotImplemented()
 
         # Select the authorized email
-        app['extension'].on_oauth(sql, emails)
+        PwicExtension.on_oauth(sql, emails)
         if len(emails) == 0:
             _oauth_failed()
         if no_domain:
@@ -1757,7 +1767,7 @@ class PwicServer():
             data[k]['documents'].append(row)
 
         # Final result
-        app['extension'].on_api_project_info_get(sql, project, user, page, data)
+        PwicExtension.on_api_project_info_get(sql, project, user, page, data)
         return web.Response(text=json.dumps(data), content_type=MIME_JSON)
 
     async def api_project_env_set(self, request: web.Request) -> web.Response:
@@ -1786,8 +1796,13 @@ class PwicServer():
                        (project, user)).fetchone() is None:
             raise web.HTTPUnauthorized()
 
+        # Enhance the input
+        done, newvalue = PwicExtension.on_api_project_env_set(sql, project, user, key, value)
+        if done:
+            value = newvalue
+
         # Update the variable
-        if value == '':
+        if value in [None, '']:
             sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
         else:
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
@@ -2204,7 +2219,7 @@ class PwicServer():
 
         # Verify that it is possible to validate the page
         sql = self._connect()
-        done, new_validable = app['extension'].on_api_page_validate(sql, project, user, page, revision)
+        done, new_validable = PwicExtension.on_api_page_validate(sql, project, user, page, revision)
         if done and not new_validable:
             raise web.HTTPUnauthorized()
         sql.execute(''' SELECT b.page
@@ -2258,7 +2273,7 @@ class PwicServer():
 
         # Verify that the deletion is possible
         sql = self._connect()
-        done, new_deletable = app['extension'].on_api_page_delete(sql, project, user, page, revision)
+        done, new_deletable = PwicExtension.on_api_page_delete(sql, project, user, page, revision)
         if done and not new_deletable:
             raise web.HTTPUnauthorized()
         sql.execute(''' SELECT a.header
@@ -2400,7 +2415,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Initialization
-        app['extension'].on_api_page_export_start(sql, project, user, page, revision, format)
+        PwicExtension.on_api_page_export_start(sql, project, user, page, revision, format)
         dt = _dt()
         baseUrl = str(self._readEnv(sql, '', 'base_url', ''))
         pageUrl = '%s/%s/%s/rev%d' % (baseUrl, project, page, row['revision'])
@@ -2609,7 +2624,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Create the new user
-        if not app['extension'].on_api_user_create(sql, project, user, newuser):
+        if not PwicExtension.on_api_user_create(sql, project, user, newuser):
             raise web.HTTPFound(error_url)
         if self._readEnv(sql, '', 'no_new_user_online') is not None:
             sql.execute(''' SELECT user
@@ -2733,7 +2748,7 @@ class PwicServer():
 
         # Delete a user
         if delete:
-            app['extension'].on_api_user_roles_set(sql, project, user, userpost, 'delete', None)
+            PwicExtension.on_api_user_roles_set(sql, project, user, userpost, 'delete', None)
             sql.execute(''' DELETE FROM roles
                             WHERE project = ?
                               AND user    = ?
@@ -2755,7 +2770,7 @@ class PwicServer():
             newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
             if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
                 raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
-            app['extension'].on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue)
+            PwicExtension.on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue)
             try:
                 sql.execute(''' UPDATE roles
                                 SET %s = ?
@@ -2833,7 +2848,7 @@ class PwicServer():
                     doc[name] = await part.text()
         except Exception:
             raise web.HTTPBadRequest()
-        app['extension'].on_api_document_create(sql, doc)
+        PwicExtension.on_api_document_create(sql, doc)
         if doc['content'] in [None, '', b''] or '' in [doc['project'], doc['page'], doc['filename']]:  # The mime is checked later
             raise web.HTTPBadRequest()
 
@@ -2983,7 +2998,7 @@ class PwicServer():
             row['used'] = ('(/special/document/%d)' % row['id']) in markdown or \
                           ('(/special/document/%d "' % row['id']) in markdown
             documents.append(row)
-        app['extension'].on_api_document_list(sql, project, page, documents)
+        PwicExtension.on_api_document_list(sql, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=MIME_JSON)
 
     async def api_document_delete(self, request: web.Request) -> None:
@@ -3019,7 +3034,7 @@ class PwicServer():
                     (id, page, filename, project, user))
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()  # Or not found
-        app['extension'].on_api_document_delete(sql, project, user, page, id, filename)
+        PwicExtension.on_api_document_delete(sql, project, user, page, id, filename)
 
         # Delete the file
         fn = (PWIC_DOCUMENTS_PATH % project) + filename
@@ -3061,7 +3076,6 @@ def main() -> bool:
     args = parser.parse_args()
 
     # Modules
-    app['extension'] = PwicExtension()
     # ... launch time
     app['up'] = _dt()
     # ... languages
@@ -3207,7 +3221,7 @@ def main() -> bool:
         logging.basicConfig(filename=logfile, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
 
     # User-exit
-    done, result = app['extension'].on_server_ready(app, sql)
+    done, result = PwicExtension.on_server_ready(app, sql)
     if done and not result:
         return False
 

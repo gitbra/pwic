@@ -118,7 +118,6 @@ Copyright (C) Alexandre Bréard, 2020-2021
 - [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License
 - [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
-- [Baloo 2](https://fonts.google.com/specimen/Baloo+2) is released under Open Font License
 - [cash.js](https://github.com/fabiospampinato/cash) is released under MIT License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
 - Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
@@ -127,6 +126,7 @@ Copyright (C) Alexandre Bréard, 2020-2021
 - [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
 - [MathJax](https://github.com/mathjax/MathJax-src) is released under Apache 2.0 License
+- [Noto Sans](https://fonts.google.com/specimen/Noto+Sans) is released under Open Font License
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
