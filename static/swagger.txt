@@ -223,6 +223,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        404:
+          description: Unknown project or page
   /api/markdown/convert:
     post:
       summary: Convert Markdown to HTML

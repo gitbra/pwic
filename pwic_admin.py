@@ -15,7 +15,8 @@ from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, _dt, _list, _row_factory, _sha256, _safeName, _safeUserName, pwic_audit
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_list, pwic_row_factory, pwic_sha256, \
+    pwic_safe_name, pwic_safe_user_name
 
 
 db = None
@@ -137,7 +138,7 @@ def db_connect(init: bool = False) -> Optional[sqlite3.Cursor]:
         return None
     try:
         db = sqlite3.connect(PWIC_DB_SQLITE)
-        db.row_factory = _row_factory
+        db.row_factory = pwic_row_factory
         return db.cursor()
     except sqlite3.OperationalError:
         print('Error: the database cannot be opened')
@@ -188,7 +189,7 @@ def generate_ssl() -> bool:
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, _ssl_input('Your organization', 'Pwic')),
         x509.NameAttribute(NameOID.COMMON_NAME, _ssl_input('Common name', 'Pwic')),
     ])
-    hosts = _list(_ssl_input('Your hosts separated by space', 'www.your.tld'))
+    hosts = pwic_list(_ssl_input('Your hosts separated by space', 'www.your.tld'))
     if len(hosts) == 0:
         return False
     cert = x509.CertificateBuilder() \
@@ -524,7 +525,7 @@ def create_backup() -> bool:
         return False
 
     # Prepare the new file name
-    dt = _dt()
+    dt = pwic_dt()
     new = PWIC_DB_SQLITE_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
     try:
         copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
@@ -577,9 +578,9 @@ def show_projects() -> bool:
 
 def create_project(project: str, description: str, admin: str) -> bool:
     # Check the arguments
-    project = _safeName(project)
+    project = pwic_safe_name(project)
     description = description.strip()
-    admin = _safeUserName(admin)
+    admin = pwic_safe_user_name(admin)
     if project in ['api', 'special'] or '' in [project, description, admin] or \
        project[:4] == 'pwic' or admin[:4] == 'pwic':
         print('Error: invalid arguments')
@@ -589,7 +590,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     sql = db_connect()
     if sql is None:
         return False
-    dt = _dt()
+    dt = pwic_dt()
 
     # Verify that the project does not exist yet
     sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, ))
@@ -609,7 +610,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     sql.execute(''' INSERT INTO users (user, password)
                     SELECT ?, ?
                     WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
-                (admin, _sha256(PWIC_DEFAULTS['password']), admin))
+                (admin, pwic_sha256(PWIC_DEFAULTS['password']), admin))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'create-user',
@@ -660,7 +661,7 @@ def takeover_project(project: str, admin: str) -> bool:
         return False
 
     # Verify that the project exists
-    project = _safeName(project)
+    project = pwic_safe_name(project)
     if project == '' or sql.execute(''' SELECT project
                                         FROM projects
                                         WHERE project = ?''',
@@ -669,7 +670,7 @@ def takeover_project(project: str, admin: str) -> bool:
         return False
 
     # Verify that the user is valid and has changed his password
-    admin = _safeUserName(admin)
+    admin = pwic_safe_user_name(admin)
     if admin[:4] == 'pwic':
         return False
     if sql.execute(''' SELECT user
@@ -705,7 +706,7 @@ def delete_project(project: str) -> bool:
         return False
 
     # Verify that the project exists yet
-    project = _safeName(project)
+    project = pwic_safe_name(project)
     if project == '' or sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None:
         print('Error: the project "%s" does not exist' % project)
         return False
@@ -758,7 +759,7 @@ def create_user(user: str) -> bool:
         return False
 
     # Verify the user account
-    user = _safeUserName(user)
+    user = pwic_safe_user_name(user)
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
@@ -769,7 +770,7 @@ def create_user(user: str) -> bool:
 
     # Create the user account
     sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, ?)''',
-                (user, _sha256(PWIC_DEFAULTS['password']), 'X'))
+                (user, pwic_sha256(PWIC_DEFAULTS['password']), 'X'))
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-user',
                      'user': user})
@@ -785,7 +786,7 @@ def reset_password(user: str, oauth: bool) -> bool:
         return False
 
     # Warn if the user is an administrator
-    user = _safeUserName(user)
+    user = pwic_safe_user_name(user)
     if user[:4] in ['', 'pwic']:
         print('Error: invalid user')
         return False
@@ -811,7 +812,7 @@ def reset_password(user: str, oauth: bool) -> bool:
         if len(pwd) < 8:
             print('Error: password too short')
             return False
-        pwd = _sha256(pwd)
+        pwd = pwic_sha256(pwd)
         initial = 'X'
 
     # Reset the password with no rights takedown else some projects may loose their administrators
@@ -842,7 +843,7 @@ def revoke_user(user: str, force: bool) -> bool:
         return False
 
     # Verify the user name
-    user = _safeUserName(user)
+    user = pwic_safe_user_name(user)
     if user[:4] == 'pwic':
         print('Error: this user cannot be managed')
         return False
@@ -1003,7 +1004,7 @@ def clear_cache(project: str) -> bool:
         return False
 
     # Clear the cache
-    project = _safeName(project)
+    project = pwic_safe_name(project)
     if project != '':
         sql.execute(''' DELETE FROM cache WHERE project = ?''', (project, ))
     else:

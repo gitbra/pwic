@@ -141,11 +141,6 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
-MIME_BMP = 'image/bmp'
-MIME_JSON = 'application/json'
-MIME_GENERIC = 'application/octet-stream'
-MIME_SVG = 'image/svg+xml'
-MIME_TEXT = 'text/plain'
 PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['aac'], 'audio/vnd.dlna.adts', None),
               (['abw'], 'application/x-abiword', None),
@@ -153,8 +148,8 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['aif', 'aifc', 'aiff'], 'audio/aiff', ['AIFF', 'FORM']),
               (['apk'], 'application/vnd.android.package-archive', ZIP),
               (['avi'], 'video/avi', ['AVI', 'RIFF']),
-              (['bin'], MIME_GENERIC, None),
-              (['bmp'], MIME_BMP, ['BM']),
+              (['bin'], 'application/octet-stream', None),
+              (['bmp'], 'image/bmp', ['BM']),
               (['bz', 'bz2'], 'application/x-bzip2', ['BZ']),
               (['cer'], 'application/x-x509-ca-cert', None),
               (['chm'], 'application/vnd.ms-htmlhelp', ['ITSM']),
@@ -230,7 +225,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['rss'], 'application/rss+xml', None),
               (['rtf'], 'application/msword', ['{\rtf1']),
               (['sti'], 'application/vnd.sun.xml.impress.template', None),
-              (['svg'], MIME_SVG, None),
+              (['svg'], 'image/svg+xml', None),
               (['swf'], 'application/x-shockwave-flash', ['CWS', 'FWS']),
               (['sxc'], 'application/vnd.sun.xml.calc', None),
               (['sxd'], 'application/vnd.sun.xml.draw', None),
@@ -267,31 +262,28 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['zip'], 'application/x-zip-compressed', ZIP)]
 
 
+def pwic_mime(ext: str) -> Optional[str]:
+    for exts, mime, magic in PWIC_MIMES:
+        if ext in exts:
+            return mime
+    return None
+
+
 # ===================================================
 #  Reusable functions
 # ===================================================
 
-def _x(value: bool) -> str:
-    ''' Convert a boolean to 'X' or empty string '''
-    return 'X' if value else ''
-
-
-def _xb(value: str) -> bool:
-    ''' Convert 'X' to a boolean '''
-    return value == 'X'
-
-
-def _apostrophe(value: str) -> str:
+def pwic_apostrophe(value: str) -> str:
     ''' Escape a string to prepare an SQL query '''
     return '' if value is None else value.replace("'", "\\'")
 
 
-def _attachmentName(name: str) -> str:
+def pwic_attachment_name(name: str) -> str:
     ''' Return the file name for a proper download '''
     return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
 
-def _dt(drange: int = 0) -> Dict[str, str]:
+def pwic_dt(drange: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
     dts = str(datetime.datetime.now())
     return {'date': dts[:10],
@@ -301,7 +293,7 @@ def _dt(drange: int = 0) -> Dict[str, str]:
             'time': dts[11:19]}
 
 
-def _int(value: Any) -> int:
+def pwic_int(value: Any) -> int:
     ''' Safe conversion to integer '''
     try:
         return int(value)
@@ -309,15 +301,15 @@ def _int(value: Any) -> int:
         return 0
 
 
-def _list(input: str, separator: str = ' ') -> List[str]:
+def pwic_list(input: Optional[str], separator: str = ' ') -> List[str]:
     ''' Build a list of unique values from a string and keep the initial order '''
     if input is None:
         input = ''
-    input = _recursiveReplace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
+    input = pwic_recursive_replace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
     return [] if input == '' else list(OrderedDict((item, None) for item in input.split(separator)))
 
 
-def _mime2icon(mime: str) -> str:
+def pwic_mime_to_icon(mime: str) -> str:
     ''' Return the emoji that corresponds to the MIME '''
     if mime[:6] == 'image/':
         return PWIC_EMOJIS['image']
@@ -331,12 +323,25 @@ def _mime2icon(mime: str) -> str:
         return PWIC_EMOJIS['sheet']
 
 
-def _randomHash() -> str:
+def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default: Optional[str] = None) -> Optional[str]:
+    ''' Read a variable from the table ENV that can be project-dependent or not '''
+    if sql is None:
+        return default
+    query = ''' SELECT value FROM env WHERE project = ? AND key = ? AND value <> '' '''
+    row = None
+    if project not in ['', None]:
+        row = sql.execute(query, (project, name)).fetchone()
+    if row is None:
+        row = sql.execute(query, ('', name)).fetchone()
+    return default if row is None else row['value']
+
+
+def pwic_random_hash() -> str:
     ''' Generate a random 64-char-long string '''
-    return _sha256(str(urandom(64)))[:32] + _sha256(str(urandom(64)))[32:]
+    return pwic_sha256(str(urandom(64)))[:32] + pwic_sha256(str(urandom(64)))[32:]
 
 
-def _recursiveReplace(text: str, search: str, replace: str) -> str:
+def pwic_recursive_replace(text: str, search: str, replace: str) -> str:
     ''' Replace a string recursively '''
     while True:
         curlen = len(text)
@@ -346,14 +351,14 @@ def _recursiveReplace(text: str, search: str, replace: str) -> str:
     return text.strip()
 
 
-def _row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
+def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
 
 
-def _sha256(value: Union[str, bytearray], salt: bool = True) -> str:
+def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:
         assert(salt is False)
@@ -363,7 +368,7 @@ def _sha256(value: Union[str, bytearray], salt: bool = True) -> str:
         return sha256(text.encode()).hexdigest()
 
 
-def _safeName(name: Optional[str], extra: str = '.@') -> str:
+def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
     ''' Ensure that a string will not collide with the reserved characters of the operating system '''
     chars = PWIC_CHARS_UNSAFE + extra
     if name is None:
@@ -373,20 +378,20 @@ def _safeName(name: Optional[str], extra: str = '.@') -> str:
     return name.strip().lower()
 
 
-def _safeFileName(name: str) -> str:
+def pwic_safe_file_name(name: str) -> str:
     ''' Ensure that a file name is acceptable '''
-    name = _safeName(name, extra='').strip().replace(' ', '_').replace('\t', '_')
-    name = _recursiveReplace(name, '..', '.')
-    name = _recursiveReplace(name, '__', '_')
+    name = pwic_safe_name(name, extra='').strip().replace(' ', '_').replace('\t', '_')
+    name = pwic_recursive_replace(name, '..', '.')
+    name = pwic_recursive_replace(name, '__', '_')
     return '' if name[:1] == '.' else name
 
 
-def _safeUserName(name: str) -> str:
+def pwic_safe_user_name(name: str) -> str:
     ''' Ensure that a user name is acceptable '''
-    return _safeName(name, extra='')
+    return pwic_safe_name(name, extra='')
 
 
-def _size2str(size: Union[int, float]) -> str:
+def pwic_size_to_str(size: Union[int, float]) -> str:
     ''' Convert a size to a readable format '''
     units = ' kMGTPEZ'
     for i in range(len(units)):
@@ -396,13 +401,23 @@ def _size2str(size: Union[int, float]) -> str:
     return ('%.1f %sB' % (size, units[i].strip())).replace('.0 ', ' ')
 
 
-def _sqlprint(query: str) -> None:
+def pwic_sql_print(query: str) -> None:
     ''' Quick and dirty callback to print the SQL queries on a single line for debugging purposes '''
     if query is not None:
-        dt = _dt()
+        dt = pwic_dt()
         print('[%s %s] %s' % (dt['date'],
                               dt['time'],
-                              ' '.join([_recursiveReplace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
+                              ' '.join([pwic_recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
+
+
+def pwic_x(value: bool) -> str:
+    ''' Convert a boolean to 'X' or empty string '''
+    return 'X' if value else ''
+
+
+def pwic_xb(value: str) -> bool:
+    ''' Convert 'X' to a boolean '''
+    return value == 'X'
 
 
 # ===================================================
@@ -528,7 +543,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: web.Request = None) -> None:
     ''' Save an event into the audit log '''
     # Forced properties of the event
-    dt = _dt()
+    dt = pwic_dt()
     object['date'] = dt['date']
     object['time'] = dt['time']
     if request is not None:
@@ -813,7 +828,7 @@ class pwic_html2odt(HTMLParser):
                                                 if self.pictMeta is not None:
                                                     docid_re = self.regex_imgsrc.match(value)
                                                     if docid_re is not None:
-                                                        docid = _int(docid_re.group(1))
+                                                        docid = pwic_int(docid_re.group(1))
                                                         if docid in self.pictMeta:
                                                             if self.pictMeta[docid]['link'] == value:
                                                                 value = self.pictMeta[docid]['link_odt_img']
