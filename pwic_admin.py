@@ -83,7 +83,7 @@ def main() -> bool:
 
     subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
 
-    spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after Pwic upgrade or database restore)')
+    spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
@@ -310,9 +310,10 @@ CREATE INDEX "pages_index" ON "pages" (
 CREATE TABLE "cache" (
     "project" TEXT NOT NULL,
     "page" TEXT NOT NULL,
+    "revision" INTEGER NOT NULL,
     "html" TEXT NOT NULL,
     FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("project","page")
+    PRIMARY KEY("project","page","revision")
 )''')
             # Table DOCUMENTS
             sql.execute('''

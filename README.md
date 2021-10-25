@@ -65,9 +65,10 @@ Who can do the most can do the least!
 
 **Pwic**
 
-- Multi-projects with dedicated user authorizations
+- Multi-projects with dedicated authorizations for the users
 - Global and project-dependent settings
 - OAuth2-based federated authentication with control of the state
+- Cache system
 - Management of the attached documents by name, mime, size and magic bytes
 - Private and public modes
 - Custom CSS and templates

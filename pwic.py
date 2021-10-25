@@ -57,17 +57,25 @@ class PwicServer():
         ''' Reorder a list of tags written as a string '''
         return ' '.join(sorted(pwic_list(tags.replace('#', ''))))
 
-    def _md_to_html(self, sql: sqlite3.Cursor, project: str, page: Optional[str], markdown: str, cache: bool = True, headerNumbering: bool = True) -> Tuple[str, object]:
+    def _md_to_html(self,
+                    sql: sqlite3.Cursor,
+                    project: str,
+                    page: Optional[str],
+                    revision: int,
+                    markdown: str,
+                    cache: bool = True,
+                    headerNumbering: bool = True) -> Tuple[str, object]:
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
-        if (page is None) or (pwic_option(sql, project, 'no_cache') is not None):
+        if (page is None) or (revision <= 0) or (pwic_option(sql, project, 'no_cache') is not None):
             cache = False
         if cache:
             row = sql.execute(''' SELECT html
                                   FROM cache
-                                  WHERE project = ?
-                                    AND page    = ?''',
-                              (project, page)).fetchone()
+                                  WHERE project  = ?
+                                    AND page     = ?
+                                    AND revision = ?''',
+                              (project, page, revision)).fetchone()
         else:
             row = None
 
@@ -76,12 +84,12 @@ class PwicServer():
             html = row['html']
         else:
             html = app['markdown'].convert(markdown).replace('<span></span>', '')
-            done, new_html = PwicExtension.on_html(sql, project, str(page), html)
+            done, new_html = PwicExtension.on_html(sql, project, page, revision, html)
             if done and isinstance(new_html, str):
                 html = new_html
             if cache:
-                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, html) VALUES (?, ?, ?)''',
-                            (project, page, html))
+                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html) VALUES (?, ?, ?, ?)''',
+                            (project, page, revision, html))
                 self._commit()
         return pwic_extended_syntax(html,
                                     pwic_option(sql, project, 'heading_mask'),
@@ -395,11 +403,12 @@ class PwicServer():
                 row = sql.fetchone()
                 if row is None:
                     return await self._handle_output(request, 'page-404', pwic)  # Revision not found
+                revision = row['revision']
                 for k in ['latest', 'draft', 'final', 'protection']:
                     row[k] = pwic_xb(row[k])
                 row['tags'] = [] if row['tags'] == '' else row['tags'].split(' ')
                 pwic.update(row)
-                pwic['html'], pwic['tmap'] = self._md_to_html(sql, project, page, row['markdown'], cache=pwic['latest'])
+                pwic['html'], pwic['tmap'] = self._md_to_html(sql, project, page, revision, row['markdown'])
                 pwic['hash'] = pwic_sha256(row['markdown'], salt=False)
                 pwic['removable'] = (pwic['admin'] and not pwic['final'] and (pwic['valuser'] == '')) or ((pwic['author'] == user) and pwic['draft'])
 
@@ -1022,9 +1031,9 @@ class PwicServer():
         # Fetch the name of the project
         project = pwic_safe_name(request.match_info.get('project', ''))
         sql = self._connect()
-        pwic = {'title': 'Roles',
-                'project': project,
-                'roles': []}
+        pwic: Dict[str, Any] = {'title': 'Roles',
+                                'project': project,
+                                'roles': []}
 
         # Fetch the roles
         sql.execute(''' SELECT a.user, c.initial, c.password == '%s' AS oauth,
@@ -1303,7 +1312,7 @@ class PwicServer():
                                           page['title'].replace('<', '&lt;').replace('>', '&gt;'),
                                           htmlStyles.getCss(rel=True),
                                           '',
-                                          self._md_to_html(sql, project, page['page'], page['markdown'], cache=pwic_xb(page['latest']))[0])
+                                          self._md_to_html(sql, project, page['page'], page['revision'], page['markdown'])[0])
                 for doc in documents:
                     if doc['image']:
                         html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
@@ -2181,12 +2190,6 @@ class PwicServer():
                               AND page      = ?
                               AND revision <= ?''',
                         (project, page, revision))
-
-            # Clear the cache
-            sql.execute(''' DELETE FROM cache
-                            WHERE project = ?
-                              AND page    = ?''',
-                        (project, page))
             self._commit()
         raise web.HTTPFound('/%s/%s?success' % (project, page))
 
@@ -2287,9 +2290,10 @@ class PwicServer():
 
         # Clear the cache
         sql.execute(''' DELETE FROM cache
-                        WHERE project = ?
-                          AND page    = ?''',
-                    (project, page))
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?''',
+                    (project, page, revision))
 
         # Delete the page
         sql.execute(''' DELETE FROM pages
@@ -2430,7 +2434,7 @@ class PwicServer():
                                       row['title'].replace('<', '&lt;').replace('>', '&gt;'),
                                       htmlStyles.getCss(rel=False),
                                       '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
-                                      self._md_to_html(sql, project, page, row['markdown'], cache=pwic_xb(row['latest']))[0])
+                                      self._md_to_html(sql, project, page, row['revision'], row['markdown'])[0])
             html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
                                                               'Content-Disposition': 'attachment; filename="%s"' % endname}))
@@ -2438,7 +2442,7 @@ class PwicServer():
         # Format ODT
         elif format == 'odt':
             # MarkDown --> HTML --> ODT
-            html = self._md_to_html(sql, project, page, row['markdown'],
+            html = self._md_to_html(sql, project, page, row['revision'], row['markdown'],
                                     cache=False,  # No cache to recalculate the headers through the styles
                                     headerNumbering=False)[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
@@ -2579,7 +2583,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Return the converted output
-        html = self._md_to_html(sql, project, None, content, cache=False)[0]
+        html = self._md_to_html(sql, project, None, 0, content, cache=False)[0]
         return web.Response(text=html, content_type=pwic_mime('txt'))
 
     async def api_user_create(self, request: web.Request) -> Optional[web.Response]:

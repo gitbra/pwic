@@ -172,7 +172,8 @@ class PwicExtension():
     @staticmethod
     def on_html(sql: sqlite3.Cursor,                        # Cursor to query the database
                 project: str,                               # Name of the project
-                page: str,                                  # Name of the page (may be None)
+                page: Optional[str],                        # Name of the page
+                revision: int,                              # Revision of the page
                 html: str,                                  # Current converted Markdown to HTML code
                 ) -> Tuple[bool, str]:
         ''' Event when a page is converted to HTML and cached.

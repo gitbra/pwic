@@ -33,6 +33,9 @@
 		{% if pwic.env.maintenance %}
 			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</p>
 		{% endif %}
+		{% if pwic.env.message %}
+			<p class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape}}</p>
+		{% endif %}
 
 		<p class="pwic_action_bar">
 			{% if pwic.protection %}
