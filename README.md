@@ -56,7 +56,7 @@ Who can do the most can do the least!
 
 - Low technical requirements and bandwidth
 - Affordable solution based on open-source applications
-- Fast setup with Python in 10 minutes
+- Fast setup with Python 3 in 10 minutes
 - Local storage of the uploaded files and SQLite database
 - Support for HTTP and HTTPS
 - Unicode content and URL
@@ -80,8 +80,8 @@ Who can do the most can do the least!
 
 ## Install
 
-- Install Python: `apt-get install python3`
-	- Depending on your operating system, use `python` or `python3` to invoke Python version 3 later
+- Install Python: `apt-get install python3 python3-pip`
+	- Depending on your operating system, use `python` or `python3` below to invoke Python version 3
 - Install the dependencies: `python -m pip install aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
 - Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py generate-ssl`
 - Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor

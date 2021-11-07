@@ -13,37 +13,35 @@
 
 		{% else %}
 
-			<form id="create_form" action="/api/page/create" method="post">
-				<h1>New page</h1>
-				<p><strong>Project:</strong><br/>
-					<select id="create_project" name="project">
-						{% for proj in pwic.projects %}
-							<option value="{{proj.project|escape}}"
-								{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
-							>{{proj.description|escape}} [{{proj.project|escape}}]</option>
-						{% endfor %}
-					</select>
-				</p>
-				<p><strong>Page identifier:</strong>
-					<br/><input id="create_kb" type="checkbox" name="kb" /> <label for="create_kb">Generate a knowledge base article</label>
-					<br/><input id="create_page" class="pwic_fill" type="text" name="page" spellcheck="false" /></p>
-				<p><strong>Milestone:</strong> <input class="pwic_fill" type="text" name="milestone" /></p>
-				<p><strong>Tags:</strong> <input id="create_tags" class="pwic_fill" type="text" name="tags" value="" title="No hash and separated by a space" spellcheck="false" /></p>
+			<h1>New page</h1>
+			<p><strong>Project:</strong><br/>
+				<select id="create_project">
+					{% for proj in pwic.projects %}
+						<option value="{{proj.project|escape}}"
+							{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
+						>{{proj.description|escape}} [{{proj.project|escape}}]</option>
+					{% endfor %}
+				</select>
+			</p>
+			<p><strong>Page identifier:</strong>
+				<br/><input id="create_kb" type="checkbox" /> <label for="create_kb">Generate a knowledge base article</label>
+				<br/><input id="create_page" class="pwic_fill" type="text" spellcheck="false" /></p>
+			<p><strong>Milestone:</strong> <input id="create_milestone" class="pwic_fill" type="text" /></p>
+			<p><strong>Tags:</strong> <input id="create_tags" class="pwic_fill" type="text" title="No hash and separated by a space" spellcheck="false" /></p>
 
-				<h1>Copy in reference to another page</h1>
-				<p><strong>Project:</strong><br/>
-					<select name="ref_project">
-						<option value=""></option>
-						{% for p in pwic.projects %}
-							<option value="{{p.project|escape}}">{{p.description|escape}} [{{p.project|escape}}]</option>
-						{% endfor %}
-					</select>
-				</p>
-				<p><strong>Page identifier:</strong> <input class="pwic_fill" type="text" name="ref_page" spellcheck="false" /></p>
-				<p><input id="create_ref_tags" type="checkbox" name="ref_tags" checked="checked" /> <label for="create_ref_tags">Copy the tags and merge with the above ones</label></p>
+			<h1>Copy in reference to another page</h1>
+			<p><strong>Project:</strong><br/>
+				<select id="create_ref_project">
+					<option value=""></option>
+					{% for p in pwic.projects %}
+						<option value="{{p.project|escape}}">{{p.description|escape}} [{{p.project|escape}}]</option>
+					{% endfor %}
+				</select>
+			</p>
+			<p><strong>Page identifier:</strong> <input id="create_ref_page" class="pwic_fill" type="text" spellcheck="false" /></p>
+			<p><input id="create_ref_tags" type="checkbox" checked="checked" /> <label for="create_ref_tags">Copy the tags and merge with the above ones</label></p>
 
-				<p><input type="button" value="{{pwic.emojis.sheet}} Create the page" onclick="create_submit('The names are not acceptable.')" /></p>
-			</form>
+			<p><input type="button" value="{{pwic.emojis.sheet}} Create the page" onclick="create_submit('The names are not acceptable.')" /></p>
 
 			{% include 'page-create.js.html' %}
 

@@ -52,16 +52,16 @@ PWIC_REGEXES = {'page': r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#
                 'html_tag': r'\<[^\>]+\>'}                                                      # Find a HTML tag
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'http_log_file', 'http_log_format', 'ip_filter', 'maintenance',
-                                'mime_enforcement', 'no_logon', 'oauth_domains', 'oauth_identifier', 'oauth_provider',
-                                'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
+PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_file', 'http_log_format', 'ip_filter',
+                                'maintenance', 'mime_enforcement', 'no_logon', 'oauth_domains', 'oauth_identifier',
+                                'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
-                              'disabled_formats', 'document_name_regex', 'export_project_revisions', 'heading_mask',
+                              'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
                               'kbid', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message', 'no_cache',
                               'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
                               'no_printing', 'no_search', 'no_text_selection', 'odt_page_height', 'odt_page_width',
                               'robots', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'disabled_formats', 'heading_mask',
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask',
                                      'mathjax', 'message', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
                                      'no_text_selection', 'odt_page_height', 'odt_page_width', 'support_email',
                                      'support_phone', 'support_text', 'support_url', 'validated_only']
@@ -269,6 +269,20 @@ def pwic_mime(ext: str) -> Optional[str]:
     return None
 
 
+def pwic_mime_to_icon(mime: str) -> str:
+    ''' Return the emoji that corresponds to the MIME '''
+    if mime[:6] == 'image/':
+        return PWIC_EMOJIS['image']
+    elif mime[:6] == 'video/':
+        return PWIC_EMOJIS['camera']
+    elif mime[:6] == 'audio/':
+        return PWIC_EMOJIS['headphone']
+    elif mime[:12] == 'application/':
+        return PWIC_EMOJIS['server']
+    else:
+        return PWIC_EMOJIS['sheet']
+
+
 # ===================================================
 #  Reusable functions
 # ===================================================
@@ -309,26 +323,14 @@ def pwic_list(input: Optional[str], separator: str = ' ') -> List[str]:
     return [] if input == '' else list(OrderedDict((item, None) for item in input.split(separator)))
 
 
-def pwic_mime_to_icon(mime: str) -> str:
-    ''' Return the emoji that corresponds to the MIME '''
-    if mime[:6] == 'image/':
-        return PWIC_EMOJIS['image']
-    elif mime[:6] == 'video/':
-        return PWIC_EMOJIS['camera']
-    elif mime[:6] == 'audio/':
-        return PWIC_EMOJIS['headphone']
-    elif mime[:12] == 'application/':
-        return PWIC_EMOJIS['server']
-    else:
-        return PWIC_EMOJIS['sheet']
-
-
 def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default: Optional[str] = None) -> Optional[str]:
     ''' Read a variable from the table ENV that can be project-dependent or not '''
     if sql is None:
         return default
     query = ''' SELECT value FROM env WHERE project = ? AND key = ? AND value <> '' '''
     row = None
+    if name in PWIC_ENV_PROJECT_INDEPENDENT:
+        project = ''
     if project not in ['', None]:
         row = sql.execute(query, (project, name)).fetchone()
     if row is None:
@@ -410,9 +412,9 @@ def pwic_sql_print(query: str) -> None:
                               ' '.join([pwic_recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
 
 
-def pwic_x(value: bool) -> str:
-    ''' Convert a boolean to 'X' or empty string '''
-    return 'X' if value else ''
+def pwic_x(value: Any) -> str:
+    ''' Reduce an input value to a boolean string '''
+    return '' if value in [None, 0, False, '', 'false', 'False', 'off'] else 'X'
 
 
 def pwic_xb(value: str) -> bool:
@@ -560,7 +562,10 @@ def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request:
         tuple += (object[key], )
     sql.execute("INSERT INTO audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
     assert(sql.rowcount == 1)
-    PwicExtension.on_audit(sql, object, request is not None)
+    try:
+        PwicExtension.on_audit(sql, object, request is not None)
+    except Exception:
+        pass
 
 
 # ===================================================
@@ -625,7 +630,7 @@ def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
         return None
 
 
-def pwic_search_tostring(query: Dict[str, List[str]]) -> str:
+def pwic_search_to_string(query: Dict[str, List[str]]) -> str:
     if query is None:
         return ''
     result = ''

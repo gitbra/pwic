@@ -9,16 +9,44 @@
 	});
 
 	function create_submit(errorText) {
-		var	project = $('#create_project').val(),
-			page = $('#create_page').val().trim(),
-			kbmode = $('#create_kb').prop('checked');
+		var	project = $('#create_project').val().trim().toLowerCase(),
+			kbmode = $('#create_kb').prop('checked'),
+			page = $('#create_page').val().trim().toLowerCase();
+
+		// Check the parameters
 		if (	!pwic_is_safe(project)
 			||	!pwic_is_safe(page)
 			||	(['', 'api', 'special'].indexOf(project) !== -1)
 			||	(!kbmode && ((['', 'special'].indexOf(page) !== -1) || page.match(/^kb[0-9]{6}$/i)))
-		)
+		) {
 			alert(errorText);
-		else
-			$('#create_form')[0].submit();
+			return false;
+		}
+
+		// Submit the form
+		$('INPUT[type=button]').attr('disabled', '');
+		fetch('/api/page/create', {	method: 'POST',
+									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+									body:	'project='+encodeURIComponent(project)+
+											'&kb='+encodeURIComponent(kbmode)+
+											'&page='+encodeURIComponent(page)+
+											'&milestone='+encodeURIComponent($('#create_milestone').val())+
+											'&tags='+encodeURIComponent($('#create_tags').val())+
+											'&ref_project='+encodeURIComponent($('#create_ref_project').val())+
+											'&ref_page='+encodeURIComponent($('#create_ref_page').val())+
+											'&ref_tags='+encodeURIComponent($('#create_ref_tags').val()),
+									credentials: 'same-origin' })
+			.then(function(response) {
+				$('INPUT[type=button]').removeAttr('disabled');
+				if (response.status != 200)
+					throw Error(response.status + ' ' + response.statusText);
+				response.json().then(function(data) {
+					window.location = data['url'];
+				});
+			})
+			.catch(function(error) {
+				alert(error);
+				$('INPUT[type=button]').removeAttr('disabled');
+			});
 	}
 </script>

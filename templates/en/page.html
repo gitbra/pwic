@@ -59,14 +59,14 @@
 				<a href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}
 
-			{% set formats = pwic.env.get('disabled_formats', {'value': ''}).value.split(' ') %}
-			{% if '*' not in formats %}
-				{% if 'md' not in formats %}
-					<a href="#" onclick="return page_export('md')">{{pwic.emojis.hammer}} Raw</a>
-				{% endif %}
-				{% if 'odt' not in formats %}
-					<a href="#" onclick="return page_export('odt')">{{pwic.emojis.memo}} Desktop</a>
-				{% endif %}
+			{% set formats = pwic.env.get('file_formats', {'value': ''}).value.split(' ') %}
+			{% set no_formats = pwic.env.get('file_formats_disabled', {'value': ''}).value.split(' ') %}
+			{% if '*' not in no_formats %}
+				{% for f in formats%}
+					{% if f not in no_formats %}
+						<a href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.memo}} {{f|escape|upper}}</a>
+					{% endif %}
+				{% endfor %}
 			{% endif %}
 
 			{% if pwic.validator and (pwic.valuser == '') and pwic.final %}

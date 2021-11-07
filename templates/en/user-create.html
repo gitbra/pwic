@@ -15,19 +15,18 @@
 
 		{% else %}
 
-			<form id="create_form" action="/api/user/create" method="post">
-				<p><strong>Project:</strong><br/>
-					<select id="create_project" name="project">
-						{% for proj in pwic.projects %}
-							<option value="{{proj.project|escape}}"
-								{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
-							>{{proj.description|escape}} [{{proj.project|escape}}]</option>
-						{% endfor %}
-					</select>
-				</p>
-				<p><strong>User name:</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus required="true" spellcheck="false" /></p>
-				<p><input type="button" value="{{pwic.emojis.users}} Create the user" onclick="create_submit('The names are not acceptable.')" /></p>
-			</form>
+			<p class="pwic_italic">Reminder: your password must be changed before you can add a new user to the selected project.</p>
+			<p><strong>Project:</strong><br/>
+				<select id="create_project" name="project">
+					{% for proj in pwic.projects %}
+						<option value="{{proj.project|escape}}"
+							{% if proj.project == pwic.default_project %} selected="selected" {% endif %}
+						>{{proj.description|escape}} [{{proj.project|escape}}]</option>
+					{% endfor %}
+				</select>
+			</p>
+			<p><strong>User name:</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus required="true" spellcheck="false" /></p>
+			<p><input type="button" value="{{pwic.emojis.users}} Create the user" onclick="create_submit('The names are not acceptable.')" /></p>
 
 		{% endif %}
 	</article>

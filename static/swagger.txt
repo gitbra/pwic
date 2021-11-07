@@ -64,8 +64,6 @@ paths:
       description: The data of the session is contained in the cookie in an encrypted format. There is no real need to disconnect from the API if you destroy the identifier of your cookie.
       tags:
         - connection
-      consumes:
-        - application/x-www-form-urlencoded
       produces:
         - text/html
       responses:
@@ -132,7 +130,7 @@ paths:
         500:
           description: File incorrectly managed on the server (open a support ticket)
         503:
-          description: Server maintenance ongoing, retry later
+          description: Ongoing server maintenance, retry later
   /api/document/delete:
     post:
       summary: Delete a document attached to a page
@@ -170,6 +168,8 @@ paths:
           description: Unsufficient authorizations
         500:
           description: File incorrectly managed on the server (open a support ticket)
+        503:
+          description: Ongoing server maintenance, retry later
   /api/document/list:
     post:
       summary: List the files attached to a page
@@ -259,6 +259,8 @@ paths:
         - page
       consumes:
         - application/x-www-form-urlencoded
+      produces:
+        - application/json
       parameters:
         - in: formData
           name: project
@@ -302,9 +304,7 @@ paths:
           required: false
       responses:
         200:
-          description: Successful or failed operation
-        302:
-          description: Successful or failed operation
+          description: Successful operation
         400:
           description: Invalid parameters
         401:
@@ -334,13 +334,13 @@ paths:
           required: true
       responses:
         200:
-          description: Successful or failed operation
-        302:
-          description: Successful or failed operation
+          description: Successful operation
         400:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations, or not found
+        500:
+          description: Dependent files not fully removed from the system
   /api/page/edit:
     post:
       summary: Create a new revision of a page
@@ -365,14 +365,14 @@ paths:
           description: Title of the page
           required: true
         - in: formData
-          name: markdown
-          type: string
-          description: Content of the page
-          required: false
-        - in: formData
           name: tags
           type: string
           description: Tags separated by a space and with no hash
+          required: false
+        - in: formData
+          name: markdown
+          type: string
+          description: Content of the page
           required: false
         - in: formData
           name: comment
@@ -406,8 +406,6 @@ paths:
           required: false
       responses:
         200:
-          description: OK with redirection
-        302:
           description: Successful operation
         400:
           description: Invalid parameters
@@ -451,6 +449,8 @@ paths:
           description: Unsufficient authorizations, or not found
         403:
           description: Disabled feature
+        404:
+          description: Rejected by a custom rule
         415:
           description: Invalid file format
         500:
@@ -547,8 +547,6 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-        403:
-          description: System configuration incompatible with the authorizations of the user
   /api/project/progress/get:
     post:
       summary: Show the current progress of the project by tag
@@ -598,6 +596,32 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations or disabled feature
+  /api/project/export:
+    get:
+      summary: Export the project as a ZIP file
+      tags:
+        - project
+      produces:
+        - application/x-zip-compressed
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
+        404:
+          description: No relevant data found
+        503:
+          description: Technical error during the generation of the ZIP file
   /api/server/env/get:
     post:
       summary: Get details about the environment variables
@@ -654,11 +678,13 @@ paths:
           required: true
       responses:
         200:
-          description: Successful or failed operation
-        302:
-          description: Successful or failed operation
+          description: Successful operation
+        400:
+          description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        403:
+          description: Forbidden operation
   /api/user/password/change:
     post:
       summary: Change the password of the logged user
@@ -684,9 +710,7 @@ paths:
           required: true
       responses:
         200:
-          description: Successful or failed operation
-        302:
-          description: Successful or failed operation
+          description: Successful operation
         400:
           description: Invalid parameters
         401:

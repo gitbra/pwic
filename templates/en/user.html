@@ -36,18 +36,18 @@
 		{% if not pwic.password_oauth and (pwic.user == pwic.userpage) %}
 			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
 				<div class="pwic_popup">
-					<form id="user_password_form" action="/api/user/password/change" method="post" autocomplete="new-password">
+					<form autocomplete="new-password">
 						<h3>Change your password</h3>
 						{% if not pwic.env.ssl %}
 							<p><ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
 						{% endif %}
 						<table>
-							<tr><td>Current password:</td>	<td><input class="pwic_fill" type="password" id="user_password_current" name="password_current" autocomplete="current-password" required="true" /></td></tr>
-							<tr><td>New password:</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" name="password_new1" autocomplete="new-password" required="true" /></td></tr>
-							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" name="password_new2" autocomplete="off" required="true" /></td></tr>
+							<tr><td>Current password:</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true" /></td></tr>
+							<tr><td>New password:</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" autocomplete="new-password" required="true" /></td></tr>
+							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" /></td></tr>
 						</table>
 						<p>
-							<input type="button" value="{{pwic.emojis.locked}} Submit" onclick="user_password_submit('The form is inconsistent.')"/>
+							<input type="button" value="{{pwic.emojis.locked}} Change" onclick="user_password_submit('The form is inconsistent.', 'Your password has been changed successfully.', 'Failure to save your new password. Verify that it matches with the security rules.')"/>
 							<input type="button" value="Cancel" onclick="user_password_popup()"/>
 						</p>
 					</form>

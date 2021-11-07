@@ -28,7 +28,7 @@
 	(function(){
 		var i, elements = $('#roles_table TR TH');
 		for (i=0 ; i<elements.length-1 ; i++)
-			elements[i].innerHTML = '<span class="pwic_cursor" onclick="roles_sort('+i+')"> {{pwic.emojis.updown}} </span> ' + elements[i].innerHTML;
+			elements[i].innerHTML = '<span class="pwic_cursor" onclick="roles_sort('+i+')"> {{pwic.emojis.updown}} <\/span> ' + elements[i].innerHTML;
 	}());
 
 	function roles_toggle(id, project, user, role) {

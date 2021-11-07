@@ -111,12 +111,11 @@
 		}
 
 		function pwic_url_status(success, failed) {
-			if ((window.location.toString().indexOf('?success') !== -1)
-			 || (window.location.toString().indexOf('&success') !== -1))
+			var url = window.location.toString();
+			if ((url.indexOf('?success') !== -1) || (url.indexOf('&success') !== -1))
 				alert(success);
 			else
-				if ((window.location.toString().indexOf('?failed') !== -1)
-				 || (window.location.toString().indexOf('&failed') !== -1))
+				if ((url.indexOf('?failed') !== -1) || (url.indexOf('&failed') !== -1))
 					alert(failed);
 		}
 	</script>

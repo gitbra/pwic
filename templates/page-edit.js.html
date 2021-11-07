@@ -371,7 +371,28 @@
 										}
 
 										// The modifications can be submitted
-										$('#edit_form')[0].submit();
+										fetch('/api/page/edit', {	method: 'POST',
+																	headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+																	body:	'project={{pwic.project|urlencode}}'+
+																			'&page={{pwic.page|urlencode}}'+
+																			'&title='+$('#edit_title').val()+
+																			'&tags='+$('#edit_tags').val()+
+																			'&markdown='+$('#edit_markdown').val()+
+																			'&comment='+$('#edit_comment').val()+
+																			'&milestone='+$('#edit_milestone').val()+
+																			'&draft='+$('#edit_draft').prop('checked')+
+																			'&final='+$('#edit_final').prop('checked')+
+																			'&protection='+$('#edit_protection').prop('checked')+
+																			'&header='+$('#edit_header').prop('checked'),
+																	credentials: 'same-origin' })
+											.then(function(response) {
+												if (response.status != 200)
+													throw Error(response.status + ' ' + response.statusText);
+												window.location = '/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}';
+											})
+											.catch(function(error) {
+												alert(error);
+											});
 									});
 								})
 								.catch(function(error){
@@ -422,7 +443,7 @@
 	}
 
 
-	// -------------------------------- Leave without save
+	// -------------------------------- Leave without saving
 
 	window.onbeforeunload = function(e) {
 		var	msg = 'The current changes may be lost.',

@@ -243,6 +243,7 @@ CREATE TABLE "env" (
     FOREIGN KEY("project") REFERENCES "projects"("project"),
     PRIMARY KEY("key","project")
 )''')
+            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'file_formats', 'md html odt')''')
             sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')''')
             sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
             # Table USERS
@@ -465,17 +466,19 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
     # Update the variable
     if value == '':
         sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
+        verb = 'deleted'
     else:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
+        verb = 'updated'
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': '%sset-%s' % ('un' if value == '' else '', key),
                      'project': project,
                      'string': '' if key in PWIC_ENV_PRIVATE else value})
     db_commit()
     if project != '':
-        print('Variable updated for the project "%s"' % project)
+        print('Variable %s for the project "%s"' % (verb, project))
     else:
-        print('Variable updated globally')
+        print('Variable %s globally' % verb)
     return True
 
 
@@ -602,7 +605,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     # Create the workspace for the documents of the project
     try:
         path = PWIC_DOCUMENTS_PATH % project
-        os.mkdir(path)
+        os.makedirs(path)
     except OSError:
         print('Error: impossible to create "%s"' % path)
         return False
