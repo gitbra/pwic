@@ -13,7 +13,7 @@ from difflib import HtmlDiff
 import zipfile
 from io import BytesIO
 from os import listdir, urandom, remove
-from os.path import getsize, isdir, isfile, join
+from os.path import getsize, isdir, isfile, join, splitext
 import json
 import re
 import imagesize
@@ -27,9 +27,10 @@ from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
-    pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_mime, pwic_mime_to_icon, pwic_option, \
-    pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, pwic_size_to_str, \
-    pwic_sql_print, pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search_to_string, pwic_html2odt
+    pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_mime, pwic_mime2icon, pwic_option, \
+    pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, \
+    pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, \
+    pwic_search_parse, pwic_search2string, pwic_html2odt
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -56,14 +57,14 @@ class PwicServer():
         ''' Reorder a list of tags written as a string '''
         return ' '.join(sorted(pwic_list(tags.replace('#', ''))))
 
-    def _md_to_html(self,
-                    sql: sqlite3.Cursor,
-                    project: str,
-                    page: Optional[str],
-                    revision: int,
-                    markdown: str,
-                    cache: bool = True,
-                    headerNumbering: bool = True) -> Tuple[str, object]:
+    def _md2html(self,
+                 sql: sqlite3.Cursor,
+                 project: str,
+                 page: Optional[str],
+                 revision: int,
+                 markdown: str,
+                 cache: bool = True,
+                 headerNumbering: bool = True) -> Tuple[str, object]:
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
         if (page is None) or (revision <= 0) or (pwic_option(sql, project, 'no_cache') is not None):
@@ -94,30 +95,22 @@ class PwicServer():
 
     def _check_mime(self, obj: Dict[str, Any]) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
-        # Check the applicable extension
-        if '.' in obj['filename'] and obj['mime'] != pwic_mime('bin'):
-            extension = obj['filename'].split('.')[-1]
-            for (mext, mtyp, mhdr) in PWIC_MIMES:
-                if extension in mext:
+        extension = splitext(obj['filename'])[1][1:]
+        for (mext, mtyp, mhdr) in PWIC_MIMES:
+            if extension in mext:
+                # Expected mime
+                if obj['mime'] == '':
+                    obj['mime'] = mtyp
+                elif mtyp != obj['mime']:
+                    return False
 
-                    # Expected mime
-                    if obj['mime'] == '':
-                        obj['mime'] = mtyp
-                    elif mtyp != obj['mime']:
-                        return False
-
-                    # Magic bytes
-                    if mhdr is not None:
-                        for bytes in mhdr:
-                            # Cast to bytearray
-                            barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
-                            for i in range(len(bytes)):
-                                barr.append(ord(bytes[i]))
-                            # Check the first bytes
-                            if obj['content'][:len(bytes)] == barr:
-                                return True
-                        return False
-                    break
+                # Magic bytes
+                if mhdr is not None:
+                    for bytes in mhdr:
+                        if obj['content'][:len(bytes)] == pwic_str2bytearray(bytes):
+                            return True
+                    return False
+                break
         return obj['mime'] != ''
 
     def _get_ip(self, request: web.Request) -> str:
@@ -275,7 +268,7 @@ class PwicServer():
                 pwic['env'][key] = {'value': value,
                                     'global': global_}
                 if key in ['max_document_size', 'max_project_size']:
-                    pwic['env'][key + '_str'] = {'value': pwic_size_to_str(pwic_int(value)),
+                    pwic['env'][key + '_str'] = {'value': pwic_size2str(pwic_int(value)),
                                                  'global': global_}
 
         # Dynamic settings
@@ -435,7 +428,7 @@ class PwicServer():
                     row[k] = pwic_xb(row[k])
                 row['tags'] = [] if row['tags'] == '' else row['tags'].split(' ')
                 pwic.update(row)
-                pwic['html'], pwic['tmap'] = self._md_to_html(sql, project, page, revision, row['markdown'])
+                pwic['html'], pwic['tmap'] = self._md2html(sql, project, page, revision, row['markdown'])
                 pwic['hash'] = pwic_sha256(row['markdown'], salt=False)
                 pwic['removable'] = (pwic['admin'] and not pwic['final'] and (pwic['valuser'] == '')) or ((pwic['author'] == user) and pwic['draft'])
 
@@ -449,7 +442,7 @@ class PwicServer():
                                 ORDER BY filename''',
                             (project, page))
                 for row in sql.fetchall():
-                    row['size'] = pwic_size_to_str(row['size'])
+                    row['size'] = pwic_size2str(row['size'])
                     category = 'images' if row['mime'][:6] == 'image/' else 'documents'
                     pwic[category].append(row)
 
@@ -556,14 +549,14 @@ class PwicServer():
                 used_size = 0
                 for row in sql.fetchall():
                     used_size += row['size']
-                    row['mime_icon'] = pwic_mime_to_icon(row['mime'])
-                    row['size'] = pwic_size_to_str(row['size'])
+                    row['mime_icon'] = pwic_mime2icon(row['mime'])
+                    row['size'] = pwic_size2str(row['size'])
                     pwic['documents'].append(row)
                 pmax = pwic_int(pwic_option(sql, project, 'max_project_size', '0'))
                 pwic['disk_space'] = {'used': used_size,
-                                      'used_str': pwic_size_to_str(used_size),
+                                      'used_str': pwic_size2str(used_size),
                                       'project_max': pmax,
-                                      'project_max_str': pwic_size_to_str(pmax),
+                                      'project_max_str': pwic_size2str(pmax),
                                       'percentage': min(100, float('%.2f' % (0 if pmax == 0 else 100. * used_size / pmax)))}
 
             # Render the page in HTML or Markdown
@@ -819,8 +812,8 @@ class PwicServer():
                                  time DESC''',
                     (userpage, user))
         for row in sql.fetchall():
-            row['mime_icon'] = pwic_mime_to_icon(row['mime'])
-            row['size'] = pwic_size_to_str(row['size'])
+            row['mime_icon'] = pwic_mime2icon(row['mime'])
+            row['size'] = pwic_size2str(row['size'])
             pwic['documents'].append(row)
 
         # Fetch the latest pages updated by the selected user
@@ -892,7 +885,7 @@ class PwicServer():
         pwic = {'title': 'Search',
                 'project': project,
                 'project_description': sql.fetchone()['description'],
-                'terms': pwic_search_to_string(query),
+                'terms': pwic_search2string(query),
                 'pages': [],
                 'documents': [],
                 'with_rev': with_rev,
@@ -1014,8 +1007,8 @@ class PwicServer():
                     continue
 
                 # Save the found document
-                row['mime_icon'] = pwic_mime_to_icon(row['mime'])
-                row['size'] = pwic_size_to_str(row['size'])
+                row['mime_icon'] = pwic_mime2icon(row['mime'])
+                row['size'] = pwic_size2str(row['size'])
                 pwic['documents'].append(row)
 
         # Show the pages by score desc, date desc and time desc
@@ -1299,9 +1292,9 @@ class PwicServer():
 
         # Transfer the file
         filename = (PWIC_DOCUMENTS_PATH % row['project']) + row['filename']
-        if getsize(filename) != row['size']:
-            raise web.HTTPConflict()  # Size mismatch causes an infinite download time
         try:
+            if getsize(filename) != row['size']:
+                raise web.HTTPConflict()  # Size mismatch causes an infinite download time
             if not PwicExtension.on_document_get(sql, row['project'], user, row['filename'], row['mime'], row['size']):
                 raise web.HTTPUnauthorized()
             with open(filename, 'rb') as f:
@@ -1968,7 +1961,7 @@ class PwicServer():
                                           page['title'].replace('<', '&lt;').replace('>', '&gt;'),
                                           htmlStyles.getCss(rel=True),
                                           '',
-                                          self._md_to_html(sql, project, page['page'], page['revision'], page['markdown'])[0])
+                                          self._md2html(sql, project, page['page'], page['revision'], page['markdown'])[0])
                 for doc in documents:
                     if doc['image']:
                         html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
@@ -2465,7 +2458,7 @@ class PwicServer():
                                       row['title'].replace('<', '&lt;').replace('>', '&gt;'),
                                       htmlStyles.getCss(rel=False),
                                       '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
-                                      self._md_to_html(sql, project, page, revision, row['markdown'])[0])
+                                      self._md2html(sql, project, page, revision, row['markdown'])[0])
             html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
                                                               'Content-Disposition': 'attachment; filename="%s"' % endname}))
@@ -2473,9 +2466,9 @@ class PwicServer():
         # Format ODT
         elif format == 'odt':
             # MarkDown --> HTML --> ODT
-            html = self._md_to_html(sql, project, page, revision, row['markdown'],
-                                    cache=False,  # No cache to recalculate the headers through the styles
-                                    headerNumbering=False)[0]
+            html = self._md2html(sql, project, page, revision, row['markdown'],
+                                 cache=False,    # No cache to recalculate the headers through the styles
+                                 headerNumbering=False)[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
             html = html.replace('</code></pre></div>', '</blockcode>')
             html = html.replace('<pre><code>', '<blockcode>')
@@ -2614,7 +2607,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Return the converted output
-        html = self._md_to_html(sql, project, None, 0, content, cache=False)[0]
+        html = self._md2html(sql, project, None, 0, content, cache=False)[0]
         html = PwicExtension.on_html(sql, project, None, 0, html)
         return web.Response(text=html, content_type=pwic_mime('txt'))
 
@@ -2881,7 +2874,6 @@ class PwicServer():
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '')
                     doc[name] = await part.read(decode=False)
-
         except Exception:
             raise web.HTTPBadRequest()
         if not PwicExtension.on_api_document_create(sql, doc):
@@ -2889,12 +2881,17 @@ class PwicServer():
         if doc['content'] in [None, '', b''] or '' in [doc['project'], doc['page'], doc['filename']]:   # The mime is checked later
             raise web.HTTPBadRequest()
 
-        # Verify that the target folder exists
+        # Verify that the project and folder exist
+        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        sql.execute(''' SELECT project FROM projects WHERE project = ?''', (doc['project'], ))
+        if sql.fetchone() is None:
+            self._rollback()
+            raise web.HTTPBadRequest()
         if not isdir(PWIC_DOCUMENTS_PATH % doc['project']):
+            self._rollback()
             raise web.HTTPInternalServerError()
 
         # Verify the authorizations
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
         sql.execute(''' SELECT b.revision
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2926,7 +2923,7 @@ class PwicServer():
                 raise web.HTTPBadRequest()
 
         # Verify the file type
-        if pwic_option(sql, '', 'mime_enforcement') is not None:
+        if pwic_option(sql, '', 'magic_bytes') is not None:
             if not self._check_mime(doc):
                 self._rollback()
                 raise web.HTTPUnsupportedMediaType()
@@ -2981,10 +2978,10 @@ class PwicServer():
 
         # Upload the file on the server
         try:
-            f = open((PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename'], 'wb')
+            f = open((PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename'], 'wb')    # Rewrite any existing file
             f.write(doc['content'])
             f.close()
-        except Exception:  # OSError mainly
+        except Exception:  # OSError, FileNotFoundError
             self._rollback()
             raise web.HTTPInternalServerError()
 
@@ -3044,8 +3041,8 @@ class PwicServer():
                     (page, project, user))
         documents = []
         for row in sql.fetchall():
-            row['mime_icon'] = pwic_mime_to_icon(row['mime'])
-            row['size'] = pwic_size_to_str(row['size'])
+            row['mime_icon'] = pwic_mime2icon(row['mime'])
+            row['size'] = pwic_size2str(row['size'])
             row['used'] = ('(/special/document/%d)' % row['id']) in markdown or \
                           ('(/special/document/%d "' % row['id']) in markdown
             documents.append(row)

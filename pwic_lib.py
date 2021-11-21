@@ -53,7 +53,7 @@ PWIC_REGEXES = {'page': r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_file', 'http_log_format', 'ip_filter',
-                                'maintenance', 'mime_enforcement', 'no_logon', 'oauth_domains', 'oauth_identifier',
+                                'magic_bytes', 'maintenance', 'no_logon', 'oauth_domains', 'oauth_identifier',
                                 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
@@ -141,7 +141,8 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
-PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
+PWIC_MIMES = [([''], 'application/octet-stream', None),
+              (['7z'], 'application/x-7z-compressed', ['7z']),
               (['aac'], 'audio/vnd.dlna.adts', None),
               (['abw'], 'application/x-abiword', None),
               (['accdb'], 'application/msaccess', ['\x00\x01\x00\x00Standard ACE DB']),  # NUL SOH NUL NUL
@@ -180,6 +181,7 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
               (['ico'], 'image/x-icon', ['\x00\x00\x01\x00']),
               (['ics'], 'text/calendar', None),
               (['jar'], 'application/java-archive', ZIP),
+              (['jp2'], 'image/jp2', ['\x00\x00\x00\xFFjP']),
               (['jpg', 'jpeg'], 'image/jpeg', ['\xFF\xD8\xFF']),
               (['json'], 'application/json', None),
               (['kml'], 'application/vnd.google-earth.kml+xml', None),
@@ -263,13 +265,24 @@ PWIC_MIMES = [(['7z'], 'application/x-7z-compressed', ['7z']),
 
 
 def pwic_mime(ext: str) -> Optional[str]:
+    ''' Return the mime that corresponds to the file extension '''
+    ext = ext.strip().lower()
     for exts, mime, magic in PWIC_MIMES:
         if ext in exts:
             return mime
     return None
 
 
-def pwic_mime_to_icon(mime: str) -> str:
+def pwic_magic_bytes(ext: str) -> Optional[List[str]]:
+    ''' Return the magic bytes that corresponds to the file extension '''
+    ext = ext.strip().lower()
+    for exts, mime, magic in PWIC_MIMES:
+        if ext in exts:
+            return magic
+    return None
+
+
+def pwic_mime2icon(mime: str) -> str:
     ''' Return the emoji that corresponds to the MIME '''
     if mime[:6] == 'image/':
         return PWIC_EMOJIS['image']
@@ -360,16 +373,6 @@ def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
     return d
 
 
-def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
-    ''' Calculate the SHA256 as string for the given value '''
-    if type(value) == bytearray:
-        assert(salt is False)
-        return sha256(value).hexdigest()
-    else:
-        text = (PWIC_SALT if salt else '') + str(value)
-        return sha256(text.encode()).hexdigest()
-
-
 def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
     ''' Ensure that a string will not collide with the reserved characters of the operating system '''
     chars = PWIC_CHARS_UNSAFE + extra
@@ -393,7 +396,29 @@ def pwic_safe_user_name(name: str) -> str:
     return pwic_safe_name(name, extra='')
 
 
-def pwic_size_to_str(size: Union[int, float]) -> str:
+def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
+    ''' Calculate the SHA256 as string for the given value '''
+    if type(value) == bytearray:
+        assert(salt is False)
+        return sha256(value).hexdigest()
+    else:
+        text = (PWIC_SALT if salt else '') + str(value)
+        return sha256(text.encode()).hexdigest()
+
+
+def pwic_sha256_file(filename: str) -> str:
+    ''' Calculate the SHA256 as string for the given file '''
+    try:
+        hash = sha256()
+        with open(filename, 'rb') as f:
+            for block in iter(lambda: f.read(4096), b''):
+                hash.update(block)
+        return hash.hexdigest()
+    except Exception:
+        return ''
+
+
+def pwic_size2str(size: Union[int, float]) -> str:
     ''' Convert a size to a readable format '''
     units = ' kMGTPEZ'
     for i in range(len(units)):
@@ -410,6 +435,14 @@ def pwic_sql_print(query: str) -> None:
         print('[%s %s] %s' % (dt['date'],
                               dt['time'],
                               ' '.join([pwic_recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
+
+
+def pwic_str2bytearray(input: str) -> bytearray:
+    ''' Convert string to bytearray '''
+    barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
+    for i in range(len(input)):
+        barr.append(ord(input[i]))
+    return barr
 
 
 def pwic_x(value: Any) -> str:
@@ -542,7 +575,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: web.Request = None) -> None:
+def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = pwic_dt()
@@ -630,7 +663,7 @@ def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
         return None
 
 
-def pwic_search_to_string(query: Dict[str, List[str]]) -> str:
+def pwic_search2string(query: Dict[str, List[str]]) -> str:
     if query is None:
         return ''
     result = ''

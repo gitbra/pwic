@@ -178,6 +178,12 @@
 						<td>A legal text can be displayed at the bottom of the pages. The HTML syntax is accepted if <code>safe_mode</code> is disabled.</td>
 					</tr>
 					<tr>
+						<td><code>magic_bytes</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Pwic has a predefined list of usual file types and their signature. This default security feature ensures that a file has the expected extension of its content.</td>
+					</tr>
+					<tr>
 						<td><code>maintenance</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -206,12 +212,6 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Show an online message for informational purposes only. No HTML is allowed.</td>
-					</tr>
-					<tr>
-						<td><code>mime_enforcement</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Pwic has a predefined list of usual file types and their signature. This default security feature ensures that a file has the extension of its expected content.</td>
 					</tr>
 					<tr>
 						<td><code>no_cache</code></td>
@@ -494,7 +494,7 @@
 				</li>
 				<li>The filename may have to respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
 				<li>A file size limit may apply if the administrator has defined the variables <code>max_document_size</code> or <code>max_project_size</code>.</li>
-				<li>The content of the file must match with the file type if the administrator has defined the variable <code>enforce_mime</code>.</li>
+				<li>The content of the file must match with the file type if the administrator has defined the option <code>magic_bytes</code>.</li>
 				<li>The feature is not available with the obsolete browser Microsoft Internet Explorer.</li>
 			</ul>
 

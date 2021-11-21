@@ -9,14 +9,16 @@ import gzip
 import datetime
 import sys
 import os
-from os.path import getsize, isdir, isfile, join
+from os import chmod, listdir, makedirs, mkdir, removedirs, rmdir
+from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
 
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_list, pwic_row_factory, pwic_sha256, \
-    pwic_safe_name, pwic_safe_user_name
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_option, pwic_list, pwic_magic_bytes, \
+    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray
+from pwic_extension import PwicExtension
 
 
 db = None
@@ -86,6 +88,13 @@ def main() -> bool:
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
+    spb = subparsers.add_parser('repair-documents', help='Repair the index of the documents (recommended after the database is restored)')
+    spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    spb.add_argument('--no-hash', action='store_true', help='Do not recalculate the hashes of the files (faster but not recommended)')
+    spb.add_argument('--no-magic', action='store_true', help='Do not verify the magic bytes of the files')
+    spb.add_argument('--keep-orphans', action='store_true', help='Do not delete the orphaned folders and files')
+    spb.add_argument('--test', action='store_true', help='Verbose simulation')
+
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
     # Parse the command line
@@ -124,6 +133,8 @@ def main() -> bool:
         return compress_static()
     elif args.command == 'clear-cache':
         return clear_cache(args.project)
+    elif args.command == 'repair-documents':
+        return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
     elif args.command == 'execute-sql':
         return execute_sql()
     else:
@@ -218,7 +229,7 @@ def generate_ssl() -> bool:
 
 def init_db() -> bool:
     if not isdir(PWIC_DB):
-        os.mkdir(PWIC_DB)
+        mkdir(PWIC_DB)
     if isfile(PWIC_DB_SQLITE):
         print('Error: the database is already created')
     else:
@@ -534,7 +545,7 @@ def create_backup() -> bool:
     try:
         copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
         if isfile(new):
-            os.chmod(new, S_IREAD)
+            chmod(new, S_IREAD)
             print('Backup of the database file created as "%s"' % new)
             print('The uploaded documents remain in their place')
             return True
@@ -605,7 +616,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     # Create the workspace for the documents of the project
     try:
         path = PWIC_DOCUMENTS_PATH % project
-        os.makedirs(path)
+        makedirs(path)
     except OSError:
         print('Error: impossible to create "%s"' % path)
         return False
@@ -735,7 +746,7 @@ def delete_project(project: str) -> bool:
     # Remove the folder of the project used to upload files
     try:
         fn = PWIC_DOCUMENTS_PATH % project
-        os.rmdir(fn)
+        rmdir(fn)
     except OSError:
         print('Error: unable to remove "%s". The folder may be not empty' % fn)
         return False
@@ -988,7 +999,7 @@ def compress_static() -> bool:
     # Despite the files do not change, many responses 304 are generated with some browsers
     counter = 0
     path = './static/'
-    files = [(path + f) for f in os.listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
+    files = [(path + f) for f in listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
     for fn in files:
         if getsize(fn) >= 25600:
             with open(fn, 'rb') as src:
@@ -1018,6 +1029,172 @@ def clear_cache(project: str) -> bool:
                      'project': project})
     db_commit()
     print('The cache is cleared. Do expect a workload of regeneration for a short period of time.')
+    return True
+
+
+def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: bool, test: bool) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Ask for confirmation
+    magic_bytes = not no_magic and (pwic_option(sql, '', 'magic_bytes') is not None)
+    print('This tool will perform the following actions:')
+    print('    - Create a folder for each project')
+    print('    - Delete the folders of all the unknown projects')
+    print('    - Delete the documents from the database if there is no associated physical file')
+    print('    - Delete the orphaned physical files that are not indexed in the database')
+    print('    - Update the size of the files in the database')
+    if not no_hash:
+        print('    - Update the hash of the files in the database')
+    if magic_bytes:
+        print('    - Delete retroactively the files whose magic bytes are incorrect')
+    print('')
+    print('The database will be locked during the whole process.')
+    print('Please ensure that the server is not running.')
+    print('Use the test mode to ensure that the changes are relevant.')
+    print('The changes cannot be reverted.')
+    print('')
+    print('Type "YES" to agree and continue: ', end='')
+    if input() != 'YES':
+        return False
+    print('')
+
+    # Initialization
+    projects = []
+    multi = (project == '')
+    tab = PrettyTable()
+    tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Content']
+    for n in range(len(tab.field_names)):
+        tab.align[tab.field_names[n]] = 'l'
+    tab.header = True
+    tab.border = True
+
+    # Select the projects
+    sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+    sql.execute(''' SELECT project
+                    FROM projects
+                    WHERE project <> ''
+                    ORDER BY project''')
+    for row in sql.fetchall():
+        projects.append(pwic_safe_name(row['project']))
+    if not multi:
+        if project not in projects:
+            db_commit()     # To end the empty transaction
+            return False
+        projects = [project]
+
+    # Each project should have a folder
+    for p in projects:
+        path = PWIC_DOCUMENTS_PATH % p
+        if not isdir(path):
+            try:
+                if not test:
+                    makedirs(path)
+                tab.add_row(['Create', 'Folder', p, path, 'Missing'])
+            except OSError:
+                print('Failed to create the folder "%s"' % path)
+                projects.remove(p)
+    if multi and not keep_orphans:
+        dirs = sorted([f for f in listdir(PWIC_DOCUMENTS_PATH % '') if isdir(PWIC_DOCUMENTS_PATH % f)])
+        for p in dirs:
+            if p not in projects:
+                path = PWIC_DOCUMENTS_PATH % p
+                try:
+                    for f in listdir(PWIC_DOCUMENTS_PATH % p):
+                        if not test:
+                            os.remove(join(path, f))    # No call to PwicExtension.on_api_document_delete because the project does not exist
+                        tab.add_row(['Delete', 'File', p, join(path, f), 'Orphaned'])
+                    if not test:
+                        removedirs(path)
+                    tab.add_row(['Delete', 'Folder', p, path, 'Orphaned'])
+                except OSError:
+                    print('Failed to delete the folder "%s"' % path)
+
+    # Check the files per project
+    for p in projects:
+        if not isdir(PWIC_DOCUMENTS_PATH % p):
+            continue
+        files = sorted([f for f in listdir(PWIC_DOCUMENTS_PATH % p) if isfile(join(PWIC_DOCUMENTS_PATH % p, f))])
+        sql.execute(''' SELECT id, filename
+                        FROM documents
+                        WHERE project = ?
+                        ORDER BY filename''',
+                    (p, ))
+        # Each document should match with a file
+        for row in sql.fetchall():
+            if row['filename'] in files:
+                files.remove(row['filename'])
+            else:
+                if PwicExtension.on_api_document_delete(sql, p, PWIC_USERS['system'], None, None, row['filename']):
+                    if not test:
+                        sql.execute(''' DELETE FROM documents WHERE ID = ?''', (row['id'], ))
+                    tab.add_row(['Delete', 'Database', p, '%d,%s' % (row['id'], row['filename']), 'Missing'])
+        # Delete the left files that can't be reassigned to the right objects
+        if not keep_orphans:
+            for f in files:
+                if PwicExtension.on_api_document_delete(sql, p, PWIC_USERS['system'], None, None, f):
+                    path = join(PWIC_DOCUMENTS_PATH % p, f)
+                    try:
+                        if not test:
+                            os.remove(path)
+                        tab.add_row(['Delete', 'File', p, path, 'Orphaned'])
+                    except OSError:
+                        print('Failed to delete the file "%s"' % path)
+
+    # Verify the integrity of the files
+    for p in projects:
+        sql.execute(''' SELECT id, filename, size, hash
+                        FROM documents
+                        WHERE project = ? ''',
+                    (p, ))
+        for row in sql.fetchall():
+            path = join(PWIC_DOCUMENTS_PATH % p, row['filename'])
+            try:
+                # Magic bytes
+                if magic_bytes:
+                    magics = pwic_magic_bytes(splitext(path)[1][1:])
+                    if magics is not None:
+                        with open(path, 'rb') as fh:
+                            content = fh.read(32)
+                        ok = False
+                        for bytes in magics:
+                            ok = ok or (content[:len(bytes)] == pwic_str2bytearray(bytes))
+                        if not ok:
+                            if not test:
+                                os.remove(path)
+                                sql.execute(''' DELETE FROM documents WHERE ID = ?''', (row['id'], ))
+                            tab.add_row(['Delete', 'File', p, path, 'Unsafe'])
+                            tab.add_row(['Delete', 'Database', p, '%d,%s' % (row['id'], row['filename']), 'Unsafe'])
+
+                # Size and hash
+                size = getsize(path)
+                hash = row['hash'] if no_hash else pwic_sha256_file(path)
+                if (size != row['size']) or (hash != row['hash']):
+                    if not test:
+                        sql.execute(''' UPDATE documents
+                                        SET size = ?, hash = ?
+                                        WHERE ID = ?''',
+                                    (size, hash, row['id']))
+                    tab.add_row(['Update', 'Database', p, '%d,%s' % (row['id'], path), 'Modified'])
+            except (OSError, FileNotFoundError):    # Can occur in test mode
+                print('Failed to analyze the file "%s"' % path)
+                continue
+
+    # Result
+    if tab.rowcount == 0:
+        print('\nNo change occurred in the database or the file system.')
+    else:
+        print('\nList of the %d changes:' % tab.rowcount)
+        print(tab.get_string())
+        if not test:
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
+                             'event': 'repair-documents',
+                             'project': project,
+                             'string': str(tab.rowcount)},
+                       None)
+    db_commit()
     return True
 
 

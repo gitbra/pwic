@@ -128,7 +128,7 @@ paths:
         415:
           description: Failed MIME verification
         500:
-          description: File incorrectly managed on the server (open a support ticket)
+          description: File incorrectly managed on the server
         503:
           description: Ongoing server maintenance, retry later
   /api/document/delete:
