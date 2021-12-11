@@ -54,7 +54,7 @@ PWIC_REGEXES = {'page': r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_file', 'http_log_format', 'ip_filter',
                                 'magic_bytes', 'maintenance', 'no_logon', 'oauth_domains', 'oauth_identifier',
-                                'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl', 'xff']
+                                'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
                               'kbid', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message', 'no_cache',
@@ -447,7 +447,7 @@ def pwic_str2bytearray(input: str) -> bytearray:
 
 def pwic_x(value: Any) -> str:
     ''' Reduce an input value to a boolean string '''
-    return '' if value in [None, 0, False, '', 'false', 'False', 'off'] else 'X'
+    return '' if value in [None, 0, False, '', 'false', 'False', 'no', 'No', 'off', 'Off'] else 'X'
 
 
 def pwic_xb(value: str) -> bool:
@@ -770,7 +770,7 @@ class pwic_html2odt(HTMLParser):
                            'ul': {'text:style-name': 'ListStructure',
                                   'text:continue-numbering': 'true'}}
         self.noclosing = ['br', 'hr']
-        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}px" svg:height="{$h}px" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
+        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}cm" svg:height="{$h}cm" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
         self.extrasAfter = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
                             'td': ('<text:p>', '</text:p>'),
                             'th': ('<text:p>', '</text:p>')}
@@ -870,8 +870,8 @@ class pwic_html2odt(HTMLParser):
                                                         if docid in self.pictMeta:
                                                             if self.pictMeta[docid]['link'] == value:
                                                                 value = self.pictMeta[docid]['link_odt_img']
-                                                            self._replace_marker('{$w}', self.pictMeta[docid]['width'])
-                                                            self._replace_marker('{$h}', self.pictMeta[docid]['height'])
+                                                            self._replace_marker('{$w}', '%.2f' % (2.54 * self.pictMeta[docid]['width'] / 120.))
+                                                            self._replace_marker('{$h}', '%.2f' % (2.54 * self.pictMeta[docid]['height'] / 120.))
 
                                         # Fix the class name for the syntax highlight
                                         if tag == 'span' and self.blockcode_on and key == 'class':

@@ -90,6 +90,8 @@ paths:
           description: Unsufficient authorizations
         501:
           description: Invalid OAuth provider
+        503:
+          description: Connection temporarily unavailable
   /api/document/create:
     post:
       summary: Attach a document to a page
@@ -130,7 +132,7 @@ paths:
         500:
           description: File incorrectly managed on the server
         503:
-          description: Ongoing server maintenance, retry later
+          description: Update temporarily unavailable or ongoing server maintenance
   /api/document/delete:
     post:
       summary: Delete a document attached to a page
@@ -169,7 +171,7 @@ paths:
         500:
           description: File incorrectly managed on the server (open a support ticket)
         503:
-          description: Ongoing server maintenance, retry later
+          description: Update temporarily unavailable or ongoing server maintenance
   /api/document/list:
     post:
       summary: List the files attached to a page
@@ -309,6 +311,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        503:
+          description: Update temporarily unavailable
   /api/page/delete:
     post:
       summary: Delete the revision of a page
@@ -341,6 +345,8 @@ paths:
           description: Unsufficient authorizations, or not found
         500:
           description: Dependent files not fully removed from the system
+        503:
+          description: Update temporarily unavailable
   /api/page/edit:
     post:
       summary: Create a new revision of a page
@@ -411,6 +417,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        503:
+          description: Update temporarily unavailable
   /api/page/export:
     post:
       summary: Export a page
@@ -485,6 +493,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations, or not found
+        503:
+          description: Update temporarily unavailable
   /api/project/env/set:
     post:
       summary: Change a project-dependent setting
@@ -685,6 +695,8 @@ paths:
           description: Unsufficient authorizations
         403:
           description: Forbidden operation
+        503:
+          description: Update temporarily unavailable
   /api/user/password/change:
     post:
       summary: Change the password of the logged user
@@ -717,6 +729,8 @@ paths:
           description: Unsufficient authorizations
         500:
           description: Invalid configuration of the server
+        503:
+          description: Update temporarily unavailable
   /api/user/roles/set:
     post:
       summary: Toggle or drop the role of a user for a project
@@ -753,3 +767,5 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        503:
+          description: Update temporarily unavailable

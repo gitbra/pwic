@@ -207,12 +207,17 @@ class PwicExtension():
         return authorized
 
     @staticmethod
-    def on_ip_header(request: web.Request,                  # HTTP request
+    def on_ip_header(request: Optional[web.Request],        # HTTP request
                      ) -> str:
-        ''' Event when the remote IP is retrieved from the HTTP headers if the option 'xff' is enabled.
-            The single result is the name of the header to read.
+        ''' Event when the remote IP address must be retrieved from the HTTP headers.
+            With internal proxies, you should not rely on the remote address of the TCP connection only.
+            The single result is the IP fetched according to your logic.
         '''
-        return 'X-Forwarded-For'
+        if request is None:
+            return ''
+        else:
+            # return str(request.headers.get('X-Forwarded-For', request.remote))
+            return str(request.remote)
 
     @staticmethod
     def on_logon(sql: sqlite3.Cursor,                       # Cursor to query the database

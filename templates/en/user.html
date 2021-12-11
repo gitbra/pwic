@@ -44,7 +44,7 @@
 						<table>
 							<tr><td>Current password:</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true" /></td></tr>
 							<tr><td>New password:</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" autocomplete="new-password" required="true" /></td></tr>
-							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" /></td></tr>
+							<tr><td>Repeat password:</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" onpaste="return false" /></td></tr>
 						</table>
 						<p>
 							<input type="button" value="{{pwic.emojis.locked}} Change" onclick="user_password_submit('The form is inconsistent.', 'Your password has been changed successfully.', 'Failure to save your new password. Verify that it matches with the security rules.')"/>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Optional
+from typing import Optional, Tuple, Any
 import argparse
 import sqlite3
 from prettytable import PrettyTable
@@ -50,8 +50,6 @@ def main() -> bool:
 
     subparsers.add_parser('show-mime', help='Show the MIME types defined on the server (Windows only)')
 
-    subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
-
     subparsers.add_parser('show-projects', help='Show the existing projects')
 
     spb = subparsers.add_parser('create-project', help='Create a new project')
@@ -77,16 +75,24 @@ def main() -> bool:
     spb.add_argument('user', default='', help='User name')
     spb.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
 
-    subparsers.add_parser('show-logon', help='Show the last logons of the users')
-
     spb = subparsers.add_parser('show-audit', help='Show the log of the database (no HTTP traffic)')
     spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar='30')
     spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar='0')
 
-    subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
+    subparsers.add_parser('show-logon', help='Show the last logons of the users')
+
+    subparsers.add_parser('show-stats', help='Show some statistics')
+
+    spb = subparsers.add_parser('show-inactivity', help='Show the inactive users who have a write access')
+    spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+
+    spb = subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
+    spb.add_argument('--revert', action='store_true', help='Revert the operation')
 
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+
+    subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
     spb = subparsers.add_parser('repair-documents', help='Repair the index of the documents (recommended after the database is restored)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
@@ -109,8 +115,6 @@ def main() -> bool:
         return set_env(args.project, args.name, args.value, args.override)
     elif args.command == 'show-mime':
         return show_mime()
-    elif args.command == 'create-backup':
-        return create_backup()
     elif args.command == 'show-projects':
         return show_projects()
     elif args.command == 'create-project':
@@ -125,14 +129,20 @@ def main() -> bool:
         return reset_password(args.user, args.oauth)
     elif args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
-    elif args.command == 'show-logon':
-        return show_logon()
     elif args.command == 'show-audit':
         return show_audit(args.min, args.max)
+    elif args.command == 'show-logon':
+        return show_logon()
+    elif args.command == 'show-stats':
+        return show_stats()
+    elif args.command == 'show-inactivity':
+        return show_inactivity(args.project)
     elif args.command == 'compress-static':
-        return compress_static()
+        return compress_static(args.revert)
     elif args.command == 'clear-cache':
         return clear_cache(args.project)
+    elif args.command == 'create-backup':
+        return create_backup()
     elif args.command == 'repair-documents':
         return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
     elif args.command == 'execute-sql':
@@ -242,9 +252,10 @@ def init_db() -> bool:
 CREATE TABLE "projects" (
     "project" TEXT NOT NULL,
     "description" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
     PRIMARY KEY("project")
 )''')
-            sql.execute(''' INSERT INTO projects (project, description) VALUES ('', '')''')     # Empty projects.project
+            sql.execute(''' INSERT INTO projects (project, description, date) VALUES ('', '', '')''')   # Empty projects.project
             # Table ENV
             sql.execute('''
 CREATE TABLE "env" (
@@ -255,7 +266,7 @@ CREATE TABLE "env" (
     PRIMARY KEY("key","project")
 )''')
             sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'file_formats', 'md html odt')''')
-            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive, noindex')''')
+            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive noindex')''')
             sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
             # Table USERS
             sql.execute('''
@@ -432,6 +443,7 @@ def show_env(var: str = '') -> bool:
     tab.border = True
     for row in sql.fetchall():
         value = '(Secret value not displayed)' if row['key'] in PWIC_ENV_PRIVATE else row['value']
+        value = value.replace('\r', '').replace('\n', '\\n')
         tab.add_row([row['project'], row['key'], value])
         found = True
     if found:
@@ -533,29 +545,6 @@ def show_mime() -> bool:
     return True
 
 
-def create_backup() -> bool:
-    # Check the database
-    if not isfile(PWIC_DB_SQLITE):
-        print('Error: the database is not created yet')
-        return False
-
-    # Prepare the new file name
-    dt = pwic_dt()
-    new = PWIC_DB_SQLITE_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
-    try:
-        copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
-        if isfile(new):
-            chmod(new, S_IREAD)
-            print('Backup of the database file created as "%s"' % new)
-            print('The uploaded documents remain in their place')
-            return True
-        else:
-            raise FileNotFoundError('Error: file "%s" not created' % new)
-    except Exception as e:
-        print(str(e))
-        return False
-
-
 def show_projects() -> bool:
     # Connect to the database
     sql = db_connect()
@@ -580,13 +569,13 @@ def show_projects() -> bool:
 
     # Display the entries
     tab = PrettyTable()
-    tab.field_names = ['Project', 'Description', 'Administrators']
+    tab.field_names = ['Project', 'Description', 'Date', 'Administrators']
     for f in tab.field_names:
         tab.align[f] = 'l'
     tab.header = True
     tab.border = True
     for key in data:
-        tab.add_row([key, data[key]['description'], ', '.join(data[key]['admin'])])
+        tab.add_row([key, data[key]['description'], data[key]['date'], ', '.join(data[key]['admin'])])
     print(tab.get_string())
     return True
 
@@ -616,7 +605,8 @@ def create_project(project: str, description: str, admin: str) -> bool:
     # Create the workspace for the documents of the project
     try:
         path = PWIC_DOCUMENTS_PATH % project
-        makedirs(path)
+        if not isdir(path):
+            makedirs(path)
     except OSError:
         print('Error: impossible to create "%s"' % path)
         return False
@@ -632,7 +622,8 @@ def create_project(project: str, description: str, admin: str) -> bool:
                          'user': admin})
 
     # Add the project
-    sql.execute(''' INSERT INTO projects (project, description) VALUES (?, ?)''', (project, description))
+    sql.execute(''' INSERT INTO projects (project, description, date) VALUES (?, ?, ?)''',
+                (project, description, dt['date']))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-project',
@@ -722,7 +713,7 @@ def delete_project(project: str) -> bool:
 
     # Verify that the project exists yet
     project = pwic_safe_name(project)
-    if project == '' or sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None:
+    if (project == '') or sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None:
         print('Error: the project "%s" does not exist' % project)
         return False
 
@@ -925,39 +916,6 @@ def revoke_user(user: str, force: bool) -> bool:
     return True
 
 
-def show_logon() -> bool:
-    # Select the data
-    sql = db_connect()
-    if sql is None:
-        return False
-    sql.execute(''' SELECT a.user, c.date, c.time, b.events
-                    FROM users AS a
-                        INNER JOIN (
-                            SELECT author, MAX(id) AS id, COUNT(id) AS events
-                            FROM audit
-                            WHERE event = 'logon'
-                            GROUP BY author
-                        ) AS b
-                            ON b.author = a.user
-                        INNER JOIN audit AS c
-                            ON c.id = b.id
-                    ORDER BY c.date DESC,
-                             c.time DESC,
-                             a.user ASC''')
-
-    # Report the log
-    tab = PrettyTable()
-    tab.field_names = ['User', 'Date', 'Time', 'Events']
-    for f in tab.field_names:
-        tab.align[f] = 'l'
-    for row in sql.fetchall():
-        tab.add_row([row['user'], row['date'], row['time'], row['events']])
-    tab.header = True
-    tab.border = False
-    print(tab.get_string(), flush=True)
-    return True
-
-
 def show_audit(dmin: int, dmax: int) -> bool:
     # Calculate the dates
     dmin = max(0, dmin)
@@ -994,7 +952,398 @@ def show_audit(dmin: int, dmax: int) -> bool:
     return True
 
 
-def compress_static() -> bool:
+def show_logon() -> bool:
+    # Select the data
+    sql = db_connect()
+    if sql is None:
+        return False
+    sql.execute(''' SELECT a.user, c.date, c.time, b.events
+                    FROM users AS a
+                        INNER JOIN (
+                            SELECT author, MAX(id) AS id, COUNT(id) AS events
+                            FROM audit
+                            WHERE event = 'logon'
+                            GROUP BY author
+                        ) AS b
+                            ON b.author = a.user
+                        INNER JOIN audit AS c
+                            ON c.id = b.id
+                    ORDER BY c.date DESC,
+                             c.time DESC,
+                             a.user ASC''')
+
+    # Report the log
+    tab = PrettyTable()
+    tab.field_names = ['User', 'Date', 'Time', 'Events']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    for row in sql.fetchall():
+        tab.add_row([row['user'], row['date'], row['time'], row['events']])
+    tab.header = True
+    tab.border = False
+    print(tab.get_string(), flush=True)
+    return True
+
+
+def show_stats() -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+    dt = pwic_dt()
+
+    # Structure of the log
+    tab = PrettyTable()
+    tab.field_names = ['Topic', 'Project', 'Period', 'Value']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    tab.header = True
+    tab.border = False
+
+    # Macros
+    def _totals(sql: sqlite3.Cursor,
+                kpi: str,
+                query: str,
+                tuples: Optional[Tuple[Any, ...]]):
+        if tuples is None:
+            tuples = ()
+        sql.execute(query, tuples)
+        for row in sql.fetchall():
+            tab.add_row([kpi,
+                         row.get('project', ''),
+                         row.get('period', ''),
+                         row.get('kpi', '')])
+
+    # Users
+    _totals(sql, 'Number of users (ever created)',
+            ''' SELECT COUNT(user) AS kpi
+                FROM users
+                WHERE user NOT LIKE 'pwic%'
+                  AND user <> '' ''', None)
+    _totals(sql, 'Number of active users',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE user NOT LIKE 'pwic%'
+                      AND disabled = ''
+                )''', None)
+    _totals(sql, 'Number of system users',
+            ''' SELECT COUNT(user) AS kpi
+                FROM users
+                WHERE user LIKE 'pwic%' ''', None)
+    _totals(sql, 'Number of users with OAuth',
+            ''' SELECT COUNT(user) AS kpi
+                FROM users
+                WHERE password = ?''', (PWIC_MAGIC_OAUTH, ))
+    _totals(sql, 'Number of users with an initial password',
+            ''' SELECT COUNT(user) AS kpi
+                FROM users
+                WHERE initial = 'X' ''', None)
+    _totals(sql, 'Number of duplicate passwords among the users',
+            ''' SELECT COUNT(password) AS kpi
+                FROM (
+                    SELECT password, COUNT(password) AS total
+                    FROM users
+                    WHERE initial  = ''
+                      AND password <> ''
+                      AND password <> ?
+                    GROUP BY password
+                )
+                WHERE total > 1''', (PWIC_MAGIC_OAUTH, ))
+    _totals(sql, 'Number of active users per period',
+            ''' SELECT date AS period, COUNT(author) AS kpi
+                FROM (
+                    SELECT DISTINCT SUBSTR(date,1,7) AS date, author
+                    FROM audit
+                    WHERE author NOT LIKE 'pwic%'
+                )
+                GROUP BY period
+                ORDER BY period''', None)
+
+    # Projects
+    _totals(sql, 'Number of projects',
+            ''' SELECT COUNT(project) AS kpi
+                FROM projects
+                WHERE project <> '' ''', None)
+    _totals(sql, 'Number of projects created in the last 90 days',
+            ''' SELECT COUNT(project) AS kpi
+                FROM projects
+                WHERE project <> ''
+                  AND date    >= ?''', (dt['date-90d'], ))
+    _totals(sql, 'Number of deleted projects',
+            ''' SELECT COUNT(project) AS kpi
+                FROM (
+                    SELECT DISTINCT a.project
+                    FROM audit AS a
+                        LEFT OUTER JOIN projects AS b
+                            ON b.project = a.project
+                    WHERE a.project <> ''
+                      AND b.project IS NULL
+                )''', None)
+
+    # Roles
+    _totals(sql, 'Number of administrators',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE admin    = 'X'
+                      AND disabled = ''
+                )''', None)
+    _totals(sql, 'Number of administrators per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE admin    = 'X'
+                  AND disabled = ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of managers',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE manager  = 'X'
+                      AND disabled = ''
+                )''', None)
+    _totals(sql, 'Number of managers per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE manager  = 'X'
+                  AND disabled = ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of editors',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE editor   = 'X'
+                      AND disabled = ''
+                )''', None)
+    _totals(sql, 'Number of editors per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE editor   = 'X'
+                  AND disabled = ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of validators',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE validator = 'X'
+                      AND disabled  = ''
+                )''', None)
+    _totals(sql, 'Number of validators per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE validator = 'X'
+                  AND disabled  = ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of validators who did it once',
+            ''' SELECT COUNT(valuser) AS kpi
+                FROM (
+                    SELECT DISTINCT valuser
+                    FROM pages
+                    WHERE valuser <> ''
+                )''', None)
+    _totals(sql, 'Number of readers',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE reader   = 'X'
+                      AND disabled = ''
+                )''', None)
+    _totals(sql, 'Number of readers per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE reader   = 'X'
+                  AND disabled = ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of disabled users',
+            ''' SELECT COUNT(user) AS kpi
+                FROM (
+                    SELECT DISTINCT user
+                    FROM roles
+                    WHERE disabled = 'X'
+                )''', None)
+    _totals(sql, 'Number of disabled users per project',
+            ''' SELECT project, COUNT(user) AS kpi
+                FROM roles
+                WHERE disabled = 'X'
+                GROUP BY project
+                ORDER BY project''', None)
+
+    # Pages
+    _totals(sql, 'Number of pages',
+            ''' SELECT COUNT(page) AS kpi
+                FROM pages
+                WHERE latest = 'X' ''', None)
+    _totals(sql, 'Number of revisions',
+            ''' SELECT COUNT(page) AS kpi
+                FROM pages''', None)
+    _totals(sql, 'Number of pages per project',
+            ''' SELECT project, COUNT(page) AS kpi
+                FROM pages
+                WHERE latest = 'X'
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of revisions per project',
+            ''' SELECT project, COUNT(page) AS kpi
+                FROM pages
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of drafts per project',
+            ''' SELECT project, COUNT(page) AS kpi
+                FROM pages
+                WHERE latest = 'X'
+                  AND draft  = 'X'
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of validated pages per project',
+            ''' SELECT project, COUNT(page) AS kpi
+                FROM pages
+                WHERE latest   = 'X'
+                  AND valuser <> ''
+                GROUP BY project
+                ORDER BY project''', None)
+
+    # Cache
+    _totals(sql, 'Number of pages in the cache',
+            ''' SELECT COUNT(*) AS kpi
+                FROM pages AS a
+                    INNER JOIN cache AS b
+                        ON b.project  = a.project
+                       AND b.page     = a.page
+                       AND b.revision = a.revision
+                WHERE a.latest = 'X' ''', None)
+    _totals(sql, 'Number of revisions in the cache',
+            ''' SELECT COUNT(*) AS kpi
+                FROM cache''', None)
+
+    # Dates
+    _totals(sql, 'Last modification per project',
+            ''' SELECT project, MAX(date, valdate) AS kpi
+                FROM pages
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Last activity per active project',
+            ''' SELECT a.project, MAX(a.date) AS kpi
+                FROM audit AS a
+                    INNER JOIN projects AS b
+                        ON b.project = a.project
+                WHERE a.project <> ''
+                GROUP BY a.project
+                ORDER BY a.project''', None)
+
+    # Documents
+    _totals(sql, 'Number of documents',
+            ''' SELECT COUNT(id) AS kpi
+                FROM documents''', None)
+    _totals(sql, 'Number of documents per project',
+            ''' SELECT project, COUNT(id) AS kpi
+                FROM documents
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Size of the documents',
+            ''' SELECT SUM(size) AS kpi
+                FROM documents''', None)
+    _totals(sql, 'Size of the documents per project',
+            ''' SELECT project, SUM(size) AS kpi
+                FROM documents
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Average size of the documents',
+            ''' SELECT CAST(AVG(size) AS INT) AS kpi
+                FROM documents''', None)
+    _totals(sql, 'Average size of the documents per project',
+            ''' SELECT project, CAST(AVG(size) AS INT) AS kpi
+                FROM documents
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Last date of upload',
+            ''' SELECT MAX(date) AS kpi
+                FROM documents''', None)
+    _totals(sql, 'Last date of upload per project',
+            ''' SELECT project, MAX(date) AS kpi
+                FROM documents
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of different file formats',
+            ''' SELECT COUNT(mime) AS kpi
+                FROM (
+                    SELECT DISTINCT mime
+                    FROM documents
+                )''', None)
+
+    # Options
+    _totals(sql, 'Number of defined options',
+            ''' SELECT COUNT(key) AS kpi
+                FROM env
+                WHERE value <> '' ''', None)
+    _totals(sql, 'Number of global options',
+            ''' SELECT COUNT(key) AS kpi
+                FROM env
+                WHERE project = ''
+                  AND value  <> '' ''', None)
+    _totals(sql, 'Number of specific options per project',
+            ''' SELECT project, COUNT(key) AS kpi
+                FROM env
+                WHERE value <> ''
+                GROUP BY project
+                ORDER BY project''', None)
+
+    # Final output
+    print(tab.get_string(), flush=True)
+    return True
+
+
+def show_inactivity(project: str) -> bool:
+    # Select the data
+    sql = db_connect()
+    if sql is None:
+        return False
+    dt = pwic_dt()
+    sql.execute(''' SELECT b.date, a.user, a.project, a.admin
+                    FROM roles AS a
+                        INNER JOIN (
+                            SELECT project, author, MAX(date) AS date
+                            FROM audit
+                            WHERE (project = ?) OR ('' = ?)
+                            GROUP BY project, author
+                        ) AS b
+                            ON  b.project = a.project
+                            AND b.author  = a.user
+                    WHERE ((a.project = ?) OR ('' = ?))
+                      AND ( a.admin     = 'X'
+                         OR a.manager   = 'X'
+                         OR a.editor    = 'X'
+                         OR a.validator = 'X'
+                      )
+                      AND a.disabled    = ''
+                      AND b.date       <= ?
+                    ORDER BY b.date, a.user, a.project''',
+                (project, project, project, project, dt['date-90d']))
+
+    # Report the log
+    tab = PrettyTable()
+    tab.field_names = ['Date', 'User', 'Project', 'Administrator']
+    for f in tab.field_names:
+        tab.align[f] = 'l'
+    for row in sql.fetchall():
+        tab.add_row([row['date'], row['user'], row['project'], row['admin']])
+    tab.header = True
+    tab.border = False
+    print(tab.get_string(), flush=True)
+    return True
+
+
+def compress_static(revert: bool) -> bool:
     # To reduce the bandwidth, aiohttp automatically delivers the static files as compressed if the .gz file is created
     # Despite the files do not change, many responses 304 are generated with some browsers
     counter = 0
@@ -1002,11 +1351,20 @@ def compress_static() -> bool:
     files = [(path + f) for f in listdir(path) if isfile(join(path, f)) and (f.endswith('.js') or f.endswith('.css'))]
     for fn in files:
         if getsize(fn) >= 25600:
-            with open(fn, 'rb') as src:
-                with gzip.open(fn + '.gz', 'wb') as dst:
-                    print('Compressing "%s"' % fn)
-                    copyfileobj(src, dst)
+            if not revert:
+                with open(fn, 'rb') as src:
+                    with gzip.open(fn + '.gz', 'wb') as dst:
+                        print('Compressing "%s"' % fn)
+                        copyfileobj(src, dst)
+                        counter += 1
+            else:
+                try:
+                    fn = fn + '.gz'
+                    os.remove(fn)
+                    print('Removing "%s"' % fn)
                     counter += 1
+                except FileNotFoundError:
+                    print('Failed to remove "%s"' % fn)
     if counter > 0:
         print('%d files were processed' % counter)
     return counter > 0
@@ -1030,6 +1388,29 @@ def clear_cache(project: str) -> bool:
     db_commit()
     print('The cache is cleared. Do expect a workload of regeneration for a short period of time.')
     return True
+
+
+def create_backup() -> bool:
+    # Check the database
+    if not isfile(PWIC_DB_SQLITE):
+        print('Error: the database is not created yet')
+        return False
+
+    # Prepare the new file name
+    dt = pwic_dt()
+    new = PWIC_DB_SQLITE_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
+    try:
+        copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
+        if isfile(new):
+            chmod(new, S_IREAD)
+            print('Backup of the database file created as "%s"' % new)
+            print('The uploaded documents remain in their place')
+            return True
+        else:
+            raise FileNotFoundError('Error: file "%s" not created' % new)
+    except Exception as e:
+        print(str(e))
+        return False
 
 
 def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: bool, test: bool) -> bool:

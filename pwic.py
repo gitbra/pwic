@@ -53,6 +53,16 @@ class PwicServer():
         ''' Rollback the current transactions '''
         app['sql'].rollback()
 
+    def _lock(self, sql):
+        ''' Lock the current database '''
+        if sql is None:
+            return False
+        try:
+            sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+            return True
+        except sqlite3.OperationalError:
+            return False
+
     def _sanitize_tags(self, tags: str) -> str:
         ''' Reorder a list of tags written as a string '''
         return ' '.join(sorted(pwic_list(tags.replace('#', ''))))
@@ -113,20 +123,13 @@ class PwicServer():
                 break
         return obj['mime'] != ''
 
-    def _get_ip(self, request: web.Request) -> str:
-        if request is None:
-            return ''
-        else:
-            ip = request.headers.get(PwicExtension.on_ip_header(request), request.remote) if app['xff'] else request.remote
-            return str(ip)
-
     def _check_ip(self, request: web.Request) -> None:
         ''' Check if the IP address is authorized '''
         # Initialization
         okIncl = False
         hasIncl = False
         koExcl = False
-        ip = self._get_ip(request)
+        ip = str(PwicExtension.on_ip_header(request))
 
         # Apply the rules
         for mask in app['ip_filter']:
@@ -272,7 +275,7 @@ class PwicServer():
                                                  'global': global_}
 
         # Dynamic settings
-        if name == 'page' and 'no_index_rev' in pwic['env'] and not pwic['latest']:
+        if (name == 'page') and ('no_index_rev' in pwic['env']) and not pwic['latest']:
             robots = pwic_list(pwic['env'].get('robots', {'value': ''})['value'].lower().replace(',', ' '))
             if 'archive' in robots:
                 robots.remove('archive')
@@ -289,7 +292,7 @@ class PwicServer():
             if 'robots' not in pwic['env']:
                 pwic['env']['robots'] = {'value': '',
                                          'global': True}
-            pwic['env']['robots']['value'] = ', '.join(robots)
+            pwic['env']['robots']['value'] = ' '.join(robots)
 
         # Session
         session = await get_session(request)
@@ -1501,7 +1504,8 @@ class PwicServer():
             _oauth_failed()
 
         # Create the default user account
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         if sql.execute(''' SELECT 1 FROM users WHERE user = ?''', (user, )).fetchone() is None:
             sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, '')''', (user, PWIC_MAGIC_OAUTH))
             # Remarks:
@@ -2034,7 +2038,8 @@ class PwicServer():
 
         # Consume a KBid
         sql = self._connect()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         if kb:
             kbid = pwic_int(pwic_option(sql, project, 'kbid', '0')) + 1
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''',
@@ -2134,7 +2139,8 @@ class PwicServer():
 
         # Fetch the last revision of the page and the profile of the user
         sql = self._connect()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT b.revision, b.header, b.protection, a.manager
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2226,7 +2232,8 @@ class PwicServer():
         sql = self._connect()
         if not PwicExtension.on_api_page_validate(sql, project, user, page, revision):
             raise web.HTTPUnauthorized()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT b.page
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -2285,7 +2292,8 @@ class PwicServer():
         sql = self._connect()
         if not PwicExtension.on_api_page_delete(sql, project, user, page, revision):
             raise web.HTTPUnauthorized()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
@@ -2628,7 +2636,8 @@ class PwicServer():
 
         # Verify that the user is administrator and has changed his password
         sql = self._connect()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT 1
                         FROM roles AS a
                             INNER JOIN users AS b
@@ -2706,7 +2715,8 @@ class PwicServer():
 
         # Verify the current password
         ok = False
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT user FROM users
                         WHERE user     = ?
                           AND password = ?''',
@@ -2749,7 +2759,8 @@ class PwicServer():
 
         # Select the current rights of the user
         sql = self._connect()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT a.user, a.admin, a.manager, a.editor,
                                a.validator, a.reader, a.disabled, c.initial
                         FROM roles AS a
@@ -2878,12 +2889,19 @@ class PwicServer():
             raise web.HTTPBadRequest()
         if not PwicExtension.on_api_document_create(sql, doc):
             raise web.HTTPUnauthorized()
+        else:
+            doc['project'] = pwic_safe_name(doc['project'])
+            doc['page'] = pwic_safe_name(doc['page'])
+            doc['filename'] = pwic_safe_file_name(doc['filename'])
         if doc['content'] in [None, '', b''] or '' in [doc['project'], doc['page'], doc['filename']]:   # The mime is checked later
             raise web.HTTPBadRequest()
 
         # Verify that the project and folder exist
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
-        sql.execute(''' SELECT project FROM projects WHERE project = ?''', (doc['project'], ))
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
+        sql.execute(''' SELECT project
+                        FROM projects
+                        WHERE project = ?''', (doc['project'], ))
         if sql.fetchone() is None:
             self._rollback()
             raise web.HTTPBadRequest()
@@ -3069,7 +3087,8 @@ class PwicServer():
         sql = self._connect()
         if pwic_option(sql, '', 'maintenance') is not None:
             raise web.HTTPServiceUnavailable()
-        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT b.id
                         FROM roles AS a
                             INNER JOIN documents AS b
@@ -3263,7 +3282,6 @@ def main() -> bool:
                 app['ip_filter'].append(item)
 
     _compile_ip()
-    app['xff'] = pwic_option(sql, '', 'xff') is not None
 
     # Logging
     logfile = pwic_option(sql, '', 'http_log_file', '')
