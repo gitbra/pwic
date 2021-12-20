@@ -44,12 +44,15 @@ PWIC_DEFAULTS = {'password': 'initial',
                  'language': 'en',
                  'page': 'home',
                  'heading': '1.1.1.1.1.1.',
-                 'logging_format': '%a %t "%r" %s %b'}
-PWIC_REGEXES = {'page': r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)',        # Find a page in Markdown
-                'document': r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)',   # Find a document in Markdown
-                'document_imgsrc': r'^\/?special\/document\/([0-9]+)([\?\#].*)?$',              # Find the picture ID in IMG.SRC
-                'mime': r'^[a-z]+\/[a-z0-9\.\+\-]+$',                                           # Check the format of the mime
-                'html_tag': r'\<[^\>]+\>'}                                                      # Find a HTML tag
+                 'logging_format': '%a %t "%r" %s %b',
+                 'kb_mask': 'kb%06d'}
+PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'),        # Find a page in Markdown
+                'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
+                'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),              # Find the picture ID in IMG.SRC
+                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                           # Check the format of the mime
+                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                     # Name of the pages KB
+                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                     # Valid protocols for the links
+                }
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_file', 'http_log_format', 'ip_filter',
@@ -57,11 +60,11 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_fi
                                 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
-                              'kbid', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message', 'no_cache',
-                              'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
+                              'kbid', 'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
+                              'no_cache', 'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
                               'no_printing', 'no_search', 'no_text_selection', 'odt_page_height', 'odt_page_width',
                               'robots', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask',
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
                                      'no_text_selection', 'odt_page_height', 'odt_page_width', 'support_email',
                                      'support_phone', 'support_text', 'support_url', 'validated_only']
@@ -77,6 +80,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'check': '&#x2714;',
                'clamp': '&#x1F5DC;',
                'clipboard': '&#x1F4CB;',
+               'cloud': '&#x2601;',
                'dice': '&#x1F3B2;',
                'door': '&#x1F6AA;',
                'email': '&#x1F4E7;',
@@ -340,7 +344,11 @@ def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default:
     ''' Read a variable from the table ENV that can be project-dependent or not '''
     if sql is None:
         return default
-    query = ''' SELECT value FROM env WHERE project = ? AND key = ? AND value <> '' '''
+    query = ''' SELECT value
+                FROM env
+                WHERE project = ?
+                  AND key     = ?
+                  AND value  <> '' '''
     row = None
     if name in PWIC_ENV_PROJECT_INDEPENDENT:
         project = ''
@@ -367,6 +375,7 @@ def pwic_recursive_replace(text: str, search: str, replace: str) -> str:
 
 
 def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
+    ''' Assign names to the SQL output '''
     d = {}
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
@@ -428,7 +437,7 @@ def pwic_size2str(size: Union[int, float]) -> str:
     return ('%.1f %sB' % (size, units[i].strip())).replace('.0 ', ' ')
 
 
-def pwic_sql_print(query: str) -> None:
+def pwic_sql_print(query: Optional[str]) -> None:
     ''' Quick and dirty callback to print the SQL queries on a single line for debugging purposes '''
     if query is not None:
         dt = pwic_dt()
@@ -776,7 +785,6 @@ class pwic_html2odt(HTMLParser):
                             'th': ('<text:p>', '</text:p>')}
 
         # Processing
-        self.regex_imgsrc = re.compile(PWIC_REGEXES['document_imgsrc'])
         self.tag_path: List[str] = []
         self.table_descriptors: List[Dict[str, int]] = []
         self.blockquote_on = False
@@ -864,11 +872,11 @@ class pwic_html2odt(HTMLParser):
                                                 if value[:1] == '/':
                                                     value = value[1:]
                                                 if self.pictMeta is not None:
-                                                    docid_re = self.regex_imgsrc.match(value)
+                                                    docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
                                                     if docid_re is not None:
                                                         docid = pwic_int(docid_re.group(1))
                                                         if docid in self.pictMeta:
-                                                            if self.pictMeta[docid]['link'] == value:
+                                                            if self.pictMeta[docid]['remote'] or (self.pictMeta[docid]['link'] == value):
                                                                 value = self.pictMeta[docid]['link_odt_img']
                                                             self._replace_marker('{$w}', '%.2f' % (2.54 * self.pictMeta[docid]['width'] / 120.))
                                                             self._replace_marker('{$h}', '%.2f' % (2.54 * self.pictMeta[docid]['height'] / 120.))

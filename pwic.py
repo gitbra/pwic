@@ -12,7 +12,8 @@ import sqlite3
 from difflib import HtmlDiff
 import zipfile
 from io import BytesIO
-from os import listdir, urandom, remove
+import os
+from os import listdir, urandom
 from os.path import getsize, isdir, isfile, join, splitext
 import json
 import re
@@ -532,7 +533,7 @@ class PwicServer():
 
                 # Fetch the documents of the project
                 sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
-                                       b.hash, b.author, b.date, b.time, c.occurrence
+                                       b.hash, b.author, b.date, b.time, b.exturl, c.occurrence
                                 FROM roles AS a
                                     INNER JOIN documents AS b
                                         ON b.project = a.project
@@ -797,7 +798,7 @@ class PwicServer():
 
         # Fetch the own documents
         sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
-                               b.hash, b.author, b.date, b.time, c.occurrence
+                               b.hash, b.author, b.date, b.time, b.exturl, c.occurrence
                         FROM roles AS a
                             INNER JOIN documents AS b
                                 ON  b.project = a.project
@@ -1111,7 +1112,9 @@ class PwicServer():
         sql = self._connect()
 
         # Fetch the documents of the project
-        sql.execute(''' SELECT id FROM documents ORDER BY id''')
+        sql.execute(''' SELECT id
+                        FROM documents
+                        ORDER BY id''')
         docids = []
         for row in sql.fetchall():
             docids.append(str(row['id']))
@@ -1131,8 +1134,6 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        regex_page = re.compile(PWIC_REGEXES['page'])
-        regex_document = re.compile(PWIC_REGEXES['document'])
         linkmap: Dict[str, List[str]] = {PWIC_DEFAULTS['page']: []}
         broken_docs: Dict[str, List[int]] = {}
         for row in sql.fetchall():
@@ -1146,14 +1147,14 @@ class PwicServer():
                 linkmap[PWIC_DEFAULTS['page']].append(page)
 
             # Find the links to the other pages
-            subpages = regex_page.findall(row['markdown'])
+            subpages = PWIC_REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
                     if (sp[0] == project) and (sp[1] not in linkmap[page]):
                         linkmap[page].append(sp[1])
 
             # Looks for the linked documents
-            subdocs = regex_document.findall(row['markdown'])
+            subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
             if subdocs is not None:
                 for sd in subdocs:
                     if sd[0] not in docids:
@@ -1281,7 +1282,7 @@ class PwicServer():
         # Read the properties of the requested document
         id = pwic_int(request.match_info.get('id', 0))
         sql = self._connect()
-        sql.execute(''' SELECT a.project, a.filename, a.mime, a.size
+        sql.execute(''' SELECT a.project, a.filename, a.mime, a.size, a.exturl
                         FROM documents AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
@@ -1293,8 +1294,15 @@ class PwicServer():
         if row is None:
             return web.HTTPNotFound()
 
+        # Remote file
+        if row['exturl'] != '':
+            if PWIC_REGEXES['protocol'].match(row['exturl']) is not None:
+                return web.HTTPFound(row['exturl'])
+            else:
+                raise web.HTTPNotFound()
+
         # Transfer the file
-        filename = (PWIC_DOCUMENTS_PATH % row['project']) + row['filename']
+        filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
         try:
             if getsize(filename) != row['size']:
                 raise web.HTTPConflict()  # Size mismatch causes an infinite download time
@@ -1782,7 +1790,6 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Fetch the pages
-        regex_page = re.compile(PWIC_REGEXES['page'])
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -1837,7 +1844,7 @@ class PwicServer():
                 _make_link(row['project'], PWIC_DEFAULTS['page'], row['project'], row['page'])
 
             # Find the links to the other pages
-            subpages = regex_page.findall(row['markdown'])
+            subpages = PWIC_REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
                     _get_node_id(sp[0], sp[1])
@@ -1916,7 +1923,7 @@ class PwicServer():
         sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
                         FROM roles AS a
                             INNER JOIN pages AS b
-                                ON  b.project = a.project
+                                ON b.project = a.project
                         WHERE a.project  = ?
                           AND a.user     = ?
                           AND a.admin    = 'X'
@@ -1932,7 +1939,7 @@ class PwicServer():
             raise web.HTTPNotFound()
 
         # Fetch the attached documents
-        sql.execute(''' SELECT id, filename, mime
+        sql.execute(''' SELECT id, filename, mime, exturl
                         FROM documents
                         WHERE project = ?''',
                     (project, ))
@@ -1940,7 +1947,8 @@ class PwicServer():
         for row in sql.fetchall():
             documents.append({'id': row['id'],
                               'filename': row['filename'],
-                              'image': row['mime'][:6] == 'image/'})
+                              'image': row['mime'][:6] == 'image/',
+                              'exturl': row['exturl']})
 
         # Build the ZIP file
         folder_rev = 'revisions/'
@@ -1967,10 +1975,16 @@ class PwicServer():
                                           '',
                                           self._md2html(sql, project, page['page'], page['revision'], page['markdown'])[0])
                 for doc in documents:
-                    if doc['image']:
-                        html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
-                    html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
-                    html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
+                    if doc['exturl'] == '':
+                        if doc['image']:
+                            html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
+                        html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
+                        html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
+                    else:
+                        if doc['image']:
+                            html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="%s"' % doc['exturl'])
+                        html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="%s"' % doc['exturl'])
+                        html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="%s' % doc['exturl'])
                 if with_revisions:
                     zip.writestr('%s%s.rev%d.html' % (folder_rev, page['page'], page['revision']), html)
                 if pwic_xb(page['latest']):
@@ -1988,13 +2002,14 @@ class PwicServer():
             # Attached documents
             PwicExtension.on_project_export_documents(sql, project, user, documents)
             for doc in documents:
-                fn = (PWIC_DOCUMENTS_PATH % project) + doc['filename']
-                if isfile(fn):
-                    content = b''
-                    with open(fn, 'rb') as f:
-                        content = f.read()
-                    zip.writestr('documents/%s' % doc['filename'], content)
-                    del content
+                if doc['exturl'] == '':
+                    fn = join(PWIC_DOCUMENTS_PATH % project, doc['filename'])
+                    if isfile(fn):
+                        content = b''
+                        with open(fn, 'rb') as f:
+                            content = f.read()
+                        zip.writestr('documents/%s' % doc['filename'], content)
+                        del content
 
             # Close the archive
             zip.close()
@@ -2044,10 +2059,10 @@ class PwicServer():
             kbid = pwic_int(pwic_option(sql, project, 'kbid', '0')) + 1
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''',
                         (project, 'kbid', kbid))
-            page = 'kb%06d' % kbid
+            page = PWIC_DEFAULTS['kb_mask'] % kbid
             # No commit because the creation of the page can fail below
         else:
-            if re.compile(r'^kb[0-9]{6}$').match(page) is not None:
+            if PWIC_REGEXES['kb_mask'].match(page) is not None:
                 self._rollback()
                 raise web.HTTPBadRequest()
 
@@ -2184,8 +2199,9 @@ class PwicServer():
                        request)
 
             # Remove the own drafts
-            if final:
-                sql.execute(''' DELETE FROM pages
+            if final and (pwic_option(sql, project, 'keep_drafts') is None):
+                sql.execute(''' SELECT revision
+                                FROM pages
                                 WHERE project   = ?
                                   AND page      = ?
                                   AND revision <= ?
@@ -2194,12 +2210,22 @@ class PwicServer():
                                   AND final     = ''
                                   AND valuser   = '' ''',
                             (project, page, revision, user))
-                if sql.rowcount > 0:
+                for row in sql.fetchall():
+                    sql.execute(''' DELETE FROM cache
+                                    WHERE project  = ?
+                                      AND page     = ?
+                                      AND revision = ?''',
+                                (project, page, row['revision']))
+                    sql.execute(''' DELETE FROM pages
+                                    WHERE project  = ?
+                                      AND page     = ?
+                                      AND revision = ?''',
+                                (project, page, row['revision']))
                     pwic_audit(sql, {'author': user,
-                                     'event': 'delete-drafts',
+                                     'event': 'delete-draft',
                                      'project': project,
                                      'page': page,
-                                     'revision': revision + 1},
+                                     'revision': row['revision']},
                                request)
 
             # Purge the old flags
@@ -2214,7 +2240,7 @@ class PwicServer():
         raise web.HTTPOk()
 
     async def api_page_validate(self, request: web.Request) -> None:
-        ''' Validate the pages '''
+        ''' Validate the revision of a page '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -2274,7 +2300,7 @@ class PwicServer():
         raise web.HTTPOk()
 
     async def api_page_delete(self, request: web.Request) -> None:
-        ''' Delete a page upon administrative request '''
+        ''' Delete a revision of a page '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -2290,10 +2316,17 @@ class PwicServer():
 
         # Verify that the deletion is possible
         sql = self._connect()
-        if not PwicExtension.on_api_page_delete(sql, project, user, page, revision):
-            raise web.HTTPUnauthorized()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
+        sql.execute(''' SELECT COUNT(revision) AS total
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (project, page))
+        num_revs = sql.fetchone()['total']
+        if (num_revs == 1) and (pwic_option(sql, '', 'maintenance') is not None):
+            self._rollback()
+            raise web.HTTPServiceUnavailable()      # During a maintenance, the last revision can't be deleted because the all the files would be deleted
         sql.execute(''' SELECT a.header
                         FROM pages AS a
                             INNER JOIN roles AS b
@@ -2314,21 +2347,23 @@ class PwicServer():
         if row is None:
             self._rollback()
             raise web.HTTPUnauthorized()
+        if not PwicExtension.on_api_page_delete(sql, project, user, page, revision):
+            self._rollback()
+            raise web.HTTPUnauthorized()
         header = row['header']
 
-        # Clear the cache
+        # Delete the revision
         sql.execute(''' DELETE FROM cache
                         WHERE project  = ?
                           AND page     = ?
                           AND revision = ?''',
                     (project, page, revision))
-
-        # Delete the page
         sql.execute(''' DELETE FROM pages
                         WHERE project  = ?
                           AND page     = ?
                           AND revision = ?''',
                     (project, page, revision))
+        num_revs -= 1
         pwic_audit(sql, {'author': user,
                          'event': 'delete-revision',
                          'project': project,
@@ -2344,7 +2379,7 @@ class PwicServer():
                               AND revision <> ?''',
                         (project, page, revision))
             row = sql.fetchone()
-            if row['revision'] is not None:         # No revision available
+            if row['revision'] is not None:
                 if row['revision'] < revision:      # If we have already deleted the latest revision
                     sql.execute(''' UPDATE pages
                                     SET latest = 'X',
@@ -2355,45 +2390,49 @@ class PwicServer():
                                 (header, project, page, row['revision']))
 
         # Delete the attached documents when the page doesn't exist anymore
-        sql.execute(''' SELECT COUNT(revision) AS total
-                        FROM pages
-                        WHERE project = ?
-                          AND page    = ?''',
-                    (project, page))
-        if sql.fetchone()['total'] == 0:
-            # Remove the attached documents
-            docFound = False
-            sql.execute(''' SELECT filename
+        docKO = 0
+        if num_revs == 0:
+            sql.execute(''' SELECT id, filename, exturl
                             FROM documents
                             WHERE project = ?
                               AND page    = ?''',
                         (project, page))
             for row in sql.fetchall():
-                docFound = True
-                fn = (PWIC_DOCUMENTS_PATH % project) + row['filename']
-                try:
-                    remove(fn)
-                except (OSError, FileNotFoundError):
-                    if isfile(fn):
-                        self._rollback()
-                        raise web.HTTPInternalServerError()
+                ko = False
 
-            # Remove the index
-            if docFound:
-                sql.execute(''' DELETE FROM documents
-                                WHERE project = ?
-                                  AND page    = ?''',
-                            (project, page))
-                pwic_audit(sql, {'author': user,
-                                 'event': 'delete-document',
-                                 'project': project,
-                                 'page': page,
-                                 'string': '*'},
-                           request)
+                # Attempt to delete the file
+                if not PwicExtension.on_api_document_delete(sql, project, user, page, row['id'], row['filename']):
+                    ko = True
+                else:
+                    if row['exturl'] == '':
+                        fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+                        try:
+                            os.remove(fn)
+                        except (OSError, FileNotFoundError):
+                            if isfile(fn):
+                                ko = True
+
+                # Handle the result of the deletion
+                if ko:
+                    docKO += 1
+                else:
+                    sql.execute(''' DELETE FROM documents
+                                    WHERE id = ?''',
+                                (row['id'], ))
+                    pwic_audit(sql, {'author': user,
+                                     'event': 'delete-document',
+                                     'project': project,
+                                     'page': page,
+                                     'string': row['filename']},
+                               request)
 
         # Final
-        self._commit()
-        raise web.HTTPOk()
+        if docKO > 0:
+            self._rollback()    # Possible partial deletion
+            raise web.HTTPInternalServerError()
+        else:
+            self._commit()
+            raise web.HTTPOk()
 
     async def api_page_export(self, request: web.Request) -> web.Response:
         ''' API to export a page '''
@@ -2439,7 +2478,7 @@ class PwicServer():
 
         # Fetch the legal notice
         legal_notice = str(pwic_option(sql, project, 'legal_notice', '')).strip()
-        legal_notice = re.sub(PWIC_REGEXES['html_tag'], '', legal_notice)
+        legal_notice = re.sub(r'\<[^\>]+\>', '', legal_notice)
         legal_notice = legal_notice.replace('\r', '')
 
         # Handle the own file formats
@@ -2467,7 +2506,8 @@ class PwicServer():
                                       htmlStyles.getCss(rel=False),
                                       '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
                                       self._md2html(sql, project, page, revision, row['markdown'])[0])
-            html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
+            html = html.replace('<a href="/special/document/', '<a href="%s/special/document/' % baseUrl)
+            html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % baseUrl)
             return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
                                                               'Content-Disposition': 'attachment; filename="%s"' % endname}))
 
@@ -2484,13 +2524,13 @@ class PwicServer():
 
             # Extract the meta-informations of the embedded pictures
             docids = ['0']
-            subdocs = re.compile(PWIC_REGEXES['document']).findall(row['markdown'])
+            subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
             if subdocs is not None:
                 for sd in subdocs:
                     sd = str(pwic_int(sd[0]))
                     if sd not in docids:
                         docids.append(sd)
-            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime
+            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.exturl
                         FROM documents AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
@@ -2501,28 +2541,31 @@ class PwicServer():
             sql.execute(query % ','.join(docids), (user, ))
             pictMeta = {}
             for rowdoc in sql.fetchall():
-                fn = (PWIC_DOCUMENTS_PATH % project) + rowdoc['filename']
-                if isfile(fn):
-                    try:
-                        # Optimize the maximal size
-                        w, h = imagesize.get(fn)
-                        MAX_W = 600  # px
-                        MAX_H = 900  # px
-                        if w > MAX_W:
-                            h *= MAX_W / w
-                            w = MAX_W
-                        if h > MAX_H:
-                            w *= MAX_H / h
-                            h = MAX_H
-                    except ValueError:
-                        w, h = 50, 50  # Default area
-                    pictMeta[rowdoc['id']] = {'filename': fn,
-                                              'link': 'special/document/%d' % rowdoc['id'],
-                                              'link_odt_img': 'special/document_%d' % rowdoc['id'],     # LibreOffice does not support the paths with multiple folders
-                                              'uncompressed': rowdoc['mime'] in [pwic_mime('bmp'), pwic_mime('svg')],
-                                              'manifest': '<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime']),
-                                              'width': pwic_int(w),
-                                              'height': pwic_int(h)}
+                fn = join(PWIC_DOCUMENTS_PATH % project, rowdoc['filename'])
+                w, h = 50., 50.                             # Default area
+                if rowdoc['exturl'] == '':                  # Can't guess the remote size
+                    if isfile(fn):
+                        try:
+                            # Optimize the maximal size
+                            w, h = imagesize.get(fn)
+                            MAX_W = 600.    # px
+                            MAX_H = 900.    # px
+                            if w > MAX_W:
+                                h *= MAX_W / w
+                                w = MAX_W
+                            if h > MAX_H:
+                                w *= MAX_H / h
+                                h = MAX_H
+                        except ValueError:
+                            pass
+                pictMeta[rowdoc['id']] = {'filename': fn,
+                                          'link': 'special/document/%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],
+                                          'link_odt_img': 'special/document_%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],     # LibreOffice does not support the paths with multiple folders
+                                          'uncompressed': rowdoc['mime'] in [pwic_mime('bmp'), pwic_mime('svg')],
+                                          'manifest': '<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime']) if rowdoc['exturl'] == '' else '',
+                                          'width': pwic_int(w),
+                                          'height': pwic_int(h),
+                                          'remote': rowdoc['exturl'] != ''}
 
             # Convert to ODT
             odtStyles = pwic_styles_odt()
@@ -2541,15 +2584,16 @@ class PwicServer():
             attachments = ''
             for meta in pictMeta:
                 meta = pictMeta[meta]
-                content = b''
-                with open(meta['filename'], 'rb') as f:
-                    content = f.read()
-                if meta['uncompressed']:
-                    odt.writestr(meta['link_odt_img'], content)
-                else:
-                    odt.writestr(meta['link_odt_img'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
-                del content
-                attachments += '%s\n' % meta['manifest']
+                if not meta['remote']:
+                    content = b''
+                    with open(meta['filename'], 'rb') as f:
+                        content = f.read()
+                    if meta['uncompressed']:
+                        odt.writestr(meta['link_odt_img'], content)
+                    else:
+                        odt.writestr(meta['link_odt_img'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
+                    del content
+                    attachments += '%s\n' % meta['manifest']
             odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', attachments))
 
             # Content-related ODT data
@@ -2887,12 +2931,11 @@ class PwicServer():
                     doc[name] = await part.read(decode=False)
         except Exception:
             raise web.HTTPBadRequest()
-        if not PwicExtension.on_api_document_create(sql, doc):
+        if not PwicExtension.on_api_document_create_start(sql, doc):
             raise web.HTTPUnauthorized()
-        else:
-            doc['project'] = pwic_safe_name(doc['project'])
-            doc['page'] = pwic_safe_name(doc['page'])
-            doc['filename'] = pwic_safe_file_name(doc['filename'])
+        doc['project'] = pwic_safe_name(doc['project'])
+        doc['page'] = pwic_safe_name(doc['page'])
+        doc['filename'] = pwic_safe_file_name(doc['filename'])
         if doc['content'] in [None, '', b''] or '' in [doc['project'], doc['page'], doc['filename']]:   # The mime is checked later
             raise web.HTTPBadRequest()
 
@@ -2945,7 +2988,7 @@ class PwicServer():
             if not self._check_mime(doc):
                 self._rollback()
                 raise web.HTTPUnsupportedMediaType()
-        if re.compile(PWIC_REGEXES['mime']).match(doc['mime']) is None:
+        if PWIC_REGEXES['mime'].match(doc['mime']) is None:
             self._rollback()
             raise web.HTTPBadRequest()
 
@@ -2961,9 +3004,16 @@ class PwicServer():
         if max_project_size_opt is not None:
             max_project_size = pwic_int(max_project_size_opt)
             # ... current size of the project
-            current_project_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total FROM documents WHERE project = ?''', (doc['project'], )).fetchone()['total'])
+            current_project_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total
+                                                            FROM documents
+                                                            WHERE project = ?''',
+                                                        (doc['project'], )).fetchone()['total'])
             # ... current size of the file if it exists already
-            current_file_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total FROM documents WHERE project = ? AND filename = ?''', (doc['project'], doc['filename'])).fetchone()['total'])
+            current_file_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total
+                                                         FROM documents
+                                                         WHERE project  = ?
+                                                           AND filename = ?''',
+                                                     (doc['project'], doc['filename'])).fetchone()['total'])
             # ... verify the size
             if current_project_size - current_file_size + len(doc['content']) > max_project_size:
                 self._rollback()
@@ -2971,7 +3021,7 @@ class PwicServer():
 
         # At last, verify that the document doesn't exist yet (not related to a given page)
         forcedId = None
-        sql.execute(''' SELECT id, page
+        sql.execute(''' SELECT id, page, exturl
                         FROM documents
                         WHERE project  = ?
                           AND filename = ?''',
@@ -2981,14 +3031,23 @@ class PwicServer():
             pass                                # New document = Create it
         else:
             if row['page'] == doc['page']:      # Existing document = Delete + Keep same ID (replace it)
-                try:
-                    fn = (PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename']
-                    remove(fn)
-                except Exception:
-                    if isfile(fn):
+                if row['exturl'] == '':
+                    # Local file
+                    try:
+                        fn = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
+                        os.remove(fn)
+                    except (OSError, FileNotFoundError):
+                        if isfile(fn):
+                            self._rollback()
+                            raise web.HTTPInternalServerError()
+                else:
+                    # External file
+                    if not PwicExtension.on_api_document_delete(sql, doc['project'], user, doc['page'], row['id'], doc['filename']):
                         self._rollback()
                         raise web.HTTPInternalServerError()
-                sql.execute(''' DELETE FROM documents WHERE id = ?''', (row['id'], ))
+                sql.execute(''' DELETE FROM documents
+                                WHERE id = ?''',
+                            (row['id'], ))
                 forcedId = row['id']
             else:
                 self._rollback()
@@ -2996,18 +3055,18 @@ class PwicServer():
 
         # Upload the file on the server
         try:
-            f = open((PWIC_DOCUMENTS_PATH % doc['project']) + doc['filename'], 'wb')    # Rewrite any existing file
+            f = open(join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename']), 'wb')     # Rewrite any existing file
             f.write(doc['content'])
             f.close()
-        except Exception:  # OSError, FileNotFoundError
+        except Exception:
             self._rollback()
             raise web.HTTPInternalServerError()
 
         # Create the document in the database
         dt = pwic_dt()
         sql.execute(''' INSERT INTO documents (id, project, page, filename, mime,
-                                               size, hash, author, date, time)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                               size, hash, author, date, time, exturl)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')''',
                     (forcedId, doc['project'], doc['page'], doc['filename'],
                      doc['mime'], len(doc['content']), pwic_sha256(doc['content'], salt=False),
                      user, dt['date'], dt['time']))
@@ -3019,6 +3078,16 @@ class PwicServer():
                          'string': doc['filename']},
                    request)
         self._commit()
+
+        # Forward the notification of the created file
+        sql.execute(''' SELECT *
+                        FROM documents
+                        WHERE id = ?''',
+                    (forcedId, ))
+        row = sql.fetchone()
+        if row is not None:
+            row['path'] = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
+            PwicExtension.on_api_document_create_end(sql, row)
         raise web.HTTPOk()
 
     async def api_document_list(self, request: web.Request) -> web.Response:
@@ -3047,7 +3116,7 @@ class PwicServer():
         if row is None:
             raise web.HTTPNotFound()
         markdown = row['markdown']
-        sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time
+        sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time, b.exturl
                         FROM roles AS a
                             INNER JOIN documents AS b
                                 ON  b.project = a.project
@@ -3089,7 +3158,7 @@ class PwicServer():
             raise web.HTTPServiceUnavailable()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
-        sql.execute(''' SELECT b.id
+        sql.execute(''' SELECT b.id, b.exturl
                         FROM roles AS a
                             INNER JOIN documents AS b
                                 ON  b.id       = ?
@@ -3102,18 +3171,23 @@ class PwicServer():
                              OR a.editor   = 'X' )
                           AND   a.disabled = '' ''',
                     (id, page, filename, project, user))
-        if (sql.fetchone() is None) or not PwicExtension.on_api_document_delete(sql, project, user, page, id, filename):
+        row = sql.fetchone()
+        if row is None:
             self._rollback()
             raise web.HTTPUnauthorized()  # Or not found
+        if not PwicExtension.on_api_document_delete(sql, project, user, page, id, filename):
+            self._rollback()
+            raise web.HTTPUnauthorized() if row['exturl'] == '' else web.HTTPInternalServerError()
 
-        # Delete the file
-        fn = (PWIC_DOCUMENTS_PATH % project) + filename
-        try:
-            remove(fn)
-        except (OSError, FileNotFoundError):
-            if isfile(fn):
-                self._rollback()
-                raise web.HTTPInternalServerError()
+        # Delete the local file
+        if row['exturl'] == '':
+            fn = join(PWIC_DOCUMENTS_PATH % project, filename)
+            try:
+                os.remove(fn)
+            except (OSError, FileNotFoundError):
+                if isfile(fn):
+                    self._rollback()
+                    raise web.HTTPInternalServerError()
 
         # Delete the index
         sql.execute(''' DELETE FROM documents WHERE id = ?''', (id, ))
@@ -3163,9 +3237,6 @@ def main() -> bool:
         app['sql'].set_trace_callback(pwic_sql_print)
     sql = app['sql'].cursor()
     sql.execute('PRAGMA optimize')
-    pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'start-server'})
-    app['sql'].commit()
     # ... PWIC
     app['pwic'] = PwicServer()
     setup(app, EncryptedCookieStorage(urandom(32)))  # Storage for cookies
@@ -3290,11 +3361,21 @@ def main() -> bool:
         import logging
         logging.basicConfig(filename=logfile, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
 
-    # User-exit
+    # Launch the server
     if not PwicExtension.on_server_ready(app, sql):
         return False
-
-    # Launch the server
+    row = sql.execute(''' SELECT MAX(id) AS id
+                          FROM audit
+                          WHERE event = 'start-server' ''').fetchone()
+    if row is not None:
+        row = sql.execute(''' SELECT date, time
+                              FROM audit
+                              WHERE id = ?''',
+                          (row['id'], )).fetchone()
+        print('Last started on %s %s.' % (row['date'], row['time']))
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'start-server'})
+    app['sql'].commit()
     del sql
     web.run_app(app,
                 host=args.host,

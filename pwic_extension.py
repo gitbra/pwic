@@ -17,14 +17,24 @@ import sqlite3
 
 class PwicExtension():
     @staticmethod
-    def on_api_document_create(sql: sqlite3.Cursor,         # Cursor to query the database
-                               document: Dict[str, Any],    # Submitted document (changeable)
-                               ) -> bool:
+    def on_api_document_create_start(sql: sqlite3.Cursor,               # Cursor to query the database
+                                     document: Dict[str, Any],          # Submitted document (changeable)
+                                     ) -> bool:
         ''' Event when a new document is submitted and before many internal checks are executed.
             The result tells if the creation of the document is possible.
-            Warning: the filename won't be reverified if you change it.
         '''
         return True
+
+    @staticmethod
+    def on_api_document_create_end(sql: sqlite3.Cursor,                 # Cursor to query the database
+                                   document: Dict[str, Any],            # Document as defined in the database and extra fields
+                                   ) -> None:
+        ''' Event after a file is loaded on the server. The database is committed already.
+            You can trigger an asynchronous task to do what you want with the new/updated file.
+            It is up to you to update safely the table of the documents and do the appropriate audit.
+            By using the field "documents.exturl", the file must not exist locally anymore.
+        '''
+        pass
 
     @staticmethod
     def on_api_document_delete(sql: sqlite3.Cursor,         # Cursor to query the database
@@ -34,10 +44,12 @@ class PwicExtension():
                                id: Optional[int],           # Identifier of the document
                                filename: str,               # Name of the file
                                ) -> bool:
-        ''' Event when the file is deleted.
-            The result tells if the deletion of the document is possible.
-            The page and id may be None when a technical maintenance occurs. In that case, don't forbid the deletion.
+        ''' Event when the file must be deleted.
+            For the local files, the result tells if the deletion of the document is possible and Pwic will perform the deletion.
+            For the external files, you must delete the file with your custom logic, so the result tells if the operation is successful.
+            The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
         '''
+        # local_path = os.join(PWIC_DOCUMENTS_PATH % project, filename)
         return True
 
     @staticmethod
@@ -58,7 +70,7 @@ class PwicExtension():
                            page: str,                       # Name of the page
                            revision: int,                   # Number of the revision
                            ) -> bool:
-        ''' Event when a given revision of a page is deleted.
+        ''' Event when a given revision of a page is about to be deleted.
             The result tells if the deletion of the page is possible.
         '''
         return True
@@ -159,7 +171,7 @@ class PwicExtension():
                  ) -> None:
         ''' Event after an auditable operation is just executed:
                 change-password  clear-cache       create-document   create-page        create-project   create-user     delete-document
-                delete-drafts    delete-project    delete-revision   delete-user        execute-sql      export-project  generate-ssl
+                delete-draft     delete-project    delete-revision   delete-user        execute-sql      export-project  generate-ssl
                 grant-admin      grant-editor      grant-manager     grant-reader       grant-validator  init-db         logon
                 logout           repair-documents  replace-document  reset-password     set-*            start-server    ungrant-admin
                 ungrant-editor   ungrant-manager   ungrant-reader    ungrant-validator  unset-*          update-page     validate-page

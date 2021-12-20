@@ -20,8 +20,7 @@ Who can do the most can do the least!
 - Automatic summary of the page
 - In-text search with inclusion, exclusion, hash tags and special keywords
 - Highlight of the lines of code
-- Export of a page to OpenDocument (*.odt)
-- Export of a page to Markdown (*.md)
+- Export of a page to Markdown (*.md), web page (*.html) and OpenDocument (*.odt)
 - Share by link
 - Share by email
 - Internationalization (English only for now)
@@ -76,6 +75,7 @@ Who can do the most can do the least!
 - Traceable activities
 - API and command line to automate the classical operations
 - Extension points in the code
+- Possible integration with external storage providers
 
 
 ## Install

@@ -151,6 +151,12 @@
 						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article.</td>
 					</tr>
 					<tr>
+						<td><code>keep_drafts</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>By default, the drafts are considered as a work in progress, so they are not important milestones for the traceability of the documentation. This option prevents the automatic deletion of the own drafts when a final page is saved. The drafts remain deletable manually.</td>
+					</tr>
+					<tr>
 						<td><code>http_log_file</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -417,9 +423,9 @@
 
 
 		<h1 id="help_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
-		<p>First, it is recommended to shut down the server and to <a href="#help_setup">define the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
-		<p>Then run the command <code>python pwic_admin.py create-backup</code> on a periodic basis. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
-		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same.</p>
+		<p>First, it is recommended to warn your users in advance through <a href="#help_setup">the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
+		<p>At the time of the maintenance, shut down the server and run the command <code>python pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
+		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python pwic_admin.py repair-documents --test</code> from the console.</p>
 		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
 
 
@@ -468,10 +474,10 @@
 		<h1 id="help_modify"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Modify a page</h1>
 		<p>A new revision is generated each time a page is modified.</p>
 		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
-		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft.</p>
+		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft unless you define the option <code>keep_drafts</code>.</p>
 		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision is a milestone and can be deleted by an administrator only.</p>
 		<p>Unless <code>safe_mode</code> is disabled, it is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code> or <code>&lt;iframe&gt;</code>.</p>
-		<p>If enabled by the administrator, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
+		<p>If enabled by the option <code>mathjax</code>, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
 		<p>The tags are the base to classify the pages freely. The keywords are separated by a space. You can search for a tag in the search engine by usign a hash (ex: <code>#tag</code>). A tag counts a lot in the evaluation of the results.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
 		<p>The attribute <em>Milestone</em> of the page is an optional free comment that can be used, for example, by the manager to request a delivery date, or by the editor to announce a publishing date. You can also indicate your difficulties, the current progress, etc...</p>
@@ -488,8 +494,8 @@
 				</li>
 				<li>The filename may have to respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
 				<li>A file size limit may apply if the administrator has defined the variables <code>max_document_size</code> or <code>max_project_size</code>.</li>
-				<li>The content of the file must match with the file type if the administrator has defined the option <code>magic_bytes</code>.</li>
-				<li>The feature is not available with the obsolete browser Microsoft Internet Explorer.</li>
+				<li>For security reasons, the content of the file is verified if the option <code>magic_bytes</code> is enabled.</li>
+				<li>To host the uploaded files on an external storage, you need to implement a custom code in <code>PwicExtension.on_api_document_*</code>, populate the field <code>documents.exturl</code> and don't keep any local copy.</li>
 			</ul>
 
 

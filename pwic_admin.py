@@ -166,10 +166,179 @@ def db_connect(init: bool = False) -> Optional[sqlite3.Cursor]:
         return None
 
 
+def db_lock(sql: sqlite3.Cursor) -> bool:
+    if sql is None:
+        return False
+    try:
+        sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+        return True
+    except sqlite3.OperationalError:
+        return False
+
+
+def db_create_tables(sql: sqlite3.Cursor) -> bool:
+    if sql is None:
+        return False
+
+    # Table PROJECTS
+    sql.execute('''
+CREATE TABLE "projects" (
+    "project" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    PRIMARY KEY("project")
+)''')
+    sql.execute(''' INSERT INTO projects (project, description, date) VALUES ('', '', '')''')   # Empty projects.project
+
+    # Table ENV
+    sql.execute('''
+CREATE TABLE "env" (
+    "project" TEXT NOT NULL,    -- Don't default to '' else there is a unicity key for 'key'
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    PRIMARY KEY("key","project")
+)''')
+    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'file_formats', 'md html odt')''')
+    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive noindex')''')
+    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
+
+    # Table USERS
+    sql.execute('''
+CREATE TABLE "users" (
+    "user" TEXT NOT NULL,
+    "password" TEXT NOT NULL DEFAULT '',
+    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
+    PRIMARY KEY("user")
+)''')
+    sql.execute(''' INSERT INTO users (user, password, initial) VALUES ('', '', '')''')     # Empty pages.valuser
+    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['anonymous'], ))
+    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['ghost'], ))
+
+    # Table ROLES
+    sql.execute('''
+CREATE TABLE "roles" (
+    "project" TEXT NOT NULL,
+    "user" TEXT NOT NULL,
+    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
+    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
+    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
+    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
+    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
+    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    FOREIGN KEY("user") REFERENCES "users"("user"),
+    PRIMARY KEY("user","project")
+)''')
+
+    # Table PAGES
+    sql.execute('''
+CREATE TABLE "pages" (
+    "project" TEXT NOT NULL,
+    "page" TEXT NOT NULL CHECK("page" <> ''),
+    "revision" INTEGER NOT NULL CHECK("revision" > 0),
+    "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" IN ('', 'X')),
+    "draft" TEXT NOT NULL DEFAULT '' CHECK("draft" IN ('', 'X')),
+    "final" TEXT NOT NULL DEFAULT '' CHECK("final" IN ('', 'X')),
+    "header" TEXT NOT NULL DEFAULT '' CHECK("header" IN ('', 'X')),
+    "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" IN ('', 'X')),
+    "author" TEXT NOT NULL CHECK("author" <> ''),
+    "date" TEXT NOT NULL CHECK("date" <> ''),
+    "time" TEXT NOT NULL CHECK("time" <> ''),
+    "title" TEXT NOT NULL CHECK("title" <> ''),
+    "markdown" TEXT NOT NULL DEFAULT '',
+    "tags" TEXT NOT NULL DEFAULT '',
+    "comment" TEXT NOT NULL CHECK("comment" <> ''),
+    "milestone" TEXT NOT NULL DEFAULT '',
+    "valuser" TEXT NOT NULL DEFAULT '',
+    "valdate" TEXT NOT NULL DEFAULT '',
+    "valtime" TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY("project","page","revision"),
+    FOREIGN KEY("author") REFERENCES "users"("user"),
+    FOREIGN KEY("valuser") REFERENCES "users"("user"),
+    FOREIGN KEY("project") REFERENCES "projects"("project")
+)''')
+    sql.execute('''
+CREATE INDEX "pages_index" ON "pages" (
+    "project" ASC,
+    "page" ASC,
+    "latest" ASC
+)''')
+
+    # Table CACHE
+    sql.execute('''
+CREATE TABLE "cache" (
+    "project" TEXT NOT NULL,
+    "page" TEXT NOT NULL,
+    "revision" INTEGER NOT NULL,
+    "html" TEXT NOT NULL,
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    PRIMARY KEY("project","page","revision")
+)''')
+
+    # Table DOCUMENTS
+    sql.execute('''
+CREATE TABLE "documents" (
+    "id" INTEGER NOT NULL,
+    "project" TEXT NOT NULL CHECK("project" <> ''),
+    "page" TEXT NOT NULL CHECK("page" <> ''),
+    "filename" TEXT NOT NULL CHECK("filename" <> ''),
+    "mime" TEXT NOT NULL CHECK("mime" <> ''),
+    "size" INTEGER NOT NULL CHECK("size" > 0),
+    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
+    "author" TEXT NOT NULL CHECK("author" <> ''),
+    "date" TEXT NOT NULL CHECK("date" <> ''),
+    "time" TEXT NOT NULL CHECK("time" <> ''),
+    "exturl" TEXT NOT NULL,
+    FOREIGN KEY("project") REFERENCES "projects"("project"),
+    FOREIGN KEY("author") REFERENCES "users"("user"),
+    PRIMARY KEY("id" AUTOINCREMENT),
+    UNIQUE("project","filename")
+)''')
+
+    # Table AUDIT
+    sql.execute('''
+CREATE TABLE "audit" (
+    "id" INTEGER NOT NULL,
+    "date" TEXT NOT NULL,
+    "time" TEXT NOT NULL,
+    "author" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "user" TEXT NOT NULL DEFAULT '',
+    "project" TEXT NOT NULL DEFAULT '',
+    "page" TEXT NOT NULL DEFAULT '',
+    "revision" INTEGER NOT NULL DEFAULT 0,
+    "string" TEXT NOT NULL DEFAULT '',
+    "ip" TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY("id" AUTOINCREMENT)
+)''')
+
+    # No special operations on AUDIT
+    sql.execute('''
+CREATE TRIGGER audit_no_delete
+BEFORE DELETE ON audit
+BEGIN
+    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
+END''')
+    sql.execute('''
+CREATE TRIGGER audit_no_update
+BEFORE UPDATE ON audit
+BEGIN
+    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
+END''')
+    return True
+
+
 def db_commit() -> None:
     global db
     if db is not None:
         db.commit()
+
+
+def db_rollback() -> None:
+    global db
+    if db is not None:
+        db.rollback()
 
 
 def generate_ssl() -> bool:
@@ -247,147 +416,7 @@ def init_db() -> bool:
         if sql is None:
             print('Error: cannot create the database')
         else:
-            # Table PROJECTS
-            sql.execute('''
-CREATE TABLE "projects" (
-    "project" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "date" TEXT NOT NULL,
-    PRIMARY KEY("project")
-)''')
-            sql.execute(''' INSERT INTO projects (project, description, date) VALUES ('', '', '')''')   # Empty projects.project
-            # Table ENV
-            sql.execute('''
-CREATE TABLE "env" (
-    "project" TEXT NOT NULL,    -- Don't default to '' else there is a unicity key for 'key'
-    "key" TEXT NOT NULL,
-    "value" TEXT NOT NULL,
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("key","project")
-)''')
-            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'file_formats', 'md html odt')''')
-            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive noindex')''')
-            sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
-            # Table USERS
-            sql.execute('''
-CREATE TABLE "users" (
-    "user" TEXT NOT NULL,
-    "password" TEXT NOT NULL DEFAULT '',
-    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
-    PRIMARY KEY("user")
-)''')
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES ('', '', '')''')     # Empty pages.valuser
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['anonymous'], ))
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['ghost'], ))
-            # Table ROLES
-            sql.execute('''
-CREATE TABLE "roles" (
-    "project" TEXT NOT NULL,
-    "user" TEXT NOT NULL,
-    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
-    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
-    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
-    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
-    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
-    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("user") REFERENCES "users"("user"),
-    PRIMARY KEY("user","project")
-)''')
-            # Table PAGES
-            sql.execute('''
-CREATE TABLE "pages" (
-    "project" TEXT NOT NULL,
-    "page" TEXT NOT NULL CHECK("page" <> ''),
-    "revision" INTEGER NOT NULL CHECK("revision" > 0),
-    "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" IN ('', 'X')),
-    "draft" TEXT NOT NULL DEFAULT '' CHECK("draft" IN ('', 'X')),
-    "final" TEXT NOT NULL DEFAULT '' CHECK("final" IN ('', 'X')),
-    "header" TEXT NOT NULL DEFAULT '' CHECK("header" IN ('', 'X')),
-    "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" IN ('', 'X')),
-    "author" TEXT NOT NULL CHECK("author" <> ''),
-    "date" TEXT NOT NULL CHECK("date" <> ''),
-    "time" TEXT NOT NULL CHECK("time" <> ''),
-    "title" TEXT NOT NULL CHECK("title" <> ''),
-    "markdown" TEXT NOT NULL DEFAULT '',
-    "tags" TEXT NOT NULL DEFAULT '',
-    "comment" TEXT NOT NULL CHECK("comment" <> ''),
-    "milestone" TEXT NOT NULL DEFAULT '',
-    "valuser" TEXT NOT NULL DEFAULT '',
-    "valdate" TEXT NOT NULL DEFAULT '',
-    "valtime" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("project","page","revision"),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
-    FOREIGN KEY("valuser") REFERENCES "users"("user"),
-    FOREIGN KEY("project") REFERENCES "projects"("project")
-)''')
-            # Index for the pages
-            sql.execute('''
-CREATE INDEX "pages_index" ON "pages" (
-    "project" ASC,
-    "page" ASC,
-    "latest" ASC
-)''')
-            # Table CACHE
-            sql.execute('''
-CREATE TABLE "cache" (
-    "project" TEXT NOT NULL,
-    "page" TEXT NOT NULL,
-    "revision" INTEGER NOT NULL,
-    "html" TEXT NOT NULL,
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("project","page","revision")
-)''')
-            # Table DOCUMENTS
-            sql.execute('''
-CREATE TABLE "documents" (
-    "id" INTEGER NOT NULL,
-    "project" TEXT NOT NULL CHECK("project" <> ''),
-    "page" TEXT NOT NULL CHECK("page" <> ''),
-    "filename" TEXT NOT NULL CHECK("filename" <> ''),
-    "mime" TEXT NOT NULL CHECK("mime" <> ''),
-    "size" INTEGER NOT NULL CHECK("size" > 0),
-    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
-    "author" TEXT NOT NULL CHECK("author" <> ''),
-    "date" TEXT NOT NULL CHECK("date" <> ''),
-    "time" TEXT NOT NULL CHECK("time" <> ''),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
-    PRIMARY KEY("id" AUTOINCREMENT),
-    UNIQUE("project","filename")
-)''')
-            # Table AUDIT
-            sql.execute('''
-CREATE TABLE "audit" (
-    "id" INTEGER NOT NULL,
-    "date" TEXT NOT NULL,
-    "time" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "event" TEXT NOT NULL,
-    "user" TEXT NOT NULL DEFAULT '',
-    "project" TEXT NOT NULL DEFAULT '',
-    "page" TEXT NOT NULL DEFAULT '',
-    "revision" INTEGER NOT NULL DEFAULT 0,
-    "string" TEXT NOT NULL DEFAULT '',
-    "ip" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("id" AUTOINCREMENT)
-)''')
-            # No delete on AUDIT
-            sql.execute('''
-CREATE TRIGGER audit_no_delete
-BEFORE DELETE ON audit
-BEGIN
-    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
-END''')
-            # No update on AUDIT
-            sql.execute('''
-CREATE TRIGGER audit_no_update
-BEFORE UPDATE ON audit
-BEGIN
-    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
-END''')
-
-            # Trace
+            db_create_tables(sql)
             pwic_audit(sql, {'author': PWIC_USERS['system'],
                              'event': 'init-db'})
             db_commit()
@@ -713,7 +742,7 @@ def delete_project(project: str) -> bool:
 
     # Verify that the project exists yet
     project = pwic_safe_name(project)
-    if (project == '') or sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None:
+    if (project == '') or (sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None):
         print('Error: the project "%s" does not exist' % project)
         return False
 
@@ -724,15 +753,26 @@ def delete_project(project: str) -> bool:
         return False
 
     # Remove the uploaded files
-    sql.execute(''' SELECT filename FROM documents WHERE project = ?''', (project, ))
+    if not db_lock(sql):
+        return False
+    sql.execute(''' SELECT id, page, filename, exturl
+                    FROM documents
+                    WHERE project = ?''',
+                (project, ))
     for row in sql.fetchall():
-        fn = (PWIC_DOCUMENTS_PATH % project) + row['filename']
-        try:
-            os.remove(fn)
-        except (OSError, FileNotFoundError):
-            if isfile(fn):
-                print('Error: unable to delete "%s"' % fn)
-                return False
+        fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+        if not PwicExtension.on_api_document_delete(sql, project, PWIC_USERS['system'], row['page'], row['id'], row['filename']):
+            print('Error: unable to delete "%s"' % fn)
+            db_rollback()
+            return False
+        if row['exturl'] == '':
+            try:
+                os.remove(fn)
+            except (OSError, FileNotFoundError):
+                if isfile(fn):
+                    print('Error: unable to delete "%s"' % fn)
+                    db_rollback()
+                    return False
 
     # Remove the folder of the project used to upload files
     try:
@@ -740,13 +780,14 @@ def delete_project(project: str) -> bool:
         rmdir(fn)
     except OSError:
         print('Error: unable to remove "%s". The folder may be not empty' % fn)
+        db_rollback()
         return False
 
     # Delete
     sql.execute(''' DELETE FROM env       WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM documents WHERE project = ?''', (project, ))
-    sql.execute(''' DELETE FROM pages     WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM cache     WHERE project = ?''', (project, ))
+    sql.execute(''' DELETE FROM pages     WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM roles     WHERE project = ?''', (project, ))
     sql.execute(''' DELETE FROM projects  WHERE project = ?''', (project, ))
     pwic_audit(sql, {'author': PWIC_USERS['system'],
@@ -994,7 +1035,7 @@ def show_stats() -> bool:
 
     # Structure of the log
     tab = PrettyTable()
-    tab.field_names = ['Topic', 'Project', 'Period', 'Value']
+    tab.field_names = ['Topic', 'Project / Key', 'Period', 'Value']
     for f in tab.field_names:
         tab.align[f] = 'l'
     tab.header = True
@@ -1245,6 +1286,10 @@ def show_stats() -> bool:
     _totals(sql, 'Number of documents',
             ''' SELECT COUNT(id) AS kpi
                 FROM documents''', None)
+    _totals(sql, 'Number of documents stored externally',
+            ''' SELECT COUNT(id) AS kpi
+                FROM documents
+                WHERE exturl <> '' ''', None)
     _totals(sql, 'Number of documents per project',
             ''' SELECT project, COUNT(id) AS kpi
                 FROM documents
@@ -1253,6 +1298,10 @@ def show_stats() -> bool:
     _totals(sql, 'Size of the documents',
             ''' SELECT SUM(size) AS kpi
                 FROM documents''', None)
+    _totals(sql, 'Size of the documents stored externally',
+            ''' SELECT SUM(size) AS kpi
+                FROM documents
+                WHERE exturl <> '' ''', None)
     _totals(sql, 'Size of the documents per project',
             ''' SELECT project, SUM(size) AS kpi
                 FROM documents
@@ -1266,6 +1315,25 @@ def show_stats() -> bool:
                 FROM documents
                 GROUP BY project
                 ORDER BY project''', None)
+    _totals(sql, 'Disk space usage per project (%)',
+            ''' SELECT  d.project,
+                        ROUND(100.0 * d.size / d.maxSize, 2) AS kpi
+                FROM (
+                    SELECT  a.project,
+                            SUM(size) AS size,
+                            IIF(b.value NOTNULL, b.value, IIF(c.value NOTNULL, c.value, 0)) AS maxSize
+                    FROM documents AS a
+                        LEFT OUTER JOIN env AS b
+                            ON  b.project = a.project
+                            AND b.key     = 'max_project_size'
+                        LEFT OUTER JOIN env AS c
+                            ON  c.project = ''
+                            AND c.key     = 'max_project_size'
+                    GROUP BY a.project
+                    ORDER BY a.project
+                ) AS d
+                WHERE d.maxSize > 0
+                ORDER BY d.project''', None)
     _totals(sql, 'Last date of upload',
             ''' SELECT MAX(date) AS kpi
                 FROM documents''', None)
@@ -1297,6 +1365,13 @@ def show_stats() -> bool:
                 WHERE value <> ''
                 GROUP BY project
                 ORDER BY project''', None)
+
+    # Audit
+    _totals(sql, 'Number of events',
+            ''' SELECT event AS project, COUNT(event) AS kpi
+                FROM audit
+                GROUP BY event
+                ORDER BY event''', None)
 
     # Final output
     print(tab.get_string(), flush=True)
@@ -1363,7 +1438,7 @@ def compress_static(revert: bool) -> bool:
                     os.remove(fn)
                     print('Removing "%s"' % fn)
                     counter += 1
-                except FileNotFoundError:
+                except (OSError, FileNotFoundError):
                     print('Failed to remove "%s"' % fn)
     if counter > 0:
         print('%d files were processed' % counter)
@@ -1446,14 +1521,15 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
     projects = []
     multi = (project == '')
     tab = PrettyTable()
-    tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Content']
+    tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Reason']
     for n in range(len(tab.field_names)):
         tab.align[tab.field_names[n]] = 'l'
     tab.header = True
     tab.border = True
 
     # Select the projects
-    sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
+    if not db_lock(sql):
+        return False
     sql.execute(''' SELECT project
                     FROM projects
                     WHERE project <> ''
@@ -1490,7 +1566,7 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                     if not test:
                         removedirs(path)
                     tab.add_row(['Delete', 'Folder', p, path, 'Orphaned'])
-                except OSError:
+                except (OSError, FileNotFoundError):
                     print('Failed to delete the folder "%s"' % path)
 
     # Check the files per project
@@ -1498,9 +1574,10 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
         if not isdir(PWIC_DOCUMENTS_PATH % p):
             continue
         files = sorted([f for f in listdir(PWIC_DOCUMENTS_PATH % p) if isfile(join(PWIC_DOCUMENTS_PATH % p, f))])
-        sql.execute(''' SELECT id, filename
+        sql.execute(''' SELECT id, filename, exturl
                         FROM documents
                         WHERE project = ?
+                          AND exturl  = ''
                         ORDER BY filename''',
                     (p, ))
         # Each document should match with a file
@@ -1521,14 +1598,15 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                         if not test:
                             os.remove(path)
                         tab.add_row(['Delete', 'File', p, path, 'Orphaned'])
-                    except OSError:
+                    except (OSError, FileNotFoundError):
                         print('Failed to delete the file "%s"' % path)
 
     # Verify the integrity of the files
     for p in projects:
         sql.execute(''' SELECT id, filename, size, hash
                         FROM documents
-                        WHERE project = ? ''',
+                        WHERE project = ?
+                          AND exturl  = '' ''',
                     (p, ))
         for row in sql.fetchall():
             path = join(PWIC_DOCUMENTS_PATH % p, row['filename'])
