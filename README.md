@@ -114,7 +114,7 @@ Please use the issue tracker on Github to ask questions, report bugs or request 
 ## Licenses
 
 Proprietary software
-Copyright (C) Alexandre Bréard, 2020-2021
+Copyright (C) Alexandre Bréard, 2020-2022
 
 - [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License

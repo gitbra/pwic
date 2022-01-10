@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Optional, Tuple, Any
+from typing import Optional, Dict, Tuple, Any
 import argparse
 import sqlite3
 from prettytable import PrettyTable
@@ -17,7 +17,7 @@ from stat import S_IREAD
 from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, \
     PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
     PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_option, pwic_list, pwic_magic_bytes, \
-    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray
+    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
 from pwic_extension import PwicExtension
 
 
@@ -60,6 +60,10 @@ def main() -> bool:
     spb = subparsers.add_parser('takeover-project', help='Assign an administrator to a project')
     spb.add_argument('project', default='', help='Project name')
     spb.add_argument('admin', default='', help='User name of the administrator')
+
+    spb = subparsers.add_parser('split-project', help='Copy a project into a dedicated database')
+    spb.add_argument('project', default='', help='Project name')
+    spb.add_argument('--no-history', action='store_true', help='Remove the history')
 
     spb = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
     spb.add_argument('project', default='', help='Project name')
@@ -121,6 +125,8 @@ def main() -> bool:
         return create_project(args.project, args.description, args.admin)
     elif args.command == 'takeover-project':
         return takeover_project(args.project, args.admin)
+    elif args.command == 'split-project':
+        return split_project(args.project, args.no_history)
     elif args.command == 'delete-project':
         return delete_project(args.project)
     elif args.command == 'create-user':
@@ -614,8 +620,10 @@ def create_project(project: str, description: str, admin: str) -> bool:
     project = pwic_safe_name(project)
     description = description.strip()
     admin = pwic_safe_user_name(admin)
-    if project in ['api', 'special'] or '' in [project, description, admin] or \
-       project[:4] == 'pwic' or admin[:4] == 'pwic':
+    if (project in ['api', 'special']) or       \
+       ('' in [project, description, admin]) or \
+       (project[:4] == 'pwic') or               \
+       (admin[:4] == 'pwic'):
         print('Error: invalid arguments')
         return False
 
@@ -731,6 +739,123 @@ def takeover_project(project: str, admin: str) -> bool:
                      'user': admin})
     db_commit()
     print('The user "%s" is now an administrator of the project "%s"' % (admin, project))
+    return True
+
+
+def split_project(project: str, collapse: bool) -> bool:
+    # Helpers
+    def _transfer_record(sql: sqlite3.Cursor, table: str, row: Dict[str, Any]) -> None:
+        query = ''' INSERT OR IGNORE INTO %s
+                    (%s) VALUES (%s)''' % (table,
+                                           ', '.join(row.keys()),
+                                           ', '.join('?' * len(row)))
+        sql.execute(query, [e for e in row.values()])
+
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+    sql.execute(''' SELECT project
+                    FROM projects
+                    WHERE project = ?''',
+                (project, ))
+    if (project == '') or (sql.fetchone() is None):
+        print('Error: the project does not exist')
+        return False
+
+    # Create the new database
+    fn = PWIC_DB_SQLITE_BACKUP % 'split'
+    if isfile(fn):
+        print('Error: the split database already exists')
+        return False
+    try:
+        newsql = sqlite3.connect(fn).cursor()
+    except sqlite3.OperationalError:
+        print('Error: the split database cannot be opened')
+        return False
+    if not db_create_tables(newsql):
+        print('Error: the tables cannot be created')
+        return False
+
+    # Transfer the data
+    db_lock(sql)
+    # ... projects
+    row = sql.execute(''' SELECT *
+                          FROM projects
+                          WHERE project = ?''',
+                      (project, )).fetchone()
+    assert(row is not None)
+    _transfer_record(newsql, 'projects', row)
+    # ... users
+    buffer = []
+    sql.execute(''' SELECT user
+                    FROM roles
+                    WHERE project = ?''',
+                (project, ))
+    for row in sql.fetchall():
+        buffer.append(row['user'])
+    for e in buffer:
+        sql.execute(''' SELECT *
+                        FROM users
+                        WHERE user = ?''',
+                    (e, ))
+        for row in sql.fetchall():
+            _transfer_record(newsql, 'users', row)
+    # ... roles
+    sql.execute(''' SELECT *
+                    FROM roles
+                    WHERE project = ?''',
+                (project, ))
+    for row in sql.fetchall():
+        _transfer_record(newsql, 'roles', row)
+    # ... env
+    sql.execute(''' SELECT *
+                    FROM env
+                    WHERE project = ''
+                       OR project = ?''',
+                (project, ))
+    for row in sql.fetchall():
+        _transfer_record(newsql, 'env', row)
+    # ... pages
+    sql.execute(''' SELECT *
+                    FROM pages
+                    WHERE project = ?''',
+                (project, ))
+    for row in sql.fetchall():
+        if collapse and not pwic_xb(row['latest']):
+            continue
+        _transfer_record(newsql, 'pages', row)
+    # ... documents
+    sql.execute(''' SELECT *
+                    FROM documents
+                    WHERE project = ?''',
+                (project, ))
+    for row in sql.fetchall():
+        _transfer_record(newsql, 'documents', row)
+    # ... audit
+    sql.execute(''' SELECT MAX(id) AS id
+                    FROM audit
+                    WHERE event   = 'create-project'
+                      AND project = ?''',
+                (project, ))
+    id = sql.fetchone()['id']
+    if id is not None:
+        sql.execute(''' SELECT *
+                        FROM audit
+                        WHERE id     >= ?
+                          AND project = ?''',
+                    (id, project))
+        for row in sql.fetchall():
+            row['id'] = None
+            _transfer_record(newsql, 'audit', row)
+
+    # Result
+    newsql.execute(''' COMMIT''')
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'split-project',
+                     'project': project})
+    db_commit()
+    print('The project "%s" is copied to the separate database "%s"' % (project, fn))
     return True
 
 
@@ -1246,13 +1371,36 @@ def show_stats() -> bool:
                   AND draft  = 'X'
                 GROUP BY project
                 ORDER BY project''', None)
-    _totals(sql, 'Number of validated pages per project',
+    _totals(sql, 'Number of validations done',
+            ''' SELECT COUNT(page) AS kpi
+                FROM pages
+                WHERE valuser <> '' ''', None)
+    _totals(sql, 'Number of validations done per project',
+            ''' SELECT project, COUNT(page) AS kpi
+                FROM pages
+                WHERE valuser <> ''
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Number of pages currently validated per project',
             ''' SELECT project, COUNT(page) AS kpi
                 FROM pages
                 WHERE latest   = 'X'
                   AND valuser <> ''
                 GROUP BY project
                 ORDER BY project''', None)
+    _totals(sql, 'Percentage of validation per project',
+            ''' SELECT a.project, ROUND(100. * COUNT(a.page) / b.nb, 2) AS kpi
+                FROM pages AS a
+                    INNER JOIN (
+                        SELECT project, COUNT(page) AS nb
+                        FROM pages
+                        WHERE latest = 'X'
+                        GROUP BY project
+                    ) AS b
+                        ON b.project = a.project
+                WHERE a.latest   = 'X'
+                  AND a.valuser <> ''
+                GROUP BY a.project''', None)
 
     # Cache
     _totals(sql, 'Number of pages in the cache',

@@ -885,7 +885,10 @@ class PwicServer():
         PwicExtension.on_search_terms(sql, project, user, query, with_rev)
 
         # Fetch the description of the project
-        sql.execute(''' SELECT description FROM projects WHERE project = ?''', (project, ))
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
         pwic = {'title': 'Search',
                 'project': project,
                 'project_description': sql.fetchone()['description'],
@@ -1042,7 +1045,10 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Show the page
-        sql.execute(''' SELECT description FROM projects WHERE project = ?''', (project, ))
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
         pwic = {'title': 'Project-dependent environment variables',
                 'project': project,
                 'project_description': sql.fetchone()['description']}
@@ -1095,10 +1101,12 @@ class PwicServer():
         # Display the page
         if len(pwic['roles']) == 0:
             raise web.HTTPUnauthorized()        # Or project not found
-        else:
-            sql.execute(''' SELECT description FROM projects WHERE project = ?''', (project, ))
-            pwic['project_description'] = sql.fetchone()['description']
-            return await self._handle_output(request, 'user-roles', pwic=pwic)
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        pwic['project_description'] = sql.fetchone()['description']
+        return await self._handle_output(request, 'user-roles', pwic=pwic)
 
     async def page_links(self, request: web.Request) -> web.Response:
         ''' Serve the check of the links '''
@@ -1178,7 +1186,10 @@ class PwicServer():
                                    'destination': page})
 
         # Show the values
-        sql.execute(''' SELECT description FROM projects WHERE project = ?''', (project, ))
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
         pwic = {'title': 'Report of the links',
                 'project': project,
                 'project_description': sql.fetchone()['description'],
@@ -1211,7 +1222,10 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Show the page
-        sql.execute(''' SELECT description FROM projects WHERE project = ?''', (project, ))
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
         pwic = {'title': 'Graph of the project',
                 'project': project,
                 'project_description': sql.fetchone()['description']}
