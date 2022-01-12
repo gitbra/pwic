@@ -6,6 +6,7 @@ import re
 from collections import OrderedDict
 import datetime
 from os import urandom
+from os.path import splitext
 from hashlib import sha256
 from base64 import b64encode
 from aiohttp import web
@@ -62,12 +63,13 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
                               'kbid', 'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
                               'no_cache', 'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
-                              'no_printing', 'no_search', 'no_text_selection', 'odt_page_height', 'odt_page_width',
-                              'robots', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
+                              'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
+                              'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone', 'support_text',
+                              'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
-                                     'no_text_selection', 'odt_page_height', 'odt_page_width', 'support_email',
-                                     'support_phone', 'support_text', 'support_url', 'validated_only']
+                                     'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                                     'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
@@ -116,6 +118,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'printer': '&#x1F5A8;',
                'recycle': '&#x267B;',
                'red_check': '&#x274C;',
+               'refresh': '&#x1F504;',
                'right_arrow': '&#x21E5;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
@@ -145,144 +148,157 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
-PWIC_MIMES = [([''], 'application/octet-stream', None),
-              (['7z'], 'application/x-7z-compressed', ['7z']),
-              (['aac'], 'audio/vnd.dlna.adts', None),
-              (['abw'], 'application/x-abiword', None),
-              (['accdb'], 'application/msaccess', ['\x00\x01\x00\x00Standard ACE DB']),  # NUL SOH NUL NUL
-              (['aif', 'aifc', 'aiff'], 'audio/aiff', ['AIFF', 'FORM']),
-              (['apk'], 'application/vnd.android.package-archive', ZIP),
-              (['avi'], 'video/avi', ['AVI', 'RIFF']),
-              (['bin'], 'application/octet-stream', None),
-              (['bmp'], 'image/bmp', ['BM']),
-              (['bz', 'bz2'], 'application/x-bzip2', ['BZ']),
-              (['cer'], 'application/x-x509-ca-cert', None),
-              (['chm'], 'application/vnd.ms-htmlhelp', ['ITSM']),
-              (['crt'], 'application/x-x509-ca-cert', None),
-              (['css'], 'text/css', None),
-              (['csv'], 'application/vnd.ms-excel', None),
-              (['deb'], 'application/x-debian-package', ZIP),
-              (['der'], 'application/x-x509-ca-cert', None),
-              (['dll'], 'application/x-msdownload', ['MZ']),
-              (['doc'], 'application/msword', CFBF),
-              (['docm'], 'application/vnd.ms-word.document.macroEnabled.12', ZIP),
-              (['docx'], 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ZIP),
-              (['dwg'], 'image/vnd.dwg', None),
-              (['dxf'], 'image/vnd.dxf', None),
-              (['emf'], 'image/x-emf', None),
-              (['eml'], 'message/rfc822', None),
-              (['eps'], 'application/postscript', None),
-              (['epub'], 'application/epub+zip', ZIP),
-              (['exe'], 'application/x-msdownload', ['MZ']),
-              (['flac'], 'audio/x-flac', ['fLaC']),
-              (['flv'], 'video/x-flv', ['FLV']),
-              (['gif'], 'image/gif', ['GIF87a', 'GIF89a']),
-              (['gv'], 'text/vnd.graphviz', None),
-              (['gz', 'gzip'], 'application/x-gzip', ['\x1F\x8B']),
-              (['hlp'], 'application/winhlp', None),
-              (['htm'], 'text/html', None),
-              (['html'], 'text/html', None),
-              (['ico'], 'image/x-icon', ['\x00\x00\x01\x00']),
-              (['ics'], 'text/calendar', None),
-              (['jar'], 'application/java-archive', ZIP),
-              (['jp2'], 'image/jp2', ['\x00\x00\x00\xFFjP']),
-              (['jpg', 'jpeg'], 'image/jpeg', ['\xFF\xD8\xFF']),
-              (['json'], 'application/json', None),
-              (['kml'], 'application/vnd.google-earth.kml+xml', None),
-              (['kmz'], 'application/vnd.google-earth.kmz', ZIP),
-              (['latex'], 'application/x-latex', None),
-              (['mdb'], 'application/msaccess', ['\x00\x01\x00\x00Standard Jet DB']),  # NUL SOH NUL NUL
-              (['mid', 'midi'], 'audio/mid', ['MThd']),
-              (['mka', 'mkv'], 'video/x-matroska', MATROSKA),
-              (['mov'], 'video/quicktime', None),
-              (['mp3'], 'audio/mpeg', ['\xFF\xFB', '\xFF\xF3', '\xFF\xF2']),
-              (['mp4'], 'video/mp4', ['ftypisom']),
-              (['mpg', 'mpeg'], 'video/mpeg', ['\x00\x00\x01\xB3']),
-              (['mpp'], 'application/vnd.ms-project', None),
-              (['msg'], None, CFBF),
-              (['oda'], 'application/oda', None),
-              (['odf'], 'application/vnd.oasis.opendocument.formula', None),
-              (['odg'], 'application/vnd.oasis.opendocument.graphics', None),
-              (['odi'], 'application/vnd.oasis.opendocument.image', None),
-              (['odp'], 'application/vnd.oasis.opendocument.presentation', ZIP),
-              (['ods'], 'application/vnd.oasis.opendocument.spreadsheet', ZIP),
-              (['odt'], 'application/vnd.oasis.opendocument.text', ZIP),
-              (['oga'], 'audio/ogg', None),
-              (['ogv'], 'video/ogg', None),
-              (['one'], 'application/msonenote', None),
-              (['otf'], 'application/x-font-otf', None),
-              (['otp'], 'application/vnd.oasis.opendocument.presentation-template', None),
-              (['pdf'], 'application/pdf', ['%PDF-']),
-              (['pdfxml'], 'application/vnd.adobe.pdfxml', None),
-              (['png'], 'image/png', ['\x89PNG']),
-              (['pot'], 'application/vnd.ms-powerpoint', CFBF),
-              (['potm'], 'application/vnd.ms-powerpoint.template.macroEnabled.12', ZIP),
-              (['potx'], 'application/vnd.openxmlformats-officedocument.presentationml.template', ZIP),
-              (['pps'], 'application/vnd.ms-powerpoint', CFBF),
-              (['ppsm'], 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12', ZIP),
-              (['ppsx'], 'application/vnd.openxmlformats-officedocument.presentationml.slideshow', ZIP),
-              (['ppt'], 'application/vnd.ms-powerpoint', CFBF),
-              (['pptm'], 'application/vnd.ms-powerpoint.presentation.macroEnabled.12', ZIP),
-              (['pptx'], 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ZIP),
-              (['ps'], 'application/postscript', ['%!PS']),
-              (['psd'], 'image/vnd.adobe.photoshop', None),
-              (['pub'], 'application/vnd.ms-publisher', CFBF),
-              (['rar'], 'application/x-rar-compressed', ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01']),
-              (['rss'], 'application/rss+xml', None),
-              (['rtf'], 'application/msword', ['{\rtf1']),
-              (['sti'], 'application/vnd.sun.xml.impress.template', None),
-              (['svg'], 'image/svg+xml', None),
-              (['swf'], 'application/x-shockwave-flash', ['CWS', 'FWS']),
-              (['sxc'], 'application/vnd.sun.xml.calc', None),
-              (['sxd'], 'application/vnd.sun.xml.draw', None),
-              (['sxi'], 'application/vnd.sun.xml.impress', None),
-              (['sxm'], 'application/vnd.sun.xml.math', None),
-              (['sxw'], 'application/vnd.sun.xml.writer', None),
-              (['tar'], 'application/x-tar', ['ustar\x0000', 'ustar  \x00']),
-              (['tgz'], 'application/x-compressed', ['\x1F\x8B']),
-              (['tif', 'tiff'], 'image/tiff', ['II*\x00', 'II\x00*']),
-              (['tsv'], 'text/tab-separated-values', None),
-              (['ttf'], 'application/x-font-ttf', None),
-              (['txt'], 'text/plain', None),
-              (['vcf'], 'text/x-vcard', None),
-              (['vsd'], 'application/vnd.ms-visio.viewer', CFBF),
-              (['vsdm'], 'application/vnd.ms-visio.viewer', ZIP),
-              (['vsdx'], 'application/vnd.ms-visio.viewer', ZIP),
-              (['wav'], 'audio/wav', ['WAV', 'RIFF']),
-              (['weba'], 'audio/webm', None),
-              (['webm'], 'video/webm', MATROSKA),
-              (['webp'], 'image/webp', ['WEBP', 'RIFF']),
-              (['wma'], 'audio/x-ms-wma', None),
-              (['wmf'], 'image/x-wmf', None),
-              (['wmv'], 'video/x-ms-wmv', None),
-              (['woff'], 'application/x-font-woff', None),
-              (['woff2'], 'application/x-font-woff', None),
-              (['xaml'], 'application/xaml+xml', None),
-              (['xls'], 'application/vnd.ms-excel', CFBF),
-              (['xlsm'], 'application/vnd.ms-excel.sheet.macroEnabled.12', ZIP),
-              (['xlsx'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ZIP),
-              (['xml'], 'text/xml', None),
-              (['xsl'], 'text/xml', None),
-              (['yaml'], 'text/yaml', None),
-              (['z'], 'application/x-compress', ['\x1F\xA0']),
-              (['zip'], 'application/x-zip-compressed', ZIP)]
+tyMime = List[Tuple[List[str], List[str], Optional[List[str]], bool]]
+PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
+                      (['7z'], ['application/x-7z-compressed'], ['7z'], True),
+                      (['aac'], ['audio/vnd.dlna.adts'], None, True),
+                      (['abw'], ['application/x-abiword'], None, False),
+                      (['accdb'], ['application/msaccess'], ['\x00\x01\x00\x00Standard ACE DB'], False),  # NUL SOH NUL NUL
+                      (['aif', 'aifc', 'aiff'], ['audio/aiff'], ['AIFF', 'FORM'], True),
+                      (['apk'], ['application/vnd.android.package-archive'], ZIP, True),
+                      (['avi'], ['video/avi'], ['AVI', 'RIFF'], True),
+                      (['bin'], ['application/octet-stream'], None, True),
+                      (['bmp'], ['image/bmp'], ['BM'], False),
+                      (['bz', 'bz2'], ['application/x-bzip2'], ['BZ'], True),
+                      (['cer'], ['application/x-x509-ca-cert'], None, False),
+                      (['chm'], ['application/vnd.ms-htmlhelp'], ['ITSM'], False),
+                      (['crt'], ['application/x-x509-ca-cert'], None, False),
+                      (['css'], ['text/css'], None, False),
+                      (['csv'], ['text/csv', 'application/vnd.ms-excel'], None, False),
+                      (['deb'], ['application/x-debian-package'], ZIP, True),
+                      (['der'], ['application/x-x509-ca-cert'], None, False),
+                      (['dll'], ['application/x-msdownload'], ['MZ'], False),
+                      (['doc'], ['application/msword'], CFBF, False),
+                      (['docm'], ['application/vnd.ms-word.document.macroEnabled.12'], ZIP, True),
+                      (['docx'], ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'], ZIP, True),
+                      (['dwg'], ['image/vnd.dwg'], None, False),
+                      (['dxf'], ['image/vnd.dxf'], None, False),
+                      (['emf'], ['image/x-emf'], None, False),
+                      (['eml'], ['message/rfc822'], None, False),
+                      (['eps'], ['application/postscript'], None, False),
+                      (['epub'], ['application/epub+zip'], ZIP, True),
+                      (['exe'], ['application/x-msdownload'], ['MZ'], False),
+                      (['flac'], ['audio/x-flac'], ['fLaC'], True),
+                      (['flv'], ['video/x-flv'], ['FLV'], False),
+                      (['gif'], ['image/gif'], ['GIF87a', 'GIF89a'], True),
+                      (['gv'], ['text/vnd.graphviz'], None, False),
+                      (['gz', 'gzip'], ['application/x-gzip'], ['\x1F\x8B'], True),
+                      (['hlp'], ['application/winhlp'], None, False),
+                      (['htm', 'html'], ['text/html'], None, False),
+                      (['ico'], ['image/x-icon'], ['\x00\x00\x01\x00'], False),
+                      (['ics'], ['text/calendar'], None, False),
+                      (['jar'], ['application/java-archive'], ZIP, True),
+                      (['jp2'], ['image/jp2'], ['\x00\x00\x00\xFFjP'], True),
+                      (['jpg', 'jpeg'], ['image/jpeg'], ['\xFF\xD8\xFF'], True),
+                      (['json'], ['application/json'], None, False),
+                      (['kml'], ['application/vnd.google-earth.kml+xml'], None, False),
+                      (['kmz'], ['application/vnd.google-earth.kmz'], ZIP, True),
+                      (['latex'], ['application/x-latex'], None, False),
+                      (['mdb'], ['application/msaccess'], ['\x00\x01\x00\x00Standard Jet DB'], False),  # NUL SOH NUL NUL
+                      (['mid', 'midi'], ['audio/mid'], ['MThd'], False),
+                      (['mka', 'mkv'], ['video/x-matroska'], MATROSKA, True),
+                      (['mov'], ['video/quicktime'], None, True),
+                      (['mp3'], ['audio/mpeg'], ['\xFF\xFB', '\xFF\xF3', '\xFF\xF2'], True),
+                      (['mp4'], ['video/mp4'], ['ftypisom'], True),
+                      (['mpg', 'mpeg'], ['video/mpeg'], ['\x00\x00\x01\xB3'], True),
+                      (['mpp'], ['application/vnd.ms-project'], None, False),
+                      (['oda'], ['application/oda'], None, False),
+                      (['odf'], ['application/vnd.oasis.opendocument.formula'], ZIP, True),
+                      (['odg'], ['application/vnd.oasis.opendocument.graphics'], ZIP, True),
+                      (['odi'], ['application/vnd.oasis.opendocument.image'], None, False),
+                      (['odp'], ['application/vnd.oasis.opendocument.presentation'], ZIP, True),
+                      (['ods'], ['application/vnd.oasis.opendocument.spreadsheet'], ZIP, True),
+                      (['odt'], ['application/vnd.oasis.opendocument.text'], ZIP, True),
+                      (['oga'], ['audio/ogg'], None, True),
+                      (['ogv'], ['video/ogg'], None, True),
+                      (['one'], ['application/msonenote'], None, False),
+                      (['otf'], ['application/x-font-otf'], None, False),
+                      (['otp'], ['application/vnd.oasis.opendocument.presentation-template'], ZIP, True),
+                      (['pdf'], ['application/pdf'], ['%PDF-'], False),
+                      (['pdfxml'], ['application/vnd.adobe.pdfxml'], None, False),
+                      (['png'], ['image/png'], ['\x89PNG'], True),
+                      (['pot'], ['application/vnd.ms-powerpoint'], CFBF, False),
+                      (['potm'], ['application/vnd.ms-powerpoint.template.macroEnabled.12'], ZIP, True),
+                      (['potx'], ['application/vnd.openxmlformats-officedocument.presentationml.template'], ZIP, True),
+                      (['pps'], ['application/vnd.ms-powerpoint'], CFBF, False),
+                      (['ppsm'], ['application/vnd.ms-powerpoint.slideshow.macroEnabled.12'], ZIP, True),
+                      (['ppsx'], ['application/vnd.openxmlformats-officedocument.presentationml.slideshow'], ZIP, True),
+                      (['ppt'], ['application/vnd.ms-powerpoint'], CFBF, False),
+                      (['pptm'], ['application/vnd.ms-powerpoint.presentation.macroEnabled.12'], ZIP, True),
+                      (['pptx'], ['application/vnd.openxmlformats-officedocument.presentationml.presentation'], ZIP, True),
+                      (['ps'], ['application/postscript'], ['%!PS'], False),
+                      (['psd'], ['image/vnd.adobe.photoshop'], None, False),
+                      (['pub'], ['application/vnd.ms-publisher'], CFBF, False),
+                      (['rar'], ['application/x-rar-compressed'], ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01'], True),
+                      (['rss'], ['application/rss+xml'], None, False),
+                      (['rtf'], ['application/msword'], ['{\rtf1'], False),
+                      (['sti'], ['application/vnd.sun.xml.impress.template'], None, False),
+                      (['svg'], ['image/svg+xml'], None, False),
+                      (['swf'], ['application/x-shockwave-flash'], ['CWS', 'FWS'], False),
+                      (['sxc'], ['application/vnd.sun.xml.calc'], None, False),
+                      (['sxd'], ['application/vnd.sun.xml.draw'], None, False),
+                      (['sxi'], ['application/vnd.sun.xml.impress'], None, False),
+                      (['sxm'], ['application/vnd.sun.xml.math'], None, False),
+                      (['sxw'], ['application/vnd.sun.xml.writer'], None, False),
+                      (['tar'], ['application/x-tar'], ['ustar\x0000', 'ustar  \x00'], True),
+                      (['tgz'], ['application/x-compressed'], ['\x1F\x8B'], True),
+                      (['tif', 'tiff'], ['image/tiff'], ['II*\x00', 'II\x00*'], False),
+                      (['tsv'], ['text/tab-separated-values'], None, False),
+                      (['ttf'], ['application/x-font-ttf'], None, False),
+                      (['txt'], ['text/plain'], None, False),
+                      (['vcf'], ['text/x-vcard'], None, False),
+                      (['vsd'], ['application/vnd.ms-visio.viewer'], CFBF, False),
+                      (['vsdm'], ['application/vnd.ms-visio.viewer'], ZIP, True),
+                      (['vsdx'], ['application/vnd.ms-visio.viewer'], ZIP, True),
+                      (['wav'], ['audio/wav'], ['WAV', 'RIFF'], False),
+                      (['weba'], ['audio/webm'], None, True),
+                      (['webm'], ['video/webm'], MATROSKA, True),
+                      (['webp'], ['image/webp'], ['WEBP', 'RIFF'], True),
+                      (['wma'], ['audio/x-ms-wma'], None, True),
+                      (['wmf'], ['image/x-wmf'], None, False),
+                      (['wmv'], ['video/x-ms-wmv'], None, True),
+                      (['woff'], ['application/x-font-woff'], None, False),
+                      (['woff2'], ['application/x-font-woff'], ['wOF2'], True),
+                      (['xaml'], ['application/xaml+xml'], None, False),
+                      (['xls'], ['application/vnd.ms-excel'], CFBF, False),
+                      (['xlsm'], ['application/vnd.ms-excel.sheet.macroEnabled.12'], ZIP, True),
+                      (['xlsx'], ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], ZIP, True),
+                      (['xml'], ['text/xml'], None, False),
+                      (['xsl'], ['text/xml'], None, False),
+                      (['yaml'], ['text/yaml'], None, False),
+                      (['z'], ['application/x-compress'], ['\x1F\xA0'], True),
+                      (['zip'], ['application/x-zip-compressed'], ZIP, True)]
+
+
+def pwic_file_ext(filename: str) -> str:
+    ''' Return the file extension of the file '''
+    return splitext(filename)[1][1:].strip().lower()
 
 
 def pwic_mime(ext: str) -> Optional[str]:
-    ''' Return the mime that corresponds to the file extension '''
+    ''' Return the default mime that corresponds to the file extension '''
     ext = ext.strip().lower()
-    for exts, mime, magic in PWIC_MIMES:
-        if ext in exts:
-            return mime
+    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+        if ext in mext:
+            return mtyp[0]
     return None
+
+
+def pwic_mime_compressed(ext: str) -> bool:
+    ''' Return the possible state of compression based on the file extension '''
+    ext = ext.strip().lower()
+    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+        if ext in mext:
+            return mzip
+    return False
 
 
 def pwic_magic_bytes(ext: str) -> Optional[List[str]]:
     ''' Return the magic bytes that corresponds to the file extension '''
     ext = ext.strip().lower()
-    for exts, mime, magic in PWIC_MIMES:
-        if ext in exts:
-            return magic
+    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+        if ext in mext:
+            return mhdr
     return None
 
 

@@ -4,6 +4,7 @@ from typing import Optional, Dict, Tuple, Any
 import argparse
 import sqlite3
 from prettytable import PrettyTable
+import imagesize
 import re
 import gzip
 import datetime
@@ -291,6 +292,8 @@ CREATE TABLE "documents" (
     "filename" TEXT NOT NULL CHECK("filename" <> ''),
     "mime" TEXT NOT NULL CHECK("mime" <> ''),
     "size" INTEGER NOT NULL CHECK("size" > 0),
+    "width" INTEGER NOT NULL CHECK("width" >= 0),
+    "height" INTEGER NOT NULL CHECK("height" >= 0),
     "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
     "author" TEXT NOT NULL CHECK("author" <> ''),
     "date" TEXT NOT NULL CHECK("date" <> ''),
@@ -1649,11 +1652,12 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
     print('    - Delete the folders of all the unknown projects')
     print('    - Delete the documents from the database if there is no associated physical file')
     print('    - Delete the orphaned physical files that are not indexed in the database')
+    if magic_bytes:
+        print('    - Delete retroactively the files whose magic bytes are incorrect')
     print('    - Update the size of the files in the database')
     if not no_hash:
         print('    - Update the hash of the files in the database')
-    if magic_bytes:
-        print('    - Delete retroactively the files whose magic bytes are incorrect')
+    print('    - Update the dimensions of the pictures in the database')
     print('')
     print('The database will be locked during the whole process.')
     print('Please ensure that the server is not running.')
@@ -1751,7 +1755,7 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
 
     # Verify the integrity of the files
     for p in projects:
-        sql.execute(''' SELECT id, filename, size, hash
+        sql.execute(''' SELECT id, filename, mime, size, width, height, hash
                         FROM documents
                         WHERE project = ?
                           AND exturl  = '' ''',
@@ -1785,6 +1789,21 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                                         WHERE ID = ?''',
                                     (size, hash, row['id']))
                     tab.add_row(['Update', 'Database', p, '%d,%s' % (row['id'], path), 'Modified'])
+
+                # Width and height
+                if row['mime'][:6] == 'image/':
+                    try:
+                        width, height = imagesize.get(path)
+                        if (width != row['width']) or (height != row['height']):
+                            if not test:
+                                sql.execute(''' UPDATE documents
+                                                SET width = ?, height = ?
+                                                WHERE ID = ?''',
+                                            (width, height, row['id']))
+                            tab.add_row(['Update', 'Database', p, '%d,%s' % (row['id'], path), 'Modified'])
+                    except ValueError:
+                        pass
+
             except (OSError, FileNotFoundError):    # Can occur in test mode
                 print('Failed to analyze the file "%s"' % path)
                 continue

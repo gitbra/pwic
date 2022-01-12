@@ -250,7 +250,8 @@
 			event.stopPropagation();
 			
 			// Create an XHR for each file
-			var files = event.dataTransfer.files;
+			var files = event.dataTransfer.files,
+				notification = null;
 			for (var i=0 ; i<files.length ; i++)
 			{
 				// Fields
@@ -266,11 +267,14 @@
 					.then(function(response) {
 						if (response.status != 200)
 							throw Error(response.status + ' ' + response.statusText);
-						else {
-							setTimeout(function() {
-								edit_refresh_documents();
-							}, 2000);
-							alert(successText);
+						else
+						{
+							if (notification != null)
+								clearTimeout(notification);
+							notification = setTimeout(function() {
+												edit_refresh_documents();
+												alert(successText);
+											}, 2000);
 						}
 					})
 					.catch(function(error) {

@@ -2,7 +2,7 @@
 
 <footer>
 	<div>
-		Powered by Pwic v{{pwic.constants.version|escape}} &copy; 2020-2021 &mdash; {{pwic.emojis.help}} <a href="/special/help">Help</a> &mdash;
+		Powered by Pwic v{{pwic.constants.version|escape}} &copy; 2020-2022 &mdash; {{pwic.emojis.help}} <a href="/special/help">Help</a> &mdash;
 		{% if (pwic.user != '') and (pwic.user != pwic.constants.anonymous_user) %}
 			 {{pwic.emojis.laptop}} <a href="/special/user/{{pwic.user|urlencode}}" title="Your profile">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure to disconnect from Pwic?')">Log out</a></strong>)
 		{% else %}

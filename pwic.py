@@ -14,7 +14,7 @@ import zipfile
 from io import BytesIO
 import os
 from os import listdir, urandom
-from os.path import getsize, isdir, isfile, join, splitext
+from os.path import getsize, isdir, isfile, join
 import json
 import re
 import imagesize
@@ -28,10 +28,10 @@ from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
-    pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_mime, pwic_mime2icon, pwic_option, \
-    pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, \
-    pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, \
-    pwic_search_parse, pwic_search2string, pwic_html2odt
+    pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
+    pwic_mime2icon, pwic_option, pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, \
+    pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, \
+    pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -106,13 +106,13 @@ class PwicServer():
 
     def _check_mime(self, obj: Dict[str, Any]) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
-        extension = splitext(obj['filename'])[1][1:]
-        for (mext, mtyp, mhdr) in PWIC_MIMES:
+        extension = pwic_file_ext(obj['filename'])
+        for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
             if extension in mext:
                 # Expected mime
                 if obj['mime'] == '':
-                    obj['mime'] = mtyp
-                elif mtyp != obj['mime']:
+                    obj['mime'] = mtyp[0]
+                elif obj['mime'] not in mtyp:
                     return False
 
                 # Magic bytes
@@ -2537,6 +2537,8 @@ class PwicServer():
             html = html.replace('</code></pre>', '</blockcode>')
 
             # Extract the meta-informations of the embedded pictures
+            MAX_H = pwic_int(pwic_option(sql, project, 'odt_image_height_max', '900'))
+            MAX_W = pwic_int(pwic_option(sql, project, 'odt_image_width_max', '600'))
             docids = ['0']
             subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
             if subdocs is not None:
@@ -2544,7 +2546,7 @@ class PwicServer():
                     sd = str(pwic_int(sd[0]))
                     if sd not in docids:
                         docids.append(sd)
-            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.exturl
+            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.width, a.height, a.exturl
                         FROM documents AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
@@ -2555,30 +2557,24 @@ class PwicServer():
             sql.execute(query % ','.join(docids), (user, ))
             pictMeta = {}
             for rowdoc in sql.fetchall():
-                fn = join(PWIC_DOCUMENTS_PATH % project, rowdoc['filename'])
-                w, h = 50., 50.                             # Default area
-                if rowdoc['exturl'] == '':                  # Can't guess the remote size
-                    if isfile(fn):
-                        try:
-                            # Optimize the maximal size
-                            w, h = imagesize.get(fn)
-                            MAX_W = 600.    # px
-                            MAX_H = 900.    # px
-                            if w > MAX_W:
-                                h *= MAX_W / w
-                                w = MAX_W
-                            if h > MAX_H:
-                                w *= MAX_H / h
-                                h = MAX_H
-                        except ValueError:
-                            pass
-                pictMeta[rowdoc['id']] = {'filename': fn,
+                # Optimize the size
+                try:
+                    if rowdoc['width'] > MAX_W:
+                        rowdoc['height'] *= MAX_W / rowdoc['width']
+                        rowdoc['width'] = MAX_W
+                    if rowdoc['height'] > MAX_H:
+                        rowdoc['width'] *= MAX_H / rowdoc['height']
+                        rowdoc['height'] = MAX_H
+                except ValueError:
+                    pass
+                # Store the meta data
+                pictMeta[rowdoc['id']] = {'filename': join(PWIC_DOCUMENTS_PATH % project, rowdoc['filename']),
                                           'link': 'special/document/%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],
                                           'link_odt_img': 'special/document_%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],     # LibreOffice does not support the paths with multiple folders
-                                          'uncompressed': rowdoc['mime'] in [pwic_mime('bmp'), pwic_mime('svg')],
+                                          'compressed': pwic_mime_compressed(pwic_file_ext(rowdoc['filename'])),
                                           'manifest': '<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime']) if rowdoc['exturl'] == '' else '',
-                                          'width': pwic_int(w),
-                                          'height': pwic_int(h),
+                                          'width': pwic_int(rowdoc['width']),
+                                          'height': pwic_int(rowdoc['height']),
                                           'remote': rowdoc['exturl'] != ''}
 
             # Convert to ODT
@@ -2602,10 +2598,10 @@ class PwicServer():
                     content = b''
                     with open(meta['filename'], 'rb') as f:
                         content = f.read()
-                    if meta['uncompressed']:
-                        odt.writestr(meta['link_odt_img'], content)
-                    else:
+                    if meta['compressed']:
                         odt.writestr(meta['link_odt_img'], content, compress_type=zipfile.ZIP_STORED, compresslevel=0)
+                    else:
+                        odt.writestr(meta['link_odt_img'], content)
                     del content
                     attachments += '%s\n' % meta['manifest']
             odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', attachments))
@@ -2941,7 +2937,7 @@ class PwicServer():
                     if fn == '':
                         continue
                     doc['filename'] = fn
-                    doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '')
+                    doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '').strip().lower()
                     doc[name] = await part.read(decode=False)
         except Exception:
             raise web.HTTPBadRequest()
@@ -3041,10 +3037,11 @@ class PwicServer():
                           AND filename = ?''',
                     (doc['project'], doc['filename']))
         row = sql.fetchone()
-        if row is None:
-            pass                                # New document = Create it
-        else:
-            if row['page'] == doc['page']:      # Existing document = Delete + Keep same ID (replace it)
+        if row is not None:
+            if row['page'] != doc['page']:      # Existing document = Delete + Keep same ID (replace it)
+                self._rollback()
+                raise web.HTTPBadRequest()      # Existing document on another page = do nothing
+            else:
                 if row['exturl'] == '':
                     # Local file
                     try:
@@ -3063,27 +3060,36 @@ class PwicServer():
                                 WHERE id = ?''',
                             (row['id'], ))
                 forcedId = row['id']
-            else:
-                self._rollback()
-                raise web.HTTPBadRequest()      # Existing document on another page = do nothing
 
         # Upload the file on the server
         try:
-            f = open(join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename']), 'wb')     # Rewrite any existing file
+            filename = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
+            f = open(filename, 'wb')            # Rewrite any existing file
             f.write(doc['content'])
             f.close()
         except Exception:
             self._rollback()
             raise web.HTTPInternalServerError()
 
+        # Find the dimensions of the loaded picture
+        width, height = 0, 0
+        if doc['mime'][:6] == 'image/':
+            try:
+                width, height = imagesize.get(filename)
+            except ValueError:
+                width, height = 50, 50          # Default area
+
         # Create the document in the database
         dt = pwic_dt()
-        sql.execute(''' INSERT INTO documents (id, project, page, filename, mime,
-                                               size, hash, author, date, time, exturl)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')''',
+        sql.execute(''' INSERT INTO documents (id, project, page, filename, mime, size, width,
+                                               height, hash, author, date, time, exturl)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')''',
                     (forcedId, doc['project'], doc['page'], doc['filename'],
-                     doc['mime'], len(doc['content']), pwic_sha256(doc['content'], salt=False),
-                     user, dt['date'], dt['time']))
+                     doc['mime'], len(doc['content']), width, height,
+                     pwic_sha256(doc['content'], salt=False), user,
+                     dt['date'], dt['time']))
+        if forcedId is None:
+            forcedId = sql.lastrowid
         pwic_audit(sql, {'author': user,
                          'event': '%s-document' % ('create' if forcedId is None else 'replace'),
                          'project': doc['project'],
