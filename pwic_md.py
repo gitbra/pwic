@@ -116,6 +116,7 @@ import optparse
 from random import random, randint
 import codecs
 from collections import defaultdict
+from typing import Any                      # ++ PWIC
 
 
 # ---- Python version compat
@@ -198,7 +199,7 @@ class Markdown(object):
     #
     # This can be set via (a) subclassing and (b) the constructor
     # "extras" argument.
-    extras = None
+    extras: Any = None          # ~~ PWIC
 
     urls = None
     titles = None

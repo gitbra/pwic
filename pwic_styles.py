@@ -1,6 +1,6 @@
 
 from typing import Optional
-from pwic_lib import PWIC_DEFAULTS
+from pwic_lib import PWIC_DEFAULTS, pwic_mime
 
 
 # ===============================
@@ -10,7 +10,7 @@ from pwic_lib import PWIC_DEFAULTS
 
 class pwic_styles_html:
     def __init__(self) -> None:
-        self.mime = 'text/html'
+        self.mime = str(pwic_mime('html'))
         self.css = 'static/styles.css'
         self.html = '''<!DOCTYPE html>
 <html>
@@ -44,7 +44,7 @@ class pwic_styles_html:
 
 class pwic_styles_odt:
     def __init__(self) -> None:
-        self.mime = 'application/vnd.oasis.opendocument.text'
+        self.mime = str(pwic_mime('odt'))
 
         self.manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">

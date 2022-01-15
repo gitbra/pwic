@@ -36,6 +36,7 @@ PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
+PWIC_SERVER_NAME = {'Server': 'Pwic v%s' % PWIC_VERSION}
 
 # Thematic constants
 PWIC_USERS = {'anonymous': 'pwic-anonymous',        # Account for the random visitors
@@ -348,7 +349,7 @@ def pwic_int(value: Any) -> int:
         return 0
 
 
-def pwic_list(input: Optional[str], separator: str = ' ') -> List[str]:
+def pwic_list(input: str, separator: str = ' ') -> List[str]:
     ''' Build a list of unique values from a string and keep the initial order '''
     if input is None:
         input = ''
@@ -613,7 +614,7 @@ def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request:
     # Log the event
     fields = ''
     tups = ''
-    tuple = ()
+    tuple: Tuple[Union[str, int], ...] = ()
     for key in object:
         fields += '%s, ' % key
         tups += '?, '

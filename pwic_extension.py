@@ -185,6 +185,7 @@ class PwicExtension():
 
     @staticmethod
     def on_document_get(sql: sqlite3.Cursor,                # Cursor to query the database
+                        request: web.Request,               # HTTP request
                         project: str,                       # Name of the project
                         user: str,                          # Name of the user
                         filename: str,                      # Name of the file

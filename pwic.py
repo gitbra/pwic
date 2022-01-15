@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session
@@ -27,7 +27,7 @@ from random import randint
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_SERVER_NAME, PWIC_MIMES, PWIC_REGEXES, \
     pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, \
     pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, \
@@ -309,7 +309,7 @@ class PwicServer():
             template_name = '%s/%s.html' % (PWIC_DEFAULTS['language'], name)
         output = app['jinja'].get_template(template_name).render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, pwic, output)
-        return web.Response(text=output, content_type=pwic_mime('html'))
+        return web.Response(text=output, content_type=pwic_mime('html'), headers=MultiDict(PWIC_SERVER_NAME))
 
     async def page(self, request: web.Request) -> web.Response:
         ''' Serve the pages '''
@@ -528,8 +528,7 @@ class PwicServer():
                 tags = ''
                 for row in sql.fetchall():
                     tags += ' ' + row['tags']
-                tags = tags.strip()
-                pwic['tags'] = [] if tags == '' else sorted(pwic_list(tags))
+                pwic['tags'] = sorted(pwic_list(tags.strip()))
 
                 # Fetch the documents of the project
                 sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
@@ -1286,8 +1285,8 @@ class PwicServer():
                 'diff': _diff(row['old_markdown'], row['new_markdown'])}
         return await self._handle_output(request, 'page-compare', pwic=pwic)
 
-    async def document_get(self, request: web.Request) -> web.Response:
-        ''' Download a document '''
+    async def document_get(self, request: web.Request) -> Union[web.Response, web.FileResponse]:
+        ''' Download a document fully or partially '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -1308,29 +1307,30 @@ class PwicServer():
         if row is None:
             return web.HTTPNotFound()
 
-        # Remote file
-        if row['exturl'] != '':
-            if PWIC_REGEXES['protocol'].match(row['exturl']) is not None:
-                return web.HTTPFound(row['exturl'])
-            else:
-                raise web.HTTPNotFound()
-
-        # Transfer the file
+        # Checks
         filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
-        try:
+        if row['exturl'] == '':
+            if not isfile(filename):
+                raise web.HTTPNotFound()
             if getsize(filename) != row['size']:
-                raise web.HTTPConflict()  # Size mismatch causes an infinite download time
-            if not PwicExtension.on_document_get(sql, row['project'], user, row['filename'], row['mime'], row['size']):
-                raise web.HTTPUnauthorized()
-            with open(filename, 'rb') as f:
-                content = f.read()
-        except FileNotFoundError:
-            raise web.HTTPNotFound()
-        headers = {'Content-Type': row['mime'],
-                   'Content-Length': str(row['size'])}
-        if request.rel_url.query.get('attachment', None) is not None:
-            headers['Content-Disposition'] = 'attachment; filename="%s"' % pwic_attachment_name(row['filename'])
-        return web.Response(body=content, headers=MultiDict(headers))
+                raise web.HTTPConflict()            # Size mismatch causes an infinite download time
+        else:
+            if PWIC_REGEXES['protocol'].match(row['exturl']) is None:
+                raise web.HTTPNotFound()
+        if not PwicExtension.on_document_get(sql, request, row['project'], user, row['filename'], row['mime'], row['size']):
+            raise web.HTTPUnauthorized()
+
+        # Transfer the remote file
+        if row['exturl'] != '':
+            return web.HTTPFound(row['exturl'])
+        else:
+            # ... or the local file
+            headers = MultiDict({'Content-Type': row['mime'],
+                                 'Content-Length': str(row['size'])})
+            if request.rel_url.query.get('attachment', None) is not None:
+                headers['Content-Disposition'] = 'attachment; filename="%s"' % pwic_attachment_name(row['filename'])
+            headers.update(PWIC_SERVER_NAME)
+            return web.FileResponse(path=filename, chunk_size=512 * 1024, status=200, headers=headers)
 
     async def api_logon(self, request: web.Request) -> web.Response:
         ''' API to log on people '''
@@ -2041,9 +2041,9 @@ class PwicServer():
         # Return the file
         content = inmemory.getvalue()
         inmemory.close()
-        return web.Response(body=content,
-                            headers=MultiDict({'Content-Type': 'application/x-zip-compressed',
-                                               'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}))
+        headers = {'Content-Type': 'application/x-zip-compressed',
+                   'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}
+        return web.Response(body=content, headers=MultiDict(headers))
 
     async def api_page_create(self, request: web.Request) -> web.Response:
         ''' API to create a new page '''
@@ -2505,9 +2505,9 @@ class PwicServer():
 
         # Format MD
         if format == 'md':
-            return web.Response(body=row['markdown'],
-                                headers=MultiDict({'Content-Type': 'text/markdown',
-                                                   'Content-Disposition': 'attachment; filename="%s"' % endname}))
+            headers = {'Content-Type': 'text/markdown',
+                       'Content-Disposition': 'attachment; filename="%s"' % endname}
+            return web.Response(body=row['markdown'], headers=MultiDict(headers))
 
         # Format HTML
         elif format == 'html':
@@ -2522,8 +2522,9 @@ class PwicServer():
                                       self._md2html(sql, project, page, revision, row['markdown'])[0])
             html = html.replace('<a href="/special/document/', '<a href="%s/special/document/' % baseUrl)
             html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % baseUrl)
-            return web.Response(body=html, headers=MultiDict({'Content-Type': htmlStyles.mime,
-                                                              'Content-Disposition': 'attachment; filename="%s"' % endname}))
+            headers = {'Content-Type': htmlStyles.mime,
+                       'Content-Disposition': 'attachment; filename="%s"' % endname}
+            return web.Response(body=html, headers=MultiDict(headers))
 
         # Format ODT
         elif format == 'odt':
@@ -2634,8 +2635,9 @@ class PwicServer():
             # Return the file
             buffer = inmemory.getvalue()
             inmemory.close()
-            return web.Response(body=buffer, headers=MultiDict({'Content-Type': odtStyles.mime,
-                                                                'Content-Disposition': 'attachment; filename="%s"' % endname}))
+            headers = {'Content-Type': odtStyles.mime,
+                       'Content-Disposition': 'attachment; filename="%s"' % endname}
+            return web.Response(body=buffer, headers=MultiDict(headers))
 
         # Other format
         else:
@@ -3342,7 +3344,7 @@ def main() -> bool:
                     'tenant': pwic_option(sql, '', 'oauth_tenant', ''),
                     'identifier': pwic_option(sql, '', 'oauth_identifier', ''),
                     'server_secret': pwic_option(sql, '', 'oauth_secret', ''),
-                    'domains': pwic_list(pwic_option(sql, '', 'oauth_domains'))}
+                    'domains': pwic_list(str(pwic_option(sql, '', 'oauth_domains', '')))}
 
     # Compile the IP filters
     def _compile_ip():
