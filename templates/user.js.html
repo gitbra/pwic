@@ -29,6 +29,7 @@
 						throw Error(errorText + ' ['+response.status+']');
 					} else {
 						user_password_popup();
+						$('#pwic_password_status').html('{{pwic.emojis.green_check}}');
 						alert(successText);
 					}
 				})

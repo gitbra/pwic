@@ -27,7 +27,7 @@ from random import randint
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_SERVER_NAME, PWIC_MIMES, PWIC_REGEXES, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
     pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, \
     pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, \
@@ -309,7 +309,9 @@ class PwicServer():
             template_name = '%s/%s.html' % (PWIC_DEFAULTS['language'], name)
         output = app['jinja'].get_template(template_name).render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, pwic, output)
-        return web.Response(text=output, content_type=pwic_mime('html'), headers=MultiDict(PWIC_SERVER_NAME))
+        headers: MultiDict = MultiDict({})
+        PwicExtension.on_html_headers(headers, pwic.get('project', ''), name)
+        return web.Response(text=output, content_type=pwic_mime('html'), headers=headers)
 
     async def page(self, request: web.Request) -> web.Response:
         ''' Serve the pages '''
@@ -659,8 +661,8 @@ class PwicServer():
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
         sql = self._connect()
-        drange = max(-1, pwic_int(pwic_option(sql, project, 'audit_range', '30')))
-        dt = pwic_dt(drange)
+        days = max(-1, pwic_int(pwic_option(sql, project, 'audit_range', '30')))
+        dt = pwic_dt(days)
 
         # Fetch the name of the project
         sql.execute(''' SELECT b.description
@@ -678,7 +680,7 @@ class PwicServer():
         pwic = {'title': 'Audit',
                 'project': project,
                 'project_description': row['description'],
-                'range': drange,
+                'range': days,
                 'systime': pwic_dt(),
                 'up': app['up']}
 
@@ -1329,7 +1331,7 @@ class PwicServer():
                                  'Content-Length': str(row['size'])})
             if request.rel_url.query.get('attachment', None) is not None:
                 headers['Content-Disposition'] = 'attachment; filename="%s"' % pwic_attachment_name(row['filename'])
-            headers.update(PWIC_SERVER_NAME)
+            PwicExtension.on_html_headers(headers, row['project'], None)
             return web.FileResponse(path=filename, chunk_size=512 * 1024, status=200, headers=headers)
 
     async def api_logon(self, request: web.Request) -> web.Response:
@@ -1528,9 +1530,11 @@ class PwicServer():
         # Create the default user account
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
-        if sql.execute(''' SELECT 1 FROM users WHERE user = ?''', (user, )).fetchone() is None:
-            sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, '')''', (user, PWIC_MAGIC_OAUTH))
-            # Remarks:
+        dt = pwic_dt()
+        sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
+                        VALUES (?, ?, '', ?, ?)''',
+                    (user, PWIC_MAGIC_OAUTH, dt['date'], dt['time']))
+        if sql.rowcount > 0:
             # - PWIC_DEFAULTS['password'] is not set because the user will forget to change it
             # - The user cannot change the internal password because the current password will not be hashed correctly
             # - The password can be reset from the administration console only
@@ -1913,7 +1917,7 @@ class PwicServer():
         if len(maps) > 0:
             viz += '}\n'
         viz += '}'
-        return web.Response(text=viz, content_type='text/vnd.graphviz')
+        return web.Response(text=viz, content_type=pwic_mime('gv'))
 
     async def api_project_export(self, request: web.Request) -> web.Response:
         ''' Download the project as a ZIP file '''
@@ -2718,10 +2722,10 @@ class PwicServer():
                 self._rollback()
                 raise web.HTTPForbidden()
         else:
-            sql.execute(''' INSERT INTO users (user, password)
-                            SELECT ?, ?
-                            WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
-                        (newuser, pwic_sha256(PWIC_DEFAULTS['password']), newuser))
+            dt = pwic_dt()
+            sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
+                            VALUES (?, ?, '', ?, ?)''',
+                        (newuser, pwic_sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
             if sql.rowcount > 0:
                 pwic_audit(sql, {'author': user,
                                  'event': 'create-user',
@@ -2773,17 +2777,21 @@ class PwicServer():
         ok = False
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
-        sql.execute(''' SELECT user FROM users
+        sql.execute(''' SELECT user
+                        FROM users
                         WHERE user     = ?
                           AND password = ?''',
                     (user, pwic_sha256(current)))
         if sql.fetchone() is not None:
             # Update the password
+            dt = pwic_dt()
             sql.execute(''' UPDATE users
-                            SET initial  = '',
-                                password = ?
-                            WHERE user   = ?''',
-                        (pwic_sha256(new1), user))
+                            SET password      = ?,
+                                initial       = '',
+                                password_date = ?,
+                                password_time = ?
+                            WHERE user = ?''',
+                        (pwic_sha256(new1), dt['date'], dt['time'], user))
             if sql.rowcount > 0:
                 pwic_audit(sql, {'author': user,
                                  'event': 'change-password',
@@ -3261,7 +3269,20 @@ def main() -> bool:
     sql.execute('PRAGMA optimize')
     # ... PWIC
     app['pwic'] = PwicServer()
-    setup(app, EncryptedCookieStorage(urandom(32)))  # Storage for cookies
+    # ... session
+    b = pwic_option(sql, '', 'keep_sessions') is None
+    if b:
+        sql.execute(''' DELETE FROM env
+                        WHERE key = 'session_secret' ''')
+    skey: Union[Optional[str], bytes] = pwic_option(sql, '', 'session_secret')
+    if skey is None:
+        skey = urandom(32)
+    if not b:
+        sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                        VALUES ('', 'session_secret', ?)''',
+                    (skey, ))
+    setup(app, EncryptedCookieStorage(skey))    # Storage for the cookies
+    del skey
     # ... Markdown parser
     app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'],
                                safe_mode=pwic_option(sql, '', 'safe_mode') is not None)
@@ -3389,7 +3410,7 @@ def main() -> bool:
     row = sql.execute(''' SELECT MAX(id) AS id
                           FROM audit
                           WHERE event = 'start-server' ''').fetchone()
-    if row is not None:
+    if row['id'] is not None:
         row = sql.execute(''' SELECT date, time
                               FROM audit
                               WHERE id = ?''',

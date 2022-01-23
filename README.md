@@ -56,6 +56,7 @@ Who can do the most can do the least!
 - Low technical requirements and bandwidth
 - Affordable solution based on open-source applications
 - Fast setup with Python 3 in 10 minutes
+- Possible deployment with command lines
 - Local storage of the uploaded files and SQLite database
 - Support for HTTP and HTTPS
 - Unicode content and URL
@@ -87,23 +88,23 @@ Who can do the most can do the least!
 - Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
 - Make sure that the subfolder `db/` is writable
 - Initialize the SQLite database: `python pwic_admin.py init-db`
-- Create a new project: `python pwic_admin.py create-project --help`
+- Create a new project `demo` for the user `admin`: `python pwic_admin.py create-project demo "Demo project" admin`
 	- The default password of the users is `initial` as defined in `PWIC_DEFAULT_PASSWORD`.
-- Define the global and project-dependent variables, at least `base_url`: `python pwic_admin.py set-env --help` (details available in the help page)
+- Define the global and project-dependent variables: `python pwic_admin.py set-env --help`
+	- The variable `base_url` should be updated once.
+	- More variables are explained in the embedded Pwic's help page.
 - Run the server: `python pwic.py`
-	- The bind address `0.0.0.0` and port can be modified in the command line if you need a public exposure for your server
+	- The bind address `0.0.0.0` and the port can be modified in the command line. This is required to expose your Pwic server to the public after you have made the correct configuration.
 - Open your browser at `http://127.0.0.1:8080`
 
-If you intend to change the cascading style sheets (CSS), you need SASS:
+If you intend to change the default cascading style sheets (CSS), you need SASS. Note that overriding the default CSS is possible in the options by linking to custom CSS files, which does not necessarily require SASS.
 
 - Install Node.js: `apt-get install node`
 - Install the dependencies: `npm install -g sass`
 - Adapt the templates in `templates/` and the SASS files in `static/`
-- Compile the CSS files:
+- Compile Pwic's CSS files:
 	- `sass --no-source-map --style=compressed static/styles.sass static/styles.css`
 	- `sass --no-source-map --style=compressed static/styles_dark.sass static/styles_dark.css`
-
-Note: overriding the default CSS is possible in the options by linking to custom CSS files, and then you won't need SASS.
 
 
 ## Support

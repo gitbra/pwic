@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<title>API specification for Pwic</title>
-	<link rel="stylesheet" type="text/css" href="/static/swagger-ui.css" >
+	<link rel="stylesheet" type="text/css" href="/static/api/swagger-ui.css" >
 	<style>
 		html {
 			box-sizing: border-box;
@@ -22,12 +22,12 @@
 <body>
 	<div id="swagger-ui"></div>
 
-	<script src="/static/swagger-ui-bundle.js" charset="UTF-8"> </script>
-	<script src="/static/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+	<script src="/static/api/swagger-ui-bundle.js" charset="UTF-8"> </script>
+	<script src="/static/api/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
 	<script>
 		window.onload = function() {
 			const ui = SwaggerUIBundle({
-				url: "/static/swagger.txt",
+				url: "/static/api/swagger.txt",
 				dom_id: '#swagger-ui',
 				deepLinking: true,
 				presets: [

@@ -23,7 +23,7 @@
 				</li>
 			{% endif %}
 			{% if pwic.userpage != pwic.constants.anonymous_user %}
-				<li>Own password : {{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}
+				<li>Own password : <span id="pwic_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
 					{% if pwic.password_oauth %}
 						<span title="Federated identification only">{{pwic.emojis.id}}</span>
 					{% elif pwic.user == pwic.userpage %}
@@ -58,7 +58,7 @@
 
 		<h2>Contributions in the last 90 days</h2>
 		{% if pwic.pages|count == 0 %}
-			<p>The user has no contribution yet.</p>
+			<p class="pwic_center pwic_italic">The user has no recent contribution.</p>
 		{% else%}
 			<table>
 				<tr>
@@ -98,7 +98,7 @@
 
 		<h2>Uploaded documents</h2>
 		{% if pwic.documents|count == 0 %}
-			<p>The user owns no document.</p>
+			<p class="pwic_center pwic_italic">The user owns no document.</p>
 		{% else%}
 			<table>
 				<tr>

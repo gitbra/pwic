@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-from typing import Optional, Dict, Tuple, Any
+from typing import Optional, Dict, List, Tuple, Any
 import argparse
 import sqlite3
 from prettytable import PrettyTable
 import imagesize
-import re
 import gzip
 import datetime
 import sys
@@ -15,9 +14,9 @@ from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
 
-from pwic_lib import PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, \
-    PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_option, pwic_list, pwic_magic_bytes, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, \
+    PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
+    PWIC_ENV_INTERNAL, PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_option, pwic_list, pwic_magic_bytes, \
     pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
 from pwic_extension import PwicExtension
 
@@ -32,10 +31,12 @@ def main() -> bool:
     except AttributeError:
         pass
 
-    # Prepare the command line
-    parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console')
+    # Prepare the command line (subparsers cannot be grouped)
+    parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console v%s' % PWIC_VERSION)
+
     subparsers = parser.add_subparsers(dest='command')
 
+    # ... Initialization
     subparsers.add_parser('generate-ssl', help='Generate the self-signed certificates')
 
     subparsers.add_parser('init-db', help='Initialize the database once')
@@ -49,8 +50,11 @@ def main() -> bool:
     spb.add_argument('value', default='', help='Value of the variable')
     spb.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
 
+    subparsers.add_parser('repair-env', help='Fix the incorrect environment variables')
+
     subparsers.add_parser('show-mime', help='Show the MIME types defined on the server (Windows only)')
 
+    # ... Projects
     subparsers.add_parser('show-projects', help='Show the existing projects')
 
     spb = subparsers.add_parser('create-project', help='Create a new project')
@@ -63,33 +67,38 @@ def main() -> bool:
     spb.add_argument('admin', default='', help='User name of the administrator')
 
     spb = subparsers.add_parser('split-project', help='Copy a project into a dedicated database')
-    spb.add_argument('project', default='', help='Project name')
     spb.add_argument('--no-history', action='store_true', help='Remove the history')
+    spb.add_argument('project', nargs='+', default='', help='Project name')
 
     spb = subparsers.add_parser('delete-project', help='Delete an existing project (irreversible)')
     spb.add_argument('project', default='', help='Project name')
 
+    # ... Users
     spb = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
     spb.add_argument('user', default='', help='User name')
 
     spb = subparsers.add_parser('reset-password', help='Reset the password of a user')
     spb.add_argument('user', default='', help='User name')
+    spb.add_argument('--create', action='store_true', help='Create the user account if needed')
     spb.add_argument('--oauth', action='store_true', help='Force the federated authentication')
 
     spb = subparsers.add_parser('revoke-user', help='Revoke a user')
     spb.add_argument('user', default='', help='User name')
     spb.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
 
+    # ... Maintenance
     spb = subparsers.add_parser('show-audit', help='Show the log of the database (no HTTP traffic)')
     spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar='30')
     spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar='0')
 
-    subparsers.add_parser('show-logon', help='Show the last logons of the users')
+    spb = subparsers.add_parser('show-logon', help='Show the last logons of the users')
+    spb.add_argument('--days', type=int, default=365, help='Number of days in the past', metavar='365')
 
     subparsers.add_parser('show-stats', help='Show some statistics')
 
     spb = subparsers.add_parser('show-inactivity', help='Show the inactive users who have a write access')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    spb.add_argument('--days', type=int, default=90, help='Number of days in the past', metavar='90')
 
     spb = subparsers.add_parser('compress-static', help='Compress the static files for a faster delivery (optional)')
     spb.add_argument('--revert', action='store_true', help='Revert the operation')
@@ -118,6 +127,8 @@ def main() -> bool:
         return show_env(args.var)
     elif args.command == 'set-env':
         return set_env(args.project, args.name, args.value, args.override)
+    elif args.command == 'repair-env':
+        return repair_env()
     elif args.command == 'show-mime':
         return show_mime()
     elif args.command == 'show-projects':
@@ -133,17 +144,17 @@ def main() -> bool:
     elif args.command == 'create-user':
         return create_user(args.user)
     elif args.command == 'reset-password':
-        return reset_password(args.user, args.oauth)
+        return reset_password(args.user, args.create, args.oauth)
     elif args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
     elif args.command == 'show-audit':
         return show_audit(args.min, args.max)
     elif args.command == 'show-logon':
-        return show_logon()
+        return show_logon(args.days)
     elif args.command == 'show-stats':
         return show_stats()
     elif args.command == 'show-inactivity':
-        return show_inactivity(args.project)
+        return show_inactivity(args.project, args.days)
     elif args.command == 'compress-static':
         return compress_static(args.revert)
     elif args.command == 'clear-cache':
@@ -186,6 +197,7 @@ def db_lock(sql: sqlite3.Cursor) -> bool:
 def db_create_tables(sql: sqlite3.Cursor) -> bool:
     if sql is None:
         return False
+    dt = pwic_dt()
 
     # Table PROJECTS
     sql.execute('''
@@ -200,27 +212,27 @@ CREATE TABLE "projects" (
     # Table ENV
     sql.execute('''
 CREATE TABLE "env" (
-    "project" TEXT NOT NULL,    -- Don't default to '' else there is a unicity key for 'key'
+    "project" TEXT NOT NULL,    -- Never default to ''
     "key" TEXT NOT NULL,
     "value" TEXT NOT NULL,
     FOREIGN KEY("project") REFERENCES "projects"("project"),
     PRIMARY KEY("key","project")
 )''')
-    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'file_formats', 'md html odt')''')
-    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'robots', 'noarchive noindex')''')
-    sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', 'safe_mode', 'X')''')
 
     # Table USERS
     sql.execute('''
 CREATE TABLE "users" (
     "user" TEXT NOT NULL,
-    "password" TEXT NOT NULL DEFAULT '',
-    "initial" TEXT NOT NULL DEFAULT 'X' CHECK("initial" IN ('', 'X')),
+    "password" TEXT NOT NULL,
+    "initial" TEXT NOT NULL CHECK("initial" IN ('', 'X')),
+    "password_date" TEXT NOT NULL,
+    "password_time" TEXT NOT NULL,
     PRIMARY KEY("user")
 )''')
-    sql.execute(''' INSERT INTO users (user, password, initial) VALUES ('', '', '')''')     # Empty pages.valuser
-    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['anonymous'], ))
-    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, '', '')''', (PWIC_USERS['ghost'], ))
+    for e in ['', PWIC_USERS['anonymous'], PWIC_USERS['ghost']]:
+        sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
+                        VALUES (?, '', '', ?, ?)''',
+                    (e, dt['date'], dt['time']))
 
     # Table ROLES
     sql.execute('''
@@ -416,6 +428,7 @@ def generate_ssl() -> bool:
 
 
 def init_db() -> bool:
+    # Create the database
     if not isdir(PWIC_DB):
         mkdir(PWIC_DB)
     if isfile(PWIC_DB_SQLITE):
@@ -425,9 +438,22 @@ def init_db() -> bool:
         if sql is None:
             print('Error: cannot create the database')
         else:
+            # Create the structure of the tables
             db_create_tables(sql)
             pwic_audit(sql, {'author': PWIC_USERS['system'],
                              'event': 'init-db'})
+
+            # Add the default, safe or mandatory configuration
+            for (key, value) in [('base_url', 'http://127.0.0.1:8080'),
+                                 ('file_formats', 'md html odt'),
+                                 ('robots', 'noarchive noindex'),
+                                 ('safe_mode', 'X')]:
+                sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', ?, ?)''', (key, value))
+                pwic_audit(sql, {'author': PWIC_USERS['system'],
+                                 'event': 'set-%s' % key,
+                                 'string': '' if key in PWIC_ENV_PRIVATE else value})
+
+            # Confirmation
             db_commit()
             print('The database is created at "%s"' % PWIC_DB_SQLITE)
             return True
@@ -497,9 +523,9 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
     if override and (project != ''):
         print('Error: useless parameter --override if a project is indicated')
         return False
-    merged = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
-    if key not in merged:
-        print('Error: the name of the variable must be one of <%s>' % ', '.join(merged))
+    allkeys = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
+    if key not in allkeys:
+        print('Error: the name of the variable must be one of <%s>' % ', '.join(allkeys))
         return False
     if (project != '') and (key in PWIC_ENV_PROJECT_INDEPENDENT):
         print('Error: the parameter is project-independent')
@@ -526,10 +552,15 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
 
     # Update the variable
     if value == '':
-        sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
+        sql.execute(''' DELETE FROM env
+                        WHERE project = ?
+                          AND key     = ?''',
+                    (project, key))
         verb = 'deleted'
     else:
-        sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
+        sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                        VALUES (?, ?, ?)''',
+                    (project, key, value))
         verb = 'updated'
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': '%sset-%s' % ('un' if value == '' else '', key),
@@ -540,6 +571,47 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
         print('Variable %s for the project "%s"' % (verb, project))
     else:
         print('Variable %s globally' % verb)
+    return True
+
+
+def repair_env() -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Analyze each variables
+    all_keys = PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT + PWIC_ENV_INTERNAL
+    buffer = []
+    sql.execute(''' SELECT project, key, value
+                    FROM env
+                    ORDER BY project, key''')
+    for row in sql.fetchall():
+        if (row['key'] not in all_keys) or \
+           ((row['project'] != '') and (row['key'] in PWIC_ENV_PROJECT_INDEPENDENT)) or \
+           (row['value'] == ''):
+            buffer.append((row['project'], row['key']))
+    for e in buffer:
+        sql.execute(''' DELETE FROM env
+                        WHERE project = ?
+                          AND key     = ?''', e)
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
+                         'event': 'unset-%s' % e[1],
+                         'project': e[0]})
+
+    # Report
+    if len(buffer) == 0:
+        print('No change is required.')
+    else:
+        db_commit()
+        tab = PrettyTable()
+        tab.field_names = ['Project', 'Variable']
+        for f in tab.field_names:
+            tab.align[f] = 'l'
+        tab.header = True
+        tab.border = True
+        tab.add_rows(buffer)
+        print(tab.get_string())
     return True
 
 
@@ -558,7 +630,7 @@ def show_mime() -> bool:
     for f in tab.field_names:
         tab.align[f] = 'l'
     tab.header = True
-    tab.border = False
+    tab.border = True
 
     # Read all the file extensions
     root = winreg.HKEY_CLASSES_ROOT
@@ -592,10 +664,11 @@ def show_projects() -> bool:
     # Select the projects
     sql.execute(''' SELECT a.project, a.description, b.user
                     FROM projects AS a
-                        INNER JOIN roles AS b
+                        LEFT OUTER JOIN roles AS b
                             ON  b.project  = a.project
                             AND b.admin    = 'X'
                             AND b.disabled = ''
+                    WHERE a.project <> ''
                     ORDER BY a.project ASC,
                              b.user    ASC''')
     data = {}
@@ -603,17 +676,18 @@ def show_projects() -> bool:
         if row['project'] not in data:
             data[row['project']] = {'description': row['description'],
                                     'admin': []}
-        data[row['project']]['admin'].append(row['user'])
+        if row['user'] is not None:
+            data[row['project']]['admin'].append(row['user'])
 
     # Display the entries
     tab = PrettyTable()
-    tab.field_names = ['Project', 'Description', 'Date', 'Administrators']
+    tab.field_names = ['Project', 'Description', 'Administrators', 'Count']
     for f in tab.field_names:
         tab.align[f] = 'l'
     tab.header = True
     tab.border = True
     for key in data:
-        tab.add_row([key, data[key]['description'], data[key]['date'], ', '.join(data[key]['admin'])])
+        tab.add_row([key, data[key]['description'], ', '.join(data[key]['admin']), len(data[key]['admin'])])
     print(tab.get_string())
     return True
 
@@ -651,11 +725,10 @@ def create_project(project: str, description: str, admin: str) -> bool:
         print('Error: impossible to create "%s"' % path)
         return False
 
-    # Add the user account if not existent. The default password is encoded in the SQLite database
-    sql.execute(''' INSERT INTO users (user, password)
-                    SELECT ?, ?
-                    WHERE NOT EXISTS ( SELECT 1 FROM users WHERE user = ? )''',
-                (admin, pwic_sha256(PWIC_DEFAULTS['password']), admin))
+    # Add the user account
+    sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
+                    VALUES (?, ?, 'X', ?, ?)''',
+                (admin, pwic_sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
     if sql.rowcount > 0:
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'create-user',
@@ -670,13 +743,14 @@ def create_project(project: str, description: str, admin: str) -> bool:
                      'project': project})
 
     # Add the role
-    sql.execute(''' INSERT INTO roles (project, user, admin, reader) VALUES (?, ?, 'X', 'X')''', (project, admin))
+    sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'grant-admin',
                      'project': project,
                      'user': admin})
     sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USERS['anonymous']))
+    sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USERS['ghost']))
 
     # Add a default homepage
     sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
@@ -695,6 +769,8 @@ def create_project(project: str, description: str, admin: str) -> bool:
     print('- Project       : %s' % project)
     print('- Administrator : %s' % admin)
     print('- Password      : "%s" or the existing password' % PWIC_DEFAULTS['password'])
+    print('')
+    print("To create new pages in the project, you must change your password and grant the role 'manager' or 'editor' to the suitable user account.")
     print('')
     print('Thanks for using Pwic!')
     return True
@@ -728,6 +804,7 @@ def takeover_project(project: str, admin: str) -> bool:
         return False
 
     # Assign the user to the project
+    db_lock(sql)
     sql.execute(''' UPDATE roles
                     SET admin    = 'X',
                         disabled = ''
@@ -745,10 +822,10 @@ def takeover_project(project: str, admin: str) -> bool:
     return True
 
 
-def split_project(project: str, collapse: bool) -> bool:
+def split_project(projects: List[str], collapse: bool) -> bool:
     # Helpers
     def _transfer_record(sql: sqlite3.Cursor, table: str, row: Dict[str, Any]) -> None:
-        query = ''' INSERT OR IGNORE INTO %s
+        query = ''' INSERT OR REPLACE INTO %s
                     (%s) VALUES (%s)''' % (table,
                                            ', '.join(row.keys()),
                                            ', '.join('?' * len(row)))
@@ -758,18 +835,27 @@ def split_project(project: str, collapse: bool) -> bool:
     sql = db_connect()
     if sql is None:
         return False
-    sql.execute(''' SELECT project
-                    FROM projects
-                    WHERE project = ?''',
-                (project, ))
-    if (project == '') or (sql.fetchone() is None):
-        print('Error: the project does not exist')
+
+    # Fetch the projects
+    projects = sorted(set(projects))
+    assert(len(projects) > 0)
+    ok = True
+    for p in projects:
+        sql.execute(''' SELECT project
+                        FROM projects
+                        WHERE project = ?''',
+                    (p, ))
+        if sql.fetchone() is None:
+            ok = False
+            projects.remove(p)
+            print('Error: unknown project "%s"' % p)
+    if not ok:
         return False
 
     # Create the new database
     fn = PWIC_DB_SQLITE_BACKUP % 'split'
     if isfile(fn):
-        print('Error: the split database already exists')
+        print('Error: the split database "%s" already exists' % fn)
         return False
     try:
         newsql = sqlite3.connect(fn).cursor()
@@ -777,26 +863,29 @@ def split_project(project: str, collapse: bool) -> bool:
         print('Error: the split database cannot be opened')
         return False
     if not db_create_tables(newsql):
-        print('Error: the tables cannot be created')
+        print('Error: the tables cannot be created in the the split database')
         return False
 
     # Transfer the data
     db_lock(sql)
     # ... projects
-    row = sql.execute(''' SELECT *
-                          FROM projects
-                          WHERE project = ?''',
-                      (project, )).fetchone()
-    assert(row is not None)
-    _transfer_record(newsql, 'projects', row)
+    for p in projects:
+        row = sql.execute(''' SELECT *
+                              FROM projects
+                              WHERE project = ?''',
+                          (p, )).fetchone()
+        _transfer_record(newsql, 'projects', row)
     # ... users
     buffer = []
-    sql.execute(''' SELECT user
-                    FROM roles
-                    WHERE project = ?''',
-                (project, ))
-    for row in sql.fetchall():
-        buffer.append(row['user'])
+    for p in projects:
+        sql.execute(''' SELECT user
+                        FROM roles
+                        WHERE project = ?
+                          AND user NOT LIKE 'pwic%' ''',
+                    (p, ))
+        for row in sql.fetchall():
+            if row['user'] not in buffer:
+                buffer.append(row['user'])
     for e in buffer:
         sql.execute(''' SELECT *
                         FROM users
@@ -805,60 +894,70 @@ def split_project(project: str, collapse: bool) -> bool:
         for row in sql.fetchall():
             _transfer_record(newsql, 'users', row)
     # ... roles
-    sql.execute(''' SELECT *
-                    FROM roles
-                    WHERE project = ?''',
-                (project, ))
-    for row in sql.fetchall():
-        _transfer_record(newsql, 'roles', row)
+    for p in projects:
+        sql.execute(''' SELECT *
+                        FROM roles
+                        WHERE project = ?''',
+                    (p, ))
+        for row in sql.fetchall():
+            _transfer_record(newsql, 'roles', row)
     # ... env
-    sql.execute(''' SELECT *
-                    FROM env
-                    WHERE project = ''
-                       OR project = ?''',
-                (project, ))
-    for row in sql.fetchall():
-        _transfer_record(newsql, 'env', row)
+    for p in ([''] + projects):
+        sql.execute(''' SELECT *
+                        FROM env
+                        WHERE project = ?
+                          AND value  <> '' ''',
+                    (p, ))
+        for row in sql.fetchall():
+            if row['key'] not in ['session_secret']:        # Drop all the opened sessions
+                _transfer_record(newsql, 'env', row)
     # ... pages
-    sql.execute(''' SELECT *
-                    FROM pages
-                    WHERE project = ?''',
-                (project, ))
-    for row in sql.fetchall():
-        if collapse and not pwic_xb(row['latest']):
-            continue
-        _transfer_record(newsql, 'pages', row)
+    for p in projects:
+        sql.execute(''' SELECT *
+                        FROM pages
+                        WHERE project = ?''',
+                    (p, ))
+        for row in sql.fetchall():
+            if collapse:
+                if not pwic_xb(row['latest']):
+                    continue
+                row['revision'] = 1
+            _transfer_record(newsql, 'pages', row)
     # ... documents
-    sql.execute(''' SELECT *
-                    FROM documents
-                    WHERE project = ?''',
-                (project, ))
-    for row in sql.fetchall():
-        _transfer_record(newsql, 'documents', row)
+    for p in projects:
+        sql.execute(''' SELECT *
+                        FROM documents
+                        WHERE project = ?''',
+                    (p, ))
+        for row in sql.fetchall():
+            _transfer_record(newsql, 'documents', row)
     # ... audit
-    sql.execute(''' SELECT MAX(id) AS id
-                    FROM audit
-                    WHERE event   = 'create-project'
-                      AND project = ?''',
-                (project, ))
-    id = sql.fetchone()['id']
-    if id is not None:
+    for p in projects:
+        sql.execute(''' SELECT MAX(id) AS id
+                        FROM audit
+                        WHERE event   = 'create-project'
+                          AND project = ?''',
+                    (p, ))
+        id = sql.fetchone()['id']
+        if id is None:
+            id = 1
         sql.execute(''' SELECT *
                         FROM audit
                         WHERE id     >= ?
                           AND project = ?''',
-                    (id, project))
+                    (id, p))
         for row in sql.fetchall():
             row['id'] = None
-            _transfer_record(newsql, 'audit', row)
+            _transfer_record(newsql, 'audit', row)          # Final table not sorted by date and time
 
     # Result
     newsql.execute(''' COMMIT''')
-    pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'split-project',
-                     'project': project})
+    for p in projects:
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
+                         'event': 'split-project',
+                         'project': p})
     db_commit()
-    print('The project "%s" is copied to the separate database "%s"' % (project, fn))
+    print('The projects "%s" are copied into the separate database "%s"' % (', '.join(projects), fn))
     return True
 
 
@@ -944,8 +1043,10 @@ def create_user(user: str) -> bool:
         return False
 
     # Create the user account
-    sql.execute(''' INSERT INTO users (user, password, initial) VALUES (?, ?, ?)''',
-                (user, pwic_sha256(PWIC_DEFAULTS['password']), 'X'))
+    dt = pwic_dt()
+    sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
+                    VALUES (?, ?, 'X', ?, ?)''',
+                (user, pwic_sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'create-user',
                      'user': user})
@@ -954,7 +1055,7 @@ def create_user(user: str) -> bool:
     return True
 
 
-def reset_password(user: str, oauth: bool) -> bool:
+def reset_password(user: str, create: bool, oauth: bool) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -962,7 +1063,8 @@ def reset_password(user: str, oauth: bool) -> bool:
 
     # Warn if the user is an administrator
     user = pwic_safe_user_name(user)
-    if user[:4] in ['', 'pwic']:
+    new_account = sql.execute(''' SELECT 1 FROM users WHERE user = ?''', (user, )).fetchone() is None
+    if (user[:4] in ['', 'pwic']) or (not create and new_account):
         print('Error: invalid user')
         return False
     if sql.execute(''' SELECT user
@@ -985,30 +1087,36 @@ def reset_password(user: str, oauth: bool) -> bool:
         print('Type the new temporary password with 8 characters at least: ', end='')
         pwd = input().strip()
         if len(pwd) < 8:
-            print('Error: password too short')
+            print('Error: the password is too short')
             return False
         pwd = pwic_sha256(pwd)
         initial = 'X'
 
     # Reset the password with no rights takedown else some projects may loose their administrators
-    ok = False
-    sql.execute(''' UPDATE users
-                    SET password = ?,
-                        initial  = ?
-                    WHERE user = ?''',
-                (pwd, initial, user))
-    if sql.rowcount > 0:
+    dt = pwic_dt()
+    if new_account:
+        sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
+                        VALUES (?, ?, ?, ?, ?)''',
+                    (user, pwd, initial, dt['date'], dt['time']))
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
+                         'event': 'create-user',
+                         'user': user})
+        print('\nThe password has been defined for the new user "%s"' % user)
+    else:
+        sql.execute(''' UPDATE users
+                        SET password      = ?,
+                            initial       = ?,
+                            password_date = ?,
+                            password_time = ?
+                        WHERE user = ?''',
+                    (pwd, initial, dt['date'], dt['time'], user))
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'reset-password',
                          'user': user,
                          'string': PWIC_MAGIC_OAUTH if pwd == PWIC_MAGIC_OAUTH else ''})
-        db_commit()
-        ok = True
-    if not ok:
-        print('Error: unknown user')
-    else:
-        print('The password has been changed for the user "%s"' % (user, ))
-    return ok
+        print('\nThe password has been changed for the user "%s"' % user)
+    db_commit()
+    return True
 
 
 def revoke_user(user: str, force: bool) -> bool:
@@ -1022,7 +1130,10 @@ def revoke_user(user: str, force: bool) -> bool:
     if user[:4] == 'pwic':
         print('Error: this user cannot be managed')
         return False
-    if sql.execute(''' SELECT user FROM users WHERE user = ?''', (user, )).fetchone() is None:
+    if sql.execute(''' SELECT user
+                       FROM users
+                       WHERE user = ?''',
+                   (user, )).fetchone() is None:
         print('Error: the user "%s" does not exist' % user)
         return False
 
@@ -1073,7 +1184,11 @@ def revoke_user(user: str, force: bool) -> bool:
             return False
 
     # Disable the user for every project
-    sql.execute(''' SELECT project FROM roles WHERE user = ?''', (user, ))
+    db_lock(sql)
+    sql.execute(''' SELECT project
+                    FROM roles
+                    WHERE user = ?''',
+                (user, ))
     for row in sql.fetchall():
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'delete-user',
@@ -1116,22 +1231,24 @@ def show_audit(dmin: int, dmax: int) -> bool:
     for row in sql.fetchall():
         tab.add_row([row['id'], row['date'], row['time'], row['author'], row['event'], row['user'], row['project'], row['page'], row['revision'], row['ip'], row['string']])
     tab.header = True
-    tab.border = False
-    print(re.compile(r'\s+(\r?\n)\s').sub('\n', tab.get_string().rstrip()[1:]), flush=True)
+    tab.border = True
+    print(tab.get_string())
     return True
 
 
-def show_logon() -> bool:
+def show_logon(days: int) -> bool:
     # Select the data
     sql = db_connect()
     if sql is None:
         return False
+    dt = pwic_dt(days=days)
     sql.execute(''' SELECT a.user, c.date, c.time, b.events
                     FROM users AS a
                         INNER JOIN (
                             SELECT author, MAX(id) AS id, COUNT(id) AS events
                             FROM audit
                             WHERE event = 'logon'
+                              AND date >= ?
                             GROUP BY author
                         ) AS b
                             ON b.author = a.user
@@ -1139,7 +1256,8 @@ def show_logon() -> bool:
                             ON c.id = b.id
                     ORDER BY c.date DESC,
                              c.time DESC,
-                             a.user ASC''')
+                             a.user ASC''',
+                (dt['date-nd'], ))
 
     # Report the log
     tab = PrettyTable()
@@ -1149,8 +1267,8 @@ def show_logon() -> bool:
     for row in sql.fetchall():
         tab.add_row([row['user'], row['date'], row['time'], row['events']])
     tab.header = True
-    tab.border = False
-    print(tab.get_string(), flush=True)
+    tab.border = True
+    print(tab.get_string())
     return True
 
 
@@ -1167,7 +1285,7 @@ def show_stats() -> bool:
     for f in tab.field_names:
         tab.align[f] = 'l'
     tab.header = True
-    tab.border = False
+    tab.border = True
 
     # Macros
     def _totals(sql: sqlite3.Cursor,
@@ -1525,16 +1643,16 @@ def show_stats() -> bool:
                 ORDER BY event''', None)
 
     # Final output
-    print(tab.get_string(), flush=True)
+    print(tab.get_string())
     return True
 
 
-def show_inactivity(project: str) -> bool:
+def show_inactivity(project: str, days: int) -> bool:
     # Select the data
     sql = db_connect()
     if sql is None:
         return False
-    dt = pwic_dt()
+    dt = pwic_dt(days=days)
     sql.execute(''' SELECT b.date, a.user, a.project, a.admin
                     FROM roles AS a
                         INNER JOIN (
@@ -1554,18 +1672,18 @@ def show_inactivity(project: str) -> bool:
                       AND a.disabled    = ''
                       AND b.date       <= ?
                     ORDER BY b.date, a.user, a.project''',
-                (project, project, project, project, dt['date-90d']))
+                (project, project, project, project, dt['date-nd']))
 
     # Report the log
     tab = PrettyTable()
-    tab.field_names = ['Date', 'User', 'Project', 'Administrator']
+    tab.field_names = ['Last date', 'User', 'Project', 'Administrator']
     for f in tab.field_names:
         tab.align[f] = 'l'
     for row in sql.fetchall():
         tab.add_row([row['date'], row['user'], row['project'], row['admin']])
     tab.header = True
-    tab.border = False
-    print(tab.get_string(), flush=True)
+    tab.border = True
+    print(tab.get_string())
     return True
 
 
@@ -1674,8 +1792,8 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
     multi = (project == '')
     tab = PrettyTable()
     tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Reason']
-    for n in range(len(tab.field_names)):
-        tab.align[tab.field_names[n]] = 'l'
+    for f in tab.field_names:
+        tab.align[f] = 'l'
     tab.header = True
     tab.border = True
 

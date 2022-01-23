@@ -15,8 +15,6 @@ from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
-from pwic_extension import PwicExtension
-
 
 # ===================================================
 #  Constants
@@ -36,7 +34,6 @@ PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
-PWIC_SERVER_NAME = {'Server': 'Pwic v%s' % PWIC_VERSION}
 
 # Thematic constants
 PWIC_USERS = {'anonymous': 'pwic-anonymous',        # Account for the random visitors
@@ -57,8 +54,8 @@ PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)
                 }
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'http_log_file', 'http_log_format', 'ip_filter',
-                                'magic_bytes', 'maintenance', 'no_logon', 'oauth_domains', 'oauth_identifier',
+PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'keep_sessions', 'http_log_file', 'http_log_format',
+                                'ip_filter', 'magic_bytes', 'maintenance', 'no_logon', 'oauth_domains', 'oauth_identifier',
                                 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
@@ -71,7 +68,8 @@ PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', '
                                      'mathjax', 'message', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
                                      'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                                      'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
-PWIC_ENV_PRIVATE = ['oauth_secret']
+PWIC_ENV_INTERNAL = ['session_secret']
+PWIC_ENV_PRIVATE = ['oauth_secret', 'session_secret']
 
 # Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
@@ -331,13 +329,13 @@ def pwic_attachment_name(name: str) -> str:
     return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
 
-def pwic_dt(drange: int = 0) -> Dict[str, str]:
+def pwic_dt(days: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
     dts = str(datetime.datetime.now())
     return {'date': dts[:10],
             'date-30d': str(datetime.date.today() - datetime.timedelta(days=30))[:10],
             'date-90d': str(datetime.date.today() - datetime.timedelta(days=90))[:10],
-            'date-nd': str(datetime.date.today() - datetime.timedelta(days=drange))[:10],
+            'date-nd': str(datetime.date.today() - datetime.timedelta(days=days))[:10],
             'time': dts[11:19]}
 
 
@@ -621,6 +619,9 @@ def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request:
         tuple += (object[key], )
     sql.execute("INSERT INTO audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
     assert(sql.rowcount == 1)
+
+    # Specific event
+    from pwic_extension import PwicExtension
     try:
         PwicExtension.on_audit(sql, object, request is not None)
     except Exception:

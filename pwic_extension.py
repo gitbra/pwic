@@ -13,6 +13,9 @@
 from typing import Any, Dict, List, Optional, Tuple
 from aiohttp import web
 import sqlite3
+from multidict import MultiDict
+
+from pwic_lib import PWIC_VERSION
 
 
 class PwicExtension():
@@ -196,6 +199,18 @@ class PwicExtension():
             The result tells if the download of the document is allowed.
         '''
         return True
+
+    @staticmethod
+    def on_html_headers(headers: MultiDict,                 # Output HTTP headers
+                        project: str,                       # Name of the project
+                        template: Optional[str],            # Layout of the page. 'None' denotes a file download
+                        ) -> None:
+        ''' Event when a page or a document is delivered, excluding the API.
+            To change the HTTP headers, modify the parameter 'headers' without reallocating it.
+        '''
+        headers['Server'] = 'Pwic v%s' % PWIC_VERSION
+        if template == 'logon':
+            headers['X-Frame-Options'] = 'deny'
 
     @staticmethod
     def on_html(sql: sqlite3.Cursor,                        # Cursor to query the database
