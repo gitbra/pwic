@@ -32,7 +32,7 @@ def main() -> bool:
         pass
 
     # Prepare the command line (subparsers cannot be grouped)
-    parser = argparse.ArgumentParser(prog='python pwic_admin.py', description='Pwic Management Console v%s' % PWIC_VERSION)
+    parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic Management Console v%s' % PWIC_VERSION)
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -91,7 +91,7 @@ def main() -> bool:
     spb.add_argument('--min', type=int, default=30, help='From MIN days in the past', metavar='30')
     spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar='0')
 
-    spb = subparsers.add_parser('show-logon', help='Show the last logons of the users')
+    spb = subparsers.add_parser('show-login', help='Show the last logins of the users')
     spb.add_argument('--days', type=int, default=365, help='Number of days in the past', metavar='365')
 
     subparsers.add_parser('show-stats', help='Show some statistics')
@@ -149,8 +149,8 @@ def main() -> bool:
         return revoke_user(args.user, args.force)
     elif args.command == 'show-audit':
         return show_audit(args.min, args.max)
-    elif args.command == 'show-logon':
-        return show_logon(args.days)
+    elif args.command == 'show-login':
+        return show_login(args.days)
     elif args.command == 'show-stats':
         return show_stats()
     elif args.command == 'show-inactivity':
@@ -878,11 +878,19 @@ def split_project(projects: List[str], collapse: bool) -> bool:
     # ... users
     buffer = []
     for p in projects:
-        sql.execute(''' SELECT user
-                        FROM roles
-                        WHERE project = ?
-                          AND user NOT LIKE 'pwic%' ''',
-                    (p, ))
+        sql.execute(''' SELECT DISTINCT user
+                        FROM (	SELECT user
+                                FROM roles
+                                WHERE project = ?
+                            UNION
+                                SELECT DISTINCT valuser AS user
+                                FROM pages
+                                WHERE project  = ?
+                                  AND valuser <> ''
+                            )
+                        WHERE user NOT LIKE 'pwic%'
+                        ORDER BY user''',
+                    (p, p))
         for row in sql.fetchall():
             if row['user'] not in buffer:
                 buffer.append(row['user'])
@@ -1236,7 +1244,7 @@ def show_audit(dmin: int, dmax: int) -> bool:
     return True
 
 
-def show_logon(days: int) -> bool:
+def show_login(days: int) -> bool:
     # Select the data
     sql = db_connect()
     if sql is None:
@@ -1247,7 +1255,7 @@ def show_logon(days: int) -> bool:
                         INNER JOIN (
                             SELECT author, MAX(id) AS id, COUNT(id) AS events
                             FROM audit
-                            WHERE event = 'logon'
+                            WHERE event = 'login'
                               AND date >= ?
                             GROUP BY author
                         ) AS b

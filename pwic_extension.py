@@ -175,7 +175,7 @@ class PwicExtension():
         ''' Event after an auditable operation is just executed:
                 change-password  clear-cache       create-document   create-page     create-project     create-user     delete-document
                 delete-draft     delete-project    delete-revision   delete-user     execute-sql        export-project  generate-ssl
-                grant-admin      grant-editor      grant-manager     grant-reader    grant-validator    init-db         logon
+                grant-admin      grant-editor      grant-manager     grant-reader    grant-validator    init-db         login
                 logout           repair-documents  replace-document  reset-password  set-*              split-project   start-server
                 ungrant-admin    ungrant-editor    ungrant-manager   ungrant-reader  ungrant-validator  unset-*         update-page
                 validate-page
@@ -205,11 +205,11 @@ class PwicExtension():
                         project: str,                       # Name of the project
                         template: Optional[str],            # Layout of the page. 'None' denotes a file download
                         ) -> None:
-        ''' Event when a page or a document is delivered, excluding the API.
+        ''' Event when a page or a document is delivered, excluding the API and the static files.
             To change the HTTP headers, modify the parameter 'headers' without reallocating it.
         '''
         headers['Server'] = 'Pwic v%s' % PWIC_VERSION
-        if template == 'logon':
+        if template == 'login':
             headers['X-Frame-Options'] = 'deny'
 
     @staticmethod
@@ -249,7 +249,7 @@ class PwicExtension():
             return str(request.remote)
 
     @staticmethod
-    def on_logon(sql: sqlite3.Cursor,                       # Cursor to query the database
+    def on_login(sql: sqlite3.Cursor,                       # Cursor to query the database
                  user: str,                                 # Name of the user
                  language: str,                             # Selected language
                  ) -> bool:

@@ -10,7 +10,7 @@
 
 	function page_search(event) {
 		event = event|| window.event;
-		if ((event.keyCode || event.which) == 13)
+		if (event.key == 'Enter')
 			page_start_search();
 	}
 </script>

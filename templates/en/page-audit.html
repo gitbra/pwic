@@ -63,7 +63,7 @@
 					<tr>
 						<td class="pwic_nowrap">{{audit.date|escape}}</td>
 						<td>{{audit.time|escape}}</td>
-						<td><a href="/special/user/{{audit.author|urlencode}}">{{audit.author|escape}}</a></td>
+						<td><a href="/special/user/{{audit.author|urlencode}}" rel="nofollow">{{audit.author|escape}}</a></td>
 						<td>{{audit.event|escape}}</td>
 						<td class="pwic_desktop">
 							{% if audit.project != '' %}
@@ -84,7 +84,7 @@
 							{% if audit.string != '' %}
 								{{audit.string|escape}}
 							{% elif audit.user != '' %}
-								<a href="/special/user/{{audit.user|urlencode}}">{{audit.user|escape}}</a>
+								<a href="/special/user/{{audit.user|urlencode}}" rel="nofollow">{{audit.user|escape}}</a>
 							{% endif %}
 						</td>
 					</tr>

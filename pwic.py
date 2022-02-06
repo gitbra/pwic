@@ -25,7 +25,7 @@ from html import escape
 from random import randint
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
+from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
     pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
@@ -100,6 +100,8 @@ class PwicServer():
                 sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html) VALUES (?, ?, ?, ?)''',
                             (project, page, revision, html))
                 self._commit()
+        if pwic_option(sql, project, 'no_heading') is not None:
+            headerNumbering = False
         return pwic_extended_syntax(html,
                                     pwic_option(sql, project, 'heading_mask'),
                                     headerNumbering=headerNumbering)
@@ -223,7 +225,7 @@ class PwicServer():
         self._check_ip(request)
         session = await get_session(request)
         user = pwic_safe_user_name(session.get('user', ''))
-        return PWIC_USERS['anonymous'] if (user == '') and app['no_logon'] else user
+        return PWIC_USERS['anonymous'] if (user == '') and app['no_login'] else user
 
     async def _handle_post(self, request: web.Request) -> Dict[str, Any]:
         ''' Return the POST as a readable object.get() '''
@@ -235,20 +237,19 @@ class PwicServer():
                 result[res] = result[res][0]
         return result
 
-    async def _handle_logon(self, request: web.Request) -> web.Response:
-        ''' Show the logon page '''
+    async def _handle_login(self, request: web.Request) -> web.Response:
+        ''' Show the login page '''
         session = await new_session(request)
         session['user_secret'] = pwic_random_hash()
-        return await self._handle_output(request, 'logon', {'title': 'Connect to Pwic'})
+        return await self._handle_output(request, 'login', {'title': 'Connect to Pwic'})
 
     async def _handle_output(self, request: web.Request, name: str, pwic: Dict[str, Any]) -> web.Response:
         ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'anonymous_user': PWIC_USERS['anonymous'],
-                             'db_path': PWIC_DB,
                              'default_language': PWIC_DEFAULTS['language'],
-                             'changeable_env_variables': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE),
+                             'default_home': PWIC_DEFAULTS['page'],
                              'languages': app['langs'],
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'version': PWIC_VERSION}
@@ -318,7 +319,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Show the requested page
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -482,7 +483,8 @@ class PwicServer():
                 for row in sql.fetchall():
                     for k in row:
                         if (k != 'user') and pwic_xb(row[k]):
-                            pwic[k + 's'].append(row['user'])
+                            if (k == 'disabled') or not pwic_xb(row['disabled']):
+                                pwic[k + 's'].append(row['user'])
 
                 # Fetch the inactive users
                 if pwic['admin']:
@@ -493,7 +495,7 @@ class PwicServer():
                                             FROM audit
                                             WHERE date >= ?
                                               AND ( project = ?
-                                                 OR event IN ("logon", "logout")
+                                                 OR event IN ("login", "logout")
                                               )
                                             GROUP BY author
                                         ) AS b
@@ -618,7 +620,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Check the authorizations
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -656,7 +658,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -710,11 +712,12 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the projects where the user can add pages
         pwic: Dict[str, Any] = {'title': 'Create a page',
                                 'default_project': pwic_safe_name(request.rel_url.query.get('project', '')),
+                                'default_page': pwic_safe_name(request.rel_url.query.get('page', '')),
                                 'projects': []}
         sql = self._connect()
         sql.execute(''' SELECT a.project, b.description
@@ -737,7 +740,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the projects where users can be created
         pwic: Dict[str, Any] = {'title': 'Create a user',
@@ -764,7 +767,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the information of the user
         sql = self._connect()
@@ -863,7 +866,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Parse the query
         sql = self._connect()
@@ -1029,7 +1032,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -1052,7 +1055,8 @@ class PwicServer():
                     (project, ))
         pwic = {'title': 'Project-dependent environment variables',
                 'project': project,
-                'project_description': sql.fetchone()['description']}
+                'project_description': sql.fetchone()['description'],
+                'changeable_vars': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE)}
         return await self._handle_output(request, 'page-env', pwic=pwic)
 
     async def page_roles(self, request: web.Request) -> web.Response:
@@ -1060,7 +1064,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the name of the project
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -1114,7 +1118,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -1204,7 +1208,7 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
@@ -1237,14 +1241,18 @@ class PwicServer():
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
-            return await self._handle_logon(request)
+            return await self._handle_login(request)
 
-        # Fetch the pages
+        # Fetch the parameters
         sql = self._connect()
         project = pwic_safe_name(request.match_info.get('project', ''))
         page = pwic_safe_name(request.match_info.get('page', ''))
         new_revision = pwic_int(request.match_info.get('new_revision', ''))
         old_revision = pwic_int(request.match_info.get('old_revision', ''))
+
+        # Fetch the pages
+        if (pwic_option(sql, project, 'no_history') is not None) and self._is_pure_reader(sql, project, user):
+            raise web.HTTPUnauthorized()
         sql.execute(''' SELECT d.description,
                                b.title,
                                b.markdown AS new_markdown,
@@ -1334,8 +1342,8 @@ class PwicServer():
             PwicExtension.on_html_headers(headers, row['project'], None)
             return web.FileResponse(path=filename, chunk_size=512 * 1024, status=200, headers=headers)
 
-    async def api_logon(self, request: web.Request) -> web.Response:
-        ''' API to log on people '''
+    async def api_login(self, request: web.Request) -> web.Response:
+        ''' API to log in people '''
         # Checks
         self._check_ip(request)
 
@@ -1347,7 +1355,7 @@ class PwicServer():
         if lang not in app['langs']:
             lang = PWIC_DEFAULTS['language']
 
-        # Logon with the credentials
+        # Login with the credentials
         ok = False
         sql = self._connect()
         sql.execute(''' SELECT COUNT(a.user) AS total
@@ -1359,14 +1367,14 @@ class PwicServer():
                           AND a.password = ?''',
                     (user, pwd))
         if sql.fetchone()['total'] > 0:
-            ok = PwicExtension.on_logon(sql, user, lang)
+            ok = PwicExtension.on_login(sql, user, lang)
             if ok:
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
                 if user != PWIC_USERS['anonymous']:
                     pwic_audit(sql, {'author': user,
-                                     'event': 'logon'},
+                                     'event': 'login'},
                                request)
                     self._commit()
 
@@ -1551,7 +1559,7 @@ class PwicServer():
         session['language'] = PWIC_DEFAULTS['language']     # TODO The language is not selectable
         session['user_secret'] = pwic_random_hash()
         pwic_audit(sql, {'author': user,
-                         'event': 'logon',
+                         'event': 'login',
                          'string': PWIC_MAGIC_OAUTH},
                    request)
         self._commit()
@@ -1702,15 +1710,19 @@ class PwicServer():
         if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE):
             raise web.HTTPBadRequest()
 
-        # Verify that the user is administrator of the project
+        # Verify that the user is administrator and has changed his password
         sql = self._connect()
-        if sql.execute(''' SELECT user
-                           FROM roles
-                           WHERE project  = ?
-                             AND user     = ?
-                             AND admin    = 'X'
-                             AND disabled = '' ''',
-                       (project, user)).fetchone() is None:
+        sql.execute(''' SELECT 1
+                        FROM roles AS a
+                            INNER JOIN users AS b
+                                ON b.user = a.user
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.admin    = 'X'
+                          AND a.disabled = ''
+                          AND b.initial  = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
 
         # Update the variable
@@ -2599,7 +2611,7 @@ class PwicServer():
             attachments = ''
             for meta in pictMeta:
                 meta = pictMeta[meta]
-                if not meta['remote']:
+                if not meta['remote'] and isfile(meta['filename']):
                     content = b''
                     with open(meta['filename'], 'rb') as f:
                         content = f.read()
@@ -3280,7 +3292,7 @@ def main() -> bool:
     if not b:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                         VALUES ('', 'session_secret', ?)''',
-                    (skey, ))
+                    (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
     setup(app, EncryptedCookieStorage(skey))    # Storage for the cookies
     del skey
     # ... Markdown parser
@@ -3289,8 +3301,8 @@ def main() -> bool:
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
-    app.add_routes([web.post('/api/logon', app['pwic'].api_logon),
-                    web.get('/api/logon', app['pwic']._handle_logon),
+    app.add_routes([web.post('/api/login', app['pwic'].api_login),
+                    web.get('/api/login', app['pwic']._handle_login),
                     web.get('/api/logout', app['pwic'].api_logout),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
@@ -3313,9 +3325,7 @@ def main() -> bool:
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
                     web.get('/api', app['pwic'].api_swagger),
-                    web.get('/special/logon', app['pwic']._handle_logon),
                     web.get('/special/help', app['pwic'].page_help),
-                    web.get('/special/create-project', app['pwic'].page_help),
                     web.get('/special/create-page', app['pwic'].page_create),
                     web.get('/special/create-user', app['pwic'].user_create),
                     web.get('/special/user/{userpage}', app['pwic'].page_user),
@@ -3360,7 +3370,7 @@ def main() -> bool:
             app['cors'].add(route)
 
     # General options of the server
-    app['no_logon'] = pwic_option(sql, '', 'no_logon') is not None
+    app['no_login'] = pwic_option(sql, '', 'no_login') is not None
     app['oauth'] = {'provider': pwic_option(sql, '', 'oauth_provider', None),
                     'tenant': pwic_option(sql, '', 'oauth_tenant', ''),
                     'identifier': pwic_option(sql, '', 'oauth_identifier', ''),

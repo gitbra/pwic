@@ -31,7 +31,7 @@
 			{% set u = namespace(value=0) %}
 			{% for role in pwic.roles %}
 				<tr id="roles_tag_{{u.value+7}}">
-					<td><a href="/special/user/{{role.user|urlencode}}">{{role.user|escape}}</a></td>
+					<td><a href="/special/user/{{role.user|urlencode}}" rel="nofollow">{{role.user|escape}}</a></td>
 					<td>
 						{% if role.user[:4] == 'pwic' %}
 							<span title="Special account">{{pwic.emojis.star}}</span>

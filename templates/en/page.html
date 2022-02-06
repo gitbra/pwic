@@ -41,7 +41,7 @@
 			{% if pwic.protection %}
 				<span title="The page is protected">{{pwic.emojis.padlock}}</span>
 			{% endif %}
-			{% if pwic.page == 'home' %}
+			{% if pwic.page == pwic.constants.default_home %}
 				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% endif %}
 			{% if pwic.manager %}
@@ -88,7 +88,7 @@
 		{% endif %}
 
 		{% if pwic.valuser != '' %}
-			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
+			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}" rel="nofollow">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
 		{% endif %}
 
 		{% if pwic.tmap|count > 0 %}
@@ -147,7 +147,7 @@
 		{% endif %}
 
 		<p id="page_lastmod">
-			Last modified by <a href="/special/user/{{pwic.author|urlencode}}">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
+			Last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
 			<br/>Hash: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
 		</p>
 

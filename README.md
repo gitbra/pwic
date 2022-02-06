@@ -3,12 +3,10 @@
 
 ## Presentation
 
-**Pwic** is a wiki server to support your personal and professional documentation. Its paradigm is to put the documentation at the center of your methodology through comprehensive features and 5 basic roles (reader, editor, validator, manager and administrator). The users are focused on writing the documentation, not on changing the styles. The managers supervise the progress. The technical team can reject any uncomplient document.
+**Pwic** is a wiki server to support your personal and professional documentation. Its paradigm is to put the documentation at the center of your methodology through comprehensive features and 5 basic roles (reader, editor, validator, manager and administrator). The users are focused on writing the documentation, not on changing the styles. The managers supervise the progress. At the end, the technical team can reject any uncomplient document.
 
 
 ## Some supported features
-
-Who can do the most can do the least!
 
 ### For the readers
 
@@ -20,19 +18,10 @@ Who can do the most can do the least!
 - Automatic summary of the page
 - In-text search with inclusion, exclusion, hash tags and special keywords
 - Highlight of the lines of code
-- Export of a page to Markdown (*.md), web page (*.html) and OpenDocument (*.odt)
+- Export of a page to Markdown (.md), web page (.html) and OpenDocument (.odt)
 - Share by link
 - Share by email
 - Internationalization (English only for now)
-
-### For the editors
-
-- Page layout supervised with Markdown
-- Wysiwyg editor for Markdown
-- Classification of the pages with hashtags
-- Automatic numbering of the headers
-- Linear and partially undoable versioning for a proper customer's validation
-- Status follow-up by page and hashtag
 
 ### For the validators
 
@@ -40,11 +29,20 @@ Who can do the most can do the least!
 - No change or no deletion possible after a page is validated
 - Visible control hash key
 
+### For the editors
+
+- Page layout supervised with Markdown
+- Wysiwyg editor for Markdown
+- Classification of the pages with hashtags
+- Automatic numbering of the headers with no gap
+- Mandatory, linear and partially undoable versioning
+- Hashtags and statuses
+
 ### For the managers
 
-- Dynamic tables to track the progress of the documentation by project or tag
-- Write the templates in a dedicated project
-- Create the pages with a manual name or automatic KB identifier
+- Dynamic tables to track the progress of the documentation by project and tag
+- Copyable templates between projects
+- Possible automatic KB identifier
 - Detection of the orphaned pages
 - Detection of the broken links
 - Visual graph of the links between the pages
@@ -56,8 +54,10 @@ Who can do the most can do the least!
 - Low technical requirements and bandwidth
 - Affordable solution based on open-source applications
 - Fast setup with Python 3 in 10 minutes
-- Possible deployment with command lines
+- No data stored in proprietary formats
 - Local storage of the uploaded files and SQLite database
+- Possible deployment with command lines
+- Critical administration not available online
 - Support for HTTP and HTTPS
 - Unicode content and URL
 - HTTP logging
@@ -65,7 +65,7 @@ Who can do the most can do the least!
 
 **Pwic**
 
-- Multi-projects with dedicated authorizations for the users
+- Multi-projects with dedicated authorizations by user
 - Global and project-dependent settings
 - OAuth2-based federated authentication with control of the state
 - Cache system
@@ -74,42 +74,36 @@ Who can do the most can do the least!
 - Custom CSS and templates
 - Export of an entire project to Markdown and HTML
 - Traceable activities
-- API and command line to automate the classical operations
+- API and command line to automate the operations
 - Extension points in the code
 - Possible integration with external storage providers
 
 
 ## Install
 
-- Install Python: `apt-get install python3 python3-pip`
-	- Depending on your operating system, use `python` or `python3` below to invoke Python version 3
-- Install the dependencies: `python -m pip install aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
-- Optionally install your SSL certificate or generate your self-signed one: `python pwic_admin.py generate-ssl`
-- Optionally but definitively write random characters in the secret salt `PWIC_SALT` in `pwic_lib.py` with a text editor
-- Make sure that the subfolder `db/` is writable
-- Initialize the SQLite database: `python pwic_admin.py init-db`
-- Create a new project `demo` for the user `admin`: `python pwic_admin.py create-project demo "Demo project" admin`
-	- The default password of the users is `initial` as defined in `PWIC_DEFAULT_PASSWORD`.
-- Define the global and project-dependent variables: `python pwic_admin.py set-env --help`
-	- The variable `base_url` should be updated once.
-	- More variables are explained in the embedded Pwic's help page.
-- Run the server: `python pwic.py`
-	- The bind address `0.0.0.0` and the port can be modified in the command line. This is required to expose your Pwic server to the public after you have made the correct configuration.
-- Open your browser at `http://127.0.0.1:8080`
+### Mandatory technical setup
 
-If you intend to change the default cascading style sheets (CSS), you need SASS. Note that overriding the default CSS is possible in the options by linking to custom CSS files, which does not necessarily require SASS.
+- Install Python >=3.7: `apt-get install python3 python3-pip`
+- Install the dependencies: `python3 -m pip install --upgrade aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
+- Clone the repository or uncompress the downloaded release in a folder of your choice
+- Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
+	- Change the default password in `PWIC_DEFAULTS['password']`
+	- Write random characters in the secret salt `PWIC_SALT` forever
+- Initialize the database: `python3 pwic_admin.py init-db`
+	- A sub-folder `db/` is created for all your data
 
-- Install Node.js: `apt-get install node`
-- Install the dependencies: `npm install -g sass`
-- Adapt the templates in `templates/` and the SASS files in `static/`
-- Compile Pwic's CSS files:
-	- `sass --no-source-map --style=compressed static/styles.sass static/styles.css`
-	- `sass --no-source-map --style=compressed static/styles_dark.sass static/styles_dark.css`
+### Quick local setup
+
+- Create a new project `demo` for the user `admin`: `python3 pwic_admin.py create-project demo "Demo project" admin`
+- Run the server: `python3 pwic.py`
+- Open your browser at `http://127.0.0.1:8080` by default
+
+Once you have well tested Pwic and defined the global and project-dependent variables described in the embedded help file, you can use the bind address `0.0.0.0` and change the port in the main command line.
 
 
 ## Support
 
-Please use the issue tracker on Github to ask questions, report bugs or request new features.
+Please use the issue tracker on Github to ask questions, report bugs and request new features.
 
 
 ## Licenses

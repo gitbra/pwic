@@ -16,7 +16,7 @@
 				<th style="width:33%">Variable</th>
 				<th style="width:67%">Value</th>
 			</tr>
-			{% for key in pwic.constants.changeable_env_variables %}
+			{% for key in pwic.changeable_vars %}
 				<tr>
 					<td><code>{{key|escape}}</code></td>
 					<td>

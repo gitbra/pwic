@@ -14,7 +14,7 @@ project = 'your_project'
 # Authentication
 headers = {'Origin': host}
 try:
-    response = urlopen(Request(host + '/api/logon',
+    response = urlopen(Request(host + '/api/login',
                                urlencode({'user': user,
                                           'password': password}).encode(),
                                headers=headers,

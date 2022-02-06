@@ -1,5 +1,5 @@
 <script>
-	$(document).on('keydown', (oEvent) => { return !( (oEvent.keyCode == 123) || (oEvent.ctrlKey && oEvent.shiftKey && (oEvent.keyCode == 73)) || (oEvent.ctrlKey && (oEvent.keyCode == 85))); });
+	$(document).on('keydown', (event) => { return !((event.key == 'F12') || (event.ctrlKey && event.shiftKey && (event.key == 'I')) || (event.ctrlKey && (event.key == 'u'))); });
 	$(document).on('selectstart', () => { return false; });
 	$(document).on('contextmenu', () => { return false; });
 </script>

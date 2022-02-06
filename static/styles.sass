@@ -168,7 +168,8 @@ ARTICLE
 		margin: auto
 		border-spacing: 0px
 		border-collapse: collapse
-		TR:nth-child(n+1)
+		border: 1px solid gray
+		TR:nth-child(n+1):not(:last-child)
 			border-bottom: 1px solid lightgray
 		TR:hover
 			background-color: lightblue !important
@@ -179,6 +180,7 @@ ARTICLE
 
 	TH
 		text-align: left
+		background-color: lightgray
 		border-bottom: 1px solid gray
 
 	TH,TD
@@ -447,6 +449,9 @@ SPAN.pwic_progressbar
 
 .pwic_bold
 	font-weight: bold
+
+.pwic_break
+	word-break: break-all
 
 .pwic_center
 	text-align: center

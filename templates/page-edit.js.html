@@ -182,7 +182,7 @@
 	// -------------------------------- Editor
 
 	$('#edit_markdown').on('keydown', function(event) {
-		if (event.keyCode == 9)
+		if (event.key == 'Tab')
 		{
 			var	ta = $('#edit_markdown')[0],
 				ss = ta.selectionStart,
@@ -225,10 +225,10 @@
 									<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
 									<td title="Hash: '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
 									<td class="pwic_desktop">'+doc['mime_icon']+' '+pwic_entities(doc['mime'])+'<\/td>\
-									<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank">'+pwic_entities(doc['author'])+'<\/a><\/td>\
+									<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 									<td>'+pwic_entities(doc['date'])+'<\/td>\
 									<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
-									<td><input type="button" onclick="return edit_document_delete('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
+									<td><input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
 								<\/tr>';
 				}
 				$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);
@@ -298,7 +298,7 @@
 		event.stopPropagation();
 	}
 
-	function edit_document_delete(id, filename) {
+	function edit_delete_document(id, filename) {
 		if (confirm('Are sure to delete "'+filename+'"?'))
 		{
 			fetch('/api/document/delete', {	method: 'POST',
@@ -326,7 +326,8 @@
 
 	// -------------------------------- Submit a page
 
-	var edit_submittable = false;
+	var edit_submittable = false,
+		edit_preview_hwnd = null;
 
 	function edit_submit_form(errorNetwork, errorCantSubmit, errorPing, errorConflict) {
 		// Check the current values
@@ -409,7 +410,7 @@
 			});
 	}
 
-	function edit_preview(pageTitle, buttonTitle) {
+	function edit_preview_md(pageTitle, buttonTitle) {
 		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
@@ -423,22 +424,25 @@
 					throw Error(response.status + ' ' + response.statusText);
 				else
 					response.text().then(function(text) {
-						var page = window.open('');
-						page.document.title = pageTitle;
-						page.document.body.innerHTML = '\
-<html>\
-<head>\
-	<link rel="stylesheet" type="text/css" href="'+window.location.protocol+'//'+window.location.host+'/static/styles.css" />\
-<\/head>\
-<body>\
+						if (edit_preview_hwnd != null)
+							edit_preview_hwnd.close();
+						edit_preview_hwnd = window.open('');
+						edit_preview_hwnd.document.head.innerHTML = '<link rel="stylesheet" type="text/css" href="'+window.location.protocol+'//'+window.location.host+'/static/styles.css" />';
+						edit_preview_hwnd.document.title = pageTitle;
+						edit_preview_hwnd.document.body.innerHTML = '\
 	<article>\
 		<p style="position:fixed; top:0px; right:0px; padding:15px">\
 			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+buttonTitle+'" />\
 		<\/p>\
 		'+text+'\
-	<\/article>\
-<\/body>\
-<\/html>';
+	<\/article>';
+						edit_preview_hwnd.window.onkeydown = function(event) {
+								if (event.key == 'Escape')
+								{
+									edit_preview_hwnd.close();
+									edit_preview_hwnd = null;
+								}
+							};
 					});
 			})
 			.catch(function(error) {

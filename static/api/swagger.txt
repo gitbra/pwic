@@ -20,7 +20,7 @@ tags:
   - name: user
     description: Management of the user
 paths:
-  /api/logon:
+  /api/login:
     post:
       summary: Connect to the server
       tags:
@@ -81,9 +81,9 @@ paths:
         description: The parameters are fed by the third-party identity provider automatically
       responses:
         200:
-          description: Successful logon
+          description: Successful login
         302:
-          description: Successful logon
+          description: Successful login
         307:
           description: Redirection with the parameter ?failed if the credentials were rejected
         401:

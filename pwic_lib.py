@@ -29,7 +29,7 @@ PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
 PWIC_TEMPLATES_PATH = './templates/'
 
 # Security + SSL
-PWIC_SALT = ''    # Random string to secure the generated hashes for the passwords
+PWIC_SALT = ''                                      # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
@@ -39,7 +39,7 @@ PWIC_MAGIC_OAUTH = 'OAuth'
 PWIC_USERS = {'anonymous': 'pwic-anonymous',        # Account for the random visitors
               'ghost': 'pwic-ghost',                # Account for the deleted users (not implemented)
               'system': 'pwic-system'}              # Account for the technical operations
-PWIC_DEFAULTS = {'password': 'initial',
+PWIC_DEFAULTS = {'password': 'initial',             # Default password for the new accounts
                  'language': 'en',
                  'page': 'home',
                  'heading': '1.1.1.1.1.1.',
@@ -55,18 +55,18 @@ PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'keep_sessions', 'http_log_file', 'http_log_format',
-                                'ip_filter', 'magic_bytes', 'maintenance', 'no_logon', 'oauth_domains', 'oauth_identifier',
+                                'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains', 'oauth_identifier',
                                 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
-                              'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask',
-                              'kbid', 'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
-                              'no_cache', 'no_export_project', 'no_graph', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user_online',
-                              'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
-                              'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone', 'support_text',
-                              'support_url', 'validated_only']
+                              'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
+                              'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
+                              'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev',
+                              'no_mde', 'no_new_user_online', 'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max',
+                              'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
+                              'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
-                                     'mathjax', 'message', 'no_graph', 'no_history', 'no_mde', 'no_printing', 'no_search',
-                                     'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                                     'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
+                                     'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                                      'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
 PWIC_ENV_INTERNAL = ['session_secret']
 PWIC_ENV_PRIVATE = ['oauth_secret', 'session_secret']
@@ -577,10 +577,13 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
             sdisp = ''
             stag = ''
             for n in range(len(numbering)):
-                snum = tmask[mask[2 * n]](numbering[n])
+                m2n = mask[2 * n]
+                if m2n not in tmask:
+                    m2n = '1'
+                snum = tmask[m2n](numbering[n])
                 ssep = mask[2 * n + 1]
                 sdisp += '%s%s' % (snum, ssep)
-                stag += '%s.' % snum.lower()
+                stag += '_%s' % snum.lower()
 
             # Adapt the line
             if headerNumbering:

@@ -55,10 +55,10 @@
 		<p>Depending on the operating system that you use, the command <code>python</code> must be written as <code>python3</code> below.</p>
 
 			<h2>Initialize the database</h2>
-			<p>The initialization consists in creating the SQLite database and the folders to store the files that you can upload of the server. It is done once at the beginning with the command <code>python pwic_admin.py init-db</code>.</p>
+			<p>The initialization consists in creating the SQLite database and the folders to store the files that you can upload of the server. It is done once at the beginning with the command <code>python3 pwic_admin.py init-db</code>.</p>
 
 			<h2>Set the parameters</h2>
-			<p>With the command <code>python pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior.</p>
+			<p>With the command <code>python3 pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior.</p>
 			<p>The project-dependent variables are mostly changeable online in the special page, but not all for security reasons. The project-independent variables generally can be edited through the console only and it requires the restart of the server. The users will then have to reconnect from another tab, unless you define the option <code>keep_sessions</code>.</p>
 				<table>
 					<tr>
@@ -255,6 +255,18 @@
 						<td>Disable the ability to render the pages of the project in a graph.</td>
 					</tr>
 					<tr>
+						<td><code>no_heading</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Hide the automatic codification of the headers. The option <code>heading_mask</code> is still applicable for the internal naming of the paragraphs, so that you can link directly to them. The option has no effect on the export to OpenDocument.</td>
+					</tr>
+					<tr>
+						<td><code>no_help</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Hide the current help from the footer but the page remains accessible by direct access.</td>
+					</tr>
+					<tr>
 						<td><code>no_history</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -267,10 +279,10 @@
 						<td>The old revisions of a page are automatically marked as non-indexable for the public search engines. This dynamic rule overrides some values defined in the option <code>robots</code>.</td>
 					</tr>
 					<tr>
-						<td><code>no_logon</code></td>
+						<td><code>no_login</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>- Skip the logon screen and assign the anonymous role to your visitors.
+						<td>- Skip the login screen and assign the anonymous role to your visitors.
 							<br/>- On contrary to the option <code>auto_join</code>, they don't need a user account to read the pages.
 							<br/>- You can hide a project by disabling the user account <code>{{pwic.constants.anonymous_user}}</code>.
 							<br/>- The option <code>robots</code> is recommended when the option is turned on.
@@ -341,7 +353,7 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>
-							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your projects in case it is made public through the option <code>no_logon</code>.
+							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your projects in case it is made public through the option <code>no_login</code>.
 							<br/>- The option is technically non-restricting. Several values separated with a space are available: <code>archive</code>, <code>noarchive</code>, <code>follow</code>, <code>nofollow</code>, <code>index</code>, <code>noindex</code>, <code>snippet</code> and <code>nosnippet</code>.
 							<br/>- Refer also to the related option <code>no_index_rev</code>.</td>
 					</tr>
@@ -394,8 +406,8 @@
 						<td>Force the default redirection of the pure readers to the last validated revision of a page if it exists. This feature allows the editors to prepare the upcoming revisions of a page without showing them by default, and to publish only validated pages to the end-users. As a complement, use the option <code>no_history</code> to hide the history of the page.</td>
 					</tr>
 				</table>
-			<p>To show one or all the parameters, use the command <code>python pwic_admin.py show-env</code>.</p>
-			<p>In case you need to clean the obsolete variables, run the command <code>python pwic_admin.py repair-env</code>. This could happen after Pwic is upgraded.</p>
+			<p>To show one or all the parameters, use the command <code>python3 pwic_admin.py show-env</code>.</p>
+			<p>In case you need to clean the obsolete variables, run the command <code>python3 pwic_admin.py repair-env</code>. This could happen after Pwic is upgraded.</p>
 
 			<h2>Federated authentication</h2>
 			<p>You can connect to Pwic by using a professional third-party identity provider. The mecanism OAuth relies on secret keys and, obviously, a lot of trust. The user connects from another website and Pwic pings back the server to fetch the main email address of the user. The account is then automatically configured by default. No other personal information are used.</p>
@@ -459,40 +471,40 @@
 			</table>
 
 			<h2>Compress the static files</h2>
-			<p>Optionally, if you use mobile devices, it is possible to compress the big static files with the command <code>python pwic_admin.py compress-static</code>. This will reduce a bit the bandwidth and the loading time.</p>
+			<p>Optionally, if you use mobile devices, it is possible to compress the big static files with the command <code>python3 pwic_admin.py compress-static</code>. This will reduce a bit the bandwidth and the loading time.</p>
 
 			<h2>SQL queries</h2>
-			<p>To facilitate the maintenance of the database remotely, the command <code>python pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. There is no output for the <em>select</em> statements, so it is just needed to upgrade Pwic.</p>
+			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. There is no output for the <em>select</em> statements, so it is just needed to upgrade Pwic.</p>
 
 
 		<h1 id="help_create_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
 		<p>First, it is recommended to warn your users in advance through <a href="#help_setup">the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
-		<p>At the time of the maintenance, shut down the server and run the command <code>python pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
-		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python pwic_admin.py repair-documents --test</code> from the console.</p>
+		<p>At the time of the maintenance, shut down the server and run the command <code>python3 pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
+		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python3 pwic_admin.py repair-documents --test</code> from the console.</p>
 		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
 
 
 		<h1 id="help_create_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a project</h1>
-		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python pwic_admin.py create-project --help</code> for further details.</p>
+		<p>As per the authorizations are designed, the creation of a new project is only possible in command line. Run the command <code>python3 pwic_admin.py create-project --help</code> for further details.</p>
 		<p>By default, you cannot create new pages. You must extend your rights as a manager, or add new dedicated users having that profile. Refer to the matrix above for the feasible actions per profile.</p>
-		<p>To show the existing projects and their ownership, run the command: <code>python pwic_admin.py show-projects</code>.</p>
+		<p>To show the existing projects and their ownership, run the command: <code>python3 pwic_admin.py show-projects</code>.</p>
 
 
 		<h1 id="help_takeover_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Take over a project</h1>
 		<p>A project can become orphaned if the unique administrator left or is disabled. In this case, it is not possible to assign a new role online.</p>
-		<p>Run the command <code>python pwic_admin.py takeover-project --help</code> for further details.</p>
+		<p>Run the command <code>python3 pwic_admin.py takeover-project --help</code> for further details.</p>
 		<p>When you <a href="help_revoke_user">revoke a user</a>, you are warned if a project will be orphaned.</p>
 
 
 		<h1 id="help_split_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Split a project</h1>
 		<p>The operation consists in copying one project into a separate database file. The copied project is not removed from the original database. The attached documents stay in their current folders.</p>
-		<p>Run the command <code>python pwic_admin.py split-project --help</code> for further details.</p>
+		<p>Run the command <code>python3 pwic_admin.py split-project --help</code> for further details.</p>
 		<p>It is not possible to merge two databases into one, which is the reverse operation.</p>
 
 
 		<h1 id="help_delete_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a project</h1>
 		<p>Deleting a project cannot be undone. The user accounts are not deleted but their rights removed.</p>
-		<p>The action is done in the console only through the following command: <code>python pwic_admin.py delete-project --help</code></p>
+		<p>The action is done in the console only through the following command: <code>python3 pwic_admin.py delete-project --help</code></p>
 
 
 		<h1 id="help_create_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a user account</h1>
@@ -504,7 +516,7 @@
 
 		<h1 id="help_pass1"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change the own password</h1>
 		{% if pwic.user != '' %}
-			<p>The form is available in your <a href="/special/user/{{pwic.user|urlencode}}">profile page</a>.</p>
+			<p>The form is available in your <a href="/special/user/{{pwic.user|urlencode}}" rel="nofollow">profile page</a>.</p>
 		{% endif %}
 		<p>It is recommended to setup Pwic with SSL support so that the new passwords cannot be intercepted in a clear format.</p>
 
@@ -512,13 +524,13 @@
 		<h1 id="help_pass2"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Change the password of another user</h1>
 		<p>The recovery of the lost passwords is an administrative task since Pwic handles neither emails, nor personal information.</p>
 		<p>This command creates the user account if it does not exist, but it grants no role on the projects.</p>
-		<p>Run the command <code>python pwic_admin.py reset-password --help</code> for further details.</p>
+		<p>Run the command <code>python3 pwic_admin.py reset-password --help</code> for further details.</p>
 
 
 		<h1 id="help_revoke_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Revoke a user</h1>
 		<p>The operation revokes the roles of the user on every project. If this user is the unique administrator of some projects, there are displayed.</p>
 		<p>The user account is not deleted physically, and replacing it with the default Pwic's ghost account is not implemented but technically possible.</p>
-		<p>Run the command <code>python pwic_admin.py revoke-user --help</code> for further details.</p>
+		<p>Run the command <code>python3 pwic_admin.py revoke-user --help</code> for further details.</p>
 
 
 		<h1 id="help_grant"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Grant the authorizations</h1>
@@ -577,8 +589,8 @@
 
 
 		<h1 id="help_read_page"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Read a page</h1>
-		<p>You must have an account to be able to read the documentation, unless the <a href="#help_setup">option</a> <code>no_logon</code> and the anonymous user on the project are enabled.</p>
-		<p>The pages are saved into a cache to improve the overall performances of the server. After certain technical operations, it might be needed to clear the cache with the command <code>python pwic_admin.py clear-cache</code>. The pages are regenerated on-the-fly only and the cache is not used to export <a href="#help_export_page">a page</a> or <a href="#help_export_project">a project</a>.</p>
+		<p>You must have an account to be able to read the documentation, unless the <a href="#help_setup">option</a> <code>no_login</code> and the anonymous user on the project are enabled.</p>
+		<p>The pages are saved into a cache to improve the overall performances of the server. After certain technical operations, it might be needed to clear the cache with the command <code>python3 pwic_admin.py clear-cache</code>. The pages are regenerated on-the-fly only and the cache is not used to export <a href="#help_export_page">a page</a> or <a href="#help_export_project">a project</a>.</p>
 
 
 		<h1 id="help_export_page"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Export a page</h1>
@@ -668,18 +680,18 @@
 			<h2>All the activities</h2>
 			<p>Pwic logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better understanding of the situation.</p>
 			<p>Online, the administrators of a project can see the events related to the project only, like the creation of a page, a deletion, a validation... At system level, it is possible to display all the events, including the ones not related to a given project.</p>
-			<p>The listing can be filtered out by date and content with the following syntax: <code>python pwic_admin.py show-audit --max 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
+			<p>The listing can be filtered out by date and content with the following syntax: <code>python3 pwic_admin.py show-audit --max 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
-			<h2>All the logons</h2>
-			<p>Run the command <code>python pwic_admin.py show-logon --days 30</code> to show the last logons of the users over the last given days (365 by default).</p>
-			<p>If the users don't delete their cookies and if you use the <a href="#help_setup">option</a> <code>keep_sessions</code>, the users won't need to reconnect very often. Therefore an old logon date is not necessarily a sign of inactivity.</p>
+			<h2>All the logins</h2>
+			<p>Run the command <code>python3 pwic_admin.py show-login --days 30</code> to show the last logins of the users over the last given days (365 by default).</p>
+			<p>If the users don't delete their cookies and if you use the <a href="#help_setup">option</a> <code>keep_sessions</code>, the users won't need to reconnect very often. Therefore an old login date is not necessarily a sign of inactivity.</p>
 
 			<h2>All the inactive writers</h2>
-			<p>Run the command <code>python pwic_admin.py show-inactivity --days 30</code> to highlight the inactive users who can modify the documentation.</p>
+			<p>Run the command <code>python3 pwic_admin.py show-inactivity --days 30</code> to highlight the inactive users who can modify the documentation.</p>
 			<p>Some projects being completed, it is possible that they have not received recent modifications by their owners.</p>
 
 			<h2>Statistics</h2>
-			<p>General figures about the server and the projects can be summarized by the command <code>python pwic_admin.py show-stats</code>.</p>
+			<p>General figures about the server and the projects can be summarized by the command <code>python3 pwic_admin.py show-stats</code>.</p>
 
 
 		<h1 id="help_log_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity of a user</h1>

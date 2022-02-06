@@ -1,28 +1,28 @@
 <script>
 	'use strict';
 
-	function logon_translate_langs(mapping) {
-		$('#logon_language OPTION').each(function(index, element) {
+	function login_translate_langs(mapping) {
+		$('#login_language OPTION').each(function(index, element) {
 			var lang = $(element).attr('value');
 			if (mapping.hasOwnProperty(lang))
 				$(element).html(lang + ' - ' + mapping[lang])
 		});
 	}
 
-	function logon_anonymous() {
-		$('#logon_user').val('{{pwic.constants.anonymous_user|escape}}');
-		$('#logon_password').val('');
-		$('#logon_form')[0].submit();
+	function login_anonymous() {
+		$('#login_user').val('{{pwic.constants.anonymous_user|escape}}');
+		$('#login_password').val('');
+		$('#login_form')[0].submit();
 		return true;
 	}
 
 {% if pwic.env.oauth_provider %}
-	function logon_oauth() {
+	function login_oauth() {
 		{% if pwic.env.oauth_provider.value == 'github' %}
 			window.location = 'https://github.com/login/oauth/authorize' +
 								'?client_id={{pwic.env.oauth_identifier.value|urlencode}}' +
 								'&redirect_uri=' + encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
-								'&login=' + encodeURIComponent($('#logon_user').val()) +
+								'&login=' + encodeURIComponent($('#login_user').val()) +
 								'&scope=user%3Aemail' +
 								'&state={{pwic.session.user_secret|urlencode}}' +
 								'&allow_signup=false';
@@ -34,7 +34,7 @@
 								'&scope=' + encodeURIComponent('https://www.googleapis.com/auth/userinfo.email') +
 								'&access_type=online' +
 								'&state={{pwic.session.user_secret|urlencode}}' +
-								'&login_hint=' + encodeURIComponent($('#logon_user').val()) +
+								'&login_hint=' + encodeURIComponent($('#login_user').val()) +
 								'&response_type=code';
 
 		{% elif pwic.env.oauth_provider.value == 'microsoft' %}
@@ -45,7 +45,7 @@
 						'&scope=' + encodeURIComponent('https://graph.microsoft.com/user.read') +
 						'&response_mode=query' +
 						'&state={{pwic.session.user_secret|urlencode}}' +
-						'&login_hint=' + encodeURIComponent($('#logon_user').val());
+						'&login_hint=' + encodeURIComponent($('#login_user').val());
 			{% if pwic.env.oauth_domains %}
 				var main = '{{pwic.env.oauth_domains.value|escape}}'.trim().split(' ')[0];
 				if (main.length > 0)
@@ -60,5 +60,5 @@
 {% endif %}
 
 	if (window.fetch)
-		$('#logon_js').addClass('pwic_hidden');
+		$('#login_js').addClass('pwic_hidden');
 </script>
