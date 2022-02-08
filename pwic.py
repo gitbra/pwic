@@ -495,7 +495,7 @@ class PwicServer():
                                             FROM audit
                                             WHERE date >= ?
                                               AND ( project = ?
-                                                 OR event IN ("login", "logout")
+                                                 OR event IN ('login', 'logout')
                                               )
                                             GROUP BY author
                                         ) AS b
@@ -1614,6 +1614,24 @@ class PwicServer():
         # Final result
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 
+    async def api_server_headers(self, request: web.Request) -> web.Response:
+        ''' Return the received headers for a request '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # JSON serialization of the object of type CIMultiDictProxy
+        data: Dict[str, Any] = {}
+        for (k, v) in iter(request.headers.items()):
+            if k != 'Cookie':
+                if k not in data:
+                    data[k] = []
+                data[k].append(v)
+        data = {'ip': request.remote,
+                'headers': data}
+        return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
+
     async def api_server_ping(self, request: web.Request) -> web.Response:
         ''' Notify if the session is still alive '''
         user = await self._suser(request)
@@ -1621,6 +1639,31 @@ class PwicServer():
             raise web.HTTPUnauthorized()
         else:
             return web.Response(text='OK', content_type=pwic_mime('txt'))
+
+    async def api_server_shutdown(self, request: web.Request) -> None:
+        # Read the parameters
+        sql = self._connect()
+        if pwic_option(sql, '', 'shutdown') is None:
+            raise web.HTTPForbidden()
+        user = await self._suser(request)
+        if user == '':
+            user = PWIC_USERS['anonymous']
+
+        # Shutdown the server
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
+        sql.execute(''' DELETE FROM env
+                        WHERE project = ''
+                          AND key     = 'shutdown' ''')
+        pwic_audit(sql, {'author': user,
+                         'event': 'unset-shutdown'},
+                   request)
+        pwic_audit(sql, {'author': user,
+                         'event': 'shutdown-server'},
+                   request)
+        self._commit()
+        exit(0)
+        raise web.HTTPOk()
 
     async def api_project_info_get(self, request: web.Request) -> web.Response:
         ''' API to fetch the metadata of the project '''
@@ -3306,7 +3349,9 @@ def main() -> bool:
                     web.get('/api/logout', app['pwic'].api_logout),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
+                    web.get('/api/server/headers', app['pwic'].api_server_headers),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
+                    web.post('/api/server/shutdown', app['pwic'].api_server_shutdown),
                     web.post('/api/project/info/get', app['pwic'].api_project_info_get),
                     web.post('/api/project/env/set', app['pwic'].api_project_env_set),
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),

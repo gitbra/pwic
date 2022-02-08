@@ -173,12 +173,12 @@ class PwicExtension():
                  online: bool,                              # Event coming from the Internet (True) or the console (False)
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                change-password  clear-cache       create-document   create-page     create-project     create-user     delete-document
-                delete-draft     delete-project    delete-revision   delete-user     execute-sql        export-project  generate-ssl
-                grant-admin      grant-editor      grant-manager     grant-reader    grant-validator    init-db         login
-                logout           repair-documents  replace-document  reset-password  set-*              split-project   start-server
-                ungrant-admin    ungrant-editor    ungrant-manager   ungrant-reader  ungrant-validator  unset-*         update-page
-                validate-page
+                change-password  clear-cache       create-document   create-page      create-project   create-user        delete-document
+                delete-draft     delete-project    delete-revision   delete-user      execute-sql      export-project     generate-ssl
+                grant-admin      grant-editor      grant-manager     grant-reader     grant-validator  init-db            login
+                logout           repair-documents  replace-document  reset-password   set-*            shutdown-server    split-project
+                start-server     ungrant-admin     ungrant-editor    ungrant-manager  ungrant-reader   ungrant-validator  unset-*
+                update-page      validate-page
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.

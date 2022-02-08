@@ -192,7 +192,7 @@
 						<td><code>ip_filter</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the minus sign <code>-</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. The IP address used for the check is deducted from the HTTP headers through a custom code.</td>
+						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the minus sign <code>-</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files.</td>
 					</tr>
 					<tr>
 						<td><code>legal_notice</code></td>
@@ -370,6 +370,12 @@
 						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details.</td>
 					</tr>
 					<tr>
+						<td><code>shutdown</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>This is an internal option used to shut down the server. The value cannot be changed manually.</td>
+					</tr>
+					<tr>
 						<td><code>ssl</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -479,7 +485,7 @@
 
 		<h1 id="help_create_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
 		<p>First, it is recommended to warn your users in advance through <a href="#help_setup">the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
-		<p>At the time of the maintenance, shut down the server and run the command <code>python3 pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
+		<p>At the time of the maintenance, shut down the server with <code>python3 pwic_admin.py shutdown-server</code>, and run the command <code>python3 pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
 		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python3 pwic_admin.py repair-documents --test</code> from the console.</p>
 		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
 

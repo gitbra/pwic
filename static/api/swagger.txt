@@ -657,6 +657,32 @@ paths:
             description: The values equal to null correspond to the protected variables
         401:
           description: Unsufficient authorizations, or not found
+  /api/server/headers:
+    get:
+      summary: Display the received HTTP headers
+      tags:
+        - server
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            type: object
+            properties:
+              ip:
+                type: string
+                description: Remote IP address
+              data:
+                type: object
+                properties:
+                  name:
+                    type: array
+                    description: Values of the header
+                    items:
+                      type: string
+        401:
+          description: Session not active
   /api/server/ping:
     post:
       summary: Ping the server to verify that it is up and not restarted
@@ -671,6 +697,18 @@ paths:
           description: Session still alive
         401:
           description: Session not active
+  /api/server/shutdown:
+    post:
+      summary: Shut down the server if this is allowed in the administration console
+      tags:
+        - server
+      responses:
+        200:
+          description: Successful operation
+        403:
+          description: Forbidden operation
+        503:
+          description: Shutdown temporarily unavailable
   /api/user/create:
     post:
       summary: Create or assign a user to a project

@@ -13,6 +13,8 @@ from os import chmod, listdir, makedirs, mkdir, removedirs, rmdir
 from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
+from urllib.request import Request, urlopen
+from http.client import RemoteDisconnected
 
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
@@ -117,6 +119,8 @@ def main() -> bool:
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
+    subparsers.add_parser('shutdown-server', help='Terminate the server')
+
     # Parse the command line
     args = parser.parse_args()
     if args.command == 'generate-ssl':
@@ -165,6 +169,8 @@ def main() -> bool:
         return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
     elif args.command == 'execute-sql':
         return execute_sql()
+    elif args.command == 'shutdown-server':
+        return shutdown_server()
     else:
         parser.print_help()
         return False
@@ -804,7 +810,8 @@ def takeover_project(project: str, admin: str) -> bool:
         return False
 
     # Assign the user to the project
-    db_lock(sql)
+    if not db_lock(sql):
+        return False
     sql.execute(''' UPDATE roles
                     SET admin    = 'X',
                         disabled = ''
@@ -867,7 +874,8 @@ def split_project(projects: List[str], collapse: bool) -> bool:
         return False
 
     # Transfer the data
-    db_lock(sql)
+    if not db_lock(sql):
+        return False
     # ... projects
     for p in projects:
         row = sql.execute(''' SELECT *
@@ -1192,7 +1200,8 @@ def revoke_user(user: str, force: bool) -> bool:
             return False
 
     # Disable the user for every project
-    db_lock(sql)
+    if not db_lock(sql):
+        return False
     sql.execute(''' SELECT project
                     FROM roles
                     WHERE user = ?''',
@@ -1982,6 +1991,47 @@ def execute_sql() -> bool:
     # Default behavior
     print('Aborted')
     return False
+
+
+def shutdown_server() -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+    base_url = pwic_option(sql, '', 'base_url')
+    if base_url is None:
+        print('Error: the option "base_url" is not defined')
+        return False
+
+    # Ask for confirmation
+    print('This command will try to terminate Pwic server at its earliest convenience.')
+    print('This will disconnect the users and interrupt their work.')
+    print('Type "YES" to agree and continue: ', end='')
+    if input() != 'YES':
+        return False
+
+    # Authorize
+    if not db_lock(sql):
+        return False
+    sql.execute(''' INSERT OR IGNORE INTO env (project, key, value)
+                    VALUES ('', 'shutdown', 'X')''')
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'set-shutdown',
+                     'string': 'X'})
+    db_commit()
+
+    # Terminate
+    print('Sending the kill signal... ', end='', flush=True)
+    ok = False
+    try:
+        urlopen(Request(base_url + '/api/server/shutdown', None, method='POST'))
+    except Exception as e:
+        if isinstance(e, RemoteDisconnected):
+            ok = True
+            print('OK')
+        else:
+            print('failed\nError: %s' % str(e))
+    return ok
 
 
 if main():
