@@ -75,73 +75,73 @@ class pwic_styles_odt:
 </office:document-meta>'''
 
         # Warning: column position matters
-        self.styles_code = ['<style:style style:name="Code_hll" style:display-name="Code HLL" style:family="text" style:parent-style-name="Standard"><style:text-properties fo:background-color="#ffffcc"/></style:style>',
-                            '<style:style style:name="Code_c"   style:display-name="Code C"   style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_err" style:display-name="Code ERR" style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#a61717" fo:background-color="#e3d2d2"/></style:style>',
-                            '<style:style style:name="Code_k"   style:display-name="Code K"   style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_ch"  style:display-name="Code CH"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_cm"  style:display-name="Code CM"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_cp"  style:display-name="Code CP"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#cc0000" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_cpf" style:display-name="Code CPF" style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_c1"  style:display-name="Code C1"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_cs"  style:display-name="Code CS"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#cc0000" fo:font-weight="bold" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_gd"  style:display-name="Code GD"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#000000" fo:background-color="#ffdddd"/></style:style>',
-                            '<style:style style:name="Code_ge"  style:display-name="Code GE"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:font-style="italic"/></style:style>',
-                            '<style:style style:name="Code_gr"  style:display-name="Code GR"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#aa0000"/></style:style>',
-                            '<style:style style:name="Code_gh"  style:display-name="Code GH"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#333333"/></style:style>',
-                            '<style:style style:name="Code_gi"  style:display-name="Code GI"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#000000" fo:background-color="#ddffdd"/></style:style>',
-                            '<style:style style:name="Code_go"  style:display-name="Code GO"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888"/></style:style>',
-                            '<style:style style:name="Code_gp"  style:display-name="Code GP"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#555555"/></style:style>',
-                            '<style:style style:name="Code_gs"  style:display-name="Code GS"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_gu"  style:display-name="Code GU"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#666666"/></style:style>',
-                            '<style:style style:name="Code_gt"  style:display-name="Code GT"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#aa0000"/></style:style>',
-                            '<style:style style:name="Code_kc"  style:display-name="Code KC"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_kd"  style:display-name="Code KD"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_kn"  style:display-name="Code KN"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_kp"  style:display-name="Code KP"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800"/></style:style>',
-                            '<style:style style:name="Code_kr"  style:display-name="Code KR"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_kt"  style:display-name="Code KT"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#888888" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_m"   style:display-name="Code M"   style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_s"   style:display-name="Code S"   style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_na"  style:display-name="Code NA"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699"/></style:style>',
-                            '<style:style style:name="Code_nb"  style:display-name="Code NB"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#003388"/></style:style>',
-                            '<style:style style:name="Code_nc"  style:display-name="Code NC"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_no"  style:display-name="Code NO"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#003366" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_nd"  style:display-name="Code ND"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#555555"/></style:style>',
-                            '<style:style style:name="Code_ne"  style:display-name="Code NE"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_nf"  style:display-name="Code NF"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0066bb" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_nl"  style:display-name="Code NL"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699" fo:font-style="italic"/></style:style>',
-                            '<style:style style:name="Code_nn"  style:display-name="Code NN"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_py"  style:display-name="Code PY"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_nt"  style:display-name="Code NT"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_nv"  style:display-name="Code NV"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699"/></style:style>',
-                            '<style:style style:name="Code_ow"  style:display-name="Code OW"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800"/></style:style>',
-                            '<style:style style:name="Code_w"   style:display-name="Code W"   style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#bbbbbb"/></style:style>',
-                            '<style:style style:name="Code_mb"  style:display-name="Code MB"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_mf"  style:display-name="Code MF"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_mh"  style:display-name="Code MH"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_mi"  style:display-name="Code MI"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_mo"  style:display-name="Code MO"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_sa"  style:display-name="Code SA"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_sb"  style:display-name="Code SB"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_sc"  style:display-name="Code SC"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_dl"  style:display-name="Code DL"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_sd"  style:display-name="Code SD"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_s2"  style:display-name="Code S2"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_se"  style:display-name="Code SE"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0044dd" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_sh"  style:display-name="Code SH"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_si"  style:display-name="Code SI"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#3333bb" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_sx"  style:display-name="Code SX"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#22bb22" fo:background-color="#f0fff0"/></style:style>',
-                            '<style:style style:name="Code_sr"  style:display-name="Code SR"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#008800" fo:background-color="#fff0ff"/></style:style>',
-                            '<style:style style:name="Code_s1"  style:display-name="Code S1"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_ss"  style:display-name="Code SS"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#aa6600" fo:background-color="#fff0f0"/></style:style>',
-                            '<style:style style:name="Code_bp"  style:display-name="Code BP"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#003388"/></style:style>',
-                            '<style:style style:name="Code_fm"  style:display-name="Code FM"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0066bb" fo:font-weight="bold"/></style:style>',
-                            '<style:style style:name="Code_vc"  style:display-name="Code VC"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699"/></style:style>',
-                            '<style:style style:name="Code_vg"  style:display-name="Code VG"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#dd7700"/></style:style>',
-                            '<style:style style:name="Code_vi"  style:display-name="Code VI"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#3333bb"/></style:style>',
-                            '<style:style style:name="Code_vm"  style:display-name="Code VM"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#336699"/></style:style>',
-                            '<style:style style:name="Code_il"  style:display-name="Code IL"  style:family="text" style:parent-style-name="Standard"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>']
+        self.styles_code = ['<style:style style:name="Code_hll" style:display-name="Code HLL" style:family="text"><style:text-properties fo:background-color="#ffffcc"/></style:style>',
+                            '<style:style style:name="Code_c"   style:display-name="Code C"   style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_err" style:display-name="Code ERR" style:family="text"><style:text-properties fo:color="#a61717" fo:background-color="#e3d2d2"/></style:style>',
+                            '<style:style style:name="Code_k"   style:display-name="Code K"   style:family="text"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_ch"  style:display-name="Code CH"  style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_cm"  style:display-name="Code CM"  style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_cp"  style:display-name="Code CP"  style:family="text"><style:text-properties fo:color="#cc0000" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_cpf" style:display-name="Code CPF" style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_c1"  style:display-name="Code C1"  style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_cs"  style:display-name="Code CS"  style:family="text"><style:text-properties fo:color="#cc0000" fo:font-weight="bold" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_gd"  style:display-name="Code GD"  style:family="text"><style:text-properties fo:color="#000000" fo:background-color="#ffdddd"/></style:style>',
+                            '<style:style style:name="Code_ge"  style:display-name="Code GE"  style:family="text"><style:text-properties fo:font-style="italic"/></style:style>',
+                            '<style:style style:name="Code_gr"  style:display-name="Code GR"  style:family="text"><style:text-properties fo:color="#aa0000"/></style:style>',
+                            '<style:style style:name="Code_gh"  style:display-name="Code GH"  style:family="text"><style:text-properties fo:color="#333333"/></style:style>',
+                            '<style:style style:name="Code_gi"  style:display-name="Code GI"  style:family="text"><style:text-properties fo:color="#000000" fo:background-color="#ddffdd"/></style:style>',
+                            '<style:style style:name="Code_go"  style:display-name="Code GO"  style:family="text"><style:text-properties fo:color="#888888"/></style:style>',
+                            '<style:style style:name="Code_gp"  style:display-name="Code GP"  style:family="text"><style:text-properties fo:color="#555555"/></style:style>',
+                            '<style:style style:name="Code_gs"  style:display-name="Code GS"  style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_gu"  style:display-name="Code GU"  style:family="text"><style:text-properties fo:color="#666666"/></style:style>',
+                            '<style:style style:name="Code_gt"  style:display-name="Code GT"  style:family="text"><style:text-properties fo:color="#aa0000"/></style:style>',
+                            '<style:style style:name="Code_kc"  style:display-name="Code KC"  style:family="text"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_kd"  style:display-name="Code KD"  style:family="text"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_kn"  style:display-name="Code KN"  style:family="text"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_kp"  style:display-name="Code KP"  style:family="text"><style:text-properties fo:color="#008800"/></style:style>',
+                            '<style:style style:name="Code_kr"  style:display-name="Code KR"  style:family="text"><style:text-properties fo:color="#008800" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_kt"  style:display-name="Code KT"  style:family="text"><style:text-properties fo:color="#888888" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_m"   style:display-name="Code M"   style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_s"   style:display-name="Code S"   style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_na"  style:display-name="Code NA"  style:family="text"><style:text-properties fo:color="#336699"/></style:style>',
+                            '<style:style style:name="Code_nb"  style:display-name="Code NB"  style:family="text"><style:text-properties fo:color="#003388"/></style:style>',
+                            '<style:style style:name="Code_nc"  style:display-name="Code NC"  style:family="text"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_no"  style:display-name="Code NO"  style:family="text"><style:text-properties fo:color="#003366" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_nd"  style:display-name="Code ND"  style:family="text"><style:text-properties fo:color="#555555"/></style:style>',
+                            '<style:style style:name="Code_ne"  style:display-name="Code NE"  style:family="text"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_nf"  style:display-name="Code NF"  style:family="text"><style:text-properties fo:color="#0066bb" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_nl"  style:display-name="Code NL"  style:family="text"><style:text-properties fo:color="#336699" fo:font-style="italic"/></style:style>',
+                            '<style:style style:name="Code_nn"  style:display-name="Code NN"  style:family="text"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_py"  style:display-name="Code PY"  style:family="text"><style:text-properties fo:color="#336699" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_nt"  style:display-name="Code NT"  style:family="text"><style:text-properties fo:color="#bb0066" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_nv"  style:display-name="Code NV"  style:family="text"><style:text-properties fo:color="#336699"/></style:style>',
+                            '<style:style style:name="Code_ow"  style:display-name="Code OW"  style:family="text"><style:text-properties fo:color="#008800"/></style:style>',
+                            '<style:style style:name="Code_w"   style:display-name="Code W"   style:family="text"><style:text-properties fo:color="#bbbbbb"/></style:style>',
+                            '<style:style style:name="Code_mb"  style:display-name="Code MB"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_mf"  style:display-name="Code MF"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_mh"  style:display-name="Code MH"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_mi"  style:display-name="Code MI"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_mo"  style:display-name="Code MO"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_sa"  style:display-name="Code SA"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_sb"  style:display-name="Code SB"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_sc"  style:display-name="Code SC"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_dl"  style:display-name="Code DL"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_sd"  style:display-name="Code SD"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_s2"  style:display-name="Code S2"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_se"  style:display-name="Code SE"  style:family="text"><style:text-properties fo:color="#0044dd" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_sh"  style:display-name="Code SH"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_si"  style:display-name="Code SI"  style:family="text"><style:text-properties fo:color="#3333bb" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_sx"  style:display-name="Code SX"  style:family="text"><style:text-properties fo:color="#22bb22" fo:background-color="#f0fff0"/></style:style>',
+                            '<style:style style:name="Code_sr"  style:display-name="Code SR"  style:family="text"><style:text-properties fo:color="#008800" fo:background-color="#fff0ff"/></style:style>',
+                            '<style:style style:name="Code_s1"  style:display-name="Code S1"  style:family="text"><style:text-properties fo:color="#dd2200" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_ss"  style:display-name="Code SS"  style:family="text"><style:text-properties fo:color="#aa6600" fo:background-color="#fff0f0"/></style:style>',
+                            '<style:style style:name="Code_bp"  style:display-name="Code BP"  style:family="text"><style:text-properties fo:color="#003388"/></style:style>',
+                            '<style:style style:name="Code_fm"  style:display-name="Code FM"  style:family="text"><style:text-properties fo:color="#0066bb" fo:font-weight="bold"/></style:style>',
+                            '<style:style style:name="Code_vc"  style:display-name="Code VC"  style:family="text"><style:text-properties fo:color="#336699"/></style:style>',
+                            '<style:style style:name="Code_vg"  style:display-name="Code VG"  style:family="text"><style:text-properties fo:color="#dd7700"/></style:style>',
+                            '<style:style style:name="Code_vi"  style:display-name="Code VI"  style:family="text"><style:text-properties fo:color="#3333bb"/></style:style>',
+                            '<style:style style:name="Code_vm"  style:display-name="Code VM"  style:family="text"><style:text-properties fo:color="#336699"/></style:style>',
+                            '<style:style style:name="Code_il"  style:display-name="Code IL"  style:family="text"><style:text-properties fo:color="#0000dd" fo:font-weight="bold"/></style:style>']
 
         self.styles = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <office:document-styles xmlns:anim="urn:oasis:names:tc:opendocument:xmlns:animation:1.0"
@@ -177,7 +177,8 @@ class pwic_styles_odt:
     <office:styles>
         <style:style style:name="Standard"
                      style:family="paragraph"
-                     style:class="text"/>
+                     style:class="text"
+                     style:parent-style-name="Normal" />
         <style:style style:name="Normal"
                      style:display-name="Normal"
                      style:family="paragraph">
@@ -280,8 +281,7 @@ class pwic_styles_odt:
         </style:style>
         <style:style style:name="Code"
                      style:display-name="Code"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties style:font-name="Courier New"
                                    fo:font-size="10pt"/>
         </style:style>
@@ -296,8 +296,7 @@ class pwic_styles_odt:
         </style:style>
         <style:style style:name="Error"
                      style:display-name="Error"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties fo:color="#FF0000"/>
         </style:style>
         <style:style style:name="Footer"
@@ -317,20 +316,17 @@ class pwic_styles_odt:
         </style:style>
         <style:style style:name="Inf"
                      style:display-name="Inferior"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties style:text-position="sub 66%"/>
         </style:style>
         <style:style style:name="Italic"
                      style:display-name="Italic"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties fo:font-style="italic"/>
         </style:style>
         <style:style style:name="Link"
                      style:display-name="Hyperlink"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties fo:color="#0000FF"
                                    style:text-underline-type="single"
                                    style:text-underline-style="solid"
@@ -339,8 +335,7 @@ class pwic_styles_odt:
         </style:style>
         <style:style style:name="Strike"
                      style:display-name="Strike"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties style:text-line-through-style="solid"
                                    style:text-line-through-width="auto"
                                    style:text-line-through-color="font-color"
@@ -349,14 +344,12 @@ class pwic_styles_odt:
         </style:style>
         <style:style style:name="Strong"
                      style:display-name="Strong"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties fo:font-weight="bold"/>
         </style:style>
         <style:style style:name="Sup"
                      style:display-name="Superior"
-                     style:family="text"
-                     style:parent-style-name="Standard">
+                     style:family="text">
             <style:text-properties style:text-position="super 66%"/>
         </style:style>
         <style:style style:name="Table"

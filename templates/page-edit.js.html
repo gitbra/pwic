@@ -380,15 +380,15 @@
 																	headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 																	body:	'project={{pwic.project|urlencode}}'+
 																			'&page={{pwic.page|urlencode}}'+
-																			'&title='+$('#edit_title').val()+
-																			'&tags='+$('#edit_tags').val()+
-																			'&markdown='+$('#edit_markdown').val()+
-																			'&comment='+$('#edit_comment').val()+
-																			'&milestone='+$('#edit_milestone').val()+
-																			'&draft='+$('#edit_draft').prop('checked')+
-																			'&final='+$('#edit_final').prop('checked')+
-																			'&protection='+$('#edit_protection').prop('checked')+
-																			'&header='+$('#edit_header').prop('checked'),
+																			'&title='+encodeURIComponent($('#edit_title').val())+
+																			'&tags='+encodeURIComponent($('#edit_tags').val())+
+																			'&markdown='+encodeURIComponent($('#edit_markdown').val())+
+																			'&comment='+encodeURIComponent($('#edit_comment').val())+
+																			'&milestone='+encodeURIComponent($('#edit_milestone').val())+
+																			'&draft='+encodeURIComponent($('#edit_draft').prop('checked'))+
+																			'&final='+encodeURIComponent($('#edit_final').prop('checked'))+
+																			'&protection='+encodeURIComponent($('#edit_protection').prop('checked'))+
+																			'&header='+encodeURIComponent($('#edit_header').prop('checked')),
 																	credentials: 'same-origin' })
 											.then(function(response) {
 												if (response.status != 200)
