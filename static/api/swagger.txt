@@ -654,7 +654,19 @@ paths:
         200:
           description: Successful operation
           schema:
-            description: The values equal to null correspond to the protected variables
+            type: object
+            properties:
+              variable:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  global:
+                    type: boolean
+                  project_dependent:
+                    type: boolean
+                  changeable:
+                    type: boolean
         401:
           description: Unsufficient authorizations, or not found
   /api/server/headers:

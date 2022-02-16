@@ -77,7 +77,7 @@
 						<td><code>audit_range</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Number of days in the past for the online visibility of the audit data that are restricted to the administrators. Define the value <code>-1</code> to switch off the listing.</td>
+						<td>Number of days in the past for the online visibility of the audit data that are restricted to the administrators. Define the value <code>-1</code> to switch off the listing. The <a href="#help_archive_audit">archived audit data</a> are not visible online.</td>
 					</tr>
 					<tr>
 						<td><code>auto_join</code></td>
@@ -295,7 +295,7 @@
 						<td>Disable the visual <em title="What you see is what you get">wysiwyg</em> Markdown editor.</td>
 					</tr>
 					<tr>
-						<td><code>no_new_user_online</code></td>
+						<td><code>no_new_user</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console of Pwic. The option has no effect on the federated authentication.</td>
@@ -346,7 +346,31 @@
 						<td><code>password_regex</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150/">here</a>. The option does not apply when you reset the password from the console.</td>
+						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150">here</a>. The option does not apply when you reset the password from the console.</td>
+					</tr>
+					<tr>
+						<td><code>pwic_audit_id</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>This option is automatically set in the backup databases only to identify the last known event of the audit log. In case you need to restore the database, you can clean and reuse the existing audit table. The option is used for internal purposes and it cannot be managed manually.</td>
+					</tr>
+					<tr>
+						<td><code>pwic_port</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>This is an internal option used to store the port used by the server. The value cannot be changed manually.</td>
+					</tr>
+					<tr>
+						<td><code>pwic_session</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details.</td>
+					</tr>
+					<tr>
+						<td><code>pwic_shutdown</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>This is an internal option used to shut down the server. The value cannot be changed manually.</td>
 					</tr>
 					<tr>
 						<td><code>robots</code></td>
@@ -362,18 +386,6 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues. Not using the safe mode may corrupt the export to OpenDocument.</td>
-					</tr>
-					<tr>
-						<td><code>session_secret</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details.</td>
-					</tr>
-					<tr>
-						<td><code>shutdown</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This is an internal option used to shut down the server. The value cannot be changed manually.</td>
 					</tr>
 					<tr>
 						<td><code>ssl</code></td>
@@ -476,10 +488,14 @@
 				</tr>
 			</table>
 
+			<h2>Reverse proxy</h2>
+			<p>The feature is supported but not enabled by default because the filter by IP address should not be sensible to some special HTTP headers.</p>
+			<p>By using Nginx or Apache, you need to modify the code of the extension named <code>on_ip_header</code> and to configure the format of the HTTP log.</p>
+
 			<h2>Compress the static files</h2>
 			<p>Optionally, if you use mobile devices, it is possible to compress the big static files with the command <code>python3 pwic_admin.py compress-static</code>. This will reduce a bit the bandwidth and the loading time.</p>
 
-			<h2>SQL queries</h2>
+			<h2 id="help_execute_sql">SQL queries</h2>
 			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. There is no output for the <em>select</em> statements, so it is just needed to upgrade Pwic.</p>
 
 
@@ -503,14 +519,15 @@
 
 
 		<h1 id="help_split_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Split a project</h1>
-		<p>The operation consists in copying one project into a separate database file. The copied project is not removed from the original database. The attached documents stay in their current folders.</p>
+		<p>The operation consists in copying one or several projects into a separate database file. The copied projects are not removed from the original database. The audit log stored in its dedicated database and the documents stored on the drive are not modified.</p>
+		<p>After you copied the databases and the documents to the target server, you can <a href="#help_archive_audit">clean the audit data</a> to remove some irrelevant traces.</p>
 		<p>Run the command <code>python3 pwic_admin.py split-project --help</code> for further details.</p>
-		<p>It is not possible to merge two databases into one, which is the reverse operation.</p>
+		<p>It is not possible to merge two databases into one, which would be the reverse operation.</p>
 
 
 		<h1 id="help_delete_project"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Delete a project</h1>
-		<p>Deleting a project cannot be undone. The user accounts are not deleted but their rights removed.</p>
-		<p>The action is done in the console only through the following command: <code>python3 pwic_admin.py delete-project --help</code></p>
+		<p>Deleting a project cannot be undone. The user accounts are not deleted but their rights are removed from the projects.</p>
+		<p>The action is done in the console only through the following command: <code>python3 pwic_admin.py delete-project --help</code>.</p>
 
 
 		<h1 id="help_create_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a user account</h1>
@@ -689,16 +706,20 @@
 			<p>The listing can be filtered out by date and content with the following syntax: <code>python3 pwic_admin.py show-audit --max 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
 			<h2>All the logins</h2>
-			<p>Run the command <code>python3 pwic_admin.py show-login --days 30</code> to show the last logins of the users over the last given days (365 by default).</p>
+			<p>Run the command <code>python3 pwic_admin.py show-login --days 30</code> to show the last logins of the users over the last given days (30 by default).</p>
 			<p>If the users don't delete their cookies and if you use the <a href="#help_setup">option</a> <code>keep_sessions</code>, the users won't need to reconnect very often. Therefore an old login date is not necessarily a sign of inactivity.</p>
 
 			<h2>All the inactive writers</h2>
 			<p>Run the command <code>python3 pwic_admin.py show-inactivity --days 30</code> to highlight the inactive users who can modify the documentation.</p>
-			<p>Some projects being completed, it is possible that they have not received recent modifications by their owners.</p>
+			<p>Some projects being completed, it is possible that they have not received any recent modifications by their owners.</p>
 
 			<h2>Statistics</h2>
 			<p>General figures about the server and the projects can be summarized by the command <code>python3 pwic_admin.py show-stats</code>.</p>
 
+			<h2 id="help_archive_audit">Archive the log</h2>
+			<p>Because the audit data can grow fast, you can archive the data on a regular basis with the command <code>python3 pwic_admin.py archive-audit --selective 30 --complete 365</code>. In the selective horizon (ie. older than the given number of days), some generic entries are removed but all the core traces of the projects are kept. In the full horizon, all the entries are removed.</p>
+			<p>In fact, the entries from the table <code>audit</code> are just moved to the table <code>audit_arch</code> and you can dispose of the data at your convenience through <a href="#help_execute_sql">SQL commands</a>. To remove the old entries physically, you would execute: <code>DELETE FROM audit.audit_arch</code>.</p>
+			<p>By design, you can't remove the entries in the short horizon of 90 days. Also note that archiving the audit data impacts the reliability of the reports above.</p>
 
 		<h1 id="help_log_user"><a href="#help_top">{{pwic.emojis.finger_up}}</a> View the activity of a user</h1>
 		<p>The user page contains a public overview online of the recently modified pages (over the last 30 days) and the uploaded documents.</p>

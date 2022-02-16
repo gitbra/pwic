@@ -58,7 +58,7 @@
 - Local storage of the uploaded files and SQLite database
 - Possible deployment with command lines
 - Critical administration not available online
-- Support for HTTP and HTTPS
+- Support for HTTP, HTTPS and reverse proxy
 - Unicode content and URL
 - HTTP logging
 - IP filtering
@@ -84,7 +84,7 @@
 ### Mandatory technical setup
 
 - Install Python >=3.7: `apt-get install python3 python3-pip`
-- Install the dependencies: `python3 -m pip install --upgrade aiohttp aiohttp-cors aiohttp-session cryptography imagesize jinja2 parsimonious PrettyTable pygments`
+- Install the dependencies: `python3 -m pip install --upgrade aiohttp aiohttp-cors aiohttp-session imagesize jinja2 parsimonious PrettyTable pygments`
 - Clone the repository or uncompress the downloaded release in a folder of your choice
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
 	- Change the default password in `PWIC_DEFAULTS['password']`

@@ -52,13 +52,13 @@
 
 				<h2>Documents</h2>
 				<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
+					<input type="button" value="{{pwic.emojis.refresh}}" title="Refresh" onclick="edit_refresh_documents()" style="margin-right: 15px" />
 					Drop the files here
 					{% if pwic.env.max_document_size_str %}
 						(max: {{pwic.env.max_document_size_str.value}})
 					{% endif %}
 					and save immediately
 				</div>
-				<p class="pwic_center pwic_hidden"><input type="button" value="{{pwic.emojis.refresh}} Refresh" onclick="edit_refresh_documents()" /></p>
 				<table id="edit_files_list">
 					<tr>
 						<th>Join</th>

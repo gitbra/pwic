@@ -25,7 +25,7 @@ from html import escape
 from random import randint
 
 from pwic_md import Markdown
-from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
+from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
     pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
@@ -112,7 +112,7 @@ class PwicServer():
         for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
             if extension in mext:
                 # Expected mime
-                if obj['mime'] == '':
+                if obj['mime'] in ['', 'application/octet-stream']:
                     obj['mime'] = mtyp[0]
                 elif obj['mime'] not in mtyp:
                     return False
@@ -258,9 +258,10 @@ class PwicServer():
         sql = self._connect()
         sql.execute(''' SELECT project, key, value
                         FROM env
-                        WHERE value <> ''
-                          AND ( project = ?
+                        WHERE ( project = ?
                              OR project = '' )
+                          AND   key     NOT LIKE 'pwic%'
+                          AND   value   <> ''
                         ORDER BY key     ASC,
                                  project DESC''',
                     (pwic.get('project', ''), ))
@@ -433,7 +434,7 @@ class PwicServer():
                 row = sql.fetchone()
                 for k in ['latest', 'draft', 'final', 'protection']:
                     row[k] = pwic_xb(row[k])
-                row['tags'] = [] if row['tags'] == '' else row['tags'].split(' ')
+                row['tags'] = pwic_list(row['tags'])
                 pwic.update(row)
                 pwic['html'], pwic['tmap'] = self._md2html(sql, project, page, revision, row['markdown'])
                 pwic['hash'] = pwic_sha256(row['markdown'], salt=False)
@@ -492,7 +493,7 @@ class PwicServer():
                                     FROM roles AS a
                                         LEFT JOIN (
                                             SELECT author, MAX(date) AS date
-                                            FROM audit
+                                            FROM audit.audit
                                             WHERE date >= ?
                                               AND ( project = ?
                                                  OR event IN ('login', 'logout')
@@ -689,7 +690,7 @@ class PwicServer():
         # Read the audit data
         sql.execute(''' SELECT id, date, time, author, event, user,
                                project, page, revision, string
-                        FROM audit
+                        FROM audit.audit
                         WHERE project = ?
                           AND date   >= ?
                         ORDER BY id DESC''',
@@ -922,7 +923,7 @@ class PwicServer():
                                      a.time DESC''' % ("','" if with_rev else ''),
                         (project, project))
             for row in sql.fetchall():
-                tagList = row['tags'].split(' ')
+                tagList = pwic_list(row['tags'])
 
                 # Apply the filters
                 ok = True
@@ -1596,7 +1597,8 @@ class PwicServer():
                         FROM env
                         WHERE ( project = ?
                              OR project = '' )
-                          AND   value  <> ''
+                          AND   key     NOT LIKE 'pwic%'
+                          AND   value   <> ''
                         ORDER BY key ASC,
                                  project DESC''',
                     (project, ))
@@ -1618,7 +1620,7 @@ class PwicServer():
         ''' Return the received headers for a request '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user == '':
+        if user[:4] in ['', 'pwic']:
             raise web.HTTPUnauthorized()
 
         # JSON serialization of the object of type CIMultiDictProxy
@@ -1643,7 +1645,7 @@ class PwicServer():
     async def api_server_shutdown(self, request: web.Request) -> None:
         # Read the parameters
         sql = self._connect()
-        if pwic_option(sql, '', 'shutdown') is None:
+        if pwic_option(sql, '', 'pwic_shutdown') is None:
             raise web.HTTPForbidden()
         user = await self._suser(request)
         if user == '':
@@ -1654,9 +1656,9 @@ class PwicServer():
             raise web.HTTPServiceUnavailable()
         sql.execute(''' DELETE FROM env
                         WHERE project = ''
-                          AND key     = 'shutdown' ''')
+                          AND key     = 'pwic_shutdown' ''')
         pwic_audit(sql, {'author': user,
-                         'event': 'unset-shutdown'},
+                         'event': 'unset-pwic_shutdown'},
                    request)
         pwic_audit(sql, {'author': user,
                          'event': 'shutdown-server'},
@@ -1714,7 +1716,7 @@ class PwicServer():
                     item['hash'] = pwic_sha256(row[k], salt=False)
                 elif k == 'tags':
                     if row[k] != '':
-                        item[k] = row[k].split(' ')
+                        item[k] = pwic_list(row[k])
                 elif k != 'page':
                     if not isinstance(row[k], str) or row[k] != '':
                         item[k] = row[k]
@@ -1750,7 +1752,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         key = pwic_safe_name(post.get('key', ''))
         value = post.get('value', '')
-        if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE):
+        if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE) or (key[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
@@ -1807,7 +1809,7 @@ class PwicServer():
             return web.HTTPUnauthorized()
 
         # Check each tag
-        tags = sorted(tags.split(' '))
+        tags = pwic_list(tags, sorted=True)
         data = {}
         for tag in tags:
             if tag == '':
@@ -2186,7 +2188,7 @@ class PwicServer():
                     (project, page, revision, 'X', user, dt['date'], dt['time'], page, default_markdown,
                      self._sanitize_tags(tags + ' ' + default_tags), 'Initial', milestone))
         pwic_audit(sql, {'author': user,
-                         'event': 'create-page',
+                         'event': 'create-revision',
                          'project': project,
                          'page': page,
                          'revision': revision},
@@ -2295,10 +2297,11 @@ class PwicServer():
                                       AND revision = ?''',
                                 (project, page, row['revision']))
                     pwic_audit(sql, {'author': user,
-                                     'event': 'delete-draft',
+                                     'event': 'delete-revision',
                                      'project': project,
                                      'page': page,
-                                     'revision': row['revision']},
+                                     'revision': row['revision'],
+                                     'string': 'Draft'},
                                request)
 
             # Purge the old flags
@@ -2364,7 +2367,7 @@ class PwicServer():
                           AND revision = ?''',
                     (user, dt['date'], dt['time'], project, page, revision))
         pwic_audit(sql, {'author': user,
-                         'event': 'validate-page',
+                         'event': 'validate-revision',
                          'project': project,
                          'page': page,
                          'revision': revision},
@@ -2528,7 +2531,7 @@ class PwicServer():
         revision = self._redirect_revision(sql, project, user, page, revision)
         if revision == 0:
             raise web.HTTPForbidden()
-        file_formats_disabled = str(pwic_option(sql, project, 'file_formats_disabled', '')).split(' ')
+        file_formats_disabled = pwic_list(pwic_option(sql, project, 'file_formats_disabled'))
         if (format in file_formats_disabled) or ('*' in file_formats_disabled):
             raise web.HTTPForbidden()
 
@@ -2597,8 +2600,8 @@ class PwicServer():
             html = html.replace('</code></pre>', '</blockcode>')
 
             # Extract the meta-informations of the embedded pictures
-            MAX_H = pwic_int(pwic_option(sql, project, 'odt_image_height_max', '900'))
-            MAX_W = pwic_int(pwic_option(sql, project, 'odt_image_width_max', '600'))
+            MAX_H = max(0, pwic_int(pwic_option(sql, project, 'odt_image_height_max', '900')))
+            MAX_W = max(0, pwic_int(pwic_option(sql, project, 'odt_image_width_max', '600')))
             docids = ['0']
             subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
             if subdocs is not None:
@@ -2768,7 +2771,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Create the new user
-        if pwic_option(sql, project, 'no_new_user_online') is not None:
+        if pwic_option(sql, project, 'no_new_user') is not None:
             sql.execute(''' SELECT user
                             FROM users
                             WHERE user = ?''',
@@ -3142,10 +3145,11 @@ class PwicServer():
             try:
                 width, height = imagesize.get(filename)
             except ValueError:
-                width, height = 50, 50          # Default area
+                width, height = 0, 0
 
         # Create the document in the database
         dt = pwic_dt()
+        newdoc = forcedId is None
         sql.execute(''' INSERT INTO documents (id, project, page, filename, mime, size, width,
                                                height, hash, author, date, time, exturl)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '')''',
@@ -3153,10 +3157,10 @@ class PwicServer():
                      doc['mime'], len(doc['content']), width, height,
                      pwic_sha256(doc['content'], salt=False), user,
                      dt['date'], dt['time']))
-        if forcedId is None:
+        if newdoc:
             forcedId = sql.lastrowid
         pwic_audit(sql, {'author': user,
-                         'event': '%s-document' % ('create' if forcedId is None else 'replace'),
+                         'event': '%s-document' % ('create' if newdoc else 'replace'),
                          'project': doc['project'],
                          'page': doc['page'],
                          'revision': current_revision,
@@ -3298,10 +3302,15 @@ app = web.Application()
 
 
 def main() -> bool:
+    # Check the databases
+    if not isfile(PWIC_DB_SQLITE) or not isfile(PWIC_DB_SQLITE_AUDIT):
+        print('Error: the databases are not initialized')
+        return False
+
     # Command-line
     parser = argparse.ArgumentParser(description='Pwic Server version %s' % PWIC_VERSION)
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
-    parser.add_argument('--port', type=int, default=8080, help='Listening port')
+    parser.add_argument('--port', type=int, default=pwic_int(PWIC_DEFAULTS['port']), help='Listening port')
     parser.add_argument('--sql-trace', action='store_true', help='Display the SQL queries in the console for debugging purposes')
     args = parser.parse_args()
 
@@ -3321,20 +3330,22 @@ def main() -> bool:
     if args.sql_trace:
         app['sql'].set_trace_callback(pwic_sql_print)
     sql = app['sql'].cursor()
-    sql.execute('PRAGMA optimize')
+    sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
+    sql.execute('VACUUM main')
+    sql.execute('VACUUM audit')
     # ... PWIC
     app['pwic'] = PwicServer()
     # ... session
     b = pwic_option(sql, '', 'keep_sessions') is None
     if b:
         sql.execute(''' DELETE FROM env
-                        WHERE key = 'session_secret' ''')
-    skey: Union[Optional[str], bytes] = pwic_option(sql, '', 'session_secret')
+                        WHERE key = 'pwic_session' ''')
+    skey: Union[Optional[str], bytes] = pwic_option(sql, '', 'pwic_session')
     if skey is None:
         skey = urandom(32)
     if not b:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
-                        VALUES ('', 'session_secret', ?)''',
+                        VALUES ('', 'pwic_session', ?)''',
                     (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
     setup(app, EncryptedCookieStorage(skey))    # Storage for the cookies
     del skey
@@ -3423,34 +3434,28 @@ def main() -> bool:
                     'domains': pwic_list(str(pwic_option(sql, '', 'oauth_domains', '')))}
 
     # Compile the IP filters
-    def _compile_ip():
-        nonlocal sql
-        app['ip_filter'] = []
-        for mask in pwic_option(sql, '', 'ip_filter', '').split(' '):
-            mask = mask.strip()
-            if mask != '':
-                item = [IPR_EQ, None, None]  # Type, Negated, Mask object
+    app['ip_filter'] = []
+    for mask in pwic_list(pwic_option(sql, '', 'ip_filter')):
+        item: List[Any] = [IPR_EQ, None, None]    # Type, Negated, Mask object
 
-                # Negation flag
-                item[1] = (mask[:1] == '-')
-                if item[1]:
-                    mask = mask[1:]
+        # Negation flag
+        item[1] = (mask[:1] == '-')
+        if item[1]:
+            mask = mask[1:]
 
-                # Condition types
-                # ... networks
-                if '/' in mask:
-                    item[0] = IPR_NET
-                    item[2] = ip_network(mask)
-                # ... mask for IP
-                elif '*' in mask or '?' in mask:
-                    item[0] = IPR_REG
-                    item[2] = re.compile(mask.replace('.', '\\.').replace('?', '.').replace('*', '.*'))
-                # ... raw IP
-                else:
-                    item[2] = mask
-                app['ip_filter'].append(item)
-
-    _compile_ip()
+        # Condition types
+        # ... networks
+        if '/' in mask:
+            item[0] = IPR_NET
+            item[2] = ip_network(mask)
+        # ... mask for IP
+        elif '*' in mask or '?' in mask:
+            item[0] = IPR_REG
+            item[2] = re.compile(mask.replace('.', '\\.').replace('?', '.').replace('*', '.*'))
+        # ... raw IP
+        else:
+            item[2] = mask
+        app['ip_filter'].append(item)
 
     # Logging
     logfile = pwic_option(sql, '', 'http_log_file', '')
@@ -3463,16 +3468,20 @@ def main() -> bool:
     if not PwicExtension.on_server_ready(app, sql):
         return False
     row = sql.execute(''' SELECT MAX(id) AS id
-                          FROM audit
+                          FROM audit.audit
                           WHERE event = 'start-server' ''').fetchone()
     if row['id'] is not None:
         row = sql.execute(''' SELECT date, time
-                              FROM audit
+                              FROM audit.audit
                               WHERE id = ?''',
                           (row['id'], )).fetchone()
         print('Last started on %s %s.' % (row['date'], row['time']))
+    sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                    VALUES ('', 'pwic_port', ?)''',
+                (args.port, ))
     pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'start-server'})
+                     'event': 'start-server',
+                     'string': '%s:%s' % (args.host, args.port)})
     app['sql'].commit()
     del sql
     web.run_app(app,

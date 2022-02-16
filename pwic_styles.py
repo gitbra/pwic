@@ -200,7 +200,8 @@ class pwic_styles_odt:
 
         <style:style style:name="Heading"
                      style:family="paragraph"
-                     style:class="text">
+                     style:class="text"
+                     style:parent-style-name="Normal">
             <style:paragraph-properties fo:keep-with-next="always"/>
         </style:style>
         <style:style style:name="H1"
@@ -276,7 +277,7 @@ class pwic_styles_odt:
                      style:parent-style-name="Normal">
             <style:paragraph-properties fo:border-left="5px solid #bfbfbf"
                                         fo:background-color="#f2f2f2"
-                                        fo:padding-left="0.05in"
+                                        fo:padding="0.05in"
                                         fo:margin-left="0.4in"/>
         </style:style>
         <style:style style:name="Code"

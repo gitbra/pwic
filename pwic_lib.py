@@ -25,6 +25,7 @@ PWIC_VERSION = '1.0-rc5'
 PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
+PWIC_DB_SQLITE_AUDIT = PWIC_DB + '/pwic_audit.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
 PWIC_TEMPLATES_PATH = './templates/'
 
@@ -36,15 +37,17 @@ PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible
 PWIC_MAGIC_OAUTH = 'OAuth'
 
 # Thematic constants
-PWIC_USERS = {'anonymous': 'pwic-anonymous',        # Account for the random visitors
-              'ghost': 'pwic-ghost',                # Account for the deleted users (not implemented)
-              'system': 'pwic-system'}              # Account for the technical operations
+PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors
+              'ghost': 'pwic_ghost',                # Account for the deleted users (not implemented)
+              'system': 'pwic_system'}              # Account for the technical operations
 PWIC_DEFAULTS = {'password': 'initial',             # Default password for the new accounts
                  'language': 'en',
                  'page': 'home',
+                 'kb_mask': 'kb%06d',
                  'heading': '1.1.1.1.1.1.',
+                 'odt_img_defpix': '150',
                  'logging_format': '%a %t "%r" %s %b',
-                 'kb_mask': 'kb%06d'}
+                 'port': '8080'}
 PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'),        # Find a page in Markdown
                 'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
                 'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),              # Find the picture ID in IMG.SRC
@@ -61,15 +64,14 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
                               'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev',
-                              'no_mde', 'no_new_user_online', 'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max',
+                              'no_mde', 'no_new_user', 'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max',
                               'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
                               'support_text', 'support_url', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
                                      'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                                      'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
-PWIC_ENV_INTERNAL = ['session_secret']
-PWIC_ENV_PRIVATE = ['oauth_secret', 'session_secret']
+PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
@@ -134,6 +136,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'updown': '&#x2195;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
+               'warning': '&#x26A0;',
                'watch': '&#x231A;',
                'wave': '&#x1F30A;',
                'world': '&#x1F5FA;'}
@@ -231,6 +234,7 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['rar'], ['application/x-rar-compressed'], ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01'], True),
                       (['rss'], ['application/rss+xml'], None, False),
                       (['rtf'], ['application/msword'], ['{\rtf1'], False),
+                      (['sqlite'], ['application/vnd.sqlite3'], ['SQLite format 3\x00'], False),
                       (['sti'], ['application/vnd.sun.xml.impress.template'], None, False),
                       (['svg'], ['image/svg+xml'], None, False),
                       (['swf'], ['application/x-shockwave-flash'], ['CWS', 'FWS'], False),
@@ -347,12 +351,15 @@ def pwic_int(value: Any) -> int:
         return 0
 
 
-def pwic_list(input: str, separator: str = ' ') -> List[str]:
-    ''' Build a list of unique values from a string and keep the initial order '''
+def pwic_list(input: Optional[str], sorted: bool = False) -> List[str]:
+    ''' Build a list of unique values from a string and keep the initial order (by default) '''
     if input is None:
         input = ''
     input = pwic_recursive_replace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
-    return [] if input == '' else list(OrderedDict((item, None) for item in input.split(separator)))
+    values = [] if input == '' else list(OrderedDict((item, None) for item in input.split(' ')))
+    if sorted:
+        values.sort()
+    return values
 
 
 def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default: Optional[str] = None) -> Optional[str]:
@@ -515,7 +522,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
         return _roman(value).lower()
 
     def _letter(value: int, mask: str) -> str:
-        # https://stackoverflow.com/questions/48983939/convert-a-number-to-excel-s-base-26
+        # stackoverflow.com/questions/48983939
         def _divmod(n, base):
             a, b = divmod(n, base)
             if b == 0:
@@ -620,7 +627,7 @@ def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request:
         fields += '%s, ' % key
         tups += '?, '
         tuple += (object[key], )
-    sql.execute("INSERT INTO audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
+    sql.execute("INSERT INTO audit.audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
     assert(sql.rowcount == 1)
 
     # Specific event
@@ -875,7 +882,7 @@ class pwic_html2odt(HTMLParser):
                                 for key, value in attrs:
                                     if key == property_value:
                                         # Fix the base URL for the links
-                                        if tag == 'a' and key == 'href':
+                                        if (tag == 'a') and (key == 'href'):
                                             if value[:1] in ['/']:
                                                 value = self.baseUrl + str(value)
                                             elif value[:1] in ['?', '#', '.']:
@@ -895,15 +902,20 @@ class pwic_html2odt(HTMLParser):
                                                 if self.pictMeta is not None:
                                                     docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
                                                     if docid_re is not None:
+                                                        width = height = 0
                                                         docid = pwic_int(docid_re.group(1))
                                                         if docid in self.pictMeta:
                                                             if self.pictMeta[docid]['remote'] or (self.pictMeta[docid]['link'] == value):
                                                                 value = self.pictMeta[docid]['link_odt_img']
-                                                            self._replace_marker('{$w}', '%.2f' % (2.54 * self.pictMeta[docid]['width'] / 120.))
-                                                            self._replace_marker('{$h}', '%.2f' % (2.54 * self.pictMeta[docid]['height'] / 120.))
+                                                            width = self.pictMeta[docid]['width']
+                                                            height = self.pictMeta[docid]['height']
+                                                        if 0 in [width, height]:
+                                                            width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
+                                                        self._replace_marker('{$w}', '%.2f' % (2.54 * width / 120.))
+                                                        self._replace_marker('{$h}', '%.2f' % (2.54 * height / 120.))
 
                                         # Fix the class name for the syntax highlight
-                                        if tag == 'span' and self.blockcode_on and key == 'class':
+                                        if (tag == 'span') and self.blockcode_on and (key == 'class'):
                                             value = 'Code_' + value
 
                                         if property[:5] != 'dummy':

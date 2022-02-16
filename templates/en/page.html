@@ -147,8 +147,8 @@
 		{% endif %}
 
 		<p id="page_lastmod">
-			Last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a> on {{pwic.date}} at {{pwic.time}}
-			<br/>Hash: <span title="{{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
+			Revision #{{pwic.revision|escape}} last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a>
+			<br/>on {{pwic.date}} at {{pwic.time}} &mdash; <span title="Hash: {{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
 		</p>
 
 		{% if pwic.env.legal_notice %}

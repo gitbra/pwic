@@ -173,12 +173,12 @@ class PwicExtension():
                  online: bool,                              # Event coming from the Internet (True) or the console (False)
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                change-password  clear-cache       create-document   create-page      create-project   create-user        delete-document
-                delete-draft     delete-project    delete-revision   delete-user      execute-sql      export-project     generate-ssl
-                grant-admin      grant-editor      grant-manager     grant-reader     grant-validator  init-db            login
-                logout           repair-documents  replace-document  reset-password   set-*            shutdown-server    split-project
-                start-server     ungrant-admin     ungrant-editor    ungrant-manager  ungrant-reader   ungrant-validator  unset-*
-                update-page      validate-page
+                archive-audit  change-password    clear-cache       create-backup     create-document  create-project   create-revision
+                create-user    delete-document    delete-project    delete-revision   delete-user      execute-sql      export-project
+                generate-ssl   grant-admin        grant-editor      grant-manager     grant-reader     grant-validator  init-db
+                login          logout             repair-documents  replace-document  reset-password   set-*            shutdown-server
+                split-project  start-server       ungrant-admin     ungrant-editor    ungrant-manager  ungrant-reader   ungrant-validator
+                unset-*        validate-revision
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.
@@ -245,7 +245,7 @@ class PwicExtension():
         if request is None:
             return ''
         else:
-            # return str(request.headers.get('X-Forwarded-For', request.remote))
+            # return str(request.headers.get('X-Forwarded-For', request.remote))    # Enable this line if you use a reverse proxy
             return str(request.remote)
 
     @staticmethod

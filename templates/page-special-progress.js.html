@@ -3,7 +3,14 @@
 		var	list_initial = null,
 			timeout = null;
 
-		$('#page_progress_tags > A').on('click', function() {
+		$('#page_progress_tags > A:first-child').on('click', function() {
+			$('#page_progress_tags > A').removeClass('pwic_selected');
+			clearTimeout(timeout);
+			page_progress_refresh();
+			return false;
+		});
+
+		$('#page_progress_tags > A:not(:first-child)').on('click', function() {
 			$(this).toggleClass('pwic_selected');
 			clearTimeout(timeout);
 			timeout = setTimeout(function() { page_progress_refresh(); }, 2000);
@@ -40,17 +47,23 @@
 						for (var tag in data)
 						{
 							var item = data[tag];
-							buffer += '<tr>\
-											<td><a href="/{{pwic.project|urlencode}}/special/search?q=%23'+encodeURIComponent(tag)+'">'+tag+'<\/a><\/td>\
-											<td>'+item['draft']+'<\/td>\
-											<td>'+_pc(item['draft'], item['total'])+'<\/td>\
-											<td>'+item['step']+'<\/td>\
-											<td>'+_pc(item['step'], item['total'])+'<\/td>\
-											<td>'+item['final']+'<\/td>\
-											<td>'+_pc(item['final'], item['total'])+'<\/td>\
-											<td>'+item['validated']+'<\/td>\
-											<td>'+_pc(item['validated'], item['total'])+'<\/td>\
-										<\/tr>';
+							buffer += '<tr>'
+										+'<td>'
+											{% if not pwic.env.no_search %}
+												+'<a href="/{{pwic.project|urlencode}}/special/search?q=%23'+encodeURIComponent(tag)+'">'+encodeURIComponent(tag)+'<\/a>'
+											{% else %}
+												+encodeURIComponent(tag)
+											{% endif %}
+										+'<\/td>'
+										+'<td>'+item['draft']+'<\/td>'
+										+'<td>'+_pc(item['draft'], item['total'])+'<\/td>'
+										+'<td>'+item['step']+'<\/td>'
+										+'<td>'+_pc(item['step'], item['total'])+'<\/td>'
+										+'<td>'+item['final']+'<\/td>'
+										+'<td>'+_pc(item['final'], item['total'])+'<\/td>'
+										+'<td>'+item['validated']+'<\/td>'
+										+'<td>'+_pc(item['validated'], item['total'])+'<\/td>'
+									+'<\/tr>';
 						}
 					}
 				}

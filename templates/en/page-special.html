@@ -60,8 +60,8 @@
 
 
 		{% if pwic.recents|count > 0 %}
-			<h1>Recent updates</h1>
-			<table>
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#page_updates_list').toggleClass('pwic_hidden')">Recent updates</h1>
+			<table id="page_updates_list">
 				<tr>
 					<th>Date</th>
 					<th class="pwic_desktop">Time</th>
@@ -85,73 +85,75 @@
 		{% endif %}
 
 
-		<h1>Team members</h1>
-		<p>By active profile:</p>
-		<ul>
-			{% if pwic.admins|count > 0 %}
-				<li><strong>Administrators:</strong>
-					{% for admin in pwic.admins %}
-						<a href="/special/user/{{admin|urlencode}}" rel="nofollow">{{admin|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.managers|count > 0 %}
-				<li><strong>Managers:</strong>
-					{% for manager in pwic.managers %}
-						<a href="/special/user/{{manager|urlencode}}" rel="nofollow">{{manager|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.editors|count > 0 %}
-				<li><strong>Editors:</strong>
-					{% for editor in pwic.editors %}
-						<a href="/special/user/{{editor|urlencode}}" rel="nofollow">{{editor|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.validators|count > 0 %}
-				<li><strong>Validators:</strong>
-					{% for validator in pwic.validators %}
-						<a href="/special/user/{{validator|urlencode}}" rel="nofollow">{{validator|escape}}</a>
-					{% endfor %}
-				</li>
-			{% endif %}
-			{% if pwic.readers|count > 0 %}
-				<li><strong>Readers:</strong>
-					{% if pwic.readers|count > 100 %}
-						too many users.
-					{% else %}
-						{% for reader in pwic.readers %}
-							<a href="/special/user/{{reader|urlencode}}" rel="nofollow">{{reader|escape}}</a>
-						{% endfor %}
-					{% endif %}
-				</li>
-			{% endif %}
-		</ul>
-		{% if (pwic.admin or pwic.manager) and (pwic.disableds|count > 0 or pwic.inactive_users|count > 0) %}
-			<p>By status:</p>
+		<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#page_members_list').toggleClass('pwic_hidden')">Team members</h1>
+		<div id="page_members_list">
+			<p>By active profile:</p>
 			<ul>
-				{% if pwic.disableds|count > 0 %}
-					<li><strong>Disabled users:</strong>
-						{% for user in pwic.disableds %}
-							<a href="/special/user/{{user|urlencode}}" rel="nofollow">{{user|escape}}</a>
+				{% if pwic.admins|count > 0 %}
+					<li><strong>Administrators:</strong>
+						{% for admin in pwic.admins %}
+							<a href="/special/user/{{admin|urlencode}}" rel="nofollow">{{admin|escape}}</a>
 						{% endfor %}
 					</li>
 				{% endif %}
-				{% if pwic.inactive_users|count > 0 %}
-					<li><strong>Inactive users:</strong>
-						{% for user in pwic.inactive_users %}
-							<a href="/special/user/{{user|urlencode}}" rel="nofollow">{{user|escape}}</a>
+				{% if pwic.managers|count > 0 %}
+					<li><strong>Managers:</strong>
+						{% for manager in pwic.managers %}
+							<a href="/special/user/{{manager|urlencode}}" rel="nofollow">{{manager|escape}}</a>
 						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.editors|count > 0 %}
+					<li><strong>Editors:</strong>
+						{% for editor in pwic.editors %}
+							<a href="/special/user/{{editor|urlencode}}" rel="nofollow">{{editor|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.validators|count > 0 %}
+					<li><strong>Validators:</strong>
+						{% for validator in pwic.validators %}
+							<a href="/special/user/{{validator|urlencode}}" rel="nofollow">{{validator|escape}}</a>
+						{% endfor %}
+					</li>
+				{% endif %}
+				{% if pwic.readers|count > 0 %}
+					<li><strong>Readers:</strong>
+						{% if pwic.readers|count > 100 %}
+							too many users.
+						{% else %}
+							{% for reader in pwic.readers %}
+								<a href="/special/user/{{reader|urlencode}}" rel="nofollow">{{reader|escape}}</a>
+							{% endfor %}
+						{% endif %}
 					</li>
 				{% endif %}
 			</ul>
-		{% endif %}
+			{% if (pwic.admin or pwic.manager) and (pwic.disableds|count > 0 or pwic.inactive_users|count > 0) %}
+				<p>By status:</p>
+				<ul>
+					{% if pwic.disableds|count > 0 %}
+						<li><strong>Disabled users:</strong>
+							{% for user in pwic.disableds %}
+								<a href="/special/user/{{user|urlencode}}" rel="nofollow">{{user|escape}}</a>
+							{% endfor %}
+						</li>
+					{% endif %}
+					{% if pwic.inactive_users|count > 0 %}
+						<li><strong>Inactive users:</strong>
+							{% for user in pwic.inactive_users %}
+								<a href="/special/user/{{user|urlencode}}" rel="nofollow">{{user|escape}}</a>
+							{% endfor %}
+						</li>
+					{% endif %}
+				</ul>
+			{% endif %}
+		</div>
 
 
 		{% if (pwic.pages|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
-			<h1>All the pages of the project</h1>
-			<table>
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#page_pages_list').toggleClass('pwic_hidden')">All the pages of the project</h1>
+			<table id="page_pages_list">
 				<tr>
 					<th>Page</th>
 					<th>Title</th>
@@ -178,7 +180,7 @@
 							<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
 						{% endif %}
 					</td>
-					<td><a href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
+					<td><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
 					<td class="pwic_desktop pwic_nowrap">{{page.date|escape}}</td>
 					<td class="pwic_desktop">{{page.time|escape}}</td>
 					<td class="pwic_desktop">{{page.milestone|escape}}</td>
@@ -191,6 +193,7 @@
 		{% if pwic.tags|count > 0 %}
 			<h1>Progress by tag</h1>
 			<div id="page_progress_tags" class="pwic_tagbox">
+				<a href="#" title="Reset">{{pwic.emojis.red_check}}</a>
 				{% for tag in pwic.tags %}
 					<a href="#" title="Un/Select this tag">#{{tag|escape}}</a>
 				{% endfor %}
@@ -211,8 +214,8 @@
 
 
 		{% if (pwic.documents|count > 0) and (pwic.user != pwic.constants.anonymous_user) %}
-			<h1>All the documents of the project</h1>
-			<p class="pwic_center"><strong>Disk space usage:</strong>
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#page_documents_space, #page_documents_list').toggleClass('pwic_hidden')">All the documents of the project</h1>
+			<p id="page_documents_space" class="pwic_center"><strong>Disk space usage:</strong>
 				{% if pwic.disk_space.project_max > 0 %}
 					<span class="pwic_progressbar">
 						<span style="width:{{pwic.disk_space.percentage}}%">&nbsp;</span>
@@ -223,7 +226,7 @@
 				{% endif %}
 			</p>
 
-			<table>
+			<table id="page_documents_list">
 				<tr>
 					<th class="pwic_desktop">Page</th>
 					<th>File name</th>
@@ -252,7 +255,7 @@
 								<span title="Duplicate file">{{pwic.emojis.gemini}}</span>
 							{% endif %}
 						</td>
-						<td><a href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
+						<td><a class="pwic_break" href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
 						<td class="pwic_desktop pwic_nowrap">{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>
 						<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>

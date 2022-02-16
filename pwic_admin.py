@@ -16,9 +16,9 @@ from stat import S_IREAD
 from urllib.request import Request, urlopen
 from http.client import RemoteDisconnected
 
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DOCUMENTS_PATH, PWIC_USERS, \
-    PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_INTERNAL, PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_option, pwic_list, pwic_magic_bytes, \
+from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, \
+    PWIC_USERS, PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_list, pwic_magic_bytes, \
     pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
 from pwic_extension import PwicExtension
 
@@ -94,7 +94,7 @@ def main() -> bool:
     spb.add_argument('--max', type=int, default=0, help='To MAX days in the past', metavar='0')
 
     spb = subparsers.add_parser('show-login', help='Show the last logins of the users')
-    spb.add_argument('--days', type=int, default=365, help='Number of days in the past', metavar='365')
+    spb.add_argument('--days', type=int, default=30, help='Number of days in the past', metavar='30')
 
     subparsers.add_parser('show-stats', help='Show some statistics')
 
@@ -108,6 +108,10 @@ def main() -> bool:
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
+    spb = subparsers.add_parser('archive-audit', help='Clean the obsolete entries of audit')
+    spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
+    spb.add_argument('--complete', type=int, default=0, help='Horizon for a complete cleanup', metavar='365')
+
     subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
     spb = subparsers.add_parser('repair-documents', help='Repair the index of the documents (recommended after the database is restored)')
@@ -116,6 +120,8 @@ def main() -> bool:
     spb.add_argument('--no-magic', action='store_true', help='Do not verify the magic bytes of the files')
     spb.add_argument('--keep-orphans', action='store_true', help='Do not delete the orphaned folders and files')
     spb.add_argument('--test', action='store_true', help='Verbose simulation')
+
+    subparsers.add_parser('execute-optimize', help='Run the optimizer')
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
@@ -163,10 +169,14 @@ def main() -> bool:
         return compress_static(args.revert)
     elif args.command == 'clear-cache':
         return clear_cache(args.project)
+    elif args.command == 'archive-audit':
+        return archive_audit(args.selective, args.complete)
     elif args.command == 'create-backup':
         return create_backup()
     elif args.command == 'repair-documents':
         return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
+    elif args.command == 'execute-optimize':
+        return execute_optimize()
     elif args.command == 'execute-sql':
         return execute_sql()
     elif args.command == 'shutdown-server':
@@ -176,15 +186,20 @@ def main() -> bool:
         return False
 
 
-def db_connect(init: bool = False) -> Optional[sqlite3.Cursor]:
+# ===== Database =====
+
+def db_connect(init: bool = False, master: bool = True, dbfile: str = PWIC_DB_SQLITE) -> Optional[sqlite3.Cursor]:
     global db
-    if not init and not isfile(PWIC_DB_SQLITE):
+    if not init and not isfile(dbfile):
         print('Error: the database is not created yet')
         return None
     try:
-        db = sqlite3.connect(PWIC_DB_SQLITE)
+        db = sqlite3.connect(dbfile)
         db.row_factory = pwic_row_factory
-        return db.cursor()
+        sql = db.cursor()
+        if master:
+            sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
+        return sql
     except sqlite3.OperationalError:
         print('Error: the database cannot be opened')
         return None
@@ -200,7 +215,65 @@ def db_lock(sql: sqlite3.Cursor) -> bool:
         return False
 
 
-def db_create_tables(sql: sqlite3.Cursor) -> bool:
+def db_create_tables_audit() -> bool:
+    sql = db_connect(init=True, master=False, dbfile=PWIC_DB_SQLITE_AUDIT)
+    if sql is None:
+        return False
+
+    # Table AUDIT
+    sql.execute('''
+CREATE TABLE "audit" (
+    "id" INTEGER NOT NULL,
+    "date" TEXT NOT NULL,
+    "time" TEXT NOT NULL,
+    "author" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "user" TEXT NOT NULL DEFAULT '',
+    "project" TEXT NOT NULL DEFAULT '',
+    "page" TEXT NOT NULL DEFAULT '',
+    "revision" INTEGER NOT NULL DEFAULT 0,
+    "string" TEXT NOT NULL DEFAULT '',
+    "ip" TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY("id" AUTOINCREMENT)
+)''')
+    sql.execute('''
+CREATE TABLE "audit_arch" (
+    "id" INTEGER NOT NULL,
+    "date" TEXT NOT NULL,
+    "time" TEXT NOT NULL,
+    "author" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "user" TEXT NOT NULL,
+    "project" TEXT NOT NULL,
+    "page" TEXT NOT NULL,
+    "revision" INTEGER NOT NULL,
+    "string" TEXT NOT NULL,
+    "ip" TEXT NOT NULL,
+    PRIMARY KEY("id")       -- No AUTOINCREMENT
+)''')
+
+    # Triggers
+    sql.execute('''
+CREATE TRIGGER audit_no_update
+    BEFORE UPDATE ON audit
+BEGIN
+    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
+END''')
+    sql.execute('''
+CREATE TRIGGER audit_archiver
+    BEFORE DELETE ON audit
+BEGIN
+    INSERT INTO audit_arch
+        SELECT *
+        FROM audit
+        WHERE id = OLD.id;
+END''')
+    db_commit()
+    return True
+
+
+def db_create_tables_main(dbfile: str = PWIC_DB_SQLITE) -> bool:
+    sql = db_connect(init=True, master=True, dbfile=dbfile)
     if sql is None:
         return False
     dt = pwic_dt()
@@ -322,37 +395,7 @@ CREATE TABLE "documents" (
     PRIMARY KEY("id" AUTOINCREMENT),
     UNIQUE("project","filename")
 )''')
-
-    # Table AUDIT
-    sql.execute('''
-CREATE TABLE "audit" (
-    "id" INTEGER NOT NULL,
-    "date" TEXT NOT NULL,
-    "time" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "event" TEXT NOT NULL,
-    "user" TEXT NOT NULL DEFAULT '',
-    "project" TEXT NOT NULL DEFAULT '',
-    "page" TEXT NOT NULL DEFAULT '',
-    "revision" INTEGER NOT NULL DEFAULT 0,
-    "string" TEXT NOT NULL DEFAULT '',
-    "ip" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("id" AUTOINCREMENT)
-)''')
-
-    # No special operations on AUDIT
-    sql.execute('''
-CREATE TRIGGER audit_no_delete
-BEFORE DELETE ON audit
-BEGIN
-    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
-END''')
-    sql.execute('''
-CREATE TRIGGER audit_no_update
-BEFORE UPDATE ON audit
-BEGIN
-    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
-END''')
+    db_commit()
     return True
 
 
@@ -368,8 +411,10 @@ def db_rollback() -> None:
         db.rollback()
 
 
+# ===== Methods =====
+
 def generate_ssl() -> bool:
-    # Ownership by https://stackoverflow.com/questions/51645324/how-to-setup-a-aiohttp-https-server-and-client/51646535
+    # stackoverflow.com/questions/51645324
 
     # Check the database
     if not isdir(PWIC_DB):
@@ -428,42 +473,49 @@ def generate_ssl() -> bool:
                          'event': 'generate-ssl'})
         db_commit()
     print('\nThe SSL certificates are generated:')
-    print('- ' + PWIC_PRIVATE_KEY)
-    print('- ' + PWIC_PUBLIC_KEY)
+    print('- Private key: ' + PWIC_PRIVATE_KEY)
+    print('- Public key: ' + PWIC_PUBLIC_KEY)
     return True
 
 
 def init_db() -> bool:
-    # Create the database
+    # Check that the database does not exist already
     if not isdir(PWIC_DB):
         mkdir(PWIC_DB)
-    if isfile(PWIC_DB_SQLITE):
-        print('Error: the database is already created')
-    else:
-        sql = db_connect(init=True)
-        if sql is None:
-            print('Error: cannot create the database')
-        else:
-            # Create the structure of the tables
-            db_create_tables(sql)
-            pwic_audit(sql, {'author': PWIC_USERS['system'],
-                             'event': 'init-db'})
+    if isfile(PWIC_DB_SQLITE) or isfile(PWIC_DB_SQLITE_AUDIT):
+        print('Error: the databases are already created')
+        return False
 
-            # Add the default, safe or mandatory configuration
-            for (key, value) in [('base_url', 'http://127.0.0.1:8080'),
-                                 ('file_formats', 'md html odt'),
-                                 ('robots', 'noarchive noindex'),
-                                 ('safe_mode', 'X')]:
-                sql.execute(''' INSERT INTO env (project, key, value) VALUES ('', ?, ?)''', (key, value))
-                pwic_audit(sql, {'author': PWIC_USERS['system'],
-                                 'event': 'set-%s' % key,
-                                 'string': '' if key in PWIC_ENV_PRIVATE else value})
+    # Create the dbfiles
+    ok = db_create_tables_audit() and db_create_tables_main()
+    if not ok:
+        print('Error: the databases cannot be created')
+        return False
 
-            # Confirmation
-            db_commit()
-            print('The database is created at "%s"' % PWIC_DB_SQLITE)
-            return True
-    return False
+    # Connect to the databases
+    sql = db_connect()
+    if sql is None:
+        print('Error: the databases cannot be opened')
+        return False
+
+    # Add the default, safe or mandatory configuration
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'init-db'})
+    for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PWIC_DEFAULTS['port']),
+                         ('file_formats', 'md html odt'),
+                         ('robots', 'noarchive noindex nofollow'),
+                         ('safe_mode', 'X')]:
+        sql.execute(''' INSERT INTO env (project, key, value)
+                        VALUES ('', ?, ?)''',
+                    (key, value))
+        pwic_audit(sql, {'author': PWIC_USERS['system'],
+                         'event': 'set-%s' % key,
+                         'string': '' if key in PWIC_ENV_PRIVATE else value})
+
+    # Confirmation
+    db_commit()
+    print('The databases are created in "%s" and "%s"' % (PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT))
+    return True
 
 
 def show_env(var: str = '') -> bool:
@@ -471,7 +523,7 @@ def show_env(var: str = '') -> bool:
     if var == '':
         try:
             from importlib.metadata import PackageNotFoundError, version
-            print('Python packages:\n')
+            print('Python packages:')
             tab = PrettyTable()
             tab.field_names = ['Package', 'Version']
             tab.align[tab.field_names[0]] = 'l'
@@ -517,7 +569,7 @@ def show_env(var: str = '') -> bool:
         tab.add_row([row['project'], row['key'], value])
         found = True
     if found:
-        print('\nGlobal and project-dependent Pwic variables:\n')
+        print('\nGlobal and project-dependent Pwic variables:')
         print(tab.get_string())
         return True
     else:
@@ -587,10 +639,11 @@ def repair_env() -> bool:
         return False
 
     # Analyze each variables
-    all_keys = PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT + PWIC_ENV_INTERNAL
+    all_keys = PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT
     buffer = []
     sql.execute(''' SELECT project, key, value
                     FROM env
+                    WHERE key NOT LIKE 'pwic%'
                     ORDER BY project, key''')
     for row in sql.fetchall():
         if (row['key'] not in all_keys) or \
@@ -703,9 +756,9 @@ def create_project(project: str, description: str, admin: str) -> bool:
     project = pwic_safe_name(project)
     description = description.strip()
     admin = pwic_safe_user_name(admin)
-    if (project in ['api', 'special']) or       \
-       ('' in [project, description, admin]) or \
-       (project[:4] == 'pwic') or               \
+    if (project in ['api', 'special', 'static']) or \
+       ('' in [project, description, admin]) or     \
+       (project[:4] == 'pwic') or                   \
        (admin[:4] == 'pwic'):
         print('Error: invalid arguments')
         return False
@@ -764,7 +817,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
                 (project, PWIC_DEFAULTS['page'], admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'create-page',
+                     'event': 'create-revision',
                      'project': project,
                      'page': PWIC_DEFAULTS['page'],
                      'revision': 1})
@@ -839,7 +892,7 @@ def split_project(projects: List[str], collapse: bool) -> bool:
         sql.execute(query, [e for e in row.values()])
 
     # Connect to the database
-    sql = db_connect()
+    sql = db_connect()                      # Don't lock this connection
     if sql is None:
         return False
 
@@ -864,13 +917,13 @@ def split_project(projects: List[str], collapse: bool) -> bool:
     if isfile(fn):
         print('Error: the split database "%s" already exists' % fn)
         return False
+    if not db_create_tables_main(fn):
+        print('Error: the tables cannot be created in the the split database')
+        return False
     try:
         newsql = sqlite3.connect(fn).cursor()
     except sqlite3.OperationalError:
         print('Error: the split database cannot be opened')
-        return False
-    if not db_create_tables(newsql):
-        print('Error: the tables cannot be created in the the split database')
         return False
 
     # Transfer the data
@@ -922,11 +975,11 @@ def split_project(projects: List[str], collapse: bool) -> bool:
         sql.execute(''' SELECT *
                         FROM env
                         WHERE project = ?
-                          AND value  <> '' ''',
+                          AND key     NOT LIKE 'pwic%'
+                          AND value   <> '' ''',
                     (p, ))
         for row in sql.fetchall():
-            if row['key'] not in ['session_secret']:        # Drop all the opened sessions
-                _transfer_record(newsql, 'env', row)
+            _transfer_record(newsql, 'env', row)
     # ... pages
     for p in projects:
         sql.execute(''' SELECT *
@@ -947,24 +1000,6 @@ def split_project(projects: List[str], collapse: bool) -> bool:
                     (p, ))
         for row in sql.fetchall():
             _transfer_record(newsql, 'documents', row)
-    # ... audit
-    for p in projects:
-        sql.execute(''' SELECT MAX(id) AS id
-                        FROM audit
-                        WHERE event   = 'create-project'
-                          AND project = ?''',
-                    (p, ))
-        id = sql.fetchone()['id']
-        if id is None:
-            id = 1
-        sql.execute(''' SELECT *
-                        FROM audit
-                        WHERE id     >= ?
-                          AND project = ?''',
-                    (id, p))
-        for row in sql.fetchall():
-            row['id'] = None
-            _transfer_record(newsql, 'audit', row)          # Final table not sorted by date and time
 
     # Result
     newsql.execute(''' COMMIT''')
@@ -973,7 +1008,7 @@ def split_project(projects: List[str], collapse: bool) -> bool:
                          'event': 'split-project',
                          'project': p})
     db_commit()
-    print('The projects "%s" are copied into the separate database "%s"' % (', '.join(projects), fn))
+    print('The projects "%s" are copied into the separate database "%s" without the audit data and the documents.' % (', '.join(projects), fn))
     return True
 
 
@@ -1212,8 +1247,10 @@ def revoke_user(user: str, force: bool) -> bool:
                          'project': row['project'],
                          'user': user})
     sql.execute(''' DELETE FROM roles WHERE user = ?''', (user, ))
+
+    # Final
     db_commit()
-    print('The user "%s" is fully unassigned to the projects but remains known in the database' % user)
+    print('The user "%s" is fully unassigned to the projects but remains in the database' % user)
     return True
 
 
@@ -1235,7 +1272,7 @@ def show_audit(dmin: int, dmax: int) -> bool:
         return False
     sql.execute(''' SELECT id, date, time, author, event, user,
                            project, page, revision, ip, string
-                    FROM audit
+                    FROM audit.audit
                     WHERE date >= ? AND date <= ?
                     ORDER BY id ASC''',
                 (dmin_str, dmax_str))
@@ -1263,13 +1300,13 @@ def show_login(days: int) -> bool:
                     FROM users AS a
                         INNER JOIN (
                             SELECT author, MAX(id) AS id, COUNT(id) AS events
-                            FROM audit
+                            FROM audit.audit
                             WHERE event = 'login'
                               AND date >= ?
                             GROUP BY author
                         ) AS b
                             ON b.author = a.user
-                        INNER JOIN audit AS c
+                        INNER JOIN audit.audit AS c
                             ON c.id = b.id
                     ORDER BY c.date DESC,
                              c.time DESC,
@@ -1344,6 +1381,20 @@ def show_stats() -> bool:
             ''' SELECT COUNT(user) AS kpi
                 FROM users
                 WHERE initial = 'X' ''', None)
+    _totals(sql, 'Number of orphaned users',
+            ''' SELECT COUNT(a.user) AS kpi
+                FROM users AS a
+                    LEFT OUTER JOIN roles AS b
+                        ON b.user = a.user
+                    LEFT OUTER JOIN pages AS c
+                        ON c.author  = a.user
+                        OR c.valuser = a.user
+                    LEFT OUTER JOIN documents AS d
+                        ON d.author = a.user
+                WHERE b.user    IS NULL
+                  AND c.author  IS NULL
+                  AND c.valuser IS NULL
+                  AND d.author  IS NULL''', None)
     _totals(sql, 'Number of duplicate passwords among the users',
             ''' SELECT COUNT(password) AS kpi
                 FROM (
@@ -1359,7 +1410,7 @@ def show_stats() -> bool:
             ''' SELECT date AS period, COUNT(author) AS kpi
                 FROM (
                     SELECT DISTINCT SUBSTR(date,1,7) AS date, author
-                    FROM audit
+                    FROM audit.audit
                     WHERE author NOT LIKE 'pwic%'
                 )
                 GROUP BY period
@@ -1379,7 +1430,7 @@ def show_stats() -> bool:
             ''' SELECT COUNT(project) AS kpi
                 FROM (
                     SELECT DISTINCT a.project
-                    FROM audit AS a
+                    FROM audit.audit AS a
                         LEFT OUTER JOIN projects AS b
                             ON b.project = a.project
                     WHERE a.project <> ''
@@ -1561,7 +1612,7 @@ def show_stats() -> bool:
                 ORDER BY project''', None)
     _totals(sql, 'Last activity per active project',
             ''' SELECT a.project, MAX(a.date) AS kpi
-                FROM audit AS a
+                FROM audit.audit AS a
                     INNER JOIN projects AS b
                         ON b.project = a.project
                 WHERE a.project <> ''
@@ -1655,7 +1706,7 @@ def show_stats() -> bool:
     # Audit
     _totals(sql, 'Number of events',
             ''' SELECT event AS project, COUNT(event) AS kpi
-                FROM audit
+                FROM audit.audit
                 GROUP BY event
                 ORDER BY event''', None)
 
@@ -1674,7 +1725,7 @@ def show_inactivity(project: str, days: int) -> bool:
                     FROM roles AS a
                         INNER JOIN (
                             SELECT project, author, MAX(date) AS date
-                            FROM audit
+                            FROM audit.audit
                             WHERE (project = ?) OR ('' = ?)
                             GROUP BY project, author
                         ) AS b
@@ -1751,6 +1802,71 @@ def clear_cache(project: str) -> bool:
     return True
 
 
+def archive_audit(selective: int, complete: int) -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Ask for confirmation
+    print('This command will remove some irrelevant old entries of audit.')
+    print('Type "YES" to agree and continue: ', end='')
+    if input() != 'YES':
+        return False
+
+    # Initialization
+    mindays = 90                                        # 3 months minimum
+    dt = pwic_dt(days=max(mindays, selective))
+    counter = 0
+    if not db_lock(sql):
+        return False
+
+    # Remove the history of the deleted projects
+    for e in ['create-project', 'delete-project']:
+        sql.execute(''' SELECT project, MAX(id) AS id
+                        FROM audit.audit
+                        WHERE event    = ?
+                          AND project <> ''
+                        GROUP BY project''',
+                    (e, ))
+        for row in sql.fetchall():
+            sql.execute(''' DELETE FROM audit.audit
+                            WHERE id      < ?
+                              AND date    < ?
+                              AND project = ?''',
+                        (row['id'], dt['date-nd'], row['project']))
+            counter += sql.rowcount
+
+    # Remove the poor events
+    sql.execute(''' DELETE FROM audit.audit
+                    WHERE date   < ?
+                      AND event IN ('change-password',
+                                    'clear-cache',
+                                    'export-project',
+                                    'login',
+                                    'logout',
+                                    'reset-password',
+                                    'shutdown-server',
+                                    'split-project',
+                                    'start-server')''',
+                (dt['date-nd'], ))
+    counter += sql.rowcount
+
+    # Remove all the old entries
+    if complete >= mindays:
+        dt = pwic_dt(days=complete)
+        sql.execute(''' DELETE FROM audit.audit
+                        WHERE date < ?''',
+                    (dt['date-nd'], ))
+
+    # Result
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'archive-audit'})
+    db_commit()
+    print('%d entries moved to the table "audit_arch". Do what you want with it.' % counter)
+    return True
+
+
 def create_backup() -> bool:
     # Check the database
     if not isfile(PWIC_DB_SQLITE):
@@ -1759,12 +1875,35 @@ def create_backup() -> bool:
 
     # Prepare the new file name
     dt = pwic_dt()
-    new = PWIC_DB_SQLITE_BACKUP % ('%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', '')))
+    stamp = '%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', ''))
+    new = PWIC_DB_SQLITE_BACKUP % stamp
     try:
-        copyfile(PWIC_DB_SQLITE, new, follow_symlinks=False)
+        copyfile(PWIC_DB_SQLITE, new)
         if isfile(new):
+            # Log the event
+            audit_id = 0
+            sql = db_connect()
+            if sql is not None:
+                sql.execute(''' SELECT MAX(id) AS id
+                                FROM audit''')
+                audit_id = pwic_int(sql.fetchone()['id'])
+                pwic_audit(sql, {'author': PWIC_USERS['system'],
+                                 'event': 'create-backup',
+                                 'string': stamp})
+                db_commit()
+
+            # Mark the new database
+            if audit_id > 0:
+                sql = db_connect(master=False, dbfile=new)
+                if sql is not None:
+                    sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                                    VALUES ('', 'pwic_audit_id', ?)''',
+                                (audit_id, ))
+                    db_commit()
+
+            # Final
             chmod(new, S_IREAD)
-            print('Backup of the database file created as "%s"' % new)
+            print('Backup of the main database created in "%s"' % new)
             print('The uploaded documents remain in their place')
             return True
         else:
@@ -1874,7 +2013,9 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
             else:
                 if PwicExtension.on_api_document_delete(sql, p, PWIC_USERS['system'], None, None, row['filename']):
                     if not test:
-                        sql.execute(''' DELETE FROM documents WHERE ID = ?''', (row['id'], ))
+                        sql.execute(''' DELETE FROM documents
+                                        WHERE ID = ?''',
+                                    (row['id'], ))
                     tab.add_row(['Delete', 'Database', p, '%d,%s' % (row['id'], row['filename']), 'Missing'])
         # Delete the left files that can't be reassigned to the right objects
         if not keep_orphans:
@@ -1959,6 +2100,20 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
     return True
 
 
+def execute_optimize() -> bool:
+    # The documentation of SQLite states that long-running applications might benefit from running this command every few hours
+
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Run the optimizer
+    sql.execute(''' PRAGMA optimize''')
+    print('Done.')
+    return True
+
+
 def execute_sql() -> bool:
     # Warn the user
     print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
@@ -1998,10 +2153,6 @@ def shutdown_server() -> bool:
     sql = db_connect()
     if sql is None:
         return False
-    base_url = pwic_option(sql, '', 'base_url')
-    if base_url is None:
-        print('Error: the option "base_url" is not defined')
-        return False
 
     # Ask for confirmation
     print('This command will try to terminate Pwic server at its earliest convenience.')
@@ -2014,9 +2165,9 @@ def shutdown_server() -> bool:
     if not db_lock(sql):
         return False
     sql.execute(''' INSERT OR IGNORE INTO env (project, key, value)
-                    VALUES ('', 'shutdown', 'X')''')
+                    VALUES ('', 'pwic_shutdown', 'X')''')
     pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'set-shutdown',
+                     'event': 'set-pwic_shutdown',
                      'string': 'X'})
     db_commit()
 
@@ -2024,13 +2175,27 @@ def shutdown_server() -> bool:
     print('Sending the kill signal... ', end='', flush=True)
     ok = False
     try:
-        urlopen(Request(base_url + '/api/server/shutdown', None, method='POST'))
+        ssl = pwic_option(sql, '', 'ssl') is not None
+        port = pwic_int(pwic_option(sql, '', 'pwic_port', PWIC_DEFAULTS['port']))
+        url = 'http%s://127.0.0.1:%d/api/server/shutdown' % ('s' if ssl else '', port)
+        urlopen(Request(url, None, method='POST'))
     except Exception as e:
         if isinstance(e, RemoteDisconnected):
             ok = True
             print('OK')
         else:
             print('failed\nError: %s' % str(e))
+
+    # Remove the authorization after a failure
+    if not ok:
+        sql.execute(''' DELETE FROM env
+                        WHERE project = ''
+                          AND key     = 'pwic_shutdown' ''')
+        if sql.rowcount > 0:
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
+                             'event': 'unset-pwic_shutdown',
+                             'string': 'Shutdown failed'})
+        db_commit()
     return ok
 
 
