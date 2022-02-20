@@ -77,8 +77,6 @@ paths:
         - connection
       consumes:
         - application/json
-      parameters:
-        description: The parameters are fed by the third-party identity provider automatically
       responses:
         200:
           description: Successful login

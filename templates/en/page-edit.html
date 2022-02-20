@@ -50,28 +50,30 @@
 					{% include 'page-edit-easymde.js.html' %}
 				{% endif %}
 
-				<h2>Documents</h2>
-				<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
-					<input type="button" value="{{pwic.emojis.refresh}}" title="Refresh" onclick="edit_refresh_documents()" style="margin-right: 15px" />
-					Drop the files here
-					{% if pwic.env.max_document_size_str %}
-						(max: {{pwic.env.max_document_size_str.value}})
-					{% endif %}
-					and save immediately
-				</div>
-				<table id="edit_files_list">
-					<tr>
-						<th>Join</th>
-						<th>File name</th>
-						<th class="pwic_desktop" title="The comparison applies on the latest saved revision only">Used</th>
-						<th>Size</th>
-						<th class="pwic_desktop">MIME</th>
-						<th class="pwic_desktop">Author</th>
-						<th>Date</th>
-						<th class="pwic_desktop">Time</th>
-						<th>Delete</th>
-					</tr>
-				</table>
+				{% if (not pwic.env.max_document_size) or (pwic.env.max_document_size.value|int > 0) %}
+					<h2>Documents</h2>
+					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
+						<input type="button" value="{{pwic.emojis.refresh}}" title="Refresh" onclick="edit_refresh_documents()" style="margin-right: 15px" />
+						Drop the files here
+						{% if pwic.env.max_document_size_str %}
+							(max: {{pwic.env.max_document_size_str.value}})
+						{% endif %}
+						and save immediately
+					</div>
+					<table id="edit_files_list">
+						<tr>
+							<th>Join</th>
+							<th>File name</th>
+							<th class="pwic_desktop" title="The comparison applies on the latest saved revision only">Used</th>
+							<th>Size</th>
+							<th class="pwic_desktop">MIME</th>
+							<th class="pwic_desktop">Author</th>
+							<th>Date</th>
+							<th class="pwic_desktop">Time</th>
+							<th>Delete</th>
+						</tr>
+					</table>
+				{% endif %}
 
 				<h2>Attributes</h2>
 				<p><strong><span class="pwic_red">*</span> Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" /></p>

@@ -27,8 +27,8 @@ from random import randint
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, \
-    pwic_apostrophe, pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
+    pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, \
     pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, \
     pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
@@ -63,10 +63,6 @@ class PwicServer():
             return True
         except sqlite3.OperationalError:
             return False
-
-    def _sanitize_tags(self, tags: str) -> str:
-        ''' Reorder a list of tags written as a string '''
-        return ' '.join(sorted(pwic_list(tags.replace('#', ''))))
 
     def _md2html(self,
                  sql: sqlite3.Cursor,
@@ -126,13 +122,12 @@ class PwicServer():
                 break
         return obj['mime'] != ''
 
-    def _check_ip(self, request: web.Request) -> None:
+    def _check_ip(self, ip: str) -> None:
         ''' Check if the IP address is authorized '''
         # Initialization
         okIncl = False
         hasIncl = False
         koExcl = False
-        ip = str(PwicExtension.on_ip_header(request))
 
         # Apply the rules
         for mask in app['ip_filter']:
@@ -222,8 +217,11 @@ class PwicServer():
 
     async def _suser(self, request: web.Request) -> str:
         ''' Retrieve the logged user '''
-        self._check_ip(request)
+        ip = PwicExtension.on_ip_header(request)
+        self._check_ip(ip)
         session = await get_session(request)
+        if ip != session.get('ip', ip):
+            return ''
         user = pwic_safe_user_name(session.get('user', ''))
         return PWIC_USERS['anonymous'] if (user == '') and app['no_login'] else user
 
@@ -395,7 +393,8 @@ class PwicServer():
             pwic['title'] = 'Select your project'
             pwic['projects'] = [row for row in sql.fetchall()]
             if len(pwic['projects']) == 1:
-                raise web.HTTPTemporaryRedirect('/%s' % pwic['projects'][0]['project'])
+                suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
+                raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
             else:
                 return await self._handle_output(request, 'project-select', pwic)
 
@@ -418,6 +417,9 @@ class PwicServer():
             revision = self._redirect_revision(sql, project, user, page, revision)
             if revision == 0:
                 return await self._handle_output(request, 'page-404', pwic)  # Page not found
+
+        # Custom event
+        PwicExtension.on_api_page_requested(sql, action, project, page, revision)
 
         # Show the requested page
         if action == 'view':
@@ -1346,7 +1348,8 @@ class PwicServer():
     async def api_login(self, request: web.Request) -> web.Response:
         ''' API to log in people '''
         # Checks
-        self._check_ip(request)
+        ip = PwicExtension.on_ip_header(request)
+        self._check_ip(ip)
 
         # Fetch the submitted data
         post = await self._handle_post(request)
@@ -1359,20 +1362,18 @@ class PwicServer():
         # Login with the credentials
         ok = False
         sql = self._connect()
-        sql.execute(''' SELECT COUNT(a.user) AS total
-                        FROM users AS a
-                            INNER JOIN roles AS b
-                                ON  b.user     = a.user
-                                AND b.disabled = ''
-                        WHERE a.user     = ?
-                          AND a.password = ?''',
+        sql.execute(''' SELECT 1
+                        FROM users
+                        WHERE user     = ?
+                          AND password = ?''',
                     (user, pwd))
-        if sql.fetchone()['total'] > 0:
-            ok = PwicExtension.on_login(sql, user, lang)
+        if sql.fetchone() is not None:
+            ok = PwicExtension.on_login(sql, user, lang, ip)
             if ok:
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
+                session['ip'] = ip
                 if user != PWIC_USERS['anonymous']:
                     pwic_audit(sql, {'author': user,
                                      'event': 'login'},
@@ -1438,7 +1439,7 @@ class PwicServer():
                 _oauth_failed()
 
         # Checks
-        self._check_ip(request)
+        self._check_ip(PwicExtension.on_ip_header(request))
 
         # Get the callback parameters
         error = request.rel_url.query.get('error', '')
@@ -2118,8 +2119,8 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         kb = pwic_xb(pwic_x(post.get('kb', '')))
         page = '' if kb else pwic_safe_name(post.get('page', ''))
-        milestone = post.get('milestone', '').strip()
         tags = post.get('tags', '')
+        milestone = post.get('milestone', '').strip()
         ref_project = pwic_safe_name(post.get('ref_project', ''))
         ref_page = pwic_safe_name(post.get('ref_page', ''))
         ref_tags = pwic_xb(pwic_x(post.get('ref_tags', '')))
@@ -2180,13 +2181,18 @@ class PwicServer():
             if ref_tags:
                 default_tags = row['tags']
 
+        # Custom check
+        if not PwicExtension.on_api_page_create(sql, project, user, page, kb, tags, milestone):
+            self._rollback()
+            raise web.HTTPBadRequest()
+
         # Handle the creation of the page
         dt = pwic_dt()
         revision = 1
         sql.execute(''' INSERT INTO pages (project, page, revision, latest, author, date, time, title, markdown, tags, comment, milestone)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                     (project, page, revision, 'X', user, dt['date'], dt['time'], page, default_markdown,
-                     self._sanitize_tags(tags + ' ' + default_tags), 'Initial', milestone))
+                     pwic_list_tags(tags + ' ' + default_tags), 'Initial', milestone))
         pwic_audit(sql, {'author': user,
                          'event': 'create-revision',
                          'project': project,
@@ -2214,7 +2220,7 @@ class PwicServer():
         page = pwic_safe_name(post.get('page', ''))
         title = post.get('title', '').strip()
         markdown = post.get('markdown', '')
-        tags = self._sanitize_tags(post.get('tags', ''))
+        tags = pwic_list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
         draft = pwic_xb(pwic_x(post.get('draft', '')))
@@ -2255,6 +2261,13 @@ class PwicServer():
                 raise web.HTTPUnauthorized()
             protection = ''                     # This field cannot be set by the non-managers
             header = row['header']              # This field is reserved to the managers, so we keep the existing value
+
+        # Custom check
+        if not PwicExtension.on_api_page_edit(sql, project, user, page, title, markdown,
+                                              tags, comment, milestone, draft, final,
+                                              pwic_xb(protection), pwic_xb(header)):
+            self._rollback()
+            raise web.HTTPBadRequest()
 
         # Create the new entry
         sql.execute(''' INSERT INTO pages
@@ -3071,8 +3084,8 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the maximal document size
-        maxsize = pwic_int(pwic_option(sql, doc['project'], 'max_document_size'))
-        if maxsize != 0 and len(doc['content']) > maxsize:
+        maxsize = pwic_int(pwic_option(sql, doc['project'], 'max_document_size', '-1'))
+        if maxsize >= 0 and len(doc['content']) > maxsize:
             self._rollback()
             raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
 
@@ -3331,8 +3344,10 @@ def main() -> bool:
         app['sql'].set_trace_callback(pwic_sql_print)
     sql = app['sql'].cursor()
     sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
-    sql.execute('VACUUM main')
-    sql.execute('VACUUM audit')
+    sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
+    sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
+    sql.execute(''' VACUUM main''')
+    sql.execute(''' VACUUM audit''')
     # ... PWIC
     app['pwic'] = PwicServer()
     # ... session
@@ -3417,13 +3432,14 @@ def main() -> bool:
             return False
 
     # CORS
-    if pwic_option(sql, '', 'cors') is None:
+    if pwic_option(sql, '', 'api_cors') is None:
         app['cors'] = None
     else:
         import aiohttp_cors
         app['cors'] = aiohttp_cors.setup(app, defaults={'*': aiohttp_cors.ResourceOptions(allow_headers='*')})  # expose_headers='*'
         for route in list(app.router.routes()):
-            app['cors'].add(route)
+            if route.get_info().get('path', '')[:4] == '/api':
+                app['cors'].add(route)
 
     # General options of the server
     app['no_login'] = pwic_option(sql, '', 'no_login') is not None
@@ -3476,9 +3492,6 @@ def main() -> bool:
                               WHERE id = ?''',
                           (row['id'], )).fetchone()
         print('Last started on %s %s.' % (row['date'], row['time']))
-    sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
-                    VALUES ('', 'pwic_port', ?)''',
-                (args.port, ))
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'start-server',
                      'string': '%s:%s' % (args.host, args.port)})

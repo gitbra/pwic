@@ -8,10 +8,10 @@
 	</header>
 
 	<article>
-		<p class="pwic_action_bar">
+		<div class="pwic_action_bar">
 			<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
 			<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} Create a user</a>
-		</p>
+		</div>
 
 		<p class="pwic_italic">Reminder: the password of a user must be changed before his roles can be changed.</p>
 
@@ -31,7 +31,7 @@
 			{% set u = namespace(value=0) %}
 			{% for role in pwic.roles %}
 				<tr id="roles_tag_{{u.value+7}}">
-					<td><a href="/special/user/{{role.user|urlencode}}" rel="nofollow">{{role.user|escape}}</a></td>
+					<td><a class="pwic_break" href="/special/user/{{role.user|urlencode}}" rel="nofollow">{{role.user|escape}}</a></td>
 					<td>
 						{% if role.user[:4] == 'pwic' %}
 							<span title="Special account">{{pwic.emojis.star}}</span>

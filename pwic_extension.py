@@ -79,6 +79,40 @@ class PwicExtension():
         return True
 
     @staticmethod
+    def on_api_page_create(sql,                             # Cursor to query the database
+                           project,                         # Name of the project
+                           user,                            # Name of the user
+                           page,                            # Name of the page
+                           kb,                              # Is knowledge base article
+                           tags,                            # Tags
+                           milestone,                       # Milestone
+                           ) -> bool:
+        ''' Event when a new page is created.
+            The result tells if the creation of the page is possible.
+        '''
+        return True
+
+    @staticmethod
+    def on_api_page_edit(sql: sqlite3.Cursor,               # Cursor to query the database
+                         project: str,                      # Name of the project
+                         user: str,                         # Name of the user
+                         page: str,                         # Name of the page
+                         title: str,                        # Title of the page
+                         markdown: str,                     # Content of the page
+                         tags: str,                         # Tags
+                         comment: str,                      # Reason for the commit
+                         milestone: str,                    # Milestone
+                         draft: bool,                       # Flag for draft
+                         final: bool,                       # Flag for final
+                         protection: bool,                  # Flag for protection
+                         header: bool,                      # Flag for header
+                         ) -> bool:
+        ''' Event when a new revision is submitted.
+            The result tells if the update of the page is possible.
+        '''
+        return True
+
+    @staticmethod
     def on_api_page_export(sql: sqlite3.Cursor,             # Cursor to query the database
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
@@ -91,9 +125,21 @@ class PwicExtension():
             The first result tells if the own implementation overrides the standard download.
             The second result gives the new content to be downloaded. The value None denotes a forbidden download.
             The third result configures the HTTP response to ease the download with a correct format.
-            An exception can be used to cancel the download.
+            An exception can be raised to cancel the download.
         '''
         return False, None, {}
+
+    @staticmethod
+    def on_api_page_requested(sql: sqlite3.Cursor,          # Cursor to query the database
+                              action: str,                  # Performed action
+                              project: str,                 # Name of the project
+                              page: str,                    # Name of the page
+                              revision: int,                # Number of the revision
+                              ) -> None:
+        ''' Event when a page is accessed.
+            An exception can be raised to guide the navigation.
+        '''
+        pass
 
     @staticmethod
     def on_api_page_validate(sql: sqlite3.Cursor,           # Cursor to query the database
@@ -219,7 +265,7 @@ class PwicExtension():
                 revision: int,                              # Revision of the page
                 html: str,                                  # Current converted Markdown to HTML code
                 ) -> str:
-        ''' Event when a page is converted to HTML and cached.
+        ''' Event when a page is converted to HTML and cached.
             The result is the converted HTML code.
             Warning: the conversion to HTML is used in the export to OpenDocument (odt). Changing
                      the HTML inappropriately may result in a technical failure of this feature.
@@ -252,6 +298,7 @@ class PwicExtension():
     def on_login(sql: sqlite3.Cursor,                       # Cursor to query the database
                  user: str,                                 # Name of the user
                  language: str,                             # Selected language
+                 ip: str,                                   # IP address
                  ) -> bool:
         ''' Event when a user successfully connects to Pwic with a password.
             The result tells if the connection is possible.

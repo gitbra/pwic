@@ -44,6 +44,7 @@ def main() -> bool:
     subparsers.add_parser('init-db', help='Initialize the database once')
 
     spb = subparsers.add_parser('show-env', help='Show the current configuration')
+    spb.add_argument('--project', default='', help='Name of the project')
     spb.add_argument('--var', default='', help='Name of the variable for exclusive display')
 
     spb = subparsers.add_parser('set-env', help='Set a global or a project-dependent parameter')
@@ -125,7 +126,8 @@ def main() -> bool:
 
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
-    subparsers.add_parser('shutdown-server', help='Terminate the server')
+    spb = subparsers.add_parser('shutdown-server', help='Terminate the server')
+    spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
 
     # Parse the command line
     args = parser.parse_args()
@@ -134,7 +136,7 @@ def main() -> bool:
     elif args.command == 'init-db':
         return init_db()
     elif args.command == 'show-env':
-        return show_env(args.var)
+        return show_env(args.project, args.var)
     elif args.command == 'set-env':
         return set_env(args.project, args.name, args.value, args.override)
     elif args.command == 'repair-env':
@@ -180,7 +182,7 @@ def main() -> bool:
     elif args.command == 'execute-sql':
         return execute_sql()
     elif args.command == 'shutdown-server':
-        return shutdown_server()
+        return shutdown_server(args.port)
     else:
         parser.print_help()
         return False
@@ -197,8 +199,10 @@ def db_connect(init: bool = False, master: bool = True, dbfile: str = PWIC_DB_SQ
         db = sqlite3.connect(dbfile)
         db.row_factory = pwic_row_factory
         sql = db.cursor()
+        sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
         if master:
             sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
+            sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
         return sql
     except sqlite3.OperationalError:
         print('Error: the database cannot be opened')
@@ -518,7 +522,7 @@ def init_db() -> bool:
     return True
 
 
-def show_env(var: str = '') -> bool:
+def show_env(project: str, var: str) -> bool:
     # Package info
     if var == '':
         try:
@@ -564,7 +568,9 @@ def show_env(var: str = '') -> bool:
     tab.header = True
     tab.border = True
     for row in sql.fetchall():
-        value = '(Secret value not displayed)' if row['key'] in PWIC_ENV_PRIVATE else row['value']
+        if (project != '') and (row['project'] not in ['', project]):
+            continue
+        value = '(Secret value not displayed)' if (row['key'] in PWIC_ENV_PRIVATE) or (row['key'][:4] == 'pwic') else row['value']
         value = value.replace('\r', '').replace('\n', '\\n')
         tab.add_row([row['project'], row['key'], value])
         found = True
@@ -583,7 +589,7 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
         return False
     allkeys = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if key not in allkeys:
-        print('Error: the name of the variable must be one of <%s>' % ', '.join(allkeys))
+        print('Error: the name of the variable must be one of "%s"' % ', '.join(allkeys))
         return False
     if (project != '') and (key in PWIC_ENV_PROJECT_INDEPENDENT):
         print('Error: the parameter is project-independent')
@@ -1072,7 +1078,7 @@ def delete_project(project: str) -> bool:
                      'event': 'delete-project',
                      'project': project})
     db_commit()
-    print('The project "%s" is deleted' % project)
+    print('\nThe project "%s" is deleted' % project)
     print('Warning: the file structure is now inconsistent with the old backups (if any)')
     return True
 
@@ -2115,40 +2121,54 @@ def execute_optimize() -> bool:
 
 
 def execute_sql() -> bool:
-    # Warn the user
+    # Ask for a query
+    tab = PrettyTable()
     print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
-    print('Type "YES" to continue: ', end='')
-    if input() == 'YES':
+    print("\nType the query to execute on a single line:")
+    query = input()
+    if len(query) > 0:
 
-        # Ask for a query
-        print("\nType the query to execute on a single line. You can't select any data.")
-        query = input()
-        if len(query) > 0:
+        # Ask for the confirmation
+        print('\nAre you sure to execute << %s >> ?\nType "YES" to continue: ' % query, end='')
+        if input() == 'YES':
 
-            # Ask for the confirmation
-            print('\nAre you sure to execute << %s >> ?\nType "YES" to continue: ' % query, end='')
-            if input() == 'YES':
+            # Execute
+            sql = db_connect()
+            if sql is None:
+                return False
+            sql.execute(query)
+            rc = sql.rowcount
 
-                # Execute
-                sql = db_connect()
-                if sql is None:
-                    return False
-                rownone = sql.execute(query).fetchone() is None
-                rowcount = sql.rowcount
-                pwic_audit(sql, {'author': PWIC_USERS['system'],
-                                 'event': 'execute-sql',
-                                 'string': query})
-                db_commit()
-                print('\nFirst row is null = %s' % str(rownone))
-                print('Affected rows = %d' % rowcount)
-                return True
+            # Buffering
+            fields = None
+            for row in sql.fetchall():
+                tab.add_row([str(row[k]).replace('\r', '').replace('\n', ' ')[:255] for k in row])
+                if (fields is None) and (row is not None) and (len(row) > 0):
+                    fields = [k for k in row]
+
+            # Trace
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
+                             'event': 'execute-sql',
+                             'string': query})
+            db_commit()
+
+            # Output
+            print('Affected rows = %d' % rc)
+            if fields is not None:
+                tab.field_names = fields
+                for f in tab.field_names:
+                    tab.align[f] = 'l'
+                tab.header = True
+                tab.border = True
+                print(tab.get_string())
+            return True
 
     # Default behavior
     print('Aborted')
     return False
 
 
-def shutdown_server() -> bool:
+def shutdown_server(port: int) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -2176,7 +2196,6 @@ def shutdown_server() -> bool:
     ok = False
     try:
         ssl = pwic_option(sql, '', 'ssl') is not None
-        port = pwic_int(pwic_option(sql, '', 'pwic_port', PWIC_DEFAULTS['port']))
         url = 'http%s://127.0.0.1:%d/api/server/shutdown' % ('s' if ssl else '', port)
         urlopen(Request(url, None, method='POST'))
     except Exception as e:

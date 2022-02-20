@@ -1,4 +1,4 @@
-<p id="page_topofpage"><a href="#top">Top of the page</a></p>
+<p id="page_topofpage" class="pwic_hidden"><a href="#top">{{pwic.emojis.top}} Top of the page {{pwic.emojis.top}}</a></p>
 
 <footer>
 	<div>
@@ -7,8 +7,8 @@
 			&mdash; {{pwic.emojis.help}} <a href="/special/help">Help</a>
 		{% endif %}
 		&mdash;
-		{% if (pwic.user != '') and (pwic.user != pwic.constants.anonymous_user) %}
-			 {{pwic.emojis.laptop}} <a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure to disconnect from Pwic?')">Log out</a></strong>)
+		{% if (pwic.user != '') and (pwic.user[:4] != 'pwic') %}
+			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure to disconnect from Pwic?')">Log out</a></strong>)
 		{% else %}
 			 <a href="/api/login">Log in</a>
 		{% endif %}

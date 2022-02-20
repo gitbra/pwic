@@ -8,10 +8,10 @@
 	</header>
 
 	<article>
-		<p class="pwic_action_bar">
+		<div class="pwic_action_bar">
 			<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 			<a href="/special/help#help_setup">{{pwic.emojis.help}} Help</a>
-		</p>
+		</div>
 
 
 		<h1>Reference time</h1>
@@ -63,7 +63,7 @@
 					<tr>
 						<td class="pwic_nowrap">{{audit.date|escape}}</td>
 						<td>{{audit.time|escape}}</td>
-						<td><a href="/special/user/{{audit.author|urlencode}}" rel="nofollow">{{audit.author|escape}}</a></td>
+						<td><a class="pwic_break" href="/special/user/{{audit.author|urlencode}}" rel="nofollow">{{audit.author|escape}}</a></td>
 						<td>{{audit.event|escape}}</td>
 						<td class="pwic_desktop">
 							{% if audit.project != '' %}
@@ -84,7 +84,7 @@
 							{% if audit.string != '' %}
 								{{audit.string|escape}}
 							{% elif audit.user != '' %}
-								<a href="/special/user/{{audit.user|urlencode}}" rel="nofollow">{{audit.user|escape}}</a>
+								<a class="pwic_break" href="/special/user/{{audit.user|urlencode}}" rel="nofollow">{{audit.user|escape}}</a>
 							{% endif %}
 						</td>
 					</tr>

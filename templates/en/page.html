@@ -37,7 +37,7 @@
 			<p class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape}}</p>
 		{% endif %}
 
-		<p class="pwic_action_bar">
+		<div class="pwic_action_bar">
 			{% if pwic.protection %}
 				<span title="The page is protected">{{pwic.emojis.padlock}}</span>
 			{% endif %}
@@ -75,7 +75,7 @@
 			{% if pwic.removable %}
 				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
 			{% endif %}
-		</p>
+		</div>
 
 		{% if not pwic.latest %}
 			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <strong>revision {{pwic.revision}}</strong>
@@ -147,18 +147,18 @@
 		{% endif %}
 
 		<p id="page_lastmod">
-			Revision #{{pwic.revision|escape}} last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a>
+			Revision <span class="pwic_bold">#{{pwic.revision|escape}}</span> was last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a>
 			<br/>on {{pwic.date}} at {{pwic.time}} &mdash; <span title="Hash: {{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
 		</p>
 
 		{% if pwic.env.legal_notice %}
-			<p id="page_legal_notice">
+			<div id="page_legal_notice">
 				{% if pwic.env.safe_mode %}
 					{{pwic.env.legal_notice.value|escape|replace('\n','<br/>')}}
 				{% else %}
 					{{pwic.env.legal_notice.value}}
 				{% endif %}
-			</p>
+			</div>
 		{% endif %}
 	</article>
 {% endblock %}

@@ -51,10 +51,19 @@ A
 	color: black
 
 BLOCKQUOTE
-	border-left: 5px solid gray
 	margin-left: 0px
-	padding-left: 10px
+	margin-right: 0px
+	padding: 10px
 	background-color: #F2F2F2
+	border-left: 5px solid gray
+	border-radius: 10px
+
+	P
+		margin-right: 0px
+	P:first-child
+		margin-top: 0px
+	P:last-child
+		margin-bottom: 0px
 
 CODE
 	display: inline-block
@@ -71,31 +80,27 @@ CODE
 //  Template - Header
 
 HEADER
+	padding: 10px 50px 10px 50px
 	background-color: #F0F0F0
 	border-bottom: 1px solid black
 	box-shadow: 0px 0px 5px gray
+	font-weight: bold
 
-	.pwic_ph1, .pwic_ph2
-		display: block
-		margin: 0px
-		padding: 5px 0px 5px 50px
-		font-weight: bold
 	.pwic_ph1
 		font-size: 24pt
+
 	.pwic_ph2
 		font-size: 18pt
 
 	.pwic_tagbox
-		margin: 0px
-		padding: 0px 0px 10px 50px
+		margin-top: 10px
 		overflow: hidden
-		font-weight: bold
 
 		A,DIV
 			float: left
-			margin: 5px 10px 5px 0px
+			margin: 0px 10px 5px 0px
 			padding: 5px 10px 5px 10px
-			line-height: 25px
+			line-height: 20px
 
 		A
 			border: 1px solid black
@@ -121,8 +126,7 @@ ARTICLE
 	display: block
 	margin: auto
 	width: 90%
-	padding: 20px
-	border-bottom: 1px dashed lightgray
+	padding: 20px 20px 0px 20px
 
 	// -------------------------------- Standard tags
 
@@ -206,11 +210,12 @@ ARTICLE
 
 	.pwic_action_bar
 		text-align: right
+		margin-bottom: 25px
 
 		A
 			display: inline-block
+			margin: 0px 0px 5px 5px
 			padding: 5px 10px 5px 10px
-			margin: 5px 0px 5px 5px
 			border: 1px solid lightgray
 			border-radius: 10px
 			background-color: #ECF6F9
@@ -228,9 +233,8 @@ ARTICLE
 
 		A
 			float: left
-			margin-right: 5px
+			margin: 0px 5px 5px 0px
 			padding: 3px 5px 3px 5px
-			line-height: 20px
 			border: 1px solid gray
 			border-radius: 10px
 			font-family: monospace
@@ -356,14 +360,14 @@ ARTICLE
 //  Template - Footer
 
 FOOTER
-	overflow: hidden	// Chrome
+	display: block
+	padding: 25px 10px 10px 10px
 
 	> DIV
 		width: 90%
 		margin: auto
-		margin-top: 20px
-		margin-bottom: 20px
-		padding: 2px 20px 2px 20px
+
+		padding: 5px 10px 5px 10px
 		border: 2px solid black
 		border-radius: 10px
 		background-color: #F8F8F8
@@ -429,7 +433,6 @@ SPAN.pwic_progressbar
 	display: inline-block
 	width: 50%
 	height: 12px
-	line-height: 12px
 	margin-left: 10px
 	margin-right: 10px
 	padding: 0px
@@ -479,6 +482,9 @@ SPAN.pwic_progressbar
 .pwic_red
 	color: red
 
+.pwic_right
+	text-align: right
+
 .pwic_spacer
 	display: inline-block
 	width: 10px
@@ -488,21 +494,15 @@ SPAN.pwic_progressbar
 //  Individual elements
 
 #page_lastmod
+	margin-top: 25px
 	text-align: right
 	font-size: smaller
 
 #page_legal_notice
-	font-size: 9pt
+	padding: 10px
+	border-top: 1px dashed gray
 	font-style: italic
-	color: gray
 	text-align: center
-#page_legal_notice:before
-	content: ""
-	display: block
-	width: 100px
-	height: 1px
-	margin: auto
-	border-bottom: 1px solid gray
 
 #page_topofpage
 	text-align: center
@@ -551,6 +551,24 @@ SPAN.pwic_progressbar
 	.pwic_desktop
 		display: none !important
 
+	HEADER
+		padding: 5px 10px 5px 10px
+
+		.pwic_ph1
+			white-space: nowrap
+			overflow: hidden
+			text-overflow: ellipsis
+			font-size: 18pt
+
+		.pwic_ph2
+			font-size: 12pt
+
+		.pwic_tagbox
+			A,DIV
+				margin: 0px 5px 5px 0px
+				padding: 3px 10px 3px 10px
+				font-size: smaller
+
 	ARTICLE
 		TABLE
 			width: 100%
@@ -561,6 +579,9 @@ SPAN.pwic_progressbar
 
 	.pwic_action_bar
 		font-size: smaller
+
+		A
+			padding: 3px 5px 3px 5px !important
 
 
 // --------------------------------

@@ -5,6 +5,7 @@
 		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
 		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
+		$('#page_topofpage').toggleClass('pwic_hidden', scroll == 0);
 	}
 
 	function page_email(draft_msg) {

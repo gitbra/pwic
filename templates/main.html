@@ -8,7 +8,7 @@
 		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}">
 	{% endif %}
 	<meta charset="utf-8">
-	<title>{{pwic.title|escape}} - Pwic</title>
+	<title>{{pwic.title|escape}}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 
 	<!-- Styles -->

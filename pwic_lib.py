@@ -57,7 +57,7 @@ PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)
                 }
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['base_url', 'cors', 'file_formats', 'keep_sessions', 'http_log_file', 'http_log_format',
+PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'file_formats', 'keep_sessions', 'http_log_file', 'http_log_format',
                                 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains', 'oauth_identifier',
                                 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
@@ -66,11 +66,12 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev',
                               'no_mde', 'no_new_user', 'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max',
                               'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'validated_only']
+                              'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
                                      'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                                     'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'validated_only']
+                                     'odt_page_width', 'support_email', 'support_phone', 'support_text', 'support_url', 'title',
+                                     'validated_only']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
@@ -130,6 +131,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'slider': '&#x1F39A;',
                'sos': '&#x1F198;',
                'star': '&#x2B50;',
+               'top': '&#x1F51D;',
                'trash': '&#x1F5D1;',
                'truck': '&#x1F69A;',
                'unlocked': '&#x1F513;',
@@ -159,9 +161,11 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['aif', 'aifc', 'aiff'], ['audio/aiff'], ['AIFF', 'FORM'], True),
                       (['apk'], ['application/vnd.android.package-archive'], ZIP, True),
                       (['avi'], ['video/avi'], ['AVI', 'RIFF'], True),
+                      (['avif'], ['image/avif'], None, True),
                       (['bin'], ['application/octet-stream'], None, True),
                       (['bmp'], ['image/bmp'], ['BM'], False),
-                      (['bz', 'bz2'], ['application/x-bzip2'], ['BZ'], True),
+                      (['bz'], ['application/x-bzip'], ['BZ'], True),
+                      (['bz2'], ['application/x-bzip2'], ['BZ'], True),
                       (['cer'], ['application/x-x509-ca-cert'], None, False),
                       (['chm'], ['application/vnd.ms-htmlhelp'], ['ITSM'], False),
                       (['crt'], ['application/x-x509-ca-cert'], None, False),
@@ -192,10 +196,12 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['jar'], ['application/java-archive'], ZIP, True),
                       (['jp2'], ['image/jp2'], ['\x00\x00\x00\xFFjP'], True),
                       (['jpg', 'jpeg'], ['image/jpeg'], ['\xFF\xD8\xFF'], True),
+                      (['js'], ['application/javascript'], None, False),
                       (['json'], ['application/json'], None, False),
                       (['kml'], ['application/vnd.google-earth.kml+xml'], None, False),
                       (['kmz'], ['application/vnd.google-earth.kmz'], ZIP, True),
                       (['latex'], ['application/x-latex'], None, False),
+                      (['m4a'], ['video/mp4'], None, True),
                       (['mdb'], ['application/msaccess'], ['\x00\x01\x00\x00Standard Jet DB'], False),  # NUL SOH NUL NUL
                       (['mid', 'midi'], ['audio/mid'], ['MThd'], False),
                       (['mka', 'mkv'], ['video/x-matroska'], MATROSKA, True),
@@ -211,7 +217,7 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['odp'], ['application/vnd.oasis.opendocument.presentation'], ZIP, True),
                       (['ods'], ['application/vnd.oasis.opendocument.spreadsheet'], ZIP, True),
                       (['odt'], ['application/vnd.oasis.opendocument.text'], ZIP, True),
-                      (['oga'], ['audio/ogg'], None, True),
+                      (['oga', 'ogg'], ['audio/ogg'], None, True),
                       (['ogv'], ['video/ogg'], None, True),
                       (['one'], ['application/msonenote'], None, False),
                       (['otf'], ['application/x-font-otf'], None, False),
@@ -233,7 +239,7 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['pub'], ['application/vnd.ms-publisher'], CFBF, False),
                       (['rar'], ['application/x-rar-compressed'], ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01'], True),
                       (['rss'], ['application/rss+xml'], None, False),
-                      (['rtf'], ['application/msword'], ['{\rtf1'], False),
+                      (['rtf'], ['application/rtf'], ['{\rtf1'], False),
                       (['sqlite'], ['application/vnd.sqlite3'], ['SQLite format 3\x00'], False),
                       (['sti'], ['application/vnd.sun.xml.impress.template'], None, False),
                       (['svg'], ['image/svg+xml'], None, False),
@@ -260,8 +266,8 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['wma'], ['audio/x-ms-wma'], None, True),
                       (['wmf'], ['image/x-wmf'], None, False),
                       (['wmv'], ['video/x-ms-wmv'], None, True),
-                      (['woff'], ['application/x-font-woff'], None, False),
-                      (['woff2'], ['application/x-font-woff'], ['wOF2'], True),
+                      (['woff'], ['application/x-font-woff', 'font/woff '], None, False),
+                      (['woff2'], ['application/x-font-woff', 'font/woff2'], ['wOF2'], True),
                       (['xaml'], ['application/xaml+xml'], None, False),
                       (['xls'], ['application/vnd.ms-excel'], CFBF, False),
                       (['xlsm'], ['application/vnd.ms-excel.sheet.macroEnabled.12'], ZIP, True),
@@ -360,6 +366,11 @@ def pwic_list(input: Optional[str], sorted: bool = False) -> List[str]:
     if sorted:
         values.sort()
     return values
+
+
+def pwic_list_tags(tags: str) -> str:
+    ''' Reorder a list of tags written as a string '''
+    return ' '.join(pwic_list(tags.replace('#', ''), sorted=True))
 
 
 def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default: Optional[str] = None) -> Optional[str]:

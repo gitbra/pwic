@@ -7,9 +7,7 @@
 	</header>
 
 	<article>
-		<p class="pwic_action_bar">
-			<span title="The page is protected">{{pwic.emojis.padlock}}</span>
-		</p>
+		<p class="pwic_right"><span title="The page is protected">{{pwic.emojis.padlock}}</span></p>
 
 		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
 			<h1>System support</h1>
@@ -68,6 +66,12 @@
 						<th>Description</th>
 					</tr>
 					<tr>
+						<td><code>api_cors</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Enable API from the remote websites by adding <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> to the HTTP headers. <code>Access-Control-Allow-Origin</code> receives the value <code>*</code>.</td>
+					</tr>
+					<tr>
 						<td><code>api_expose_markdown</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -90,12 +94,6 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>ssl</code>.</td>
-					</tr>
-					<tr>
-						<td><code>cors</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Enable <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> that adds the HTTP header <code>Access-Control-Allow-Origin</code>.</td>
 					</tr>
 					<tr>
 						<td><code>css</code></td>
@@ -171,7 +169,7 @@
 							<br/>- The sessions of the users are never terminated, unless you restart Pwic without this option,
 							<br/>- The users don't have to reconnect in another tab if their work in progress cannot be submitted due to the expiration of their sessions,
 							<br/>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
-							<br/>The caveat of the feature is that the private key is not only saved in the memory but also in the database, which requires some additional protection in the file system. Even if Pwic is designed to support the two states of the option, it is not enabled by default.</td>
+							<br/><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
 					</tr>
 					<tr>
 						<td><code>http_log_file</code></td>
@@ -222,7 +220,7 @@
 						<td><code>max_document_size</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>-1</code> to disable the upload.</td>
+						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>0</code> to disable the upload.</td>
 					</tr>
 					<tr>
 						<td><code>max_project_size</code></td>
@@ -355,16 +353,10 @@
 						<td>This option is automatically set in the backup databases only to identify the last known event of the audit log. In case you need to restore the database, you can clean and reuse the existing audit table. The option is used for internal purposes and it cannot be managed manually.</td>
 					</tr>
 					<tr>
-						<td><code>pwic_port</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This is an internal option used to store the port used by the server. The value cannot be changed manually.</td>
-					</tr>
-					<tr>
 						<td><code>pwic_session</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details.</td>
+						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details. The value must never be disclosed.</td>
 					</tr>
 					<tr>
 						<td><code>pwic_shutdown</code></td>
@@ -416,6 +408,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Portal address that a user can use to find an extended help.</td>
+					</tr>
+					<tr>
+						<td><code>title</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Suffix appended to the title of the pages that can be used to name the website.</td>
 					</tr>
 					<tr>
 						<td><code>validated_only</code></td>
@@ -496,7 +494,7 @@
 			<p>Optionally, if you use mobile devices, it is possible to compress the big static files with the command <code>python3 pwic_admin.py compress-static</code>. This will reduce a bit the bandwidth and the loading time.</p>
 
 			<h2 id="help_execute_sql">SQL queries</h2>
-			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. There is no output for the <em>select</em> statements, so it is just needed to upgrade Pwic.</p>
+			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. It is very useful to upgrade Pwic and perform special operations.</p>
 
 
 		<h1 id="help_create_backup"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>

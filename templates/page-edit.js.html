@@ -225,7 +225,7 @@
 									<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
 									<td title="Hash: '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
 									<td class="pwic_desktop">'+doc['mime_icon']+' '+pwic_entities(doc['mime'])+'<\/td>\
-									<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
+									<td class="pwic_desktop"><a class="pwic_break" href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 									<td>'+pwic_entities(doc['date'])+'<\/td>\
 									<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
 									<td><input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\

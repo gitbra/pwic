@@ -54,7 +54,7 @@
 								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
-						<td class="pwic_desktop"><a href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
+						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
 						<td>{{page.date|escape}}</td>
 						<td class="pwic_desktop">{{page.time|escape}}</td>
 						<td class="pwic_desktop">{{page.score|escape}}</td>
@@ -82,7 +82,7 @@
 						<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|escape}}">{{doc.filename|escape}}</a></td>
 						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
-						<td class="pwic_desktop"><a href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
+						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
 						<td>{{doc.date|escape}}</td>
 						<!-- <td class="pwic_desktop">{{doc.time|escape}}</td> -->
 					</tr>

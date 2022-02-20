@@ -22,7 +22,7 @@
 					</ul>
 				</li>
 			{% endif %}
-			{% if pwic.userpage != pwic.constants.anonymous_user %}
+			{% if pwic.userpage[:4] != 'pwic' %}
 				<li>Own password : <span id="pwic_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
 					{% if pwic.password_oauth %}
 						<span title="Federated identification only">{{pwic.emojis.id}}</span>
