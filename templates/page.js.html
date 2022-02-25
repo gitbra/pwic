@@ -8,6 +8,12 @@
 		$('#page_topofpage').toggleClass('pwic_hidden', scroll == 0);
 	}
 
+	$(document).on('keyup', (event) => {
+		if (!$('#pwic_browser').hasClass('pwic_hidden'))
+			if ((event || window.event).key == 'Escape')
+				$('#pwic_browser_access').trigger('click');
+	});
+
 	function page_email(draft_msg) {
 		{% if pwic.draft %}
 			if (confirm(draft_msg))

@@ -42,7 +42,7 @@ PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random vis
               'system': 'pwic_system'}              # Account for the technical operations
 PWIC_DEFAULTS = {'password': 'initial',             # Default password for the new accounts
                  'language': 'en',
-                 'page': 'home',
+                 'page': 'home',                    # Root page of every project
                  'kb_mask': 'kb%06d',
                  'heading': '1.1.1.1.1.1.',
                  'odt_img_defpix': '150',
@@ -57,16 +57,17 @@ PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)
                 }
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'file_formats', 'keep_sessions', 'http_log_file', 'http_log_format',
-                                'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains', 'oauth_identifier',
-                                'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex', 'safe_mode', 'ssl']
+PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file_formats', 'keep_sessions', 'http_log_file',
+                                'http_log_format', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'no_safe_mode',
+                                'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
+                                'password_regex', 'ssl']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
-                              'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_project_size', 'message',
-                              'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev',
-                              'no_mde', 'no_new_user', 'no_printing', 'no_search', 'no_text_selection', 'odt_image_height_max',
-                              'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'title', 'validated_only']
+                              'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
+                              'message', 'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history',
+                              'no_index_rev', 'no_mde', 'no_new_user', 'no_printing', 'no_search', 'no_text_selection',
+                              'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots',
+                              'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
                                      'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
@@ -609,7 +610,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
             else:
                 lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
             tmap.append({'header': sdisp,
-                         'level': stag.count('.'),
+                         'level': stag.count('_'),
                          'title': line.strip()[4:-5]})
 
     # Final formatting

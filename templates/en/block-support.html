@@ -9,12 +9,6 @@
 		<li>On a portal: <a href="{{pwic.env.support_url.value|urlencode}}">{{pwic.env.support_url.value|escape}}</a></li>
 	{% endif %}
 	{% if pwic.env.support_text %}
-		<li>
-			{% if pwic.env.safe_mode %}
-				{{pwic.env.support_text.value|escape|replace('\\n','<br/>')}}
-			{% else %}
-				{{pwic.env.support_text.value|replace('\\n','<br/>')}}
-			{% endif %}
-		</li>
+		<li>{{pwic.env.support_text.value|escape|replace('\\n','<br/>')}}</li>
 	{% endif %}
 </ul>

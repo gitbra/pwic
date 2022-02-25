@@ -356,6 +356,13 @@
 						if (text != 'OK')
 							alert(errorPing);
 						else
+						{
+							// Close the preview
+							if (edit_preview_hwnd != null)
+							{
+								edit_preview_hwnd.close();
+								edit_preview_hwnd = null;
+							}
 
 							// Query the current revision of the modified page
 							fetch('/api/project/info/get', {	method: 'POST',
@@ -403,6 +410,7 @@
 								.catch(function(error){
 									alert(error);
 								});
+						}
 					});
 			})
 			.catch(function(error) {

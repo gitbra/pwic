@@ -1666,7 +1666,6 @@ class PwicServer():
                    request)
         self._commit()
         exit(0)
-        raise web.HTTPOk()
 
     async def api_project_info_get(self, request: web.Request) -> web.Response:
         ''' API to fetch the metadata of the project '''
@@ -1690,6 +1689,8 @@ class PwicServer():
         if pure_reader is None:
             raise web.HTTPUnauthorized()                                                # No access to the project
         if pure_reader and (pwic_option(sql, project, 'no_history') is not None):
+            if pwic_option(sql, project, 'validated_only') is not None:
+                raise web.HTTPNotImplemented()
             all = False
 
         # Fetch the pages
@@ -1752,7 +1753,7 @@ class PwicServer():
         post = await self._handle_post(request)
         project = pwic_safe_name(post.get('project', ''))
         key = pwic_safe_name(post.get('key', ''))
-        value = post.get('value', '')
+        value = post.get('value', '').replace('\r', '').strip()
         if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE) or (key[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
@@ -2159,6 +2160,18 @@ class PwicServer():
             self._rollback()
             raise web.HTTPUnauthorized()
 
+        # Check the maximal number of pages per project
+        nb = pwic_int(pwic_option(sql, project, 'max_page_count', '0'))
+        if nb > 0:
+            sql.execute(''' SELECT COUNT(page) AS total
+                            FROM pages
+                            WHERE project = ?
+                              AND latest  = 'X' ''',
+                        (project, ))
+            if sql.fetchone()['total'] >= nb:
+                self._rollback()
+                raise web.HTTPBadRequest()
+
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
         default_tags = ''
@@ -2233,8 +2246,13 @@ class PwicServer():
         if final:
             draft = False
 
-        # Fetch the last revision of the page and the profile of the user
+        # Check the maximal size of a revision
         sql = self._connect()
+        nb = pwic_int(pwic_option(sql, project, 'max_revision_size', '0'))
+        if 0 < nb < len(markdown):
+            raise web.HTTPBadRequest()
+
+        # Fetch the last revision of the page and the profile of the user
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT b.revision, b.header, b.protection, a.manager
@@ -2261,6 +2279,18 @@ class PwicServer():
                 raise web.HTTPUnauthorized()
             protection = ''                     # This field cannot be set by the non-managers
             header = row['header']              # This field is reserved to the managers, so we keep the existing value
+
+        # Check the maximal number of revisions per page
+        nb = pwic_int(pwic_option(sql, project, 'max_revision_count', '0'))
+        if nb > 0:
+            sql.execute(''' SELECT COUNT(revision) AS total
+                            FROM pages
+                            WHERE project = ?
+                              AND page    = ? ''',
+                        (project, page))
+            if sql.fetchone()['total'] >= nb:
+                self._rollback()
+                raise web.HTTPBadRequest()
 
         # Custom check
         if not PwicExtension.on_api_page_edit(sql, project, user, page, title, markdown,
@@ -2592,10 +2622,10 @@ class PwicServer():
                                       row['time'],
                                       page.replace('<', '&lt;').replace('>', '&gt;'),
                                       row['title'].replace('<', '&lt;').replace('>', '&gt;'),
-                                      htmlStyles.getCss(rel=False),
+                                      htmlStyles.getCss(rel=False).replace('src:url(/', 'src:url(%s/' % baseUrl),
                                       '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
                                       self._md2html(sql, project, page, revision, row['markdown'])[0])
-            html = html.replace('<a href="/special/document/', '<a href="%s/special/document/' % baseUrl)
+            html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
             html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % baseUrl)
             headers = {'Content-Type': htmlStyles.mime,
                        'Content-Disposition': 'attachment; filename="%s"' % endname}
@@ -3348,6 +3378,8 @@ def main() -> bool:
     sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
     sql.execute(''' VACUUM main''')
     sql.execute(''' VACUUM audit''')
+    # ... client size
+    app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_max_size')))
     # ... PWIC
     app['pwic'] = PwicServer()
     # ... session
@@ -3366,7 +3398,7 @@ def main() -> bool:
     del skey
     # ... Markdown parser
     app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'],
-                               safe_mode=pwic_option(sql, '', 'safe_mode') is not None)
+                               safe_mode=pwic_option(sql, '', 'no_safe_mode') is None)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)

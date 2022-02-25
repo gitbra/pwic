@@ -69,7 +69,7 @@
 						<td><code>api_cors</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Enable API from the remote websites by adding <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> to the HTTP headers. <code>Access-Control-Allow-Origin</code> receives the value <code>*</code>.</td>
+						<td>Enable API from the remote websites by adding <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS">CORS</a> to the HTTP headers. <code>Access-Control-Allow-Origin</code> receives the value <code>*</code>. Note that any client requests can ignore CORS by using the parameter<em>no-mode</em> in the JS function <em>fetch</em>.</td>
 					</tr>
 					<tr>
 						<td><code>api_expose_markdown</code></td>
@@ -94,6 +94,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>ssl</code>.</td>
+					</tr>
+					<tr>
+						<td><code>client_max_size</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request.</td>
 					</tr>
 					<tr>
 						<td><code>css</code></td>
@@ -196,7 +202,7 @@
 						<td><code>legal_notice</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>A legal text can be displayed at the bottom of the pages. The HTML syntax is accepted if <code>safe_mode</code> is disabled.</td>
+						<td>A legal text can be displayed at the bottom of the pages.</td>
 					</tr>
 					<tr>
 						<td><code>magic_bytes</code></td>
@@ -223,10 +229,28 @@
 						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>0</code> to disable the upload.</td>
 					</tr>
 					<tr>
+						<td><code>max_page_count</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of pages that can be defined per project.</td>
+					</tr>
+					<tr>
 						<td><code>max_project_size</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Define the maximal disk space in bytes allowed for all the attached documents of a project.</td>
+					</tr>
+					<tr>
+						<td><code>max_revision_count</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of revisions that can be defined per page. The deleted revisions don't matter for the total.</td>
+					</tr>
+					<tr>
+						<td><code>max_revision_size</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of characters per revision. If needed, adjust the option <code>client_max_size</code> accordingly.</td>
 					</tr>
 					<tr>
 						<td><code>message</code></td>
@@ -305,6 +329,12 @@
 						<td>To save some trees, enable a basic protection to prevent the printing of a page. It also disables the export to PDF through a virtual printer.</td>
 					</tr>
 					<tr>
+						<td><code>no_safe_mode</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>This option is not recommended at all. It allows the Markdown renderer to produce unauthorized HTML content (script, iframe...) that could create security issues. The export of the pages to OpenDocument can be impacted negatively too.</td>
+					</tr>
+					<tr>
 						<td><code>no_search</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -374,12 +404,6 @@
 							<br/>- Refer also to the related option <code>no_index_rev</code>.</td>
 					</tr>
 					<tr>
-						<td><code>safe_mode</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This option is activated by default. It prevents the Markdown renderer from producing unauthorized HTML content (script, iframe...) that could create security issues. Not using the safe mode may corrupt the export to OpenDocument.</td>
-					</tr>
-					<tr>
 						<td><code>ssl</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -401,7 +425,7 @@
 						<td><code>support_text</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Free text to describe how to get in touch with the support team. If <code>safe_mode</code> is disabled, you can use raw HTML tags.</td>
+						<td>Free text to describe how to get in touch with the support team.</td>
 					</tr>
 					<tr>
 						<td><code>support_url</code></td>
@@ -565,8 +589,9 @@
 
 		<h1 id="help_create_page"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Create a page</h1>
 		<p>The creation of new pages is restricted to the managers in order to monitor the documentation efficiently. Each page is codified with an external identifier that can be listed alphabetically in each project overview.</p>
-		<p>If a page is created in reference to another page, its content is copied by default. In that way, you can dedicate a project for containing the default templates. It is not possible to refer to a page that doesn't exist or for which you have no access rights.</p>
+		<p>If a page is created in reference to another page, its content is copied by default. In that way, you can dedicate a project to store the default templates. It is not possible to refer to a page that doesn't exist or for which you have no access rights.</p>
 		<p>A page cannot be renamed to ensure the consistency of the documentation and the audit tables.</p>
+		<p>Each project must contain the home page <code>{{pwic.constants.default_home|escape}}</code>. It is accessed by default, it is sorted in first place in the header bar, and it holds the link to the special section of the site. Thus it is not recommended to delete this particular page.</p>
 
 
 		<h1 id="help_modify_page"><a href="#help_top">{{pwic.emojis.finger_up}}</a> Modify a page</h1>
@@ -574,7 +599,7 @@
 		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
 		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft unless you define the option <code>keep_drafts</code>.</p>
 		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision is a milestone and can be deleted by an administrator only.</p>
-		<p>Unless <code>safe_mode</code> is disabled, it is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code> or the export to OpenDocument.</p>
+		<p>Unless <code>no_safe_mode</code> is enabled, it is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code> or the export to OpenDocument.</p>
 		<p>If enabled by the option <code>mathjax</code>, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
 		<p>The tags are the base to classify the pages freely. The keywords are separated by a space. You can search for a tag in the search engine by usign a hash (ex: <code>#tag</code>). A tag counts a lot in the evaluation of the results.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
@@ -618,8 +643,8 @@
 		<p>A page is usually read online but you can export it on your desktop in several file formats.</p>
 
 			<h2>html - Web page</h2>
-			<p>The export to HTML is a single file that can be opened in your web browser. However, it does not embed the images and the attachments.</p>
-			<p>By using the feature "<em>Save as</em>" of your web browser, you can save the page and the loaded pictures, without the attachments.</p>
+			<p>The export to HTML is a single file that can be opened in your web browser. However, it does not embed the images, the attachments and your custom styles.</p>
+			<p>By using the feature "<em>Save as</em>" of your web browser, you can save the page and the loaded pictures, but without the attachments.</p>
 
 			<h2>md - Markdown</h2>
 			<p>This format is the basic content used by Pwic.</p>
@@ -628,7 +653,7 @@
 			<h2>odt - OpenDocument</h2>
 			<p>This file format is public but it is not a DOCX document. The file can be edited in MS Word, LibreOffice and more.</p>
 			<p>The export is designed to be very similar to the HTML rendering online, like as if you copied-pasted the text in your editor. However, slight differences of layout are expectable.</p>
-			<p>The success of the conversion can be altered if you disable the option <code>safe_mode</code>.</p>
+			<p>The success of the conversion can be altered if you enable the option <code>no_safe_mode</code>.</p>
 
 			<h2>pdf - Desktop PDF</h2>
 			<p>This format is not supported by Pwic, so it cannot be disabled in the options.</p>

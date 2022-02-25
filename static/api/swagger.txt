@@ -558,6 +558,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        501:
+          description: Unsupported combination of options
   /api/project/progress/get:
     post:
       summary: Show the current progress of the project by tag

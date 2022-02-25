@@ -37,10 +37,12 @@
 // --------------------------------
 //  Main HTML tags
 
-HTML, BODY
+HTML
 	height: 100%
+	scroll-behavior: smooth
 
 BODY
+	height: 100%
 	width: 100%
 	margin: 0px
 	padding: 0px
@@ -326,6 +328,9 @@ ARTICLE
 			display: block
 			padding: 5px
 			margin: 5px
+			white-space: nowrap
+			overflow: hidden
+			text-overflow: ellipsis
 			color: black				// Invalidates the general A
 			text-decoration: none		// Invalidates the general A
 
@@ -410,6 +415,7 @@ FOOTER
 //  Messages types
 
 .pwic_error, .pwic_information, .pwic_warning
+	margin-bottom: 20px
 	padding: 5px
 	border-radius: 10px
 
@@ -501,8 +507,7 @@ SPAN.pwic_progressbar
 #page_legal_notice
 	padding: 10px
 	border-top: 1px dashed gray
-	font-style: italic
-	text-align: center
+	font-size: smaller
 
 #page_topofpage
 	text-align: center
@@ -577,11 +582,11 @@ SPAN.pwic_progressbar
 		#pwic_browser_access
 			right: 25px
 
-	.pwic_action_bar
-		font-size: smaller
+		.pwic_action_bar
+			font-size: smaller
 
-		A
-			padding: 3px 5px 3px 5px !important
+			A
+				padding: 3px 5px 3px 5px !important
 
 
 // --------------------------------

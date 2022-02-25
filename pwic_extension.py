@@ -79,13 +79,13 @@ class PwicExtension():
         return True
 
     @staticmethod
-    def on_api_page_create(sql,                             # Cursor to query the database
-                           project,                         # Name of the project
-                           user,                            # Name of the user
-                           page,                            # Name of the page
-                           kb,                              # Is knowledge base article
-                           tags,                            # Tags
-                           milestone,                       # Milestone
+    def on_api_page_create(sql: sqlite3.Cursor,             # Cursor to query the database
+                           project: str,                    # Name of the project
+                           user: str,                       # Name of the user
+                           page: str,                       # Name of the page
+                           kb: bool,                        # Is knowledge base article
+                           tags: str,                       # Tags
+                           milestone: str,                  # Milestone
                            ) -> bool:
         ''' Event when a new page is created.
             The result tells if the creation of the page is possible.
