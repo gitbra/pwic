@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 from typing import Optional, Dict, List, Tuple, Any
 import argparse
@@ -9,7 +8,7 @@ import gzip
 import datetime
 import sys
 import os
-from os import chmod, listdir, makedirs, mkdir, removedirs, rmdir
+from os import chmod, listdir, makedirs, mkdir, removedirs, rename, rmdir
 from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from stat import S_IREAD
@@ -109,6 +108,8 @@ def main() -> bool:
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
+    subparsers.add_parser('rotate-logs', help='Rotate Pwic\'s HTTP log files')
+
     spb = subparsers.add_parser('archive-audit', help='Clean the obsolete entries of audit')
     spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
     spb.add_argument('--complete', type=int, default=0, help='Horizon for a complete cleanup', metavar='365')
@@ -124,10 +125,17 @@ def main() -> bool:
 
     subparsers.add_parser('execute-optimize', help='Run the optimizer')
 
+    spb = subparsers.add_parser('unlock-db', help='Unlock the database after an internal Python error')
+    spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+    spb.add_argument('--secure', action='store_true', help='Use HTTPS')
+    spb.add_argument('--force', action='store_true', help='No confirmation')
+
     subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
     spb = subparsers.add_parser('shutdown-server', help='Terminate the server')
     spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+    spb.add_argument('--secure', action='store_true', help='Use HTTPS')
+    spb.add_argument('--force', action='store_true', help='No confirmation')
 
     # Parse the command line
     args = parser.parse_args()
@@ -171,6 +179,8 @@ def main() -> bool:
         return compress_static(args.revert)
     elif args.command == 'clear-cache':
         return clear_cache(args.project)
+    elif args.command == 'rotate-logs':
+        return rotate_logs()
     elif args.command == 'archive-audit':
         return archive_audit(args.selective, args.complete)
     elif args.command == 'create-backup':
@@ -179,10 +189,12 @@ def main() -> bool:
         return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
     elif args.command == 'execute-optimize':
         return execute_optimize()
+    elif args.command == 'unlock-db':
+        return unlock_db(args.port, args.secure, args.force)
     elif args.command == 'execute-sql':
         return execute_sql()
     elif args.command == 'shutdown-server':
-        return shutdown_server(args.port)
+        return shutdown_server(args.port, args.secure, args.force)
     else:
         parser.print_help()
         return False
@@ -665,7 +677,7 @@ def repair_env() -> bool:
 
     # Report
     if len(buffer) == 0:
-        print('No change is required.')
+        print('No change is required')
     else:
         db_commit()
         tab = PrettyTable()
@@ -1595,6 +1607,24 @@ def show_stats() -> bool:
                 WHERE a.latest   = 'X'
                   AND a.valuser <> ''
                 GROUP BY a.project''', None)
+    _totals(sql, 'Size of the latest revisions',
+            ''' SELECT SUM(LENGTH(markdown)) AS kpi
+                FROM pages
+                WHERE latest = 'X' ''', None)
+    _totals(sql, 'Size of the latest revisions per project',
+            ''' SELECT project, SUM(LENGTH(markdown)) AS kpi
+                FROM pages
+                WHERE latest = 'X'
+                GROUP BY project
+                ORDER BY project''', None)
+    _totals(sql, 'Size of all the revisions',
+            ''' SELECT SUM(LENGTH(markdown)) AS kpi
+                FROM pages''', None)
+    _totals(sql, 'Size of all the revisions per project',
+            ''' SELECT project, SUM(LENGTH(markdown)) AS kpi
+                FROM pages
+                GROUP BY project
+                ORDER BY project''', None)
 
     # Cache
     _totals(sql, 'Number of pages in the cache',
@@ -1804,6 +1834,61 @@ def clear_cache(project: str) -> bool:
                      'project': project})
     db_commit()
     print('The cache is cleared. Do expect a workload of regeneration for a short period of time.')
+    return True
+
+
+def rotate_logs() -> bool:
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+
+    # Read the file name
+    fn = pwic_option(sql, '', 'http_log_file')
+    if fn is None:
+        print('Error: option "http_log_file" not defined')
+        return False
+
+    # Rotate the files
+    # ... first file
+    try:
+        rename(fn, fn + '.tmp')
+    except Exception:
+        print('Error: Pwic is running, never ran recently, incorrect file name, or no authorization')
+        return False
+    # ... remove the oldest file
+    try:
+        os.remove(fn + '.9.gz')
+    except Exception:
+        pass
+    # ... rotate the files
+    for i in reversed(range(1, 9)):     # i=[1..8]
+        try:
+            rename('%s.%d.gz' % (fn, i),
+                   '%s.%d.gz' % (fn, i + 1))
+        except Exception:
+            pass
+    # ... compress last file
+    try:
+        with open(fn + '.0', 'rb') as src:
+            with gzip.open(fn + '.1.gz', 'wb') as dst:
+                copyfileobj(src, dst)
+    except Exception:
+        print('Error: the compression of the file #1 failed')
+        return False
+    # ... remove the compressed file
+    try:
+        os.remove(fn + '.0')
+    except Exception:
+        pass
+    # ... rotate the first file
+    try:
+        rename(fn + '.tmp', fn + '.0')
+    except Exception:
+        pass
+
+    # Final
+    print('Done')
     return True
 
 
@@ -2115,8 +2200,29 @@ def execute_optimize() -> bool:
 
     # Run the optimizer
     sql.execute(''' PRAGMA optimize''')
-    print('Done.')
+    print('Done')
     return True
+
+
+def unlock_db(port: bool, secure: bool, force: bool) -> bool:
+    # Ask for confirmation
+    if not force:
+        print('This special function must be called with full knowledge of the facts.')
+        print('The changes will be reverted and the database unlocked.')
+        print('Type "YES" to agree and continue: ', end='')
+        if input() != 'YES':
+            return False
+
+    # Connect to the API
+    print('Sending the signal... ', end='', flush=True)
+    try:
+        url = 'http%s://127.0.0.1:%d/api/server/unlock' % ('s' if secure else '', port)
+        urlopen(Request(url, None, method='POST'))
+        print('OK')
+        return True
+    except Exception as e:
+        print('failed\nError: %s' % str(e))
+        return False
 
 
 def execute_sql() -> bool:
@@ -2167,54 +2273,27 @@ def execute_sql() -> bool:
     return False
 
 
-def shutdown_server(port: int) -> bool:
-    # Connect to the database
-    sql = db_connect()
-    if sql is None:
-        return False
-
+def shutdown_server(port: int, secure: bool, force: bool) -> bool:
     # Ask for confirmation
-    print('This command will try to terminate Pwic server at its earliest convenience.')
-    print('This will disconnect the users and interrupt their work.')
-    print('Type "YES" to agree and continue: ', end='')
-    if input() != 'YES':
-        return False
-
-    # Authorize
-    if not db_lock(sql):
-        return False
-    sql.execute(''' INSERT OR IGNORE INTO env (project, key, value)
-                    VALUES ('', 'pwic_shutdown', 'X')''')
-    pwic_audit(sql, {'author': PWIC_USERS['system'],
-                     'event': 'set-pwic_shutdown',
-                     'string': 'X'})
-    db_commit()
+    if not force:
+        print('This command will try to terminate Pwic server at its earliest convenience.')
+        print('This will disconnect the users and interrupt their work.')
+        print('Type "YES" to agree and continue: ', end='')
+        if input() != 'YES':
+            return False
 
     # Terminate
     print('Sending the kill signal... ', end='', flush=True)
-    ok = False
     try:
-        ssl = pwic_option(sql, '', 'ssl') is not None
-        url = 'http%s://127.0.0.1:%d/api/server/shutdown' % ('s' if ssl else '', port)
+        url = 'http%s://127.0.0.1:%d/api/server/shutdown' % ('s' if secure else '', port)
         urlopen(Request(url, None, method='POST'))
     except Exception as e:
         if isinstance(e, RemoteDisconnected):
-            ok = True
             print('OK')
+            return True
         else:
             print('failed\nError: %s' % str(e))
-
-    # Remove the authorization after a failure
-    if not ok:
-        sql.execute(''' DELETE FROM env
-                        WHERE project = ''
-                          AND key     = 'pwic_shutdown' ''')
-        if sql.rowcount > 0:
-            pwic_audit(sql, {'author': PWIC_USERS['system'],
-                             'event': 'unset-pwic_shutdown',
-                             'string': 'Shutdown failed'})
-        db_commit()
-    return ok
+    return False
 
 
 if main():

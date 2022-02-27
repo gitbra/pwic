@@ -19,7 +19,7 @@
 			{% for key in pwic.changeable_vars %}
 				<tr>
 					<td><code>{{key|escape}}</code></td>
-					<td>
+					<td style="padding-right: 10px">
 						<input class="pwic_fill" type="text" data-key="{{key|escape}}">
 						<input type="button" data-key="{{key|escape}}" value="{{pwic.emojis.save}} Save">
 					</td>

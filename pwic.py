@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
@@ -29,9 +28,9 @@ from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DO
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
     pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
-    pwic_mime2icon, pwic_option, pwic_random_hash, pwic_row_factory, pwic_sha256, pwic_safe_name, pwic_safe_file_name, \
-    pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, pwic_extended_syntax, \
-    pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
+    pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, pwic_safe_name, \
+    pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
+    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -1644,28 +1643,40 @@ class PwicServer():
             return web.Response(text='OK', content_type=pwic_mime('txt'))
 
     async def api_server_shutdown(self, request: web.Request) -> None:
-        # Read the parameters
-        sql = self._connect()
-        if pwic_option(sql, '', 'pwic_shutdown') is None:
-            raise web.HTTPForbidden()
-        user = await self._suser(request)
-        if user == '':
-            user = PWIC_USERS['anonymous']
+        # Check the remote IP address
+        ip = PwicExtension.on_ip_header(request)
+        if not ip_address(ip).is_loopback:
+            raise web.HTTPForbidden()           # Must be from localhost only
 
         # Shutdown the server
-        if not self._lock(sql):
+        if app['sql'].in_transaction:
             raise web.HTTPServiceUnavailable()
-        sql.execute(''' DELETE FROM env
-                        WHERE project = ''
-                          AND key     = 'pwic_shutdown' ''')
-        pwic_audit(sql, {'author': user,
-                         'event': 'unset-pwic_shutdown'},
-                   request)
-        pwic_audit(sql, {'author': user,
+        sql = self._connect()
+        pwic_audit(sql, {'author': PWIC_USERS['anonymous'],
                          'event': 'shutdown-server'},
                    request)
         self._commit()
         exit(0)
+
+    async def api_server_unlock(self, request: web.Request) -> None:
+        # Check the remote IP address
+        ip = PwicExtension.on_ip_header(request)
+        if not ip_address(ip).is_loopback:
+            raise web.HTTPForbidden()           # Must be from localhost only
+
+        # Release the locks after an internal failure
+        if not app['sql'].in_transaction:
+            raise web.HTTPBadRequest()          # Not locked
+        app['sql'].interrupt()
+        self._rollback()                        # Unlock
+
+        # Event
+        sql = self._connect()
+        pwic_audit(sql, {'author': PWIC_USERS['anonymous'],
+                         'event': 'unlock-db'},
+                   request)
+        self._commit()
+        raise web.HTTPOk()
 
     async def api_project_info_get(self, request: web.Request) -> web.Response:
         ''' API to fetch the metadata of the project '''
@@ -1985,7 +1996,7 @@ class PwicServer():
         if user == '':
             raise web.HTTPUnauthorized()
 
-        # Get the posted values
+        # Get the parameters
         project = pwic_safe_name(request.rel_url.query.get('project', ''))
         if project == '':
             raise web.HTTPBadRequest()
@@ -2107,6 +2118,51 @@ class PwicServer():
         headers = {'Content-Type': 'application/x-zip-compressed',
                    'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}
         return web.Response(body=content, headers=MultiDict(headers))
+
+    async def api_project_searchlink_get(self, request: web.Request) -> web.Response:
+        ''' API to add a search link to the browser '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the parameters
+        project = pwic_safe_name(request.rel_url.query.get('project', ''))
+        if project == '':
+            raise web.HTTPBadRequest()
+
+        # Verify that the user has access to the project
+        sql = self._connect()
+        sql.execute(''' SELECT b.description
+                        FROM roles AS a
+                            INNER JOIN projects AS b
+                                ON b.project = a.project
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = '' ''',
+                    (project, user))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPUnauthorized()
+
+        # Additional parameters
+        baseUrl = pwic_option(sql, '', 'base_url')
+        if (baseUrl is None) or (pwic_option(sql, project, 'no_search') is not None):
+            raise web.HTTPForbidden()
+
+        # Result
+        xml = '''<?xml version="1.0" encoding="UTF-8"?>
+                <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+                    <Description>%s</Description>
+                    <InputEncoding>utf8</InputEncoding>
+                    <Language>*</Language>
+                    <ShortName>%s</ShortName>
+                    <Url rel="results" type="text/html" method="get" template="%s/%s/special/search?q={searchTerms}"></Url>
+                </OpenSearchDescription>''' % (escape(row['description']),
+                                               escape(project),
+                                               escape(baseUrl),
+                                               escape(project))
+        return web.Response(text=pwic_recursive_replace(xml.strip(), ' <', '<'), content_type=pwic_mime('xml'))
 
     async def api_page_create(self, request: web.Request) -> web.Response:
         ''' API to create a new page '''
@@ -3410,11 +3466,13 @@ def main() -> bool:
                     web.get('/api/server/headers', app['pwic'].api_server_headers),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/server/shutdown', app['pwic'].api_server_shutdown),
+                    web.post('/api/server/unlock', app['pwic'].api_server_unlock),
                     web.post('/api/project/info/get', app['pwic'].api_project_info_get),
                     web.post('/api/project/env/set', app['pwic'].api_project_env_set),
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
                     web.get('/api/project/export', app['pwic'].api_project_export),
+                    web.get('/api/project/searchlink/get', app['pwic'].api_project_searchlink_get),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),

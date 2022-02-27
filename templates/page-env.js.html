@@ -3,9 +3,15 @@
 
 	// Manage the visibility of the save button
 	$('INPUT[type=button]').addClass('pwic_hidden');
-	$('INPUT[type=text]').on('change', function() {
-		$(this).removeAttr('placeholder');
-		$('INPUT[type=button][data-key='+$(this).data('key')+']').removeClass('pwic_hidden');
+	$('INPUT[type=text]').on('keyup', function() {
+		// Inbound values
+		var value = $(this).val(),
+			saved = ($(this).data('saved') || ''),
+			global = ($(this).data('global') == 'X');
+		// Conditions to show it
+		var b1 = !global && (value != saved),
+			b2 = global && (value != '');
+		$('INPUT[type=button][data-key='+$(this).data('key')+']').toggleClass('pwic_hidden', !b1 && !b2);
 	});
 
 	// Manage the save button
@@ -31,8 +37,11 @@
 					{
 						item = data[key];
 						element = $('INPUT[type=text][data-key='+key+']');
-						if (element.length > 0)
+						if (element.length == 1)
 						{
+							console.assert(item['changeable'] == true);
+							element.data('saved', item['value'])
+								   .data('global', (item['global'] ? 'X' : ''));
 							if (item['global'])
 								element.attr('placeholder', item['value']);
 							else

@@ -635,6 +635,28 @@ paths:
           description: No relevant data found
         503:
           description: Technical error during the generation of the ZIP file
+  /api/project/searchlink/get:
+    get:
+      summary: Install a shortcut in the user's browser
+      tags:
+        - project
+      produces:
+        - text/xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Erroneous configuration
   /api/server/env/get:
     post:
       summary: Get details about the environment variables
@@ -715,12 +737,22 @@ paths:
       tags:
         - server
       responses:
-        200:
-          description: Successful operation
         403:
-          description: Forbidden operation
+          description: Connect from localhost only
         503:
           description: Shutdown temporarily unavailable
+  /api/server/unlock:
+    post:
+      summary: Unlock the database after an internal Python error
+      tags:
+        - server
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Database not locked
+        403:
+          description: Connect from localhost only
   /api/user/create:
     post:
       summary: Create or assign a user to a project

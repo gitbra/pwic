@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 # This is a modified copy of https://github.com/trentm/python-markdown2
 # List of the changes:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlite3
@@ -64,10 +63,10 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
-                              'message', 'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history',
-                              'no_index_rev', 'no_mde', 'no_new_user', 'no_printing', 'no_search', 'no_text_selection',
-                              'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'robots',
-                              'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
+                              'max_revision_count', 'max_revision_size', 'message', 'no_cache', 'no_export_project', 'no_graph',
+                              'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing', 'no_search',
+                              'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width',
+                              'robots', 'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
                                      'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
@@ -267,7 +266,7 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['wma'], ['audio/x-ms-wma'], None, True),
                       (['wmf'], ['image/x-wmf'], None, False),
                       (['wmv'], ['video/x-ms-wmv'], None, True),
-                      (['woff'], ['application/x-font-woff', 'font/woff '], None, False),
+                      (['woff'], ['application/x-font-woff', 'font/woff'], None, False),
                       (['woff2'], ['application/x-font-woff', 'font/woff2'], ['wOF2'], True),
                       (['xaml'], ['application/xaml+xml'], None, False),
                       (['xls'], ['application/vnd.ms-excel'], CFBF, False),

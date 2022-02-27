@@ -54,7 +54,8 @@
 					else
 						window.location =	'/{{pwic.project|escape}}' +
 											'/{{pwic.page|escape}}' +
-											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '');
+											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
+											(action == 'delete' ? '?success' : '');
 				})
 				.catch(function(error) {
 					alert(error);

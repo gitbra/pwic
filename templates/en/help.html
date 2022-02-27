@@ -54,6 +54,7 @@
 
 			<h2>Initialize the database</h2>
 			<p>The initialization consists in creating the SQLite database and the folders to store the files that you can upload of the server. It is done once at the beginning with the command <code>python3 pwic_admin.py init-db</code>.</p>
+			<p>In rare cases if the Python code fails for example, the database can be locked without timeout. In this case, either restart the server or better run the command <code>python3 pwic_admin.py unlock-db</code>.</p>
 
 			<h2>Set the parameters</h2>
 			<p>With the command <code>python3 pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior.</p>
@@ -156,6 +157,21 @@
 						<td>Codify the headers according to the given format. The default one is <code>1.1.1.1.1.1.</code>. There are 6 levels maximum. You can use the Arabic numerals (<code>1</code>), the Roman notation up to 4999 in uppercase (<code>I</code>) or in lowercase (<code>i</code>), a letter in uppercase (<code>A</code>) or in lowercase (<code>a</code>). The separator is a free character. For example, you can define <code>A)1)a-a.1.a.</code>. The implicit tag name for the header is named with <code>#p</code> followed by the shortest codification, in lowercase and with a dot (<code>#pi.1.a.a.</code>).</td>
 					</tr>
 					<tr>
+						<td><code>http_log_file</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
+							<br/>- The option is effective upon the restart of the server.
+							<br/>- Because the log file is exclusively locked, you must terminate Pwic before you can rotate the logs with the command <code>python3 pwic_admin.py rotate-logs</code>.
+							<br/>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
+					</tr>
+					<tr>
+						<td><code>http_log_format</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>The format of the HTTP log file can be modified according to <a href="https://docs.aiohttp.org/en/stable/logging.html#format-specification">this specification</a>.</td>
+					</tr>
+					<tr>
 						<td><code>kbid</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -176,21 +192,6 @@
 							<br/>- The users don't have to reconnect in another tab if their work in progress cannot be submitted due to the expiration of their sessions,
 							<br/>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
 							<br/><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
-					</tr>
-					<tr>
-						<td><code>http_log_file</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
-							<br/>- The option is effective upon the restart of the server.
-							<br/>- Since the log file is exclusively locked, you must terminate Pwic before you can archive the file.
-							<br/>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
-					</tr>
-					<tr>
-						<td><code>http_log_format</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>The format of the HTTP log file can be modified according to <a href="https://docs.aiohttp.org/en/stable/logging.html#format-specification">this specification</a>.</td>
 					</tr>
 					<tr>
 						<td><code>ip_filter</code></td>
@@ -338,7 +339,7 @@
 						<td><code>no_search</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Disable the search engine.</td>
+						<td>Disable the search engine and the search link that you can add to your browser.</td>
 					</tr>
 					<tr>
 						<td><code>no_text_selection</code></td>
@@ -387,12 +388,6 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Non-changeable and private key for the handling of the sessions. Refer to <code>keep_sessions</code> for more details. The value must never be disclosed.</td>
-					</tr>
-					<tr>
-						<td><code>pwic_shutdown</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This is an internal option used to shut down the server. The value cannot be changed manually.</td>
 					</tr>
 					<tr>
 						<td><code>robots</code></td>
