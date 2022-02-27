@@ -17,8 +17,10 @@
 - Encyclopedic mode to browse the latest validated revisions only
 - Automatic summary of the page
 - In-text search with inclusion, exclusion, hash tags and special keywords
+- Search link for the browsers
 - Highlight of the lines of code
 - Export of a page to Markdown (.md), web page (.html) and OpenDocument (.odt)
+- RSS feed
 - Share by link
 - Share by email
 - Internationalization (English only for now)

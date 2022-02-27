@@ -635,6 +635,28 @@ paths:
           description: No relevant data found
         503:
           description: Technical error during the generation of the ZIP file
+  /api/project/rss/get:
+    get:
+      summary: RSS feed for the project
+      tags:
+        - project
+      produces:
+        - application/rss+xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters or not found
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
   /api/project/searchlink/get:
     get:
       summary: Install a shortcut in the user's browser
@@ -654,9 +676,9 @@ paths:
         400:
           description: Invalid parameters
         401:
-          description: Unsufficient authorizations
+          description: Unsufficient authorizations or not found
         403:
-          description: Erroneous configuration
+          description: Erroneous configuration or disabled feature
   /api/server/env/get:
     post:
       summary: Get details about the environment variables

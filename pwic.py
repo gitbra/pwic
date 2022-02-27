@@ -2119,8 +2119,8 @@ class PwicServer():
                    'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}
         return web.Response(body=content, headers=MultiDict(headers))
 
-    async def api_project_searchlink_get(self, request: web.Request) -> web.Response:
-        ''' API to add a search link to the browser '''
+    async def api_project_rss_get(self, request: web.Request) -> web.Response:
+        ''' RSS feed for the project '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -2146,8 +2146,89 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Additional parameters
-        baseUrl = pwic_option(sql, '', 'base_url')
-        if (baseUrl is None) or (pwic_option(sql, project, 'no_search') is not None):
+        if pwic_option(sql, project, 'no_rss') is not None:
+            raise web.HTTPForbidden()
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        rss_size = max(1, pwic_int(pwic_option(sql, project, 'rss_size', '25')))
+
+        # Result
+        dt = pwic_dt()
+        rss = '''<?xml version="1.0" encoding="utf8"?><rss version="2.0">
+                <channel>
+                    <title>Project %s</title>
+                    <description>%s</description>
+                    <lastBuildDate>%s %s</lastBuildDate>
+                    <link>%s/api/project/rss/get?project=%s</link>
+                </channel>''' % (escape(project),
+                                 escape(row['description']),
+                                 escape(dt['date']),
+                                 escape(dt['time']),
+                                 escape(base_url),
+                                 escape(project))
+        sql.execute(''' SELECT page, revision, author, date, time, title, tags, comment
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                          AND date   >= ?
+                        ORDER BY date DESC,
+                                 time DESC
+                        LIMIT ?''',
+                    (project, dt['date-30d'], rss_size))
+        for row in sql.fetchall():
+            rss += '''<item>
+                        <title>[%s] %s</title>
+                        <description>%s</description>
+                        <pubDate>%s %s</pubDate>
+                        <author>%s</author>
+                        <category>%s</category>
+                        <link>%s/%s/%s/rev%d</link>
+                        <guid>%s-%s-%d</guid>
+                    </item>''' % (escape(row['page']),
+                                  escape(row['title']),
+                                  escape(row['comment']),
+                                  escape(row['date']),
+                                  escape(row['time']),
+                                  escape(row['author']),
+                                  escape(row['tags']),
+                                  escape(base_url),
+                                  escape(project),
+                                  escape(row['page']),
+                                  row['revision'],
+                                  escape(project),
+                                  escape(row['page']),
+                                  row['revision'])
+        rss += '</rss>'
+        return web.Response(text=pwic_recursive_replace(rss.strip(), ' <', '<'), content_type=pwic_mime('rss'))
+
+    async def api_project_searchlink_get(self, request: web.Request) -> web.Response:
+        ''' Search link to be added to the browser '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the parameters
+        project = pwic_safe_name(request.rel_url.query.get('project', ''))
+        if project == '':
+            raise web.HTTPBadRequest()
+
+        # Verify that the user has access to the project
+        sql = self._connect()
+        sql.execute(''' SELECT b.description
+                        FROM roles AS a
+                            INNER JOIN projects AS b
+                                ON b.project = a.project
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = '' ''',
+                    (project, user))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPUnauthorized()
+
+        # Additional parameters
+        base_url = pwic_option(sql, '', 'base_url')
+        if (base_url is None) or (pwic_option(sql, project, 'no_search') is not None):
             raise web.HTTPForbidden()
 
         # Result
@@ -2160,7 +2241,7 @@ class PwicServer():
                     <Url rel="results" type="text/html" method="get" template="%s/%s/special/search?q={searchTerms}"></Url>
                 </OpenSearchDescription>''' % (escape(row['description']),
                                                escape(project),
-                                               escape(baseUrl),
+                                               escape(base_url),
                                                escape(project))
         return web.Response(text=pwic_recursive_replace(xml.strip(), ' <', '<'), content_type=pwic_mime('xml'))
 
@@ -2647,8 +2728,8 @@ class PwicServer():
 
         # Initialization
         dt = pwic_dt()
-        baseUrl = str(pwic_option(sql, '', 'base_url', ''))
-        pageUrl = '%s/%s/%s/rev%d' % (baseUrl, project, page, revision)
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        page_url = '%s/%s/%s/rev%d' % (base_url, project, page, revision)
         endname = pwic_attachment_name('%s_%s_rev%d.%s' % (project, page, revision, format))
 
         # Fetch the legal notice
@@ -2678,11 +2759,11 @@ class PwicServer():
                                       row['time'],
                                       page.replace('<', '&lt;').replace('>', '&gt;'),
                                       row['title'].replace('<', '&lt;').replace('>', '&gt;'),
-                                      htmlStyles.getCss(rel=False).replace('src:url(/', 'src:url(%s/' % baseUrl),
+                                      htmlStyles.getCss(rel=False).replace('src:url(/', 'src:url(%s/' % base_url),
                                       '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
                                       self._md2html(sql, project, page, revision, row['markdown'])[0])
-            html = html.replace('<a href="/', '<a href="%s/' % baseUrl)
-            html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % baseUrl)
+            html = html.replace('<a href="/', '<a href="%s/' % base_url)
+            html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % base_url)
             headers = {'Content-Type': htmlStyles.mime,
                        'Content-Disposition': 'attachment; filename="%s"' % endname}
             return web.Response(body=html, headers=MultiDict(headers))
@@ -2742,7 +2823,7 @@ class PwicServer():
             # Convert to ODT
             odtStyles = pwic_styles_odt()
             try:
-                odtGenerator = pwic_html2odt(baseUrl, project, page, pictMeta=pictMeta)
+                odtGenerator = pwic_html2odt(base_url, project, page, pictMeta=pictMeta)
                 odtGenerator.feed(html)
             except Exception:
                 raise web.HTTPInternalServerError()
@@ -2788,7 +2869,7 @@ class PwicServer():
             xml = xml.replace('fo:page-height=""', 'fo:page-height="%s"' % str(pwic_option(sql, project, 'odt_page_height', '29.7cm')).strip().replace(' ', '').replace(',', '.').replace('"', '\\"'))
             odt.writestr('styles.xml', xml)
             xml = odtStyles.content
-            xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (pageUrl, pageUrl))  # Trick to connect the master layout to the page
+            xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
             xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
             odt.writestr('content.xml', xml)
             odt.close()
@@ -3472,6 +3553,7 @@ def main() -> bool:
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
                     web.get('/api/project/export', app['pwic'].api_project_export),
+                    web.get('/api/project/rss/get', app['pwic'].api_project_rss_get),
                     web.get('/api/project/searchlink/get', app['pwic'].api_project_searchlink_get),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
