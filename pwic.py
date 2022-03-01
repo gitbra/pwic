@@ -26,7 +26,7 @@ from random import randint
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
     pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, pwic_safe_name, \
     pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
@@ -42,16 +42,8 @@ IPR_EQ, IPR_NET, IPR_REG = range(3)
 # ===================================================
 
 class PwicServer():
-    def _connect(self) -> sqlite3.Cursor:
-        return app['sql'].cursor()
-
-    def _commit(self) -> None:
-        ''' Commit the current transactions '''
-        app['sql'].commit()
-
-    def _rollback(self) -> None:
-        ''' Rollback the current transactions '''
-        app['sql'].rollback()
+    def __init__(self, dbconn: sqlite3.Connection):
+        self.dbconn = dbconn
 
     def _lock(self, sql):
         ''' Lock the current database '''
@@ -94,7 +86,7 @@ class PwicServer():
             if cache:
                 sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html) VALUES (?, ?, ?, ?)''',
                             (project, page, revision, html))
-                self._commit()
+                self.dbconn.commit()
         if pwic_option(sql, project, 'no_heading') is not None:
             headerNumbering = False
         return pwic_extended_syntax(html,
@@ -248,11 +240,12 @@ class PwicServer():
                              'default_language': PWIC_DEFAULTS['language'],
                              'default_home': PWIC_DEFAULTS['page'],
                              'languages': app['langs'],
+                             'not_project': PWIC_NOT_PROJECT,
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'version': PWIC_VERSION}
 
         # The project-dependent variables have the priority
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT project, key, value
                         FROM env
                         WHERE ( project = ?
@@ -331,7 +324,7 @@ class PwicServer():
         dt = pwic_dt()
 
         # Fetch the name of the project...
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if project != '':
             # Verify if the project exists
             sql.execute(''' SELECT description
@@ -360,7 +353,7 @@ class PwicServer():
                                          'user': user,
                                          'string': 'auto_join'},
                                    request)
-                        self._commit()
+                        self.dbconn.commit()
 
             # Verify the access
             sql.execute(''' SELECT admin, manager, editor, validator, reader
@@ -626,7 +619,7 @@ class PwicServer():
 
         # Check the authorizations
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT COUNT(*) AS total
                         FROM roles AS a
                             INNER JOIN pages AS b
@@ -664,7 +657,7 @@ class PwicServer():
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         days = max(-1, pwic_int(pwic_option(sql, project, 'audit_range', '30')))
         dt = pwic_dt(days)
 
@@ -721,7 +714,7 @@ class PwicServer():
                                 'default_project': pwic_safe_name(request.rel_url.query.get('project', '')),
                                 'default_page': pwic_safe_name(request.rel_url.query.get('page', '')),
                                 'projects': []}
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -748,7 +741,7 @@ class PwicServer():
         pwic: Dict[str, Any] = {'title': 'Create a user',
                                 'default_project': request.rel_url.query.get('project', ''),
                                 'projects': []}
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -772,7 +765,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the information of the user
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         userpage = pwic_safe_user_name(request.match_info.get('userpage', ''))
         row = sql.execute(''' SELECT password, initial FROM users WHERE user = ?''', (userpage, )).fetchone()
         if row is None:
@@ -871,7 +864,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Parse the query
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         project = pwic_safe_name(request.match_info.get('project', ''))
         if pwic_option(sql, project, 'no_search') is not None:
             query = None
@@ -1040,7 +1033,7 @@ class PwicServer():
         project = pwic_safe_name(request.match_info.get('project', ''))
 
         # Verify that the user is an administrator
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if sql.execute(''' SELECT user
                            FROM roles
                            WHERE project  = ?
@@ -1070,7 +1063,7 @@ class PwicServer():
 
         # Fetch the name of the project
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         pwic: Dict[str, Any] = {'title': 'Roles',
                                 'project': project,
                                 'roles': []}
@@ -1124,7 +1117,7 @@ class PwicServer():
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
 
         # Fetch the documents of the project
         sql.execute(''' SELECT id
@@ -1214,7 +1207,7 @@ class PwicServer():
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
 
         # Check the authorizations
         sql.execute(''' SELECT user
@@ -1246,7 +1239,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the parameters
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         project = pwic_safe_name(request.match_info.get('project', ''))
         page = pwic_safe_name(request.match_info.get('page', ''))
         new_revision = pwic_int(request.match_info.get('new_revision', ''))
@@ -1306,7 +1299,7 @@ class PwicServer():
 
         # Read the properties of the requested document
         id = pwic_int(request.match_info.get('id', 0))
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, a.filename, a.mime, a.size, a.exturl
                         FROM documents AS a
                             INNER JOIN roles AS b
@@ -1360,7 +1353,7 @@ class PwicServer():
 
         # Login with the credentials
         ok = False
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT 1
                         FROM users
                         WHERE user     = ?
@@ -1377,7 +1370,7 @@ class PwicServer():
                     pwic_audit(sql, {'author': user,
                                      'event': 'login'},
                                request)
-                    self._commit()
+                    self.dbconn.commit()
 
         # Final redirection (do not use "raise")
         if request.rel_url.query.get('redirect', None) is not None:
@@ -1393,10 +1386,11 @@ class PwicServer():
         # is fully lost upon server restart because a new key is generated.
         user = await self._suser(request)
         if user not in ['', PWIC_USERS['anonymous']]:
-            pwic_audit(self._connect(), {'author': user,
-                                         'event': 'logout'},
+            sql = self.dbconn.cursor()
+            pwic_audit(sql, {'author': user,
+                             'event': 'logout'},
                        request)
-            self._commit()
+            self.dbconn.commit()
 
         # Destroy the session
         session = await get_session(request)
@@ -1455,7 +1449,7 @@ class PwicServer():
             _oauth_failed()
 
         # Call the provider
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         oauth = app['oauth']
         no_domain = (len(oauth['domains']) == 0)
         emails = []
@@ -1563,7 +1557,7 @@ class PwicServer():
                          'event': 'login',
                          'string': PWIC_MAGIC_OAUTH},
                    request)
-        self._commit()
+        self.dbconn.commit()
 
         # Final redirection (do not use "raise")
         return web.HTTPFound('/')
@@ -1580,7 +1574,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
 
         # Verify that the user is an administrator of the project
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if project != '':
             sql.execute(''' SELECT user
                             FROM roles
@@ -1649,13 +1643,13 @@ class PwicServer():
             raise web.HTTPForbidden()           # Must be from localhost only
 
         # Shutdown the server
-        if app['sql'].in_transaction:
+        if self.dbconn.in_transaction:
             raise web.HTTPServiceUnavailable()
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         pwic_audit(sql, {'author': PWIC_USERS['anonymous'],
                          'event': 'shutdown-server'},
                    request)
-        self._commit()
+        self.dbconn.commit()
         exit(0)
 
     async def api_server_unlock(self, request: web.Request) -> None:
@@ -1665,17 +1659,17 @@ class PwicServer():
             raise web.HTTPForbidden()           # Must be from localhost only
 
         # Release the locks after an internal failure
-        if not app['sql'].in_transaction:
+        if not self.dbconn.in_transaction:
             raise web.HTTPBadRequest()          # Not locked
-        app['sql'].interrupt()
-        self._rollback()                        # Unlock
+        self.dbconn.interrupt()
+        self.dbconn.rollback()                  # Unlock
 
         # Event
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         pwic_audit(sql, {'author': PWIC_USERS['anonymous'],
                          'event': 'unlock-db'},
                    request)
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_project_info_get(self, request: web.Request) -> web.Response:
@@ -1695,7 +1689,7 @@ class PwicServer():
         data: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
         # Restriction of the API
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         pure_reader = self._is_pure_reader(sql, project, user)
         if pure_reader is None:
             raise web.HTTPUnauthorized()                                                # No access to the project
@@ -1769,7 +1763,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT 1
                         FROM roles AS a
                             INNER JOIN users AS b
@@ -1794,7 +1788,7 @@ class PwicServer():
                          'project': project,
                          'string': value},
                    request)
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_project_progress_get(self, request: web.Request) -> web.Response:
@@ -1812,7 +1806,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is authorized for the project
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if sql.execute(''' SELECT user
                            FROM roles
                            WHERE project  = ?
@@ -1873,7 +1867,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the feature
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if pwic_option(sql, project, 'no_graph') is not None:
             raise web.HTTPUnauthorized()
 
@@ -2002,7 +1996,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the export is authorized
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if pwic_option(sql, project, 'no_export_project') is not None:
             raise web.HTTPForbidden()
         with_revisions = pwic_option(sql, project, 'export_project_revisions') is not None
@@ -2110,7 +2104,7 @@ class PwicServer():
                          'project': project,
                          'string': 'full' if with_revisions else 'latest'},
                    request)
-        self._commit()
+        self.dbconn.commit()
 
         # Return the file
         content = inmemory.getvalue()
@@ -2132,7 +2126,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user has access to the project
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -2213,7 +2207,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user has access to the project
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -2262,11 +2256,11 @@ class PwicServer():
         ref_project = pwic_safe_name(post.get('ref_project', ''))
         ref_page = pwic_safe_name(post.get('ref_page', ''))
         ref_tags = pwic_xb(pwic_x(post.get('ref_tags', '')))
-        if project in ['', 'api', 'special'] or (not kb and page in ['', 'special']):
+        if (project in ['', 'api', 'special']) or (not kb and page in ['', 'special']):
             raise web.HTTPBadRequest()
 
         # Consume a KBid
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         if kb:
@@ -2277,7 +2271,7 @@ class PwicServer():
             # No commit because the creation of the page can fail below
         else:
             if PWIC_REGEXES['kb_mask'].match(page) is not None:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # Verify that the user is manager of the provided project, and that the page doesn't exist yet
@@ -2294,7 +2288,7 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None or row['page'] is not None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
 
         # Check the maximal number of pages per project
@@ -2306,7 +2300,7 @@ class PwicServer():
                               AND latest  = 'X' ''',
                         (project, ))
             if sql.fetchone()['total'] >= nb:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # Fetch the default markdown if the page is created in reference to another one
@@ -2325,7 +2319,7 @@ class PwicServer():
                         (ref_page, ref_project, user))
             row = sql.fetchone()
             if row is None:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
             default_markdown = row['markdown']
             if ref_tags:
@@ -2333,7 +2327,7 @@ class PwicServer():
 
         # Custom check
         if not PwicExtension.on_api_page_create(sql, project, user, page, kb, tags, milestone):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPBadRequest()
 
         # Handle the creation of the page
@@ -2349,7 +2343,7 @@ class PwicServer():
                          'page': page,
                          'revision': revision},
                    request)
-        self._commit()
+        self.dbconn.commit()
 
         # Result
         data = {'project': project,
@@ -2384,7 +2378,7 @@ class PwicServer():
             draft = False
 
         # Check the maximal size of a revision
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         nb = pwic_int(pwic_option(sql, project, 'max_revision_size', '0'))
         if 0 < nb < len(markdown):
             raise web.HTTPBadRequest()
@@ -2406,13 +2400,13 @@ class PwicServer():
                     (page, project, user))
         row = sql.fetchone()
         if row is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()        # Or not found which is normally unlikely
         revision = row['revision']
         manager = pwic_xb(row['manager'])
         if not manager:
             if pwic_xb(row['protection']):      # The protected pages can be updated by the managers only
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
             protection = ''                     # This field cannot be set by the non-managers
             header = row['header']              # This field is reserved to the managers, so we keep the existing value
@@ -2426,14 +2420,14 @@ class PwicServer():
                               AND page    = ? ''',
                         (project, page))
             if sql.fetchone()['total'] >= nb:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # Custom check
         if not PwicExtension.on_api_page_edit(sql, project, user, page, title, markdown,
                                               tags, comment, milestone, draft, final,
                                               pwic_xb(protection), pwic_xb(header)):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPBadRequest()
 
         # Create the new entry
@@ -2492,7 +2486,7 @@ class PwicServer():
                               AND page      = ?
                               AND revision <= ?''',
                         (project, page, revision))
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_page_validate(self, request: web.Request) -> None:
@@ -2511,7 +2505,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that it is possible to validate the page
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if not PwicExtension.on_api_page_validate(sql, project, user, page, revision):
             raise web.HTTPUnauthorized()
         if not self._lock(sql):
@@ -2533,7 +2527,7 @@ class PwicServer():
                           AND a.disabled  = '' ''',
                     (page, revision, project, user))
         if sql.fetchone() is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
 
         # Update the page
@@ -2552,7 +2546,7 @@ class PwicServer():
                          'page': page,
                          'revision': revision},
                    request)
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_page_delete(self, request: web.Request) -> None:
@@ -2571,7 +2565,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT COUNT(revision) AS total
@@ -2581,7 +2575,7 @@ class PwicServer():
                     (project, page))
         num_revs = sql.fetchone()['total']
         if (num_revs == 1) and (pwic_option(sql, '', 'maintenance') is not None):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPServiceUnavailable()      # During a maintenance, the last revision can't be deleted because the all the files would be deleted
         sql.execute(''' SELECT a.header
                         FROM pages AS a
@@ -2601,10 +2595,10 @@ class PwicServer():
                     (user, project, page, revision))
         row = sql.fetchone()
         if row is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
         if not PwicExtension.on_api_page_delete(sql, project, user, page, revision):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
         header = row['header']
 
@@ -2684,10 +2678,10 @@ class PwicServer():
 
         # Final
         if docKO > 0:
-            self._rollback()    # Possible partial deletion
+            self.dbconn.rollback()      # Possible partial deletion
             raise web.HTTPInternalServerError()
         else:
-            self._commit()
+            self.dbconn.commit()
             raise web.HTTPOk()
 
     async def api_page_export(self, request: web.Request) -> web.Response:
@@ -2707,7 +2701,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Apply the options on the parameters
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         revision = self._redirect_revision(sql, project, user, page, revision)
         if revision == 0:
             raise web.HTTPForbidden()
@@ -2900,7 +2894,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is able to write
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE   project  = ?
@@ -2933,7 +2927,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT 1
@@ -2947,7 +2941,7 @@ class PwicServer():
                           AND b.initial  = '' ''',
                     (project, user))
         if (sql.fetchone() is None) or not PwicExtension.on_api_user_create(sql, project, user, newuser):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
 
         # Create the new user
@@ -2957,7 +2951,7 @@ class PwicServer():
                             WHERE user = ?''',
                         (newuser, ))
             if sql.fetchone() is None:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPForbidden()
         else:
             dt = pwic_dt()
@@ -2981,7 +2975,7 @@ class PwicServer():
                              'project': project,
                              'user': newuser},
                        request)
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_user_password_change(self, request: web.Request) -> None:
@@ -3000,7 +2994,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the format of the new password
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         mask = str(pwic_option(sql, '', 'password_regex', ''))
         if mask != '':
             try:
@@ -3036,7 +3030,7 @@ class PwicServer():
                                  'user': user},
                            request)
                 ok = True
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk() if ok else web.HTTPBadRequest()
 
     async def api_user_roles_set(self, request: web.Request) -> web.Response:
@@ -3060,7 +3054,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         sql.execute(''' SELECT a.user, a.admin, a.manager, a.editor,
@@ -3081,13 +3075,13 @@ class PwicServer():
                     (user, project, userpost))
         row = sql.fetchone()
         if row is None or (not delete and pwic_xb(row['initial'])):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
 
         # Delete a user
         if delete:
             if not PwicExtension.on_api_user_roles_set(sql, project, user, userpost, 'delete', None):
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
             sql.execute(''' DELETE FROM roles
                             WHERE project = ?
@@ -3100,20 +3094,20 @@ class PwicServer():
                                  'project': project,
                                  'user': userpost},
                            request)
-                self._commit()
+                self.dbconn.commit()
                 return web.Response(text='OK', content_type=pwic_mime('txt'))
             else:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # New role
         else:
             newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
             if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
             if not PwicExtension.on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue):
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
             try:
                 sql.execute(''' UPDATE roles
@@ -3122,10 +3116,10 @@ class PwicServer():
                                   AND user    = ?''' % roles[roleid],
                             (newvalue, project, userpost))
             except sqlite3.IntegrityError:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
             if sql.rowcount == 0:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
             else:
                 pwic_audit(sql, {'author': user,
@@ -3133,7 +3127,7 @@ class PwicServer():
                                  'project': project,
                                  'user': userpost},
                            request)
-                self._commit()
+                self.dbconn.commit()
                 return web.Response(text=newvalue, content_type=pwic_mime('txt'))
 
     async def api_document_create(self, request: web.Request) -> None:
@@ -3144,7 +3138,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Verify that there is no maintenance message that may prevent the file from being saved
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if pwic_option(sql, '', 'maintenance') is not None:
             raise web.HTTPServiceUnavailable()
 
@@ -3204,10 +3198,10 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''', (doc['project'], ))
         if sql.fetchone() is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPBadRequest()
         if not isdir(PWIC_DOCUMENTS_PATH % doc['project']):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPInternalServerError()
 
         # Verify the authorizations
@@ -3225,7 +3219,7 @@ class PwicServer():
                     (doc['page'], doc['project'], user))
         row = sql.fetchone()
         if row is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()
         current_revision = row['revision']
 
@@ -3235,25 +3229,25 @@ class PwicServer():
             try:
                 regex_doc = re.compile(row, re.VERBOSE)
             except Exception:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPInternalServerError()
             if regex_doc.search(doc['filename']) is None:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # Verify the file type
         if pwic_option(sql, '', 'magic_bytes') is not None:
             if not self._check_mime(doc):
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPUnsupportedMediaType()
         if PWIC_REGEXES['mime'].match(doc['mime']) is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPBadRequest()
 
         # Verify the maximal document size
         maxsize = pwic_int(pwic_option(sql, doc['project'], 'max_document_size', '-1'))
         if maxsize >= 0 and len(doc['content']) > maxsize:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
 
         # Verify the maximal project size
@@ -3274,7 +3268,7 @@ class PwicServer():
                                                      (doc['project'], doc['filename'])).fetchone()['total'])
             # ... verify the size
             if current_project_size - current_file_size + len(doc['content']) > max_project_size:
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPRequestEntityTooLarge(max_project_size - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
 
         # At last, verify that the document doesn't exist yet (not related to a given page)
@@ -3287,7 +3281,7 @@ class PwicServer():
         row = sql.fetchone()
         if row is not None:
             if row['page'] != doc['page']:      # Existing document = Delete + Keep same ID (replace it)
-                self._rollback()
+                self.dbconn.rollback()
                 raise web.HTTPBadRequest()      # Existing document on another page = do nothing
             else:
                 if row['exturl'] == '':
@@ -3297,12 +3291,12 @@ class PwicServer():
                         os.remove(fn)
                     except (OSError, FileNotFoundError):
                         if isfile(fn):
-                            self._rollback()
+                            self.dbconn.rollback()
                             raise web.HTTPInternalServerError()
                 else:
                     # External file
                     if not PwicExtension.on_api_document_delete(sql, doc['project'], user, doc['page'], row['id'], doc['filename']):
-                        self._rollback()
+                        self.dbconn.rollback()
                         raise web.HTTPInternalServerError()
                 sql.execute(''' DELETE FROM documents
                                 WHERE id = ?''',
@@ -3316,7 +3310,7 @@ class PwicServer():
             f.write(doc['content'])
             f.close()
         except Exception:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPInternalServerError()
 
         # Find the dimensions of the loaded picture
@@ -3346,7 +3340,7 @@ class PwicServer():
                          'revision': current_revision,
                          'string': doc['filename']},
                    request)
-        self._commit()
+        self.dbconn.commit()
 
         # Forward the notification of the created file
         sql.execute(''' SELECT *
@@ -3374,7 +3368,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Read the documents
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         sql.execute(''' SELECT markdown
                         FROM pages
                         WHERE project = ?
@@ -3422,7 +3416,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
-        sql = self._connect()
+        sql = self.dbconn.cursor()
         if pwic_option(sql, '', 'maintenance') is not None:
             raise web.HTTPServiceUnavailable()
         if not self._lock(sql):
@@ -3442,10 +3436,10 @@ class PwicServer():
                     (id, page, filename, project, user))
         row = sql.fetchone()
         if row is None:
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized()  # Or not found
         if not PwicExtension.on_api_document_delete(sql, project, user, page, id, filename):
-            self._rollback()
+            self.dbconn.rollback()
             raise web.HTTPUnauthorized() if row['exturl'] == '' else web.HTTPInternalServerError()
 
         # Delete the local file
@@ -3455,7 +3449,7 @@ class PwicServer():
                 os.remove(fn)
             except (OSError, FileNotFoundError):
                 if isfile(fn):
-                    self._rollback()
+                    self.dbconn.rollback()
                     raise web.HTTPInternalServerError()
 
         # Delete the index
@@ -3466,7 +3460,7 @@ class PwicServer():
                          'page': page,
                          'string': filename},
                    request)
-        self._commit()
+        self.dbconn.commit()
         raise web.HTTPOk()
 
     async def api_swagger(self, request: web.Request) -> web.Response:
@@ -3518,7 +3512,7 @@ def main() -> bool:
     # ... client size
     app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_max_size')))
     # ... PWIC
-    app['pwic'] = PwicServer()
+    app['pwic'] = PwicServer(app['sql'])
     # ... session
     b = pwic_option(sql, '', 'keep_sessions') is None
     if b:

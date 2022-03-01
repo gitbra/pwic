@@ -25,10 +25,10 @@
 
 	<article>
 		{% if pwic.env.maintenance %}
-			<p class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</p>
+			<div class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape}}</div>
 		{% endif %}
 		{% if pwic.env.message %}
-			<p class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape}}</p>
+			<div class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape}}</div>
 		{% endif %}
 
 		<div class="pwic_action_bar">

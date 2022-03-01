@@ -10,12 +10,14 @@
 	<meta charset="utf-8">
 	<title>{{pwic.title|escape}}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
-	{% if not pwic.env.no_search %}
-		<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="Search in {{pwic.project|escape}}" />
-	{% endif  %}
-	{% if not pwic.env.no_rss %}
-		<link rel="alternate" type="application/rss+xml" href="/api/project/rss/get?project={{pwic.project|escape}}" title="RSS feed - Recent changes for {{pwic.project|escape}}" />
-	{% endif  %}
+	{% if pwic.project not in pwic.constants.not_project %}
+		{% if not pwic.env.no_search %}
+			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="Search in {{pwic.project|escape}}" />
+		{% endif  %}
+		{% if not pwic.env.no_rss %}
+			<link rel="alternate" type="application/rss+xml" href="/api/project/rss/get?project={{pwic.project|escape}}" title="RSS feed - Recent changes for {{pwic.project|escape}}" />
+		{% endif  %}
+	{% endif %}
 
 	<!-- Styles -->
 	<link rel="stylesheet" type="text/css" href="/static/styles.css" media="all" />

@@ -100,7 +100,7 @@
 						<td><code>client_max_size</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request.</td>
+						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request else you receive the error 413 <em>Request entity too large</em>.</td>
 					</tr>
 					<tr>
 						<td><code>css</code></td>
@@ -209,7 +209,7 @@
 						<td><code>magic_bytes</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Pwic has a predefined list of usual file types and their signature. This default security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code> (under Windows only).</td>
+						<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code> (under Windows only).</td>
 					</tr>
 					<tr>
 						<td><code>maintenance</code></td>

@@ -34,24 +34,26 @@ PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
 PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
+PWIC_NOT_PROJECT = ['', 'api', 'special']
 
 # Thematic constants
 PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors
               'ghost': 'pwic_ghost',                # Account for the deleted users (not implemented)
               'system': 'pwic_system'}              # Account for the technical operations
-PWIC_DEFAULTS = {'password': 'initial',             # Default password for the new accounts
-                 'language': 'en',
-                 'page': 'home',                    # Root page of every project
+PWIC_DEFAULTS = {'heading': '1.1.1.1.1.1.',
                  'kb_mask': 'kb%06d',
-                 'heading': '1.1.1.1.1.1.',
-                 'odt_img_defpix': '150',
+                 'language': 'en',
                  'logging_format': '%a %t "%r" %s %b',
-                 'port': '8080'}
-PWIC_REGEXES = {'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'),        # Find a page in Markdown
-                'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
+                 'odt_img_defpix': '150',
+                 'page': 'home',                    # Root page of every project
+                 'password': 'initial',             # Default password for the new accounts
+                 'port': '8080',
+                 }
+PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
                 'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),              # Find the picture ID in IMG.SRC
-                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                           # Check the format of the mime
                 'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                     # Name of the pages KB
+                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                           # Check the format of the mime
+                'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'),        # Find a page in Markdown
                 'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                     # Valid protocols for the links
                 }
 
