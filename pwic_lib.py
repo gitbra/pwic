@@ -493,7 +493,7 @@ def pwic_str2bytearray(input: str) -> bytearray:
 
 def pwic_x(value: Any) -> str:
     ''' Reduce an input value to a boolean string '''
-    return '' if value in [None, 0, False, '', 'false', 'False', 'no', 'No', 'off', 'Off'] else 'X'
+    return '' if value in [None, '', 0, '0', False, 'false', 'False', '-', '~', 'no', 'No', 'off', 'Off'] else 'X'
 
 
 def pwic_xb(value: str) -> bool:

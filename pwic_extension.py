@@ -130,6 +130,20 @@ class PwicExtension():
         return False, None, {}
 
     @staticmethod
+    def on_api_page_move(sql: sqlite3.Cursor,               # Cursor to query the database
+                         project: str,                      # Source project
+                         user: str,                         # Name of the user
+                         page: str,                         # Source page
+                         dst_project: str,                  # Destination project
+                         dst_page: str,                     # Destination page
+                         ) -> bool:
+        ''' Event when a given page is renamed and/or moved to another project.
+            The result tells if both the rename and the move of the page is possible.
+            No other extension is called during the operation.
+        '''
+        return True
+
+    @staticmethod
     def on_api_page_requested(sql: sqlite3.Cursor,          # Cursor to query the database
                               action: str,                  # Performed action
                               project: str,                 # Name of the project
@@ -219,12 +233,12 @@ class PwicExtension():
                  online: bool,                              # Event coming from the Internet (True) or the console (False)
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                archive-audit  change-password  clear-cache        create-backup     create-document  create-project   create-revision
-                create-user    delete-document  delete-project     delete-revision   delete-user      execute-sql      export-project
-                generate-ssl   grant-admin      grant-editor       grant-manager     grant-reader     grant-validator  init-db
-                login          logout           repair-documents   replace-document  reset-password   set-*            shutdown-server
-                split-project  start-server     ungrant-admin      ungrant-editor    ungrant-manager  ungrant-reader   ungrant-validator
-                unlock-db      unset-*          validate-revision
+                archive-audit      change-password  clear-cache   create-backup      create-document   create-project   create-revision
+                create-user        delete-document  delete-page   delete-project     delete-revision   delete-user      execute-sql
+                export-project     generate-ssl     grant-admin   grant-editor       grant-manager     grant-reader     grant-validator
+                init-db            login            logout        repair-documents   replace-document  reset-password   set-*
+                shutdown-server    split-project    start-server  ungrant-admin      ungrant-editor    ungrant-manager  ungrant-reader
+                ungrant-validator  unlock-db        unset-*       validate-revision
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.

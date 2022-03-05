@@ -29,7 +29,7 @@ headers['Cookie'] = response.headers.get('Set-Cookie', '')
 
 # Retrieve the data
 try:
-    response = urlopen(Request(host + '/api/project/info/get',
+    response = urlopen(Request(host + '/api/project/get',
                                urlencode({'project': project}).encode(),
                                headers=headers,
                                method='POST'))

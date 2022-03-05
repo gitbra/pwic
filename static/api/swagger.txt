@@ -464,6 +464,55 @@ paths:
           description: Invalid file format
         500:
           description: Failed export (open a support ticket)
+  /api/page/move:
+    post:
+      summary: Rename and/or move a page
+      tags:
+        - page
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: ref_project
+          type: string
+          description: Source project
+          required: true
+        - in: formData
+          name: ref_page
+          type: string
+          description: Source page
+          required: true
+        - in: formData
+          name: project
+          type: string
+          description: Target project
+          required: true
+        - in: formData
+          name: page
+          type: string
+          description: Target page
+        - in: formData
+          name: ignore_file_errors
+          type: string
+          description: Ignore the failed operations on the files
+          default: 'X'
+      responses:
+        302:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or project not found
+        403:
+          description: Target page already exists
+        404:
+          description: Unkown source page
+        409:
+          description: Attachments in conflict with the target project
+        500:
+          description: Corrupted documents to be repaired
+        503:
+          description: Update temporarily unavailable
   /api/page/validate:
     post:
       summary: Validate the revision of a page
@@ -526,7 +575,33 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/project/info/get:
+  /api/project/export:
+    get:
+      summary: Export the project as a ZIP file
+      tags:
+        - project
+      produces:
+        - application/x-zip-compressed
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
+        404:
+          description: No relevant data found
+        503:
+          description: Technical error during the generation of the ZIP file
+  /api/project/get:
     post:
       summary: Get details about the project or a page
       tags:
@@ -560,6 +635,64 @@ paths:
           description: Unsufficient authorizations
         501:
           description: Unsupported combination of options
+  /api/project/graph/get:
+    post:
+      summary: Generate the graph of a project
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/vnd.graphviz
+      parameters:
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations or disabled feature
+  /api/project/list:
+    post:
+      summary: List the projects accessible to the user
+      tags:
+        - project
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: user
+          type: string
+          description: Name of the user
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                project:
+                  type: string
+                description:
+                  type: string
+                admin:
+                  type: boolean
+                manager:
+                  type: boolean
+                editor:
+                  type: boolean
+                validator:
+                  type: boolean
+                reader:
+                  type: boolean
+        401:
+          description: Unsufficient authorizations
   /api/project/progress/get:
     post:
       summary: Show the current progress of the project by tag
@@ -587,54 +720,6 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/project/graph/get:
-    post:
-      summary: Generate the graph of a project
-      tags:
-        - project
-      consumes:
-        - application/x-www-form-urlencoded
-      produces:
-        - text/vnd.graphviz
-      parameters:
-        - in: formData
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations or disabled feature
-  /api/project/export:
-    get:
-      summary: Export the project as a ZIP file
-      tags:
-        - project
-      produces:
-        - application/x-zip-compressed
-      parameters:
-        - in: query
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters
-        401:
-          description: Unsufficient authorizations
-        403:
-          description: Disabled feature
-        404:
-          description: No relevant data found
-        503:
-          description: Technical error during the generation of the ZIP file
   /api/project/rss/get:
     get:
       summary: RSS feed for the project

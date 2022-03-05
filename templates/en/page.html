@@ -50,6 +50,9 @@
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 			{% endif %}
+			{% if pwic.manager %}
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/move">{{pwic.emojis.truck}} Move</a>
+			{% endif %}
 			{% if not pwic.pure_reader or not pwic.env.no_history %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 			{% endif %}

@@ -51,6 +51,8 @@ def main() -> bool:
     spb.add_argument('name', default='', help='Name of the variable')
     spb.add_argument('value', default='', help='Value of the variable')
     spb.add_argument('--override', action='store_true', help='Remove the existing project-dependent values')
+    spb.add_argument('--append', action='store_true', help='Append the value to the existing one')
+    spb.add_argument('--remove', action='store_true', help='Remove the value from the existing one')
 
     subparsers.add_parser('repair-env', help='Fix the incorrect environment variables')
 
@@ -146,7 +148,7 @@ def main() -> bool:
     elif args.command == 'show-env':
         return show_env(args.project, args.var)
     elif args.command == 'set-env':
-        return set_env(args.project, args.name, args.value, args.override)
+        return set_env(args.project, args.name, args.value, args.override, args.append, args.remove)
     elif args.command == 'repair-env':
         return repair_env()
     elif args.command == 'show-mime':
@@ -593,10 +595,13 @@ def show_env(project: str, var: str) -> bool:
         return var == ''
 
 
-def set_env(project: str, key: str, value: str, override: bool) -> bool:
+def set_env(project: str, key: str, value: str, override: bool, append: bool, remove: bool) -> bool:
     # Check the parameters
     if override and (project != ''):
         print('Error: useless parameter --override if a project is indicated')
+        return False
+    if append == (remove is True):
+        print('Error: the options append and remove cannot be used together')
         return False
     allkeys = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
     if key not in allkeys:
@@ -611,6 +616,13 @@ def set_env(project: str, key: str, value: str, override: bool) -> bool:
     sql = db_connect()
     if sql is None:
         return False
+
+    # Adapt the value
+    current = str(pwic_option(sql, project, key, ''))
+    if remove:
+        value = current.replace(value, '').replace('  ', ' ').strip()
+    elif append:
+        value = ('%s %s' % (current, value)).strip()
 
     # Reset the project-dependent values if --override
     if override:

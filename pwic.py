@@ -606,6 +606,36 @@ class PwicServer():
                 pwic['revisions'].append(row)
             return await self._handle_output(request, 'page-history', pwic)
 
+        # Move the requested page
+        elif action == 'move':
+            # Check the current authorizations
+            if not pwic['manager']:
+                raise web.HTTPUnauthorized()
+
+            # Select the possible target projects
+            pwic['projects'] = []
+            sql.execute(''' SELECT a.project, b.description
+                            FROM roles AS a
+                                INNER JOIN projects AS b
+                                    ON b.project = a.project
+                            WHERE a.user     = ?
+                              AND a.manager  = 'X'
+                              AND a.disabled = ''
+                            ORDER BY b.description''',
+                        (user, ))
+            for row in sql.fetchall():
+                pwic['projects'].append(row)
+
+            # Render the page
+            sql.execute(''' SELECT title
+                            FROM pages
+                            WHERE project = ?
+                              AND page    = ?
+                              AND latest  = 'X' ''',
+                        (project, page))
+            pwic['title'] = sql.fetchone()['title']
+            return await self._handle_output(request, 'page-move', pwic)
+
         # Default behavior
         else:
             raise web.HTTPNotFound()
@@ -1672,7 +1702,42 @@ class PwicServer():
         self.dbconn.commit()
         raise web.HTTPOk()
 
-    async def api_project_info_get(self, request: web.Request) -> web.Response:
+    async def api_project_list(self, request: web.Request) -> web.Response:
+        ''' API to list the authorized projects for a user if you belong to these projects '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the submitted data
+        post = await self._handle_post(request)
+        account = pwic_safe_name(post.get('user', ''))
+        if account == '':
+            account = user
+
+        # Select the projects
+        sql = self.dbconn.cursor()
+        sql.execute(''' SELECT a.project, b.description, a.admin, a.manager,
+                               a.editor, a.validator, a.reader
+                        FROM roles AS a
+                            INNER JOIN projects AS b
+                                ON b.project = a.project
+                            INNER JOIN roles AS c
+                                ON  c.project  = a.project
+                                AND c.user     = ?
+                                AND c.disabled = ''
+                        WHERE a.user     = ?
+                          AND a.disabled = ''
+                        ORDER BY a.project ASC''',
+                    (user, account))
+        data = []
+        for row in sql.fetchall():
+            for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
+                row[k] = pwic_xb(row[k])
+            data.append(row)
+        return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
+
+    async def api_project_get(self, request: web.Request) -> web.Response:
         ''' API to fetch the metadata of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1906,7 +1971,6 @@ class PwicServer():
                 return 'n%d' % (pos + 1)
 
         def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
-            # TODO Possible technical improvement here to avoid selects in loops
             sql.execute(''' SELECT title
                             FROM pages
                             WHERE project = ?
@@ -1947,6 +2011,7 @@ class PwicServer():
         # Build the file for GraphViz
         viz = 'digraph PWIC {\n'
         lastProject = ''
+        maps.sort(key=lambda tup: 0 if tup[0] == project else 1)    # Main project in first position
         for toProject, toPage, fromProject, fromPage in maps:
             # Detection of a new project
             changedProject = (toProject != lastProject)
@@ -2501,7 +2566,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         page = pwic_safe_name(post.get('page', ''))
         revision = pwic_int(post.get('revision', 0))
-        if '' in [project, page] or revision == 0:
+        if ('' in [project, page]) or (revision == 0):
             raise web.HTTPBadRequest()
 
         # Verify that it is possible to validate the page
@@ -2548,6 +2613,147 @@ class PwicServer():
                    request)
         self.dbconn.commit()
         raise web.HTTPOk()
+
+    async def api_page_move(self, request: web.Request) -> web.Response:
+        ''' Move a page and its attachments to another location '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the page to move
+        post = await self._handle_post(request)
+        srcproj = pwic_safe_name(post.get('ref_project', ''))
+        srcpage = pwic_safe_name(post.get('ref_page', ''))
+        dstproj = pwic_safe_name(post.get('project', ''))
+        dstpage = pwic_safe_name(post.get('page', ''))
+        ignore_file_errors = pwic_xb(pwic_x(post.get('ignore_file_errors', 'X')))
+        if dstpage == '':
+            dstpage = srcpage
+        if '' in [srcproj, srcpage, dstproj, dstpage]:
+            raise web.HTTPBadRequest()
+
+        # Verify that the user is a manager of the 2 projects
+        sql = self.dbconn.cursor()
+        if (dstproj != srcproj) and (pwic_option(sql, '', 'maintenance') is not None):
+            raise web.HTTPServiceUnavailable()
+        if not self._lock(sql):
+            raise web.HTTPServiceUnavailable()
+        for p in [srcproj, dstproj]:
+            sql.execute(''' SELECT 1
+                            FROM roles
+                            WHERE project  = ?
+                              AND user     = ?
+                              AND manager  = 'X'
+                              AND disabled = '' ''',
+                        (p, user))
+            if sql.fetchone() is None:
+                self.dbconn.rollback()
+                raise web.HTTPUnauthorized()
+
+        # Verify that the source page exists
+        sql.execute(''' SELECT 1
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (srcproj, srcpage))
+        if sql.fetchone() is None:
+            self.dbconn.rollback()
+            raise web.HTTPNotFound()
+
+        # Verify that the target page does not exist
+        sql.execute(''' SELECT 1
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (dstproj, dstpage))
+        if sql.fetchone() is not None:
+            self.dbconn.rollback()
+            raise web.HTTPForbidden()
+
+        # Verify the files
+        files = []
+        if dstproj != srcproj:
+            # Verify the folders
+            for p in [srcproj, dstproj]:
+                if not isdir(PWIC_DOCUMENTS_PATH % p):
+                    self.dbconn.rollback()
+                    raise web.HTTPInternalServerError()
+
+            # Check the files in conflict (no automatic rename)
+            sql.execute(''' SELECT filename
+                            FROM documents
+                            WHERE project = ?
+                              AND page    = ?
+                              AND exturl  = '' ''',
+                        (srcproj, srcpage))
+            for row in sql.fetchall():
+                files.append(row['filename'])
+                if isfile(join(PWIC_DOCUMENTS_PATH % dstproj, row['filename'])):
+                    self.dbconn.rollback()
+                    raise web.HTTPConflict()
+
+        # Custom check
+        if not PwicExtension.on_api_page_move(sql, srcproj, user, srcpage, dstproj, dstpage):
+            self.dbconn.rollback()
+            raise web.HTTPUnauthorized()
+
+        # Move the files physically
+        ok = True
+        if len(files) > 0:
+            if dstproj != srcproj:
+                for f in files:
+                    try:
+                        os.rename(join(PWIC_DOCUMENTS_PATH % srcproj, f),
+                                  join(PWIC_DOCUMENTS_PATH % dstproj, f))
+                    except Exception:
+                        ok = False
+                if not ok and not ignore_file_errors:
+                    self.dbconn.rollback()
+                    raise web.HTTPInternalServerError()
+
+        # Update the index of the files
+        sql.execute(''' UPDATE documents
+                        SET project   = ?,
+                            page      = ?
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (dstproj, dstpage, srcproj, srcpage))
+
+        # Update the index of the pages
+        sql.execute(''' UPDATE pages
+                        SET project   = ?,
+                            page      = ?
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (dstproj, dstpage, srcproj, srcpage))
+        sql.execute(''' DELETE FROM cache
+                        WHERE project = ?
+                          AND page    = ?''',
+                    (srcproj, srcpage))
+
+        # Audit
+        pwic_audit(sql, {'author': user,
+                         'event': 'delete-page',
+                         'project': srcproj,
+                         'page': srcpage,
+                         'string': '/%s/%s' % (dstproj, dstpage)},
+                   request)
+        sql.execute(''' SELECT revision
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?
+                          AND latest  = 'X' ''',
+                    (dstproj, dstpage))
+        pwic_audit(sql, {'author': user,
+                         'event': 'create-revision',
+                         'project': dstproj,
+                         'page': dstpage,
+                         'revision': sql.fetchone()['revision'],
+                         'string': '/%s/%s' % (srcproj, srcpage)},
+                   request)
+        self.dbconn.commit()
+        return web.HTTPFound('/%s/%s?%s' % (dstproj, dstpage, 'success' if ok else 'failed'))
 
     async def api_page_delete(self, request: web.Request) -> None:
         ''' Delete a revision of a page '''
@@ -3542,7 +3748,8 @@ def main() -> bool:
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/server/shutdown', app['pwic'].api_server_shutdown),
                     web.post('/api/server/unlock', app['pwic'].api_server_unlock),
-                    web.post('/api/project/info/get', app['pwic'].api_project_info_get),
+                    web.post('/api/project/list', app['pwic'].api_project_list),
+                    web.post('/api/project/get', app['pwic'].api_project_get),
                     web.post('/api/project/env/set', app['pwic'].api_project_env_set),
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
@@ -3552,6 +3759,7 @@ def main() -> bool:
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),
+                    web.post('/api/page/move', app['pwic'].api_page_move),
                     web.post('/api/page/delete', app['pwic'].api_page_delete),
                     web.post('/api/page/export', app['pwic'].api_page_export),
                     web.post('/api/markdown/convert', app['pwic'].api_markdown),
@@ -3575,7 +3783,7 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}/special/random', app['pwic'].page_random),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{revision:[0-9]+}', app['pwic'].page),
-                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history}', app['pwic'].page),
+                    web.get(r'/{project:[^\/]+}/{page:[^\/]+}/{action:view|edit|history|move}', app['pwic'].page),
                     web.get(r'/special/document/{id:[0-9]+}/{dummy:[^\/]+}', app['pwic'].document_get),
                     web.get(r'/special/document/{id:[0-9]+}', app['pwic'].document_get),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}', app['pwic'].page),
@@ -3621,7 +3829,7 @@ def main() -> bool:
         item: List[Any] = [IPR_EQ, None, None]    # Type, Negated, Mask object
 
         # Negation flag
-        item[1] = (mask[:1] == '-')
+        item[1] = (mask[:1] == '~')
         if item[1]:
             mask = mask[1:]
 

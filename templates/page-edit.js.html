@@ -365,11 +365,11 @@
 							}
 
 							// Query the current revision of the modified page
-							fetch('/api/project/info/get', {	method: 'POST',
-																headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-																body:	'project={{pwic.project|urlencode}}'+
-																		'&page={{pwic.page|urlencode}}',
-																credentials: 'same-origin' })
+							fetch('/api/project/get', {	method: 'POST',
+														headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+														body:	'project={{pwic.project|urlencode}}'+
+																'&page={{pwic.page|urlencode}}',
+														credentials: 'same-origin' })
 								.then(function(response) {
 									if (response.status != 200)
 										throw Error('['+response.status+'] '+errorConflict);
