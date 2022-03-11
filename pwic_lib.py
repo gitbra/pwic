@@ -40,7 +40,8 @@ PWIC_NOT_PROJECT = ['', 'api', 'special']
 PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors
               'ghost': 'pwic_ghost',                # Account for the deleted users (not implemented)
               'system': 'pwic_system'}              # Account for the technical operations
-PWIC_DEFAULTS = {'heading': '1.1.1.1.1.1.',
+PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',    # Fixed format of the datetime
+                 'heading': '1.1.1.1.1.1.',
                  'kb_mask': 'kb%06d',
                  'language': 'en',
                  'logging_format': '%a %t "%r" %s %b',
@@ -65,9 +66,9 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
-                              'max_revision_count', 'max_revision_size', 'message', 'no_cache', 'no_export_project', 'no_graph',
-                              'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing', 'no_rss',
-                              'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                              'max_revision_count', 'max_revision_size', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
+                              'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing',
+                              'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                               'odt_page_width', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text', 'support_url',
                               'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
@@ -613,6 +614,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
             else:
                 lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
             tmap.append({'header': sdisp,
+                         'tag': 'p%s' % stag,
                          'level': stag.count('_'),
                          'title': line.strip()[4:-5]})
 

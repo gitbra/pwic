@@ -22,6 +22,7 @@ from bisect import insort, bisect_left
 from multidict import MultiDict
 from html import escape
 from random import randint
+from datetime import datetime
 
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
@@ -554,7 +555,7 @@ class PwicServer():
                     row['mime_icon'] = pwic_mime2icon(row['mime'])
                     row['size'] = pwic_size2str(row['size'])
                     pwic['documents'].append(row)
-                pmax = pwic_int(pwic_option(sql, project, 'max_project_size', '0'))
+                pmax = pwic_int(pwic_option(sql, project, 'max_project_size'))
                 pwic['disk_space'] = {'used': used_size,
                                       'used_str': pwic_size2str(used_size),
                                       'project_max': pmax,
@@ -1764,7 +1765,7 @@ class PwicServer():
             all = False
 
         # Fetch the pages
-        exposeMD = pwic_option(sql, project, 'api_expose_markdown', None) is not None
+        api_expose_markdown = pwic_option(sql, project, 'api_expose_markdown', None) is not None
         sql.execute(''' SELECT page, revision, latest, draft, final,
                                header, protection, author, date, time,
                                title, markdown, tags, comment, milestone,
@@ -1783,7 +1784,7 @@ class PwicServer():
             item = {}
             for k in row:
                 if k == 'markdown':
-                    if exposeMD:
+                    if api_expose_markdown:
                         item[k] = row[k]
                     item['hash'] = pwic_sha256(row[k], salt=False)
                 elif k == 'tags':
@@ -2357,14 +2358,14 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Check the maximal number of pages per project
-        nb = pwic_int(pwic_option(sql, project, 'max_page_count', '0'))
-        if nb > 0:
+        max_page_count = pwic_int(pwic_option(sql, project, 'max_page_count'))
+        if max_page_count > 0:
             sql.execute(''' SELECT COUNT(page) AS total
                             FROM pages
                             WHERE project = ?
                               AND latest  = 'X' ''',
                         (project, ))
-            if sql.fetchone()['total'] >= nb:
+            if sql.fetchone()['total'] >= max_page_count:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
@@ -2444,8 +2445,8 @@ class PwicServer():
 
         # Check the maximal size of a revision
         sql = self.dbconn.cursor()
-        nb = pwic_int(pwic_option(sql, project, 'max_revision_size', '0'))
-        if 0 < nb < len(markdown):
+        max_revision_size = pwic_int(pwic_option(sql, project, 'max_revision_size'))
+        if 0 < max_revision_size < len(markdown):
             raise web.HTTPBadRequest()
 
         # Fetch the last revision of the page and the profile of the user
@@ -2477,16 +2478,34 @@ class PwicServer():
             header = row['header']              # This field is reserved to the managers, so we keep the existing value
 
         # Check the maximal number of revisions per page
-        nb = pwic_int(pwic_option(sql, project, 'max_revision_count', '0'))
-        if nb > 0:
+        max_revision_count = pwic_int(pwic_option(sql, project, 'max_revision_count'))
+        if max_revision_count > 0:
             sql.execute(''' SELECT COUNT(revision) AS total
                             FROM pages
                             WHERE project = ?
                               AND page    = ? ''',
                         (project, page))
-            if sql.fetchone()['total'] >= nb:
+            if sql.fetchone()['total'] >= max_revision_count:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
+
+        # Check the minimal edit time
+        if not manager:
+            min_edit_time = pwic_int(pwic_option(sql, project, 'min_edit_time'))
+            if min_edit_time > 0:
+                sql.execute(''' SELECT MAX(date || ' ' || time) AS last_dt
+                                FROM pages
+                                WHERE project = ?
+                                  AND author  = ?
+                                  AND latest  = 'X' ''',
+                            (project, user))
+                last_dt = sql.fetchone()['last_dt']
+                if last_dt is not None:
+                    d1 = datetime.strptime(last_dt, PWIC_DEFAULTS['dt_mask'])
+                    d2 = datetime.strptime('%s %s' % (dt['date'], dt['time']), PWIC_DEFAULTS['dt_mask'])
+                    if (d2 - d1).total_seconds() < min_edit_time:
+                        self.dbconn.rollback()
+                        raise web.HTTPServiceUnavailable()
 
         # Custom check
         if not PwicExtension.on_api_page_edit(sql, project, user, page, title, markdown,
@@ -3201,10 +3220,10 @@ class PwicServer():
 
         # Verify the format of the new password
         sql = self.dbconn.cursor()
-        mask = str(pwic_option(sql, '', 'password_regex', ''))
-        if mask != '':
+        password_regex = str(pwic_option(sql, '', 'password_regex', ''))
+        if password_regex != '':
             try:
-                if re.compile(mask).match(new1) is None:
+                if re.compile(password_regex).match(new1) is None:
                     raise web.HTTPBadRequest()
             except Exception:
                 raise web.HTTPInternalServerError()
@@ -3430,10 +3449,10 @@ class PwicServer():
         current_revision = row['revision']
 
         # Verify the consistency of the filename
-        row = pwic_option(sql, doc['project'], 'document_name_regex')
-        if row is not None:
+        document_name_regex = pwic_option(sql, doc['project'], 'document_name_regex')
+        if document_name_regex is not None:
             try:
-                regex_doc = re.compile(row, re.VERBOSE)
+                regex_doc = re.compile(document_name_regex, re.VERBOSE)
             except Exception:
                 self.dbconn.rollback()
                 raise web.HTTPInternalServerError()
@@ -3451,16 +3470,15 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the maximal document size
-        maxsize = pwic_int(pwic_option(sql, doc['project'], 'max_document_size', '-1'))
-        if maxsize >= 0 and len(doc['content']) > maxsize:
+        max_document_size = pwic_int(pwic_option(sql, doc['project'], 'max_document_size', '-1'))
+        if (max_document_size >= 0) and (len(doc['content']) > max_document_size):
             self.dbconn.rollback()
-            raise web.HTTPRequestEntityTooLarge(maxsize, len(doc['content']))
+            raise web.HTTPRequestEntityTooLarge(max_document_size, len(doc['content']))
 
         # Verify the maximal project size
         # ... is there a check ?
-        max_project_size_opt = pwic_option(sql, doc['project'], 'max_project_size')
-        if max_project_size_opt is not None:
-            max_project_size = pwic_int(max_project_size_opt)
+        max_project_size = pwic_int(pwic_option(sql, doc['project'], 'max_project_size', '-1'))
+        if max_project_size >= 0:
             # ... current size of the project
             current_project_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total
                                                             FROM documents
@@ -3720,14 +3738,14 @@ def main() -> bool:
     # ... PWIC
     app['pwic'] = PwicServer(app['sql'])
     # ... session
-    b = pwic_option(sql, '', 'keep_sessions') is None
-    if b:
+    keep_sessions = pwic_option(sql, '', 'keep_sessions') is None
+    if keep_sessions:
         sql.execute(''' DELETE FROM env
                         WHERE key = 'pwic_session' ''')
     skey: Union[Optional[str], bytes] = pwic_option(sql, '', 'pwic_session')
     if skey is None:
         skey = urandom(32)
-    if not b:
+    if not keep_sessions:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                         VALUES ('', 'pwic_session', ?)''',
                     (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
@@ -3848,11 +3866,11 @@ def main() -> bool:
         app['ip_filter'].append(item)
 
     # Logging
-    logfile = pwic_option(sql, '', 'http_log_file', '')
-    logformat = str(pwic_option(sql, '', 'http_log_format', PWIC_DEFAULTS['logging_format']))
-    if logfile != '':
+    http_log_file = pwic_option(sql, '', 'http_log_file', '')
+    http_log_format = str(pwic_option(sql, '', 'http_log_format', PWIC_DEFAULTS['logging_format']))
+    if http_log_file != '':
         import logging
-        logging.basicConfig(filename=logfile, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
+        logging.basicConfig(filename=http_log_file, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
 
     # Launch the server
     if not PwicExtension.on_server_ready(app, sql):
@@ -3875,7 +3893,7 @@ def main() -> bool:
                 host=args.host,
                 port=args.port,
                 ssl_context=https,
-                access_log_format=logformat)
+                access_log_format=http_log_format)
     return True
 
 

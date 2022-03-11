@@ -11,14 +11,15 @@ import os
 from os import chmod, listdir, makedirs, mkdir, removedirs, rename, rmdir
 from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
+from subprocess import call
 from stat import S_IREAD
 from urllib.request import Request, urlopen
 from http.client import RemoteDisconnected
 
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, \
-    PWIC_USERS, PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_list, pwic_magic_bytes, \
-    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
+    PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, \
+    PWIC_NOT_PROJECT, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_magic_bytes, pwic_row_factory, pwic_safe_name, \
+    pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
 from pwic_extension import PwicExtension
 
 
@@ -38,8 +39,6 @@ def main() -> bool:
     subparsers = parser.add_subparsers(dest='command')
 
     # ... Initialization
-    subparsers.add_parser('generate-ssl', help='Generate the self-signed certificates')
-
     subparsers.add_parser('init-db', help='Initialize the database once')
 
     spb = subparsers.add_parser('show-env', help='Show the current configuration')
@@ -54,7 +53,8 @@ def main() -> bool:
     spb.add_argument('--append', action='store_true', help='Append the value to the existing one')
     spb.add_argument('--remove', action='store_true', help='Remove the value from the existing one')
 
-    subparsers.add_parser('repair-env', help='Fix the incorrect environment variables')
+    spb = subparsers.add_parser('repair-env', help='Fix the incorrect environment variables')
+    spb.add_argument('--test', action='store_true', help='Verbose simulation')
 
     subparsers.add_parser('show-mime', help='Show the MIME types defined on the server (Windows only)')
 
@@ -86,6 +86,10 @@ def main() -> bool:
     spb.add_argument('--create', action='store_true', help='Create the user account if needed')
     spb.add_argument('--oauth', action='store_true', help='Force the federated authentication')
 
+    spb = subparsers.add_parser('assign-user', help='Assign a user to a project as a reader')
+    spb.add_argument('project', default='', help='Project name')
+    spb.add_argument('user', default='', help='User name')
+
     spb = subparsers.add_parser('revoke-user', help='Revoke a user')
     spb.add_argument('user', default='', help='User name')
     spb.add_argument('--force', action='store_true', help='Force the operation despite the user can be the sole administrator of a project')
@@ -116,6 +120,8 @@ def main() -> bool:
     spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
     spb.add_argument('--complete', type=int, default=0, help='Horizon for a complete cleanup', metavar='365')
 
+    subparsers.add_parser('show-git', help='Show the current git version')
+
     subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
     spb = subparsers.add_parser('repair-documents', help='Repair the index of the documents (recommended after the database is restored)')
@@ -141,16 +147,14 @@ def main() -> bool:
 
     # Parse the command line
     args = parser.parse_args()
-    if args.command == 'generate-ssl':
-        return generate_ssl()
-    elif args.command == 'init-db':
+    if args.command == 'init-db':
         return init_db()
     elif args.command == 'show-env':
         return show_env(args.project, args.var)
     elif args.command == 'set-env':
         return set_env(args.project, args.name, args.value, args.override, args.append, args.remove)
     elif args.command == 'repair-env':
-        return repair_env()
+        return repair_env(args.test)
     elif args.command == 'show-mime':
         return show_mime()
     elif args.command == 'show-projects':
@@ -167,6 +171,8 @@ def main() -> bool:
         return create_user(args.user)
     elif args.command == 'reset-password':
         return reset_password(args.user, args.create, args.oauth)
+    elif args.command == 'assign-user':
+        return assign_user(args.project, args.user)
     elif args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
     elif args.command == 'show-audit':
@@ -185,6 +191,8 @@ def main() -> bool:
         return rotate_logs()
     elif args.command == 'archive-audit':
         return archive_audit(args.selective, args.complete)
+    elif args.command == 'show-git':
+        return show_git()
     elif args.command == 'create-backup':
         return create_backup()
     elif args.command == 'repair-documents':
@@ -431,71 +439,6 @@ def db_rollback() -> None:
 
 # ===== Methods =====
 
-def generate_ssl() -> bool:
-    # stackoverflow.com/questions/51645324
-
-    # Check the database
-    if not isdir(PWIC_DB):
-        print('Error: the database is not created yet')
-        return False
-
-    # Imports
-    try:
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import serialization
-        from cryptography.hazmat.primitives.asymmetric import rsa
-        from cryptography import x509
-        from cryptography.x509.oid import NameOID
-        from cryptography.hazmat.primitives import hashes
-    except ImportError:
-        return False
-
-    # Private key
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
-    with open(PWIC_PRIVATE_KEY, 'wb') as f:
-        f.write(key.private_bytes(encoding=serialization.Encoding.PEM,
-                                  format=serialization.PrivateFormat.TraditionalOpenSSL,
-                                  encryption_algorithm=serialization.NoEncryption()))
-
-    # Public key
-    def _ssl_input(topic: str, sample: str) -> str:
-        print('%s (ex: %s) : ' % (topic, sample), end='')
-        return input()
-
-    issuer = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, _ssl_input('ISO code of the country on 2 characters', 'FR')),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, _ssl_input('Full country', 'France')),
-        x509.NameAttribute(NameOID.LOCALITY_NAME, _ssl_input('Your town', 'Paris')),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, _ssl_input('Your organization', 'Pwic')),
-        x509.NameAttribute(NameOID.COMMON_NAME, _ssl_input('Common name', 'Pwic')),
-    ])
-    hosts = pwic_list(_ssl_input('Your hosts separated by space', 'www.your.tld'))
-    if len(hosts) == 0:
-        return False
-    cert = x509.CertificateBuilder() \
-               .subject_name(issuer) \
-               .issuer_name(issuer) \
-               .public_key(key.public_key()) \
-               .serial_number(x509.random_serial_number()) \
-               .not_valid_before(datetime.datetime.utcnow()) \
-               .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365 * 5)) \
-               .add_extension(x509.SubjectAlternativeName([x509.DNSName(h) for h in hosts]), critical=False) \
-               .sign(key, hashes.SHA256(), default_backend())
-    with open(PWIC_PUBLIC_KEY, 'wb') as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
-
-    # Final output
-    sql = db_connect()
-    if sql is not None:
-        pwic_audit(sql, {'author': PWIC_USERS['system'],
-                         'event': 'generate-ssl'})
-        db_commit()
-    print('\nThe SSL certificates are generated:')
-    print('- Private key: ' + PWIC_PRIVATE_KEY)
-    print('- Public key: ' + PWIC_PUBLIC_KEY)
-    return True
-
-
 def init_db() -> bool:
     # Check that the database does not exist already
     if not isdir(PWIC_DB):
@@ -661,7 +604,7 @@ def set_env(project: str, key: str, value: str, override: bool, append: bool, re
     return True
 
 
-def repair_env() -> bool:
+def repair_env(test: bool) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -679,19 +622,24 @@ def repair_env() -> bool:
            ((row['project'] != '') and (row['key'] in PWIC_ENV_PROJECT_INDEPENDENT)) or \
            (row['value'] == ''):
             buffer.append((row['project'], row['key']))
-    for e in buffer:
-        sql.execute(''' DELETE FROM env
-                        WHERE project = ?
-                          AND key     = ?''', e)
-        pwic_audit(sql, {'author': PWIC_USERS['system'],
-                         'event': 'unset-%s' % e[1],
-                         'project': e[0]})
+    if not test:
+        for e in buffer:
+            sql.execute(''' DELETE FROM env
+                            WHERE project = ?
+                              AND key     = ?''', e)
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
+                             'event': 'unset-%s' % e[1],
+                             'project': e[0]})
+        db_commit()
 
     # Report
     if len(buffer) == 0:
         print('No change is required')
     else:
-        db_commit()
+        if test:
+            print('List of the options to be deleted:')
+        else:
+            print('List of the deleted options:')
         tab = PrettyTable()
         tab.field_names = ['Project', 'Variable']
         for f in tab.field_names:
@@ -1196,6 +1144,66 @@ def reset_password(user: str, create: bool, oauth: bool) -> bool:
                          'string': PWIC_MAGIC_OAUTH if pwd == PWIC_MAGIC_OAUTH else ''})
         print('\nThe password has been changed for the user "%s"' % user)
     db_commit()
+    return True
+
+
+def assign_user(project: str, user: str) -> bool:
+    # Verify the parameters
+    project = pwic_safe_name(project)
+    user = pwic_safe_user_name(user)
+    if (project in PWIC_NOT_PROJECT) or (user == ''):
+        print('Error: invalid parameters')
+        return False
+
+    # Connect to the database
+    sql = db_connect()
+    if sql is None:
+        return False
+    if not db_lock(sql):
+        return False
+
+    # Check the existence of the role
+    sql.execute(''' SELECT 1
+                    FROM roles
+                    WHERE project = ?
+                      AND user    = ?''',
+                (project, user))
+    if sql.fetchone() is not None:
+        print('Error: user already assigned to the project')
+        db_rollback()
+        return False
+
+    # Check the existence of the project
+    sql.execute(''' SELECT 1
+                    FROM projects
+                    WHERE project = ?''',
+                (project, ))
+    if sql.fetchone() is None:
+        print('Error: unknown project')
+        db_rollback()
+        return False
+
+    # Check the existence of the user
+    sql.execute(''' SELECT 1
+                    FROM users
+                    WHERE user = ?''',
+                (user, ))
+    if sql.fetchone() is None:
+        print('Error: unknown user')
+        db_rollback()
+        return False
+
+    # Assign the user as a reader
+    sql.execute(''' INSERT INTO roles (project, user, reader, disabled)
+                    VALUES (?, ?, 'X', '')''',
+                (project, user))
+    assert(sql.rowcount == 1)
+    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                     'event': 'grant-reader',
+                     'project': project,
+                     'user': user})
+    db_commit()
+    print('The user "%s" is added to the project "%s" as a reader' % (user, project))
     return True
 
 
@@ -1966,6 +1974,20 @@ def archive_audit(selective: int, complete: int) -> bool:
                      'event': 'archive-audit'})
     db_commit()
     print('%d entries moved to the table "audit_arch". Do what you want with it.' % counter)
+    return True
+
+
+def show_git() -> bool:
+    # Check the git repository
+    if not isdir('./.git/'):
+        print('Error: no git repository is used')
+        return False
+
+    # Show the information
+    print('Latest commit: ', end='', flush=True)
+    call(['git', 'rev-parse', 'HEAD'])
+    print('Current version: ', end='', flush=True)
+    call(['git', 'describe', '--tags'])
     return True
 
 

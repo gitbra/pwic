@@ -100,11 +100,11 @@
 			</div>
 			<div id="pwic_browser" class="pwic_hidden">
 				{% for tmap in pwic.tmap %}
-				<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#p{{tmap.header|urlencode}}" onclick="page_tmap()"><span class="pwic_bold">{{tmap.header|escape}}</span> {{tmap.title|escape}}</a>
+					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#{{tmap.tag|urlencode}}" onclick="page_tmap()"><span class="pwic_bold">{{tmap.header|escape}}</span> {{tmap.title|escape}}</a>
 				{% endfor %}
 
 				{% if (pwic.documents|count > 0) or (pwic.images|count > 0) %}
-				<a class="pwic_browser_item pwic_browser_item_h1" href="#page_documents" onclick="page_tmap()">{{pwic.emojis.scroll}} Attached documents</a>
+					<a class="pwic_browser_item pwic_browser_item_h1" href="#page_documents" onclick="page_tmap()">{{pwic.emojis.scroll}} Attached documents</a>
 				{% endif %}
 			</div>
 		{% endif %}
