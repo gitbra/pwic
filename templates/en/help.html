@@ -44,7 +44,7 @@
 			<tr><td><a href="#help_searchdoc">Search across the documents</a></td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_log">View the activity log</a></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_log_user">View the activity of a user</a></td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
-			<tr><td><a href="#help_api">Automate Pwic (API)</a></td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
+			<tr><td><a href="#help_api">Automate Pwic.wiki (API)</a></td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
 			<tr><td><a href="#help_licenses">Read the licences</a></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 		</table>
 
@@ -58,7 +58,7 @@
 			<p>In rare cases if the Python code fails for example, the database can be locked without timeout. In this case, either restart the server or better run the command <code>python3 pwic_admin.py unlock-db</code>.</p>
 
 			<h2>Set the parameters</h2>
-			<p>With the command <code>python3 pwic_admin.py set-env --help</code>, you can define the following parameters that will influence Pwic's behavior.</p>
+			<p>With the command <code>python3 pwic_admin.py set-env --help</code>, you can define the following parameters that will change <em>Pwic.wiki</em>'s behavior.</p>
 			<p>The project-dependent variables are mostly changeable online in the special page, but not all for security reasons. The project-independent variables generally can be edited through the console only and it requires the restart of the server. The users will then have to reconnect from another tab, unless you define the option <code>keep_sessions</code>.</p>
 				<table>
 					<tr>
@@ -95,13 +95,13 @@
 						<td><code>base_url</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>ssl</code>.</td>
+						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>https</code>.</td>
 					</tr>
 					<tr>
 						<td><code>client_max_size</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request else you receive the error 413 <em>Request entity too large</em>.</td>
+						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request else you receive the error 413 <em>Request entity too large</em>. This setting must be configured as well in your reverse proxy server (if you have one).</td>
 					</tr>
 					<tr>
 						<td><code>css</code></td>
@@ -163,7 +163,7 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
 							<br/>- The option is effective upon the restart of the server.
-							<br/>- Because the log file is exclusively locked, you must terminate Pwic before you can rotate the logs with the command <code>python3 pwic_admin.py rotate-logs</code>.
+							<br/>- Because the log file is exclusively locked, you must terminate <em>Pwic.wiki</em> before you can rotate the logs with the command <code>python3 pwic_admin.py rotate-logs</code>.
 							<br/>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
 					</tr>
 					<tr>
@@ -176,7 +176,13 @@
 						<td><code>kbid</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article. If you need to change the length of the key, you must edit <code>kb_mask</code> in the source code directly when Pwic is installed.</td>
+						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article. If you need to change the length of the key, you must edit <code>kb_mask</code> in the source code directly when <em>Pwic.wiki</em> is installed.</td>
+					</tr>
+					<tr>
+						<td><code>https</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Enable HTTP<strong>S</strong> provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
 					</tr>
 					<tr>
 						<td><code>keep_drafts</code></td>
@@ -188,8 +194,8 @@
 						<td><code>keep_sessions</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>The session of a user is saved in a client-side encrypted cookie, so nobody can change its values. This option prevents the internal cryptographic key from being regenerated when Pwic starts. The effects are:
-							<br/>- The sessions of the users are never terminated, unless you restart Pwic without this option,
+						<td>The session of a user is saved in a client-side encrypted cookie, so nobody can change its values. This option prevents the internal cryptographic key from being regenerated when the server starts. The effects are:
+							<br/>- The sessions of the users are never terminated, unless you restart <em>Pwic.wiki</em> without this option,
 							<br/>- The users don't have to reconnect in another tab if their work in progress cannot be submitted due to the expiration of their sessions,
 							<br/>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
 							<br/><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
@@ -210,7 +216,7 @@
 						<td><code>magic_bytes</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Pwic has a predefined list of usual file types and their signature. This security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code> (under Windows only).</td>
+						<td><em>Pwic.wiki</em> has a predefined list of usual file types and their signature. This security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code> (under Windows only).</td>
 					</tr>
 					<tr>
 						<td><code>maintenance</code></td>
@@ -328,7 +334,7 @@
 						<td><code>no_new_user</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console of Pwic. The option has no effect on the federated authentication.</td>
+						<td>When the option is enabled, you can assign only existing user accounts to your project. To create a new user account, use the administration console of <em>Pwic.wiki</em>. The option has no effect on the federated authentication.</td>
 					</tr>
 					<tr>
 						<td><code>no_printing</code></td>
@@ -418,12 +424,6 @@
 						<td>Maximal number of entries in the RSS feed.</td>
 					</tr>
 					<tr>
-						<td><code>ssl</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Enable HTTP<strong>S</strong> for Pwic provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
-					</tr>
-					<tr>
 						<td><code>support_email</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -461,10 +461,10 @@
 					</tr>
 				</table>
 			<p>To show one or all the parameters, use the command <code>python3 pwic_admin.py show-env</code>.</p>
-			<p>In case you need to clean the obsolete variables, run the command <code>python3 pwic_admin.py repair-env</code>. This could happen after Pwic is upgraded.</p>
+			<p>In case you need to clean the obsolete variables, run the command <code>python3 pwic_admin.py repair-env</code>. This could happen after <em>Pwic.wiki</em> is upgraded.</p>
 
 			<h2>Federated authentication</h2>
-			<p>You can connect to Pwic by using a professional third-party identity provider. The mecanism OAuth relies on secret keys and, obviously, a lot of trust. The user connects from another website and Pwic pings back the server to fetch the main email address of the user. The account is then automatically configured by default. No other personal information are used.</p>
+			<p>You can connect to <em>Pwic.wiki</em> by using a professional third-party identity provider. The mecanism OAuth relies on secret keys and, obviously, a lot of trust. The user connects from another website and <em>Pwic.wiki</em> pings back the server to fetch the main email address of the user. The account is then automatically configured by default. No other personal information are used.</p>
 			<p>Several project-independent variables must be defined in the following order. Any change requires a restart of the server.</p>
 
 			<table>
@@ -510,7 +510,7 @@
 				</tr>
 				<tr>
 					<td><code>oauth_secret</code></td>
-					<td>Secret password that Pwic should use to connect to the third-party identity provider. The saved value is protected in Pwic against its public exposure.</td>
+					<td>Secret password to connect to the third-party identity provider. The saved value is protected in <em>Pwic.wiki</em> against its public exposure.</td>
 					<td>{{pwic.emojis.green_check}}</td>
 					<td>{{pwic.emojis.green_check}}</td>
 					<td>{{pwic.emojis.green_check}}</td>
@@ -530,15 +530,16 @@
 
 			<h2>Compress the static files</h2>
 			<p>Optionally, if you use mobile devices, it is possible to compress the big static files with the command <code>python3 pwic_admin.py compress-static</code>. This will reduce a bit the bandwidth and the loading time.</p>
+			<p>The option must be configured as well in your reverse proxy server (if you use one).</p>
 
 			<h2 id="help_execute_sql">SQL queries</h2>
-			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. It is very useful to upgrade Pwic and perform special operations.</p>
+			<p>To facilitate the maintenance of the database remotely, the command <code>python3 pwic_admin.py execute-sql</code> allows you to execute online SQL statements in the console. It is very useful to upgrade <em>Pwic.wiki</em> and perform special operations.</p>
 
 
 		<h1 id="help_create_backup"><a href="#top">{{pwic.emojis.finger_up}}</a> Create a backup</h1>
 		<p>First, it is recommended to warn your users in advance through <a href="#help_setup">the option</a> <code>maintenance</code>. Note that it disables the capability to attach or update new documents to the pages.</p>
 		<p>At the time of the maintenance, shut down the server with <code>python3 pwic_admin.py shutdown-server</code>, and run the command <code>python3 pwic_admin.py create-backup</code>. A new file is created with the current time stamp. The name of the backup file can be extracted with <code>sed</code> if you have further scripting needs. Basically, it is a copy of the database <strong>without</strong> the documents that remain in the dedicated folder of the projects.</p>
-		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of Pwic and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python3 pwic_admin.py repair-documents --test</code> from the console.</p>
+		<p>To restore the backup, simply replace the current database with a previous backup. Any changes made meanwhile will be lost. You must also ensure that the backup file is compatible with your used version of <em>Pwic.wiki</em> and that the salt <code>PWIC_SALT</code> is the same. To resynchronize the documents with the database and vice versa, run the command <code>python3 pwic_admin.py repair-documents --test</code> from the console.</p>
 		<p>As an alternative, you can backup the entire folder <code>db/</code> with your own administration tools.</p>
 
 
@@ -577,18 +578,18 @@
 		{% if pwic.user != '' %}
 			<p>The form is available in your <a href="/special/user/{{pwic.user|urlencode}}" rel="nofollow">profile page</a>.</p>
 		{% endif %}
-		<p>It is recommended to setup Pwic with SSL support so that the new passwords cannot be intercepted in a clear format.</p>
+		<p>It is recommended to setup <em>Pwic.wiki</em> with HTTPS support so that the passwords cannot be intercepted in clear format. The self-signed certicates cannot be used publicly because they generate bypassable errors in your browser.</p>
 
 
 		<h1 id="help_pass2"><a href="#top">{{pwic.emojis.finger_up}}</a> Change the password of another user</h1>
-		<p>The recovery of the lost passwords is an administrative task since Pwic handles neither emails, nor personal information.</p>
+		<p>The recovery of the lost passwords is an administrative task since <em>Pwic.wiki</em> handles neither emails, nor personal information.</p>
 		<p>This command creates the user account if it does not exist, but it grants no role on the projects.</p>
 		<p>Run the command <code>python3 pwic_admin.py reset-password --help</code> for further details.</p>
 
 
 		<h1 id="help_revoke_user"><a href="#top">{{pwic.emojis.finger_up}}</a> Revoke a user</h1>
 		<p>The operation revokes the roles of the user on every project. If this user is the unique administrator of some projects, there are displayed.</p>
-		<p>The user account is not deleted physically, and replacing it with the default Pwic's ghost account is not implemented but technically possible.</p>
+		<p>The user account is not deleted physically, and replacing it with the default ghost account is not implemented but technically possible.</p>
 		<p>Run the command <code>python3 pwic_admin.py revoke-user --help</code> for further details.</p>
 
 
@@ -670,7 +671,7 @@
 			<p>By using the feature "<em>Save as</em>" of your web browser, you can save the page and the loaded pictures, but without the attachments.</p>
 
 			<h2>md - Markdown</h2>
-			<p>This format is the basic content used by Pwic.</p>
+			<p>This format is the basic content used by <em>Pwic.wiki</em>.</p>
 			<p>The file can be edited further with a classical raw text editor, but it needs a dedicated application to be rendered nicely.</p>
 
 			<h2>odt - OpenDocument</h2>
@@ -679,8 +680,8 @@
 			<p>The success of the conversion can be altered if you enable the option <code>no_safe_mode</code>.</p>
 
 			<h2>pdf - Desktop PDF</h2>
-			<p>This format is not supported by Pwic, so it cannot be disabled in the options.</p>
-			<p>By using the feature "<em>Print</em>" of your web browser, select a virtual printer to produce the final PDF file. When doing so, Pwic hides some useless elements of the page.</p>
+			<p>This format is not supported by <em>Pwic.wiki</em>, so it cannot be disabled in the options.</p>
+			<p>By using the feature "<em>Print</em>" of your web browser, select a virtual printer to produce the final PDF file. When doing so, some useless elements of the page are hidden.</p>
 			<p>On Windows, you can enable the PDF printer by executing the command <code>%windir%\System32\OptionalFeatures.exe</code>.</p>
 
 
@@ -699,7 +700,7 @@
 
 
 		<h1 id="help_links"><a href="#top">{{pwic.emojis.finger_up}}</a> Verify the links</h1>
-		<p>Pwic can verify the internal links of the pages to ensure that:</p>
+		<p><em>Pwic.wiki</em> can verify the internal links of the pages to ensure that:</p>
 			<ul>
 				<li>Each page is linked to another one at least (check for orphans).</li>
 				<li>Each page is not linking to a non-existent page (check for broken links).</li>
@@ -747,7 +748,7 @@
 		<h1 id="help_log"><a href="#top">{{pwic.emojis.finger_up}}</a> View the activity log</h1>
 
 			<h2>All the activities</h2>
-			<p>Pwic logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better understanding of the situation.</p>
+			<p><em>Pwic.wiki</em> logs many activities to enforce the traceability of the documentation. In case of troubles, it is possible to unwind the events and have a better understanding of the situation.</p>
 			<p>Online, the administrators of a project can see the events related to the project only, like the creation of a page, a deletion, a validation... At system level, it is possible to display all the events, including the ones not related to a given project.</p>
 			<p>The listing can be filtered out by date and content with the following syntax: <code>python3 pwic_admin.py show-audit --max 365 | grep grant</code> would return all the modifications of the users' rights over the last year.</p>
 
@@ -772,13 +773,13 @@
 		<p>Your own user page is mentioned in the footer.</p>
 
 
-		<h1 id="help_api"><a href="#top">{{pwic.emojis.finger_up}}</a> Automate Pwic (API)</h1>
-		<p>The web interface communicates with Pwic through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
+		<h1 id="help_api"><a href="#top">{{pwic.emojis.finger_up}}</a> Automate Pwic.wiki (API)</h1>
+		<p>The web interface communicates with <em>Pwic.wiki</em> through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
 		<p>You can develop external robots in the limit of your permitted authorizations. Some examples are available in the folder <code>static/api/</code>.</p>
 
 
 		<h1 id="help_licenses"><a href="#top">{{pwic.emojis.finger_up}}</a> Read the licenses</h1>
-		<p>Pwic relies on several external resources whose licenses are summarized in the following table:</p>
+		<p><em>Pwic.wiki</em> relies on several external resources whose licenses are summarized in the following table:</p>
 		<table>
 			<tr>
 				<th>Name</th>

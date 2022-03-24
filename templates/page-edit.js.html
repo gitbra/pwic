@@ -394,8 +394,8 @@
 																			'&milestone='+encodeURIComponent($('#edit_milestone').val())+
 																			'&draft='+encodeURIComponent($('#edit_draft').prop('checked'))+
 																			'&final='+encodeURIComponent($('#edit_final').prop('checked'))+
-																			'&protection='+encodeURIComponent($('#edit_protection').prop('checked'))+
-																			'&header='+encodeURIComponent($('#edit_header').prop('checked')),
+																			'&header='+encodeURIComponent($('#edit_header').prop('checked'))+
+																			'&protection='+encodeURIComponent($('#edit_protection').prop('checked')),
 																	credentials: 'same-origin' })
 											.then(function(response) {
 												if (response.status != 200)

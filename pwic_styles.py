@@ -1,3 +1,21 @@
+# Pwic.wiki server running on Python and SQLite
+# Copyright (C) 2020-2022 Alexandre Bréard
+#
+#   https://pwic.wiki
+#   https://github.com/gitbra/pwic
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Optional
 from pwic_lib import PWIC_DEFAULTS, pwic_mime
@@ -62,7 +80,7 @@ class pwic_styles_odt:
                       xmlns:xlink="http://www.w3.org/1999/xlink"
                       office:version="1.2">
 <office:meta>
-    <meta:generator>Pwic version %s</meta:generator>
+    <meta:generator>Pwic.wiki version %s</meta:generator>
     <dc:title>%s</dc:title>
     <dc:subject>/%s/%s</dc:subject>
     %s

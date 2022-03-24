@@ -1,10 +1,28 @@
+# Pwic.wiki server running on Python and SQLite
+# Copyright (C) 2020-2022 Alexandre Bréard
+#
+#   https://pwic.wiki
+#   https://github.com/gitbra/pwic
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from urllib.parse import parse_qs, quote, urlencode
+from urllib.parse import parse_qs, urlencode
 from urllib.request import Request, urlopen
 from jinja2 import Environment, FileSystemLoader
 import sqlite3
@@ -231,10 +249,29 @@ class PwicServer():
         ''' Show the login page '''
         session = await new_session(request)
         session['user_secret'] = pwic_random_hash()
-        return await self._handle_output(request, 'login', {'title': 'Connect to Pwic'})
+        return await self._handle_output(request, 'login', {'title': 'Connect to Pwic.wiki'})
+
+    async def _handle_logout(self, request: web.Request) -> web.Response:
+        ''' Show the logout page '''
+        # Logging the disconnection (not visible online) aims to not report a reader as inactive.
+        # Knowing that the session is encrypted in the cookie, the event does NOT guarantee that
+        # it is effectively destroyed by the user (his web browser generally does it). The session
+        # is fully lost upon server restart if the option 'keep_sessions' is not used.
+        user = await self._suser(request)
+        if user not in ['', PWIC_USERS['anonymous']]:
+            sql = self.dbconn.cursor()
+            pwic_audit(sql, {'author': user,
+                             'event': 'logout'},
+                       request)
+            self.dbconn.commit()
+
+        # Destroy the session
+        session = await get_session(request)
+        session.invalidate()
+        return await self._handle_output(request, 'logout', {'title': 'Disconnected from Pwic.wiki'})
 
     async def _handle_output(self, request: web.Request, name: str, pwic: Dict[str, Any]) -> web.Response:
-        ''' Serve the right template, in the right language, with the right PWIC structure and additional data '''
+        ''' Serve the right template, in the right language, with the right structure and additional data '''
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'anonymous_user': PWIC_USERS['anonymous'],
@@ -433,7 +470,8 @@ class PwicServer():
                 pwic.update(row)
                 pwic['html'], pwic['tmap'] = self._md2html(sql, project, page, revision, row['markdown'])
                 pwic['hash'] = pwic_sha256(row['markdown'], salt=False)
-                pwic['removable'] = (pwic['admin'] and not pwic['final'] and (pwic['valuser'] == '')) or ((pwic['author'] == user) and pwic['draft'])
+                pwic['removable'] = (pwic['admin'] and not pwic['final'] and (pwic['valuser'] == '')) or \
+                                    ((pwic['author'] == user) and pwic['draft'])
 
                 # File gallery
                 pwic['images'] = []
@@ -730,7 +768,7 @@ class PwicServer():
         ''' Serve the help page to any user '''
         pwic = {'project': 'special',
                 'page': 'help',
-                'title': 'Help for Pwic'}
+                'title': 'Help for Pwic.wiki'}
         return await self._handle_output(request, 'help', pwic)
 
     async def page_create(self, request: web.Request) -> web.Response:
@@ -1404,29 +1442,10 @@ class PwicServer():
                     self.dbconn.commit()
 
         # Final redirection (do not use "raise")
-        if request.rel_url.query.get('redirect', None) is not None:
+        if 'redirect' in request.rel_url.query:
             return web.HTTPFound('/' if ok else '/?failed')
         else:
             return web.HTTPOk() if ok else web.HTTPUnauthorized()
-
-    async def api_logout(self, request: web.Request) -> web.Response:
-        ''' API to log out '''
-        # Logging the disconnection (not visible online) aims to not report a reader as inactive.
-        # Knowing that the session is encrypted in the cookie, the event does NOT guarantee that
-        # it is effectively destroyed by the user (his web browser generally does it). The session
-        # is fully lost upon server restart because a new key is generated.
-        user = await self._suser(request)
-        if user not in ['', PWIC_USERS['anonymous']]:
-            sql = self.dbconn.cursor()
-            pwic_audit(sql, {'author': user,
-                             'event': 'logout'},
-                       request)
-            self.dbconn.commit()
-
-        # Destroy the session
-        session = await get_session(request)
-        session.invalidate()
-        return await self._handle_output(request, 'logout', {'title': 'Disconnected from Pwic'})
 
     async def api_oauth(self, request: web.Request) -> web.Response:
         ''' Manage the federated authentication '''
@@ -1641,7 +1660,7 @@ class PwicServer():
         # Final result
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 
-    async def api_server_headers(self, request: web.Request) -> web.Response:
+    async def api_server_headers_get(self, request: web.Request) -> web.Response:
         ''' Return the received headers for a request '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -1751,7 +1770,8 @@ class PwicServer():
         if project == '':
             raise web.HTTPBadRequest()
         page = pwic_safe_name(post.get('page', ''))                                     # Optional
-        all = post.get('all', None) is not None
+        all = pwic_xb(pwic_x(post.get('all', '')))
+        no_document = pwic_xb(pwic_x(post.get('no_document', '')))
         data: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
         # Restriction of the API
@@ -1763,6 +1783,7 @@ class PwicServer():
             if pwic_option(sql, project, 'validated_only') is not None:
                 raise web.HTTPNotImplemented()
             all = False
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
 
         # Fetch the pages
         api_expose_markdown = pwic_option(sql, project, 'api_expose_markdown', None) is not None
@@ -1791,23 +1812,24 @@ class PwicServer():
                     if row[k] != '':
                         item[k] = pwic_list(row[k])
                 elif k != 'page':
-                    if not isinstance(row[k], str) or row[k] != '':
+                    if (not isinstance(row[k], str)) or (row[k] != ''):
                         item[k] = row[k]
-            item['url'] = '/%s/%s/rev%d' % (quote(project), quote(row['page']), row['revision'])
+            item['url'] = '%s/%s/%s/rev%d' % (base_url, project, row['page'], row['revision'])
             data[row['page']]['revisions'].append(item)
 
         # Fetch the documents
-        sql.execute(''' SELECT id, page, filename, mime, size, hash, author, date, time
-                        FROM documents
-                        WHERE project = ?
-                          AND (page = ? OR '' = ?)
-                        ORDER BY page, filename''',
-                    (project, page, page))
-        for row in sql.fetchall():
-            row['url'] = '/special/document/%d/%s?attachment' % (row['id'], quote(row['filename']))
-            k = row['page']
-            del(row['page'])
-            data[k]['documents'].append(row)
+        if not no_document:
+            sql.execute(''' SELECT id, page, filename, mime, size, hash, author, date, time
+                            FROM documents
+                            WHERE project = ?
+                              AND (page = ? OR '' = ?)
+                            ORDER BY page, filename''',
+                        (project, page, page))
+            for row in sql.fetchall():
+                row['url'] = '%s/special/document/%d/%s' % (base_url, row['id'], row['filename'])
+                k = row['page']
+                del(row['page'])
+                data[k]['documents'].append(row)
 
         # Final result
         PwicExtension.on_api_project_info_get(sql, project, user, page, data)
@@ -2010,7 +2032,7 @@ class PwicServer():
             authorized_projects.append(row['project'])
 
         # Build the file for GraphViz
-        viz = 'digraph PWIC {\n'
+        viz = 'digraph PWIC_WIKI {\n'
         lastProject = ''
         maps.sort(key=lambda tup: 0 if tup[0] == project else 1)    # Main project in first position
         for toProject, toPage, fromProject, fromPage in maps:
@@ -2429,14 +2451,14 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         page = pwic_safe_name(post.get('page', ''))
         title = post.get('title', '').strip()
-        markdown = post.get('markdown', '')
+        markdown = post.get('markdown', '').replace('\r', '')
         tags = pwic_list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
         draft = pwic_xb(pwic_x(post.get('draft', '')))
         final = pwic_xb(pwic_x(post.get('final', '')))
-        protection = pwic_x(post.get('protection', ''))
-        header = pwic_x(post.get('header', ''))
+        header = pwic_xb(pwic_x(post.get('header', '')))
+        protection = pwic_xb(pwic_x(post.get('protection', '')))
         dt = pwic_dt()
         if '' in [user, project, page, title, comment]:
             raise web.HTTPBadRequest()
@@ -2474,8 +2496,8 @@ class PwicServer():
             if pwic_xb(row['protection']):      # The protected pages can be updated by the managers only
                 self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
-            protection = ''                     # This field cannot be set by the non-managers
-            header = row['header']              # This field is reserved to the managers, so we keep the existing value
+            protection = False                  # This field cannot be set by the non-managers
+            header = pwic_xb(row['header'])     # This field is reserved to the managers, so we keep the existing value
 
         # Check the maximal number of revisions per page
         max_revision_count = pwic_int(pwic_option(sql, project, 'max_revision_count'))
@@ -2510,7 +2532,7 @@ class PwicServer():
         # Custom check
         if not PwicExtension.on_api_page_edit(sql, project, user, page, title, markdown,
                                               tags, comment, milestone, draft, final,
-                                              pwic_xb(protection), pwic_xb(header)):
+                                              header, protection):
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
 
@@ -2520,9 +2542,9 @@ class PwicServer():
                              protection, author, date, time, title,
                              markdown, tags, comment, milestone)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision + 1, pwic_x(draft), pwic_x(final), header,
-                     protection, user, dt['date'], dt['time'], title,
-                     markdown, tags, comment, milestone))
+                    (project, page, revision + 1, pwic_x(draft), pwic_x(final), pwic_x(header),
+                     pwic_x(protection), user, dt['date'], dt['time'], title, markdown, tags,
+                     comment, milestone))
         if sql.rowcount > 0:
             pwic_audit(sql, {'author': user,
                              'event': 'update-page',
@@ -2652,7 +2674,7 @@ class PwicServer():
         if '' in [srcproj, srcpage, dstproj, dstpage]:
             raise web.HTTPBadRequest()
 
-        # Verify that the user is a manager of the 2 projects
+        # Verify that the user is a manager of the 2 projects (no need to check the protection of the page)
         sql = self.dbconn.cursor()
         if (dstproj != srcproj) and (pwic_option(sql, '', 'maintenance') is not None):
             raise web.HTTPServiceUnavailable()
@@ -2993,10 +3015,10 @@ class PwicServer():
             html = self._md2html(sql, project, page, revision, row['markdown'],
                                  cache=False,    # No cache to recalculate the headers through the styles
                                  headerNumbering=False)[0]
-            html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')
-            html = html.replace('</code></pre></div>', '</blockcode>')
-            html = html.replace('<pre><code>', '<blockcode>')
-            html = html.replace('</code></pre>', '</blockcode>')
+            html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')      # With pygments
+            html = html.replace('\n</code></pre></div>', '</blockcode>')
+            html = html.replace('<pre><code>', '<blockcode>')                                           # Without pygments
+            html = html.replace('\n</code></pre>', '</blockcode>')
 
             # Extract the meta-informations of the embedded pictures
             MAX_H = max(0, pwic_int(pwic_option(sql, project, 'odt_image_height_max', '900')))
@@ -3593,6 +3615,7 @@ class PwicServer():
 
         # Read the documents
         sql = self.dbconn.cursor()
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
         sql.execute(''' SELECT markdown
                         FROM pages
                         WHERE project = ?
@@ -3619,6 +3642,7 @@ class PwicServer():
             row['size'] = pwic_size2str(row['size'])
             row['used'] = ('(/special/document/%d)' % row['id']) in markdown or \
                           ('(/special/document/%d "' % row['id']) in markdown
+            row['url'] = '%s/special/document/%d/%s' % (base_url, row['id'], row['filename'])
             documents.append(row)
         PwicExtension.on_api_document_list(sql, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=pwic_mime('json'))
@@ -3706,7 +3730,7 @@ def main() -> bool:
         return False
 
     # Command-line
-    parser = argparse.ArgumentParser(description='Pwic Server version %s' % PWIC_VERSION)
+    parser = argparse.ArgumentParser(description='Pwic.wiki Server version %s' % PWIC_VERSION)
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=pwic_int(PWIC_DEFAULTS['port']), help='Listening port')
     parser.add_argument('--sql-trace', action='store_true', help='Display the SQL queries in the console for debugging purposes')
@@ -3757,12 +3781,11 @@ def main() -> bool:
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
+    app.add_routes(PwicExtension.load_custom_routes())
     app.add_routes([web.post('/api/login', app['pwic'].api_login),
-                    web.get('/api/login', app['pwic']._handle_login),
-                    web.get('/api/logout', app['pwic'].api_logout),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
-                    web.get('/api/server/headers', app['pwic'].api_server_headers),
+                    web.get('/api/server/headers/get', app['pwic'].api_server_headers_get),
                     web.post('/api/server/ping', app['pwic'].api_server_ping),
                     web.post('/api/server/shutdown', app['pwic'].api_server_shutdown),
                     web.post('/api/server/unlock', app['pwic'].api_server_unlock),
@@ -3788,9 +3811,11 @@ def main() -> bool:
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
                     web.get('/api', app['pwic'].api_swagger),
+                    web.get('/special/login', app['pwic']._handle_login),
+                    web.get('/special/logout', app['pwic']._handle_logout),
                     web.get('/special/help', app['pwic'].page_help),
-                    web.get('/special/create-page', app['pwic'].page_create),
-                    web.get('/special/create-user', app['pwic'].user_create),
+                    web.get('/special/page/create', app['pwic'].page_create),
+                    web.get('/special/user/create', app['pwic'].user_create),
                     web.get('/special/user/{userpage}', app['pwic'].page_user),
                     web.get(r'/{project:[^\/]+}/special/search', app['pwic'].page_search),
                     web.get(r'/{project:[^\/]+}/special/audit', app['pwic'].page_audit),
@@ -3808,8 +3833,8 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}', app['pwic'].page),
                     web.get('/', app['pwic'].page)])
 
-    # SSL
-    if pwic_option(sql, '', 'ssl') is None:
+    # HTTPS
+    if pwic_option(sql, '', 'https') is None:
         https = None
     else:
         try:

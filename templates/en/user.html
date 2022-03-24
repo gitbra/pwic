@@ -22,23 +22,21 @@
 					</ul>
 				</li>
 			{% endif %}
-			{% if pwic.userpage[:4] != 'pwic' %}
-				<li>Own password : <span id="pwic_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
-					{% if pwic.password_oauth %}
-						<span title="Federated identification only">{{pwic.emojis.id}}</span>
-					{% elif pwic.user == pwic.userpage %}
-						(<a href="#" onclick="return user_password_popup()">change it</a>)
-					{% endif %}
-				</li>
-			{% endif %}
+			<li>Own password : <span id="pwic_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
+				{% if pwic.password_oauth %}
+					<span title="Federated identification only">{{pwic.emojis.id}}</span>
+				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
+					(<a href="#" onclick="return user_password_popup()">change it</a>)
+				{% endif %}
+			</li>
 		</ul>
 
-		{% if not pwic.password_oauth and (pwic.user == pwic.userpage) %}
+		{% if not pwic.password_oauth and (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
 			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
 				<div class="pwic_popup">
 					<form autocomplete="new-password">
 						<h3>Change your password</h3>
-						{% if not pwic.env.ssl %}
+						{% if not pwic.env.https %}
 							<p>{{pwic.emojis.warning}} <ins>Warning</ins> : the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.</p>
 						{% endif %}
 						<table class="pwic_noborder">
@@ -99,7 +97,7 @@
 		<h2>Uploaded documents</h2>
 		{% if pwic.documents|count == 0 %}
 			<p class="pwic_center pwic_italic">The user owns no document.</p>
-		{% else%}
+		{% else %}
 			<table>
 				<tr>
 					<th class="pwic_desktop">Page</th>

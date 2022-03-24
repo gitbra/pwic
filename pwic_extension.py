@@ -1,6 +1,24 @@
+# Pwic.wiki server running on Python and SQLite
+# Copyright (C) 2020-2022 Alexandre Bréard
+#
+#   https://pwic.wiki
+#   https://github.com/gitbra/pwic
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 '''
-    The behavior of Pwic is changeable in this file through a logic of events
+    The behavior of Pwic.wiki is changeable in this file through a logic of events
     positioned at critical positions in the code base. It is easier to implement
     some changes here but it remains sensible from a technical perspective.
 
@@ -19,14 +37,10 @@ from pwic_lib import PWIC_VERSION
 
 
 class PwicExtension():
-    @staticmethod
-    def on_api_document_create_start(sql: sqlite3.Cursor,               # Cursor to query the database
-                                     document: Dict[str, Any],          # Submitted document (changeable)
-                                     ) -> bool:
-        ''' Event when a new document is submitted and before many internal checks are executed.
-            The result tells if the creation of the document is possible.
-        '''
-        return True
+
+    # ==============================
+    #   User exits
+    # ==============================
 
     @staticmethod
     def on_api_document_create_end(sql: sqlite3.Cursor,                 # Cursor to query the database
@@ -40,6 +54,15 @@ class PwicExtension():
         pass
 
     @staticmethod
+    def on_api_document_create_start(sql: sqlite3.Cursor,               # Cursor to query the database
+                                     document: Dict[str, Any],          # Submitted document (changeable)
+                                     ) -> bool:
+        ''' Event when a new document is submitted and before many internal checks are executed.
+            The result tells if the creation of the document is possible.
+        '''
+        return True
+
+    @staticmethod
     def on_api_document_delete(sql: sqlite3.Cursor,         # Cursor to query the database
                                project: str,                # Name of the project
                                user: str,                   # Name of the user
@@ -48,7 +71,7 @@ class PwicExtension():
                                filename: str,               # Name of the file
                                ) -> bool:
         ''' Event when the file must be deleted.
-            For the local files, the result tells if the deletion of the document is possible and Pwic will perform the deletion.
+            For the local files, the result tells if the deletion of the document is possible and Pwic.wiki will perform the deletion.
             For the external files, you must delete the file with your custom logic, so the result tells if the operation is successful.
             The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
         '''
@@ -67,18 +90,6 @@ class PwicExtension():
         pass
 
     @staticmethod
-    def on_api_page_delete(sql: sqlite3.Cursor,             # Cursor to query the database
-                           project: str,                    # Name of the project
-                           user: str,                       # Name of the user
-                           page: str,                       # Name of the page
-                           revision: int,                   # Number of the revision
-                           ) -> bool:
-        ''' Event when a given revision of a page is about to be deleted.
-            The result tells if the deletion of the page is possible.
-        '''
-        return True
-
-    @staticmethod
     def on_api_page_create(sql: sqlite3.Cursor,             # Cursor to query the database
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
@@ -89,6 +100,18 @@ class PwicExtension():
                            ) -> bool:
         ''' Event when a new page is created.
             The result tells if the creation of the page is possible.
+        '''
+        return True
+
+    @staticmethod
+    def on_api_page_delete(sql: sqlite3.Cursor,             # Cursor to query the database
+                           project: str,                    # Name of the project
+                           user: str,                       # Name of the user
+                           page: str,                       # Name of the page
+                           revision: int,                   # Number of the revision
+                           ) -> bool:
+        ''' Event when a given revision of a page is about to be deleted.
+            The result tells if the deletion of the page is possible.
         '''
         return True
 
@@ -104,8 +127,8 @@ class PwicExtension():
                          milestone: str,                    # Milestone
                          draft: bool,                       # Flag for draft
                          final: bool,                       # Flag for final
-                         protection: bool,                  # Flag for protection
                          header: bool,                      # Flag for header
+                         protection: bool,                  # Flag for protection
                          ) -> bool:
         ''' Event when a new revision is submitted.
             The result tells if the update of the page is possible.
@@ -261,18 +284,6 @@ class PwicExtension():
         return True
 
     @staticmethod
-    def on_html_headers(headers: MultiDict,                 # Output HTTP headers
-                        project: str,                       # Name of the project
-                        template: Optional[str],            # Layout of the page. 'None' denotes a file download
-                        ) -> None:
-        ''' Event when a page or a document is delivered, excluding the API and the static files.
-            To change the HTTP headers, modify the parameter 'headers' without reallocating it.
-        '''
-        headers['Server'] = 'Pwic v%s' % PWIC_VERSION
-        if template == 'login':
-            headers['X-Frame-Options'] = 'deny'
-
-    @staticmethod
     def on_html(sql: sqlite3.Cursor,                        # Cursor to query the database
                 project: str,                               # Name of the project
                 page: Optional[str],                        # Name of the page
@@ -285,6 +296,18 @@ class PwicExtension():
                      the HTML inappropriately may result in a technical failure of this feature.
         '''
         return html
+
+    @staticmethod
+    def on_html_headers(headers: MultiDict,                 # Output HTTP headers
+                        project: str,                       # Name of the project
+                        template: Optional[str],            # Layout of the page. 'None' denotes a file download
+                        ) -> None:
+        ''' Event when a page or a document is delivered, excluding the API and the static files.
+            To change the HTTP headers, modify the parameter 'headers' without reallocating it.
+        '''
+        headers['Server'] = 'Pwic.wiki v%s' % PWIC_VERSION
+        if template == 'login':
+            headers['X-Frame-Options'] = 'deny'
 
     @staticmethod
     def on_ip_check(ip: str,                                # Remote IP address
@@ -314,7 +337,7 @@ class PwicExtension():
                  language: str,                             # Selected language
                  ip: str,                                   # IP address
                  ) -> bool:
-        ''' Event when a user successfully connects to Pwic with a password.
+        ''' Event when a user successfully connects with a password.
             The result tells if the connection is possible.
         '''
         return True
@@ -404,7 +427,22 @@ class PwicExtension():
     def on_server_ready(app: web.Application,               # Full access to the application (changeable)
                         sql: sqlite3.Cursor,                # Cursor to query the database
                         ) -> bool:
-        ''' Event when Pwic server is ready to start.
+        ''' Event when the server is ready to start.
             The result tells if the server can start.
         '''
         return True
+
+    # ==============================
+    #   Custom routes
+    # ==============================
+
+    @staticmethod
+    def load_custom_routes() -> List[web.RouteDef]:
+        # return [web.static('/.well-known/acme-challenge/', '/path/to/acme/challenge/'),
+        #         web.get('/special/sample', PwicExtension.on_special_sample)]
+        return []
+
+    # @staticmethod
+    # async def on_special_sample(request: web.Request) -> web.Response:
+    #     # from pwic_lib import pwic_mime
+    #     return web.Response(text='Hello world!', content_type=pwic_mime('html'))

@@ -1,9 +1,9 @@
 swagger: "2.0"
 info:
-  title: Pwic API reference
+  title: Pwic.wiki API reference
   version: "1.0"
   description:
-    The page lists all the available interfaces to interact with Pwic.
+    The page lists all the available interfaces to interact with Pwic.wiki.
     The authentication is managed through a cookie.
     The default method is POST.
 tags:
@@ -58,17 +58,6 @@ paths:
           description: Redirection with the parameter ?failed if the credentials were rejected
         401:
           description: Unsufficient authorizations
-  /api/logout:
-    get:
-      summary: Disconnect from the server
-      description: The data of the session is contained in the cookie in an encrypted format. There is no real need to disconnect from the API if you destroy the identifier of your cookie.
-      tags:
-        - connection
-      produces:
-        - text/html
-      responses:
-        200:
-          description: Resulting page
   /api/oauth:
     get:
       summary: Connect through a third-party identity provider
@@ -222,6 +211,8 @@ paths:
                 used:
                   type: boolean
                   description: According to a static detection
+                url:
+                  type: string
         400:
           description: Invalid parameters
         401:
@@ -272,8 +263,8 @@ paths:
           required: true
         - in: formData
           name: kbid
-          type: string
-          description: Checkbox to generate a knowledge base article
+          type: boolean
+          description: Generate a knowledge base article
           required: false
         - in: formData
           name: page
@@ -302,7 +293,7 @@ paths:
           required: false
         - in: formData
           name: ref_tags
-          type: string
+          type: boolean
           description: Copy the tags of the reference page
           required: false
       responses:
@@ -393,23 +384,23 @@ paths:
           required: false
         - in: formData
           name: draft
-          type: string
+          type: boolean
           description: Save as draft
           required: false
         - in: formData
           name: final
-          type: string
+          type: boolean
           description: Save as final
           required: false
         - in: formData
-          name: protection
-          type: string
-          description: Protect the page
+          name: header
+          type: boolean
+          description: Attach the page to the headers
           required: false
         - in: formData
-          name: header
-          type: string
-          description: Attach the page to the headers
+          name: protection
+          type: boolean
+          description: Protect the page
           required: false
       responses:
         200:
@@ -493,7 +484,7 @@ paths:
           description: Target page
         - in: formData
           name: ignore_file_errors
-          type: string
+          type: boolean
           description: Ignore the failed operations on the files
           default: 'X'
       responses:
@@ -623,8 +614,13 @@ paths:
           required: false
         - in: formData
           name: all
-          type: string
+          type: boolean
           description: Include the all the revisions of the pages
+          required: false
+        - in: formData
+          name: no_document
+          type: boolean
+          description: Don't list the attached documents
           required: false
       responses:
         200:
@@ -669,6 +665,7 @@ paths:
           name: user
           type: string
           description: Name of the user
+          required: false
       responses:
         200:
           description: Successful operation
@@ -798,7 +795,7 @@ paths:
                     type: boolean
         401:
           description: Unsufficient authorizations, or not found
-  /api/server/headers:
+  /api/server/headers/get:
     get:
       summary: Display the received HTTP headers
       tags:

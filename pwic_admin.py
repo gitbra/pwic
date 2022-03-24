@@ -1,3 +1,21 @@
+# Pwic.wiki server running on Python and SQLite
+# Copyright (C) 2020-2022 Alexandre Bréard
+#
+#   https://pwic.wiki
+#   https://github.com/gitbra/pwic
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Optional, Dict, List, Tuple, Any
 import argparse
@@ -8,6 +26,7 @@ import gzip
 import datetime
 import sys
 import os
+import ssl
 from os import chmod, listdir, makedirs, mkdir, removedirs, rename, rmdir
 from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
@@ -34,7 +53,7 @@ def main() -> bool:
         pass
 
     # Prepare the command line (subparsers cannot be grouped)
-    parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic Management Console v%s' % PWIC_VERSION)
+    parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic.wiki Management Console v%s' % PWIC_VERSION)
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -114,7 +133,7 @@ def main() -> bool:
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
 
-    subparsers.add_parser('rotate-logs', help='Rotate Pwic\'s HTTP log files')
+    subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
 
     spb = subparsers.add_parser('archive-audit', help='Clean the obsolete entries of audit')
     spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
@@ -142,7 +161,6 @@ def main() -> bool:
 
     spb = subparsers.add_parser('shutdown-server', help='Terminate the server')
     spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
-    spb.add_argument('--secure', action='store_true', help='Use HTTPS')
     spb.add_argument('--force', action='store_true', help='No confirmation')
 
     # Parse the command line
@@ -204,7 +222,7 @@ def main() -> bool:
     elif args.command == 'execute-sql':
         return execute_sql()
     elif args.command == 'shutdown-server':
-        return shutdown_server(args.port, args.secure, args.force)
+        return shutdown_server(args.port, args.force)
     else:
         parser.print_help()
         return False
@@ -531,7 +549,7 @@ def show_env(project: str, var: str) -> bool:
         tab.add_row([row['project'], row['key'], value])
         found = True
     if found:
-        print('\nGlobal and project-dependent Pwic variables:')
+        print('\nGlobal and project-dependent variables:')
         print(tab.get_string())
         return True
     else:
@@ -543,7 +561,7 @@ def set_env(project: str, key: str, value: str, override: bool, append: bool, re
     if override and (project != ''):
         print('Error: useless parameter --override if a project is indicated')
         return False
-    if append == (remove is True):
+    if append and remove and True:
         print('Error: the options append and remove cannot be used together')
         return False
     allkeys = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
@@ -790,7 +808,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
 
     # Add a default homepage
     sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
-                    VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using Pwic. This is the homepage.', 'Initial commit')''',
+                    VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using **Pwic.wiki**. This is the homepage.', 'Initial commit')''',
                 (project, PWIC_DEFAULTS['page'], admin, dt['date'], dt['time']))
     assert(sql.rowcount > 0)
     pwic_audit(sql, {'author': PWIC_USERS['system'],
@@ -808,7 +826,7 @@ def create_project(project: str, description: str, admin: str) -> bool:
     print('')
     print("To create new pages in the project, you must change your password and grant the role 'manager' or 'editor' to the suitable user account.")
     print('')
-    print('Thanks for using Pwic!')
+    print('Thanks for using Pwic.wiki!')
     return True
 
 
@@ -959,12 +977,13 @@ def split_project(projects: List[str], collapse: bool) -> bool:
             _transfer_record(newsql, 'env', row)
     # ... pages
     for p in projects:
+        keep_last = collapse and (pwic_option(sql, p, 'validated_only') is None)
         sql.execute(''' SELECT *
                         FROM pages
                         WHERE project = ?''',
                     (p, ))
         for row in sql.fetchall():
-            if collapse:
+            if keep_last:
                 if not pwic_xb(row['latest']):
                     continue
                 row['revision'] = 1
@@ -1874,7 +1893,7 @@ def rotate_logs() -> bool:
     try:
         rename(fn, fn + '.tmp')
     except Exception:
-        print('Error: Pwic is running, never ran recently, incorrect file name, or no authorization')
+        print('Error: Pwic.wiki is running, never ran recently, incorrect file name, or no authorization')
         return False
     # ... remove the oldest file
     try:
@@ -2262,7 +2281,7 @@ def unlock_db(port: bool, secure: bool, force: bool) -> bool:
 def execute_sql() -> bool:
     # Ask for a query
     tab = PrettyTable()
-    print('This feature may corrupt the database. Please use it to upgrade Pwic upon explicit request only.')
+    print('This feature may corrupt the database. Please use it to upgrade Pwic.wiki upon explicit request only.')
     print("\nType the query to execute on a single line:")
     query = input()
     if len(query) > 0:
@@ -2307,19 +2326,29 @@ def execute_sql() -> bool:
     return False
 
 
-def shutdown_server(port: int, secure: bool, force: bool) -> bool:
+def shutdown_server(port: int, force: bool) -> bool:
     # Ask for confirmation
     if not force:
-        print('This command will try to terminate Pwic server at its earliest convenience.')
+        print('This command will try to terminate Pwic.wiki server at its earliest convenience.')
         print('This will disconnect the users and interrupt their work.')
         print('Type "YES" to agree and continue: ', end='')
         if input() != 'YES':
             return False
 
+    # Detection of HTTPS
+    sql = db_connect()
+    if sql is None:
+        return False
+    if pwic_option(sql, '', 'https') is None:
+        protocol = 'http'
+    else:
+        protocol = 'https'
+        ssl._create_default_https_context = ssl._create_unverified_context
+
     # Terminate
     print('Sending the kill signal... ', end='', flush=True)
     try:
-        url = 'http%s://127.0.0.1:%d/api/server/shutdown' % ('s' if secure else '', port)
+        url = '%s://127.0.0.1:%d/api/server/shutdown' % (protocol, port)
         urlopen(Request(url, None, method='POST'))
     except Exception as e:
         if isinstance(e, RemoteDisconnected):

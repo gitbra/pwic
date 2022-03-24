@@ -1,9 +1,13 @@
-# PWIC - Python Wiki Information Center
+# Pwic.wiki server powered by Python and SQLite
 
 
 ## Presentation
 
-**Pwic** is a wiki server to support your personal and professional documentation. Its paradigm is to put the documentation at the center of your methodology through comprehensive features and 5 basic roles (reader, editor, validator, manager and administrator). The users are focused on writing the documentation, not on changing the styles. The managers supervise the progress. At the end, the technical team can reject any uncomplient document.
+**Pwic.wiki** (pronounce /puik/) is a lightweight wiki server to support the documentation of your projects through comprehensive features and 5 basic roles. Its purpose is to serve as a common repository where the documentation can be easily located, accessed, edited, compared, validated, shared, exported and eventually analyzed by your own scripts.
+
+*Pwic.wiki* is an advanced concept that attempts to fix frequent caveats that you can face when you participate to an IT project. If you ever wasted your time on managing your files, templates, styles and validations, you are probably searching for a fresh solution to support your process!
+
+The [official homepage](https://pwic.wiki) is running the latest version.
 
 
 ## Some supported features
@@ -65,11 +69,11 @@
 - HTTP logging
 - IP filtering
 
-**Pwic**
+**Pwic.wiki**
 
 - Multi-projects with dedicated authorizations by user
 - Global and project-dependent settings
-- OAuth2-based federated authentication with control of the state
+- OAuth2-based federated authentication with control of the state (SSO)
 - Cache system
 - Management of the attached documents by name, mime, size and magic bytes
 - Private and public modes
@@ -110,15 +114,21 @@ Please use the issue tracker on Github to ask questions, report bugs and request
 
 ## Licenses
 
-Proprietary software
-Copyright (C) Alexandre Bréard, 2020-2022
+### Main
+
+- Pwic.wiki server running on Python and SQLite
+- Copyright (C) 2020-2022 Alexandre Bréard
+	- <https://pwic.wiki>
+	- <https://github.com/gitbra/pwic>
+- Released under the terms of the GNU Affero General Public License v3+
+
+### Third-party software
 
 - [aiohttp](https://github.com/aio-libs/aiohttp) is released under Apache 2.0 License
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License
 - [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
 - [cash.js](https://github.com/fabiospampinato/cash) is released under MIT License
 - [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
-- Favorite icon by [Pixel Perfect](https://www.flaticon.com/free-icon/verify_2910756)
 - [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)
 - [ImageSize](https://github.com/shibukawa/imagesize_py) is released under MIT License
 - [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License

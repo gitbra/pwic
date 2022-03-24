@@ -1,3 +1,21 @@
+# Pwic.wiki server running on Python and SQLite
+# Copyright (C) 2020-2022 Alexandre Bréard
+#
+#   https://pwic.wiki
+#   https://github.com/gitbra/pwic
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlite3
@@ -28,10 +46,10 @@ PWIC_DB_SQLITE_AUDIT = PWIC_DB + '/pwic_audit.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
 PWIC_TEMPLATES_PATH = './templates/'
 
-# Security + SSL
+# Security + HTTPS
 PWIC_SALT = ''                                      # Random string to secure the generated hashes for the passwords
-PWIC_PRIVATE_KEY = 'db/pwic_secure.key'
-PWIC_PUBLIC_KEY = 'db/pwic_secure.crt'
+PWIC_PRIVATE_KEY = 'db/pwic_https.key'
+PWIC_PUBLIC_KEY = 'db/pwic_https.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
 PWIC_NOT_PROJECT = ['', 'api', 'special']
@@ -60,9 +78,8 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?att
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file_formats', 'keep_sessions', 'http_log_file',
-                                'http_log_format', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'no_safe_mode',
-                                'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
-                                'password_regex', 'ssl']
+                                'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'no_safe_mode',
+                                'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
@@ -1020,6 +1037,8 @@ class pwic_html2odt(HTMLParser):
             self.odt += '<%s>' % self.maps['p']
         # Text alignment for the code
         if self.blockcode_on:
+            data = data.replace('<', '&lt;')
+            data = data.replace('>', '&gt;')
             data = data.replace('\r', '')
             data = data.replace('\n', '<text:line-break/>')
             data = data.replace('\t', '<text:tab/>')

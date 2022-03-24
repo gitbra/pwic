@@ -37,7 +37,7 @@
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);
 				else
-					window.location = response.url + '?success';
+					window.location = response.url;
 			})
 			.catch(function(error) {
 				alert(error);

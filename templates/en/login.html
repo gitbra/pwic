@@ -3,12 +3,12 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1">Connect to Pwic</div>
+		<div class="pwic_ph1">Connect to Pwic.wiki</div>
 	</header>
 
 	<article>
 		{% if pwic.env.no_login %}
-			<p class="pwic_warning">{{pwic.emojis.pin}} Pwic is accessible anonymously.</p>
+			<p class="pwic_warning">{{pwic.emojis.pin}} Your instance is accessible anonymously.</p>
 		{% endif %}
 		<p class="pwic_error" id="login_js">{{pwic.emojis.red_check}} Your browser is incompatible.</p>
 

@@ -41,11 +41,9 @@
 			{% if pwic.protection %}
 				<span title="The page is protected">{{pwic.emojis.padlock}}</span>
 			{% endif %}
-			{% if pwic.page == pwic.constants.default_home %}
-				<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
-			{% endif %}
+			<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% if pwic.manager %}
-				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
+				<a href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 			{% endif %}
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>

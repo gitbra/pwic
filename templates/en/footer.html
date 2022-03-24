@@ -5,15 +5,15 @@
 
 <footer>
 	<div>
-		Powered by Pwic v{{pwic.constants.version|escape}} &copy; 2020-2022
+		Powered by <a href="https://pwic.wiki">Pwic.wiki</a> v{{pwic.constants.version|escape}} &copy; 2020-2022
 		{% if not pwic.env.no_help %}
 			&mdash; {{pwic.emojis.help}} <a href="/special/help">Help</a>
 		{% endif %}
 		&mdash;
 		{% if (pwic.user != '') and (pwic.user[:4] != 'pwic') %}
-			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<strong><a href="/api/logout" onclick="return confirm('Are you sure to disconnect from Pwic?')">Log out</a></strong>)
+			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<strong><a href="/special/logout" onclick="return confirm('Are you sure to disconnect from Pwic.wiki?')">Log out</a></strong>)
 		{% else %}
-			 <a href="/api/login">Log in</a>
+			 <a href="/special/login">Log in</a>
 		{% endif %}
 	</div>
 </footer>

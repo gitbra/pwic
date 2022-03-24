@@ -33,13 +33,13 @@
 
 		<div class="pwic_action_bar">
 			{% if pwic.admin %}
-				<a href="/special/create-user?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
+				<a href="/special/user/create?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
 				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Roles</a>
 				<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
 				<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/special/create-page?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
+				<a href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 			{% endif %}
 			{% if not pwic.env.no_rss %}
 				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} RSS</a>
@@ -52,8 +52,8 @@
 			{% endif %}
 			{% if pwic.admin %}
 				<a class="pwic_desktop" href="/api/project/export?project={{pwic.project|urlencode}}">{{pwic.emojis.clamp}} Export</a>
-				<a href="/api">{{pwic.emojis.plug}} API</a>
 			{% endif %}
+			<a href="/api">{{pwic.emojis.plug}} API</a>
 			<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} Random page</a>
 		</div>
 
