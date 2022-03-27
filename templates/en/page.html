@@ -107,6 +107,16 @@
 			</div>
 		{% endif %}
 
+		{% if pwic.relations|count > 0 %}
+			<p id="pwic_relations">
+				<span class="pwic_bold">Related pages:</span>
+				{% for p in pwic.relations %}
+					{% if loop.index > 1 %} &ndash; {% endif %}
+					<a href="{{p[0]|escape}}">{{p[1]|escape}}</a>
+				{% endfor %}
+			</p>
+		{% endif %}
+
 		{% if pwic.tags|count > 0 %}
 			<div class="pwic_tagbox">
 				{% for tag in pwic.tags %}

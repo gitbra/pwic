@@ -363,6 +363,20 @@ class PwicExtension():
         pass
 
     @staticmethod
+    def on_related_pages(sql: sqlite3.Cursor,               # Cursor to query the database
+                         project: str,                      # Name of the project
+                         user: str,                         # Name of the user
+                         page: str,                         # Name of the page
+                         relations: List[Tuple[str, str]],  # Related pages
+                         ) -> None:
+        ''' Event to determine the related pages of a page.
+            Modify the parameter 'relations' without reallocating it.
+            A related link is a tuple made of the URI and its description.
+            The URI should respect the formats "/project/page" or "http://your-site.tld/page".
+        '''
+        pass
+
+    @staticmethod
     def on_render_post(app: web.Application,                # Access to the application (do not change)
                        sql: sqlite3.Cursor,                 # Cursor to query the database
                        pwic: Dict[str, Any],                # Rendered content (not changeable)

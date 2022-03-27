@@ -41,7 +41,7 @@
 				if (response.status != 200)
 					throw Error(response.status + ' ' + response.statusText);
 				response.json().then(function(data) {
-					window.location = data['url'];
+					window.location = data['url'] + '?success';
 				});
 			})
 			.catch(function(error) {

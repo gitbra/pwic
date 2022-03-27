@@ -132,6 +132,7 @@ def main() -> bool:
 
     spb = subparsers.add_parser('clear-cache', help='Clear the cache of the pages (required after upgrade or restoration)')
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+    spb.add_argument('--selective', action='store_true', help='Keep the latest pages in cache')
 
     subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
 
@@ -204,7 +205,7 @@ def main() -> bool:
     elif args.command == 'compress-static':
         return compress_static(args.revert)
     elif args.command == 'clear-cache':
-        return clear_cache(args.project)
+        return clear_cache(args.project, args.selective)
     elif args.command == 'rotate-logs':
         return rotate_logs()
     elif args.command == 'archive-audit':
@@ -1677,6 +1678,9 @@ def show_stats() -> bool:
     _totals(sql, 'Number of revisions in the cache',
             ''' SELECT COUNT(*) AS kpi
                 FROM cache''', None)
+    _totals(sql, 'Number of characters in the cache',
+            ''' SELECT SUM(LENGTH(html)) AS kpi
+                FROM cache''', None)
 
     # Dates
     _totals(sql, 'Last modification per project',
@@ -1856,23 +1860,53 @@ def compress_static(revert: bool) -> bool:
     return counter > 0
 
 
-def clear_cache(project: str) -> bool:
+def clear_cache(project: str, selective: bool) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
         return False
 
-    # Clear the cache
+    # Prepare the query
     project = pwic_safe_name(project)
-    if project != '':
-        sql.execute(''' DELETE FROM cache WHERE project = ?''', (project, ))
+    q = ''' DELETE FROM cache'''
+    if project == '':
+        if selective:
+            q += ''' WHERE ROWID IN (
+                         SELECT a.ROWID
+                         FROM cache AS a
+                             INNER JOIN pages AS b
+                                 ON  b.project  = a.project
+                                 AND b.page     = a.page
+                                 AND b.revision = a.revision
+                                 AND b.latest   = ''
+                                 AND b.valuser  = ''
+                     )'''
     else:
-        sql.execute(''' DELETE FROM cache''')
+        if not selective:
+            q += ''' WHERE project = ?'''
+        else:
+            q += ''' WHERE ROWID IN (
+                         SELECT a.ROWID
+                         FROM cache AS a
+                             INNER JOIN pages AS b
+                                 ON  b.project  = a.project
+                                 AND b.page     = a.page
+                                 AND b.revision = a.revision
+                                 AND b.latest   = ''
+                                 AND b.valuser  = ''
+                         WHERE a.project = ?
+                     )'''
+
+    # Clear the cache
+    sql.execute(q, (project, ) if '?' in q else ())
     pwic_audit(sql, {'author': PWIC_USERS['system'],
                      'event': 'clear-cache',
                      'project': project})
     db_commit()
-    print('The cache is cleared. Do expect a workload of regeneration for a short period of time.')
+    if selective:
+        print('The cache is partially cleared.')
+    else:
+        print('Please expect a workload of regeneration for a short period of time.')
     return True
 
 

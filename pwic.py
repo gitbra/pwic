@@ -22,7 +22,7 @@ import argparse
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, quote, urlencode
 from urllib.request import Request, urlopen
 from jinja2 import Environment, FileSystemLoader
 import sqlite3
@@ -46,7 +46,7 @@ from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
-    pwic_attachment_name, pwic_dt, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
+    pwic_attachment_name, pwic_dt, pwic_dt_diff, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, pwic_safe_name, \
     pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
     pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
@@ -412,6 +412,7 @@ class PwicServer():
 
         # ... or ask the user to pick a project
         else:
+            # Projects joined
             sql.execute(''' SELECT a.project, a.description
                             FROM projects AS a
                                 INNER JOIN roles AS b
@@ -420,12 +421,29 @@ class PwicServer():
                                     AND b.disabled = ''
                             ORDER BY a.description''',
                         (user, ))
-            pwic['title'] = 'Select your project'
             pwic['projects'] = [row for row in sql.fetchall()]
-            if len(pwic['projects']) == 1:
+
+            # Projects not joined yet
+            sql.execute(''' SELECT a.project, c.description
+                            FROM env AS a
+                                LEFT OUTER JOIN roles AS b
+                                    ON  b.project = a.project
+                                    AND b.user    = ?
+                                INNER JOIN projects AS c
+                                    ON c.project = a.project
+                            WHERE a.key      = 'auto_join'
+                              AND a.value   <> ''
+                              AND b.project IS NULL
+                            ORDER BY description''',
+                        (user, ))
+            pwic['joinable_projects'] = [row for row in sql.fetchall()]
+
+            # Output
+            if (len(pwic['projects']) == 1) and (len(pwic['joinable_projects']) == 0):
                 suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
                 raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
             else:
+                pwic['title'] = 'Select your projects'
                 return await self._handle_output(request, 'project-select', pwic)
 
         # Fetch the links of the header line
@@ -486,6 +504,11 @@ class PwicServer():
                     row['size'] = pwic_size2str(row['size'])
                     category = 'images' if row['mime'][:6] == 'image/' else 'documents'
                     pwic[category].append(row)
+
+                # Related links
+                pwic['relations'] = []
+                PwicExtension.on_related_pages(sql, project, user, page, pwic['relations'])
+                pwic['relations'].sort(key=lambda x: x[1])
 
             # Additional information for the special page
             else:
@@ -2327,6 +2350,63 @@ class PwicServer():
                                                escape(project))
         return web.Response(text=pwic_recursive_replace(xml.strip(), ' <', '<'), content_type=pwic_mime('xml'))
 
+    async def api_project_sitemap_get(self, request: web.Request) -> web.Response:
+        ''' Produce the site map of the project '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the parameters
+        project = pwic_safe_name(request.rel_url.query.get('project', ''))
+        if project == '':
+            raise web.HTTPBadRequest()
+        sql = self.dbconn.cursor()
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        dt = pwic_dt()
+
+        # Check the authorizations
+        sql.execute(''' SELECT 1
+                        FROM roles
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND disabled = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # Generate the site map
+        buffer = '<?xml version="1.0" encoding="UTF-8"?>' + \
+                 '\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        sql.execute(''' SELECT page, header, date
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X' ''',
+                    (project, ))
+        while True:
+            row = sql.fetchone()
+            if row is None:
+                break
+
+            # Mapping
+            days = pwic_dt_diff(row['date'], dt['date'])
+            if row['page'] == PWIC_DEFAULTS['page']:
+                priority = 1.0
+            elif pwic_xb(row['header']):
+                priority = 0.7
+            elif days <= 90:
+                priority = 0.5
+            else:
+                priority = 0.3
+            buffer += '\n<url>' + \
+                      ('<loc>%s/%s/%s</loc>' % (escape(base_url), quote(project), quote(row['page']))) + \
+                      ('<changefreq>%s</changefreq>' % ('monthly' if days >= 35 else 'weekly')) + \
+                      ('<lastmod>%s</lastmod>' % escape(row['date'])) + \
+                      ('<priority>%.1f</priority>' % priority) + \
+                      '</url>'
+        buffer += '\n</urlset>'
+        return web.Response(text=buffer, content_type=pwic_mime('xml'))
+
     async def api_page_create(self, request: web.Request) -> web.Response:
         ''' API to create a new page '''
         # Verify that the user is connected
@@ -2436,6 +2516,7 @@ class PwicServer():
         # Result
         data = {'project': project,
                 'page': page,
+                'revision': revision,
                 'url': '/%s/%s' % (project, page)}
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 
@@ -3797,6 +3878,7 @@ def main() -> bool:
                     web.get('/api/project/export', app['pwic'].api_project_export),
                     web.get('/api/project/rss/get', app['pwic'].api_project_rss_get),
                     web.get('/api/project/searchlink/get', app['pwic'].api_project_searchlink_get),
+                    web.get('/api/project/sitemap/get', app['pwic'].api_project_sitemap_get),
                     web.post('/api/page/create', app['pwic'].api_page_create),
                     web.post('/api/page/edit', app['pwic'].api_page_edit),
                     web.post('/api/page/validate', app['pwic'].api_page_validate),

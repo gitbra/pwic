@@ -3,7 +3,7 @@
 
 ## Presentation
 
-**Pwic.wiki** (pronounce /puik/) is a lightweight wiki server to support the documentation of your projects through comprehensive features and 5 basic roles. Its purpose is to serve as a common repository where the documentation can be easily located, accessed, edited, compared, validated, shared, exported and eventually analyzed by your own scripts.
+**Pwic.wiki** (pronounce /puik/) is a lightweight wiki server to support the documentation of your projects through comprehensive features and 5 basic roles. Its purpose is to serve as a common repository where the essential documentation can be easily located, accessed, edited, compared, validated, shared, exported and eventually analyzed by your own scripts.
 
 *Pwic.wiki* is an advanced concept that attempts to fix frequent caveats that you can face when you participate to an IT project. If you ever wasted your time on managing your files, templates, styles and validations, you are probably searching for a fresh solution to support your process!
 

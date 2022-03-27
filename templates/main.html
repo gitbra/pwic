@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{pwic.language|escape}}">
+<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.lang|escape}}{% endif %}">
 <head>
 	<!-- General headers -->
 	<meta name="viewport" content="width=device-width, initial-scale=1">

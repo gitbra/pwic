@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlite3
 import re
 from collections import OrderedDict
-import datetime
+from datetime import date, datetime, timedelta
 from os import urandom
 from os.path import splitext
 from hashlib import sha256
@@ -31,6 +31,7 @@ from html import escape
 from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
+from string import ascii_lowercase
 
 
 # ===================================================
@@ -82,15 +83,15 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file
                                 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
-                              'keep_drafts', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
+                              'keep_drafts', 'lang', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
                               'max_revision_count', 'max_revision_size', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
                               'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing',
                               'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                               'odt_page_width', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text', 'support_url',
                               'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
-                                     'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde', 'no_printing',
-                                     'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
+                                     'lang', 'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde',
+                                     'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
                                      'odt_page_height', 'odt_page_width', 'rss_size', 'support_email', 'support_phone', 'support_text',
                                      'support_url', 'title', 'validated_only']
 PWIC_ENV_PRIVATE = ['oauth_secret']
@@ -363,12 +364,20 @@ def pwic_attachment_name(name: str) -> str:
 
 def pwic_dt(days: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
-    dts = str(datetime.datetime.now())
+    dts = str(datetime.now())
     return {'date': dts[:10],
-            'date-30d': str(datetime.date.today() - datetime.timedelta(days=30))[:10],
-            'date-90d': str(datetime.date.today() - datetime.timedelta(days=90))[:10],
-            'date-nd': str(datetime.date.today() - datetime.timedelta(days=days))[:10],
+            'date-30d': str(date.today() - timedelta(days=30))[:10],
+            'date-90d': str(date.today() - timedelta(days=90))[:10],
+            'date-nd': str(date.today() - timedelta(days=days))[:10],
             'time': dts[11:19]}
+
+
+def pwic_dt_diff(date1: str, date2: str) -> int:
+    if date1 > date2:
+        date1, date2 = date2, date1
+    d1 = datetime.strptime(date1 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
+    d2 = datetime.strptime(date2 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
+    return (d2 - d1).days
 
 
 def pwic_int(value: Any) -> int:
@@ -377,6 +386,22 @@ def pwic_int(value: Any) -> int:
         return int(value)
     except (ValueError, TypeError):
         return 0
+
+
+def pwic_flag(flag: str) -> str:
+    # Check the parameter
+    flag = flag.strip().lower()
+    if len(flag) != 2:
+        return ''
+
+    # Build the unicode flag
+    emoji = ''
+    for i in range(2):
+        if flag[i] in ascii_lowercase:
+            emoji += chr(ascii_lowercase.find(flag[i]) + 0x1F1E6)
+        else:
+            return ''
+    return emoji
 
 
 def pwic_list(input: Optional[str], sorted: bool = False) -> List[str]:

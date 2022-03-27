@@ -299,6 +299,17 @@ paths:
       responses:
         200:
           description: Successful operation
+          schema:
+            type: object
+            properties:
+              project:
+                type: string
+              page:
+                type: string
+              revision:
+                type: integer
+              url:
+                type: string
         400:
           description: Invalid parameters
         401:
@@ -719,7 +730,7 @@ paths:
           description: Unsufficient authorizations
   /api/project/rss/get:
     get:
-      summary: RSS feed for the project
+      summary: Get the RSS feed of the project
       tags:
         - project
       produces:
@@ -761,6 +772,26 @@ paths:
           description: Unsufficient authorizations or not found
         403:
           description: Erroneous configuration or disabled feature
+  /api/project/sitemap/get:
+    get:
+      summary: Generate the site map of the project
+      tags:
+        - project
+      produces:
+        - text/xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations or not found
   /api/server/env/get:
     post:
       summary: Get details about the environment variables

@@ -7,14 +7,24 @@
 	</header>
 
 	<article>
+		<h1>Projects</h1>
 		{% if pwic.projects|count == 0 %}
 			<p>Unfortunately, you have access to no project at all.</p>
 		{% else %}
 			<ul>
-				{% for project in pwic.projects %}
-				<li><a href="/{{project.project|urlencode}}">{{project.description|escape}}</a> [{{project.project|escape}}]</li>
+				{% for p in pwic.projects %}
+					<li><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a> [{{p.project|escape}}]</li>
 				{% endfor %}
 			</ul>
+		{% endif %}
+
+		{% if pwic.joinable_projects|count > 0 %}
+			<h1>Available projects</h1>
+				<ul>
+					{% for p in pwic.joinable_projects %}
+						<li><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a> [{{p.project|escape}}]</li>
+					{% endfor %}
+				</ul>
 		{% endif %}
 	</article>
 {% endblock %}
