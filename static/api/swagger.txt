@@ -159,6 +159,43 @@ paths:
           description: File incorrectly managed on the server
         503:
           description: Update temporarily unavailable or ongoing server maintenance
+  /api/document/get:
+    post:
+      summary: Get one of several documents depending on the parameters
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project
+          required: false
+        - in: formData
+          name: page
+          type: string
+          description: Name of the page
+          required: false
+        - in: formData
+          name: id
+          type: integer
+          description: Internal identifier of the file
+          required: false
+        - in: formData
+          name: attachment
+          type: boolean
+          description: Return as attachment
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        302:
+          description: Successful redirection to another location
+        400:
+          description: Invalid parameters
+        404:
+          description: Unsufficient authorizations, or not found
   /api/document/list:
     post:
       summary: List the files attached to a page
@@ -412,6 +449,11 @@ paths:
           name: protection
           type: boolean
           description: Protect the page
+          required: false
+        - in: formData
+          name: no_quick_fix
+          type: boolean
+          description: Ignore the option quick_fix
           required: false
       responses:
         200:

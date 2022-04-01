@@ -30,7 +30,7 @@
 
 				{% for key in pwic.env %}
 					<tr>
-						<td>{{key|escape}}</td>
+						<td><code>{{key|escape}}</code></td>
 						<td>
 							{% if pwic.env[key].global %}
 								<span title="Global">{{pwic.emojis.globe}}</span>

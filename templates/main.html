@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.lang|escape}}{% endif %}">
+<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.language|escape}}{% endif %}">
 <head>
 	<!-- General headers -->
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="generator" content="Pwic.wiki version {{pwic.constants.version|escape}}">
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="generator" content="Pwic.wiki version {{pwic.constants.version|escape}}" />
 	{% if pwic.env.robots %}
-		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}">
+		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}" />
 	{% endif %}
-	<meta charset="utf-8">
+	<meta charset="utf-8" />
 	<title>{{pwic.title|escape}}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 	{% if pwic.project not in pwic.constants.not_project %}

@@ -76,7 +76,7 @@
 				{% endif %}
 
 				<h2>Attributes</h2>
-				<p><strong><span class="pwic_red">*</span> Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" /></p>
+				<p><strong><span class="pwic_red">*</span> Reason for the modification:</strong> <input id="edit_comment" class="pwic_fill" type="text" placeholder="{{pwic.comment|escape}}" /></p>
 				<p><strong>Milestone:</strong> <input id="edit_milestone" class="pwic_fill" type="text" value="{{pwic.milestone|escape}}" title="Free text to report the expected readiness of the page" /></p>
 				<p>
 					<input id="edit_draft" type="checkbox" {% if pwic.draft %}checked="checked"{% endif %} onclick="$('#edit_final').prop('checked', false)" /> <label for="edit_draft">Save as draft</label>

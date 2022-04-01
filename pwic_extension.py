@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from aiohttp import web
 import sqlite3
 from multidict import MultiDict
+from datetime import tzinfo
 
 from pwic_lib import PWIC_VERSION
 
@@ -256,12 +257,12 @@ class PwicExtension():
                  online: bool,                              # Event coming from the Internet (True) or the console (False)
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                archive-audit   change-password  clear-cache        create-backup     create-document  create-project   create-revision
-                create-user     delete-document  delete-page        delete-project    delete-revision  delete-user      execute-sql
-                export-project  grant-admin      grant-editor       grant-manager     grant-reader     grant-validator  init-db
-                login           logout           repair-documents   replace-document  reset-password   set-*            shutdown-server
-                split-project   start-server     ungrant-admin      ungrant-editor    ungrant-manager  ungrant-reader   ungrant-validator
-                unlock-db       unset-*          validate-revision
+                archive-audit   change-password  clear-cache       create-backup      create-document  create-project     create-revision
+                create-user     delete-document  delete-page       delete-project     delete-revision  delete-user        execute-sql
+                export-project  grant-admin      grant-editor      grant-manager      grant-reader     grant-validator    init-db
+                login           logout           repair-documents  reset-password     set-*            shutdown-server    split-project
+                start-server    ungrant-admin    ungrant-editor    ungrant-manager    ungrant-reader   ungrant-validator  unlock-db
+                unset-*         update-document  update-revision   validate-revision
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.
@@ -445,6 +446,16 @@ class PwicExtension():
             The result tells if the server can start.
         '''
         return True
+
+    @staticmethod
+    def on_timezone() -> Optional[tzinfo]:
+        ''' Event when the current date is determined.
+            The result is the timezone to be used for the determination.
+            The local date is used by default.
+        '''
+        # from pytz import utc                              # UTC+0
+        # return utc
+        return None                                         # Local time
 
     # ==============================
     #   Custom routes

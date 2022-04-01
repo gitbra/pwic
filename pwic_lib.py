@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlite3
 import re
 from collections import OrderedDict
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from os import urandom
 from os.path import splitext
 from hashlib import sha256
@@ -87,13 +87,13 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'max_revision_count', 'max_revision_size', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
                               'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing',
                               'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                              'odt_page_width', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text', 'support_url',
-                              'title', 'validated_only']
+                              'odt_page_width', 'quick_fix', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text',
+                              'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'lang', 'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde',
                                      'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
-                                     'odt_page_height', 'odt_page_width', 'rss_size', 'support_email', 'support_phone', 'support_text',
-                                     'support_url', 'title', 'validated_only']
+                                     'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'support_email', 'support_phone',
+                                     'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
@@ -175,7 +175,10 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
-tyMime = List[Tuple[List[str], List[str], Optional[List[str]], bool]]
+tyMime = List[Tuple[List[str],                  # Extensions in lower case
+                    List[str],                  # Mimes
+                    Optional[List[str]],        # Magic bytes
+                    bool]]                      # Compressed format
 PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['7z'], ['application/x-7z-compressed'], ['7z'], True),
                       (['aac'], ['audio/vnd.dlna.adts'], None, True),
@@ -364,12 +367,13 @@ def pwic_attachment_name(name: str) -> str:
 
 def pwic_dt(days: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
-    dts = str(datetime.now())
-    return {'date': dts[:10],
-            'date-30d': str(date.today() - timedelta(days=30))[:10],
-            'date-90d': str(date.today() - timedelta(days=90))[:10],
-            'date-nd': str(date.today() - timedelta(days=days))[:10],
-            'time': dts[11:19]}
+    from pwic_extension import PwicExtension
+    curtime = datetime.now(tz=PwicExtension.on_timezone())
+    return {'date': str(curtime)[:10],
+            'date-30d': str(curtime - timedelta(days=30))[:10],
+            'date-90d': str(curtime - timedelta(days=90))[:10],
+            'date-nd': str(curtime - timedelta(days=days))[:10],
+            'time': str(curtime)[11:19]}
 
 
 def pwic_dt_diff(date1: str, date2: str) -> int:
