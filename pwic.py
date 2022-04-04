@@ -243,6 +243,8 @@ class PwicServer():
             result = parse_qs(data)
             for res in result:
                 result[res] = result[res][0]
+                if res not in ['markdown']:
+                    result[res] = result[res][:pwic_int(PWIC_DEFAULTS['limit_field'])]
         return result
 
     async def _handle_login(self, request: web.Request) -> web.Response:
@@ -376,7 +378,7 @@ class PwicServer():
             pwic['title'] = row['description']
 
             # Grant the default rights as a reader
-            if (user[:4] != 'pwic') and (pwic_option(sql, project, 'auto_join') is not None):
+            if (user[:4] != 'pwic') and (pwic_option(sql, project, 'auto_join', globale=False) == 'passive'):
                 if sql.execute(''' SELECT 1
                                    FROM roles
                                    WHERE project = ?
@@ -431,8 +433,9 @@ class PwicServer():
                                     AND b.user    = ?
                                 INNER JOIN projects AS c
                                     ON c.project = a.project
-                            WHERE a.key      = 'auto_join'
-                              AND a.value   <> ''
+                            WHERE a.project <> ''
+                              AND a.key      = 'auto_join'
+                              AND a.value   IN ('passive', 'active')
                               AND b.project IS NULL
                             ORDER BY description''',
                         (user, ))
@@ -443,7 +446,6 @@ class PwicServer():
                 suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
                 raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
             else:
-                pwic['title'] = 'Select your projects'
                 return await self._handle_output(request, 'project-select', pwic)
 
         # Fetch the links of the header line
@@ -1483,6 +1485,33 @@ class PwicServer():
                        'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name('%s_%s.zip' % (project, page))}
             return web.Response(body=buffer, headers=MultiDict(headers))
 
+    def _active_auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str) -> bool:
+        ''' Assign a user to the projects that require a forced membership '''
+        ok = False
+        if user[:4] not in ['', 'pwic']:
+            sql.execute(''' SELECT a.project
+                            FROM env AS a
+                                LEFT OUTER JOIN roles AS b
+                                    ON  b.project = a.project
+                                    AND b.user    = ?
+                            WHERE a.project <> ''
+                              AND a.key      = 'auto_join'
+                              AND a.value    = 'active'
+                              AND b.project IS NULL''',
+                        (user, ))
+            for row in sql.fetchall():
+                sql.execute(''' INSERT OR IGNORE INTO roles (project, user, reader)
+                                VALUES (?, ?, 'X')''', (row['project'], user))
+                if sql.rowcount > 0:
+                    ok = True
+                    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                                     'event': 'grant-reader',
+                                     'project': row['project'],
+                                     'user': user,
+                                     'string': 'auto_join'},
+                               request)
+        return ok
+
     async def api_login(self, request: web.Request) -> web.Response:
         ''' API to log in people '''
         # Checks
@@ -1508,6 +1537,7 @@ class PwicServer():
         if sql.fetchone() is not None:
             ok = PwicExtension.on_login(sql, user, lang, ip)
             if ok:
+                self._active_auto_join(sql, request, user)
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
@@ -1516,7 +1546,7 @@ class PwicServer():
                     pwic_audit(sql, {'author': user,
                                      'event': 'login'},
                                request)
-                    self.dbconn.commit()
+                self.dbconn.commit()
 
         # Final redirection (do not use "raise")
         if 'redirect' in request.rel_url.query:
@@ -1674,6 +1704,7 @@ class PwicServer():
                              'user': user,
                              'string': PWIC_MAGIC_OAUTH},
                        request)
+        self._active_auto_join(sql, request, user)
 
         # Register the session
         session = await new_session(request)
@@ -1966,7 +1997,7 @@ class PwicServer():
         # Fetch the submitted data
         post = await self._handle_post(request)
         project = pwic_safe_name(post.get('project', ''))
-        tags = post.get('tags', '').strip()
+        tags = pwic_list_tags(post.get('tags', ''))
         if '' in [project, tags]:
             raise web.HTTPBadRequest()
 
@@ -1981,9 +2012,8 @@ class PwicServer():
             return web.HTTPUnauthorized()
 
         # Check each tag
-        tags = pwic_list(tags, sorted=True)
         data = {}
-        for tag in tags:
+        for tag in pwic_list(tags):
             if tag == '':
                 continue
             item = {'draft': 0,
@@ -2473,7 +2503,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         kb = pwic_xb(pwic_x(post.get('kb', '')))
         page = '' if kb else pwic_safe_name(post.get('page', ''))
-        tags = post.get('tags', '')
+        tags = pwic_list_tags(post.get('tags', ''))
         milestone = post.get('milestone', '').strip()
         ref_project = pwic_safe_name(post.get('ref_project', ''))
         ref_page = pwic_safe_name(post.get('ref_page', ''))
@@ -2523,7 +2553,7 @@ class PwicServer():
                         (project, ))
             if sql.fetchone()['total'] >= max_page_count:
                 self.dbconn.rollback()
-                raise web.HTTPBadRequest()
+                raise web.HTTPForbidden()
 
         # Fetch the default markdown if the page is created in reference to another one
         default_markdown = '# %s' % page
@@ -2542,7 +2572,7 @@ class PwicServer():
             row = sql.fetchone()
             if row is None:
                 self.dbconn.rollback()
-                raise web.HTTPBadRequest()
+                raise web.HTTPNotFound()
             default_markdown = row['markdown']
             if ref_tags:
                 default_tags = row['tags']
@@ -2550,7 +2580,7 @@ class PwicServer():
         # Custom check
         if not PwicExtension.on_api_page_create(sql, project, user, page, kb, tags, milestone):
             self.dbconn.rollback()
-            raise web.HTTPBadRequest()
+            raise web.HTTPUnauthorized()
 
         # Handle the creation of the page
         dt = pwic_dt()
@@ -3585,20 +3615,20 @@ class PwicServer():
                     if fn_re is None:
                         continue
                     fn = pwic_safe_file_name(fn_re.group(1))
-                    if fn == '':
+                    if (fn == '') or (len(fn) > pwic_int(PWIC_DEFAULTS['limit_filename'])):
                         continue
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '').strip().lower()
                     doc[name] = await part.read(decode=False)
         except Exception:
             raise web.HTTPBadRequest()
-        if not PwicExtension.on_api_document_create_start(sql, doc):
-            raise web.HTTPUnauthorized()
         doc['project'] = pwic_safe_name(doc['project'])
         doc['page'] = pwic_safe_name(doc['page'])
         doc['filename'] = pwic_safe_file_name(doc['filename'])
-        if doc['content'] in [None, '', b''] or '' in [doc['project'], doc['page'], doc['filename']]:   # The mime is checked later
+        if (doc['content'] in [None, '', b'']) or ('' in [doc['project'], doc['page'], doc['filename']]):   # The mime is checked later
             raise web.HTTPBadRequest()
+        if not PwicExtension.on_api_document_create_start(sql, doc):
+            raise web.HTTPUnauthorized()
 
         # Verify that the project and folder exist
         if not self._lock(sql):
@@ -3727,7 +3757,7 @@ class PwicServer():
             try:
                 width, height = imagesize.get(filename)
             except ValueError:
-                width, height = 0, 0
+                pass
 
         # Create the document in the database
         dt = pwic_dt()
@@ -4015,6 +4045,20 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}', app['pwic'].page),
                     web.get('/', app['pwic'].page)])
 
+    # CORS
+    origins = pwic_list(pwic_option(sql, '', 'api_cors'))
+    if len(origins) == 0:
+        app['cors'] = None
+    else:
+        import aiohttp_cors
+        app['cors'] = aiohttp_cors.setup(app)
+        for route in list(app.router.routes()):
+            if (route.method in ['GET', 'POST']) and (route.get_info().get('path', '')[:4] == '/api'):
+                options = {}
+                for k in origins:
+                    options[k] = aiohttp_cors.ResourceOptions(allow_methods=[route.method], allow_headers='*', expose_headers='*')
+                app['cors'].add(route, options)
+
     # HTTPS
     if pwic_option(sql, '', 'https') is None:
         https = None
@@ -4029,16 +4073,6 @@ def main() -> bool:
         except Exception as e:
             print('Error: %s' % str(e))
             return False
-
-    # CORS
-    if pwic_option(sql, '', 'api_cors') is None:
-        app['cors'] = None
-    else:
-        import aiohttp_cors
-        app['cors'] = aiohttp_cors.setup(app, defaults={'*': aiohttp_cors.ResourceOptions(allow_headers='*')})  # expose_headers='*'
-        for route in list(app.router.routes()):
-            if route.get_info().get('path', '')[:4] == '/api':
-                app['cors'].add(route)
 
     # General options of the server
     app['no_login'] = pwic_option(sql, '', 'no_login') is not None

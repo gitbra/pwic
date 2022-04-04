@@ -89,9 +89,9 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 
 ### Mandatory technical setup
 
-- Install Python >=3.7: `apt-get install python3 python3-pip`
+- Install Python >=3.7: `apt-get install python3 python3-pip --no-install-recommends`
 - Install the dependencies: `python3 -m pip install --upgrade aiohttp aiohttp-cors aiohttp-session imagesize jinja2 parsimonious PrettyTable pygments`
-- Clone the repository or uncompress the downloaded release in a folder of your choice
+- Clone the repository `git clone https://github.com/gitbra/pwic.git` or uncompress the [latest modifications](https://github.com/gitbra/pwic/archive/refs/heads/master.zip) in a folder of your choice
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
 	- Change the default password in `PWIC_DEFAULTS['password']`
 	- Write random characters in the secret salt `PWIC_SALT` forever
@@ -104,7 +104,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Run the server: `python3 pwic.py`
 - Open your browser at `http://127.0.0.1:8080` by default
 
-Once you have well tested Pwic and defined the global and project-dependent variables described in the embedded help file, you can use the bind address `0.0.0.0` and change the port in the main command line.
+Once you have well tested Pwic.wiki and defined the global and project-dependent variables described in the embedded help file, you can use the bind address `0.0.0.0` and change the port in the main command line.
 
 
 ## Support
@@ -145,4 +145,4 @@ Please use the issue tracker on Github to ask questions, report bugs and request
 - [Swagger UI](https://github.com/swagger-api/swagger-ui) is released under Apache 2.0 License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
 
-Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic. You cannot upgrade them automatically.
+Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic.wiki. You cannot upgrade them automatically.

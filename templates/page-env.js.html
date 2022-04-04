@@ -28,7 +28,7 @@
 									body: 'project={{pwic.project|urlencode}}',
 									credentials: 'same-origin' })
 		.then(function(response) {
-			if (response.status != 200)
+			if (!response.ok)
 				throw Error(response.status + ' ' + response.statusText);
 			else
 				response.json().then(function(data) {
@@ -64,7 +64,7 @@
 												'&value='+encodeURIComponent(value),
 										credentials: 'same-origin' })
 			.then(function(response) {
-				if (response.status == 200)
+				if (!response.ok)
 					$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
 				else
 					throw Error(response.status + ' ' + response.statusText);

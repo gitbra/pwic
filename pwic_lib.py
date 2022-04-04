@@ -31,7 +31,7 @@ from html import escape
 from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
-from string import ascii_lowercase
+from string import ascii_lowercase, ascii_uppercase
 
 
 # ===================================================
@@ -59,15 +59,17 @@ PWIC_NOT_PROJECT = ['', 'api', 'special']
 PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors
               'ghost': 'pwic_ghost',                # Account for the deleted users (not implemented)
               'system': 'pwic_system'}              # Account for the technical operations
-PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',    # Fixed format of the datetime
-                 'heading': '1.1.1.1.1.1.',
-                 'kb_mask': 'kb%06d',
-                 'language': 'en',
-                 'logging_format': '%a %t "%r" %s %b',
-                 'odt_img_defpix': '150',
-                 'page': 'home',                    # Root page of every project
-                 'password': 'initial',             # Default password for the new accounts
-                 'port': '8080',
+PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',            # Fixed format of the datetime
+                 'heading': '1.1.1.1.1.1.',                 # Default format of the paragraphs
+                 'kb_mask': 'kb%06d',                       # Format for the KB pages
+                 'language': 'en',                          # Default language-dependent template for the UI
+                 'limit_filename': '128',                   # Max length for the file names
+                 'limit_field': '2048',                     # Max length for the submitted inline strings
+                 'logging_format': '%a %t "%r" %s %b',      # HTTP log format
+                 'odt_img_defpix': '150',                   # Unknown size of a picture for the export to ODT
+                 'page': 'home',                            # Root page of every project
+                 'password': 'initial',                     # Default password for the new accounts
+                 'port': '8080',                            # Default HTTP port
                  }
 PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
                 'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),              # Find the picture ID in IMG.SRC
@@ -83,35 +85,32 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file
                                 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
-                              'keep_drafts', 'lang', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
-                              'max_revision_count', 'max_revision_size', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
-                              'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_mde', 'no_new_user', 'no_printing',
-                              'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                              'keep_drafts', 'language', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
+                              'max_revision_count', 'max_revision_size', 'mde', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
+                              'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_new_user', 'no_printing', 'no_rss',
+                              'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
                               'odt_page_width', 'quick_fix', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text',
                               'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
-                                     'lang', 'mathjax', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_mde',
-                                     'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
+                                     'language', 'mathjax', 'mde', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_printing',
+                                     'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
                                      'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'support_email', 'support_phone',
                                      'support_text', 'support_url', 'title', 'validated_only']
+PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'brick': '&#x1F9F1;',
-               'bug': '&#x1F41B;',
                'calendar': '&#x1F4C5;',
                'camera': '&#x1F3A5;',               # 1F4F9
                'chains': '&#x1F517;',
                'check': '&#x2714;',
                'clamp': '&#x1F5DC;',
-               'clipboard': '&#x1F4CB;',
                'cloud': '&#x2601;',
                'dice': '&#x1F3B2;',
                'door': '&#x1F6AA;',
-               'email': '&#x1F4E7;',
                'eye': '&#x1F441;',
-               'finger_down': '&#x1F447;',
                'finger_left': '&#x1F448;',
                'finger_up': '&#x261D;',
                'flag': '&#x1F3C1;',
@@ -129,9 +128,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'inbox': '&#x1F4E5;',
                'key': '&#x1F511;',
                'laptop': '&#x1F4BB;',
-               'left_arrow': '&#x2BC7;',
                'locked': '&#x1F512;',
-               'memo': '&#x1F4DD;',
                'notes': '&#x1F4CB;',
                'outbox': '&#x1F4E4;',
                'padlock': '&#x1F510;',
@@ -140,10 +137,10 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'plug': '&#x1F50C;',
                'plus': '&#x2795;',
                'printer': '&#x1F5A8;',
+               'save': '&#x1F4BE;',
                'recycle': '&#x267B;',
                'red_check': '&#x274C;',
                'refresh': '&#x1F504;',
-               'right_arrow': '&#x21E5;',
                'rss': '&#x1F50A;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
@@ -151,8 +148,6 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'server': '&#x1F5A5;',
                'set_square': '&#x1F4D0;',
                'sheet': '&#x1F4C4;',
-               'slider': '&#x1F39A;',
-               'sos': '&#x1F198;',
                'star': '&#x2B50;',
                'top': '&#x1F51D;',
                'trash': '&#x1F5D1;',
@@ -162,9 +157,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
                'warning': '&#x26A0;',
-               'watch': '&#x231A;',
-               'wave': '&#x1F30A;',
-               'world': '&#x1F5FA;'}
+               'watch': '&#x231A;'}
 
 
 # ===================================================
@@ -421,10 +414,15 @@ def pwic_list(input: Optional[str], sorted: bool = False) -> List[str]:
 
 def pwic_list_tags(tags: str) -> str:
     ''' Reorder a list of tags written as a string '''
-    return ' '.join(pwic_list(tags.replace('#', ''), sorted=True))
+    return ' '.join(pwic_list(tags.replace('#', '').lower(), sorted=True))
 
 
-def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default: Optional[str] = None) -> Optional[str]:
+def pwic_option(sql: Optional[sqlite3.Cursor],
+                project: Optional[str],
+                name: str,
+                default: Optional[str] = None,
+                globale: bool = True,
+                ) -> Optional[str]:
     ''' Read a variable from the table ENV that can be project-dependent or not '''
     if sql is None:
         return default
@@ -438,7 +436,7 @@ def pwic_option(sql: sqlite3.Cursor, project: Optional[str], name: str, default:
         project = ''
     if project not in ['', None]:
         row = sql.execute(query, (project, name)).fetchone()
-    if row is None:
+    if (row is None) and globale:
         row = sql.execute(query, ('', name)).fetchone()
     return default if row is None else row['value']
 
@@ -466,6 +464,14 @@ def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
     return d
 
 
+def pwic_safe_file_name(name: str) -> str:
+    ''' Ensure that a file name is acceptable '''
+    name = pwic_safe_name(name, extra='').strip().replace(' ', '_').replace('\t', '_')
+    name = pwic_recursive_replace(name, '..', '.')
+    name = pwic_recursive_replace(name, '__', '_')
+    return '' if name[:1] == '.' else name
+
+
 def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
     ''' Ensure that a string will not collide with the reserved characters of the operating system '''
     chars = PWIC_CHARS_UNSAFE + extra
@@ -473,15 +479,7 @@ def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
         name = ''
     for i in range(len(chars)):
         name = name.replace(chars[i], '')
-    return name.strip().lower()
-
-
-def pwic_safe_file_name(name: str) -> str:
-    ''' Ensure that a file name is acceptable '''
-    name = pwic_safe_name(name, extra='').strip().replace(' ', '_').replace('\t', '_')
-    name = pwic_recursive_replace(name, '..', '.')
-    name = pwic_recursive_replace(name, '__', '_')
-    return '' if name[:1] == '.' else name
+    return name.strip().lower()[:pwic_int(PWIC_DEFAULTS['limit_filename'])]
 
 
 def pwic_safe_user_name(name: str) -> str:
@@ -600,10 +598,10 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
         return ''.join(reversed(buffer))
 
     def _letterMin(value: int) -> str:
-        return _letter(value, 'abcdefghijklmnopqrstuvwxyz')
+        return _letter(value, ascii_lowercase)
 
     def _letterMaj(value: int) -> str:
-        return _letter(value, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        return _letter(value, ascii_uppercase)
 
     # Initialisation
     reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)

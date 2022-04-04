@@ -36,9 +36,9 @@ from urllib.request import Request, urlopen
 from http.client import RemoteDisconnected
 
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, \
-    PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, \
-    PWIC_NOT_PROJECT, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_magic_bytes, pwic_row_factory, pwic_safe_name, \
-    pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
+    PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLY, \
+    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_magic_bytes, \
+    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
 from pwic_extension import PwicExtension
 
 
@@ -572,7 +572,10 @@ def set_env(project: str, key: str, value: str, override: bool, append: bool, re
     if (project != '') and (key in PWIC_ENV_PROJECT_INDEPENDENT):
         print('Error: the parameter is project-independent')
         return False
-    value = value.strip().replace('\r', '')
+    if (project == '') and (key in PWIC_ENV_PROJECT_DEPENDENT_ONLY):
+        print('Error: the parameter is project-dependent only')
+        return False
+    value = value.replace('\r', '').strip()
 
     # Connect to the database
     sql = db_connect()
@@ -639,6 +642,7 @@ def repair_env(test: bool) -> bool:
     for row in sql.fetchall():
         if (row['key'] not in all_keys) or \
            ((row['project'] != '') and (row['key'] in PWIC_ENV_PROJECT_INDEPENDENT)) or \
+           ((row['project'] == '') and (row['key'] in PWIC_ENV_PROJECT_DEPENDENT_ONLY)) or \
            (row['value'] == ''):
             buffer.append((row['project'], row['key']))
     if not test:

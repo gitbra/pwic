@@ -49,7 +49,7 @@
 												'revision={{pwic.revision|urlencode}}',
 										credentials: 'same-origin' })
 				.then(function(response) {
-					if (response.status != 200)
+					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
 					else
 						window.location =	'/{{pwic.project|escape}}' +
@@ -73,7 +73,7 @@
 											'format=' + encodeURIComponent(format),
 									credentials: 'same-origin' })
 			.then(function(response) {
-				if (response.status != 200)
+				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
 				else
 				{

@@ -351,6 +351,10 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        403:
+          description: Exceeded limitations
+        404:
+          description: Reference page not found
         503:
           description: Update temporarily unavailable
   /api/page/delete:

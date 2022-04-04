@@ -24,7 +24,7 @@
 															'&password_new2='+encodeURIComponent(new2),
 													credentials: 'same-origin' })
 				.then(function(response) {
-					if (response.status != 200) {
+					if (!response.ok) {
 						document.getElementById('user_password_new1').focus();
 						throw Error(errorText + ' ['+response.status+']');
 					} else {

@@ -15,7 +15,7 @@
 										credentials: 'same-origin' })
 				.then(function(response) {
 					$('INPUT[type=button]').removeAttr('disabled');
-					if (response.status != 200)
+					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
 					else
 						window.location = '/'+project+'/special/roles';

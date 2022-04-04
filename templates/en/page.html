@@ -57,7 +57,7 @@
 
 			<a href="#" onclick="page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
 			{% if not pwic.env.no_printing %}
-				<a href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
+				<a class="pwic_desktop" href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}
 
 			{% set formats = pwic.env.get('file_formats', {'value': ''}).value.split(' ') %}
@@ -65,7 +65,7 @@
 			{% if '*' not in no_formats %}
 				{% for f in formats%}
 					{% if f not in no_formats %}
-						<a href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.memo}} {{f|escape|upper}}</a>
+						<a href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.save}} {{f|escape|upper}}</a>
 					{% endif %}
 				{% endfor %}
 			{% endif %}
@@ -98,7 +98,7 @@
 			</div>
 			<div id="pwic_browser" class="pwic_hidden">
 				{% for tmap in pwic.tmap %}
-					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#{{tmap.tag|urlencode}}" onclick="page_tmap()"><span class="pwic_bold">{{tmap.header|escape}}</span> {{tmap.title|escape}}</a>
+					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#{{tmap.tag|urlencode}}" onclick="page_tmap()"><span class="pwic_bold">{{tmap.header|escape}}</span> {{tmap.title}}</a>
 				{% endfor %}
 
 				{% if (pwic.documents|count > 0) or (pwic.images|count > 0) %}

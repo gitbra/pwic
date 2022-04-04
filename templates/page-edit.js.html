@@ -207,7 +207,7 @@
 	async function edit_refresh_documents() {
 		var options = {	method: 'POST',
 						headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-						body:	'project={{pwic.project|urlencode}} ' +
+						body:	'project={{pwic.project|urlencode}}' +
 								'&page={{pwic.page|urlencode}}',
 						credentials: 'same-origin' };
 		try {
@@ -265,7 +265,7 @@
 												body: form,
 												credentials: 'same-origin' })
 					.then(function(response) {
-						if (response.status != 200)
+						if (!response.ok)
 							throw Error(response.status + ' ' + response.statusText);
 						else
 						{
@@ -309,7 +309,7 @@
 													'&filename='+encodeURIComponent(filename),
 											credentials: 'same-origin' })
 				.then(function(response) {
-					if (response.status != 200)
+					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
 					else
 						setTimeout(function() {
@@ -349,7 +349,7 @@
 		fetch('/api/server/ping', {	method: 'POST',
 									credentials: 'same-origin' })
 			.then(function(response) {
-				if (response.status != 200)
+				if (!response.ok)
 					alert('['+response.status+'] '+errorPing);
 				else
 					response.text().then(function(text) {
@@ -371,7 +371,7 @@
 																'&page={{pwic.page|urlencode}}',
 														credentials: 'same-origin' })
 								.then(function(response) {
-									if (response.status != 200)
+									if (!response.ok)
 										throw Error('['+response.status+'] '+errorConflict);
 									response.json().then(function(data) {
 										if (data['{{pwic.page|escape}}']['revisions'][0]['revision'] > {{pwic.revision}})
@@ -398,7 +398,7 @@
 																			'&protection='+encodeURIComponent($('#edit_protection').prop('checked')),
 																	credentials: 'same-origin' })
 											.then(function(response) {
-												if (response.status != 200)
+												if (!response.ok)
 													throw Error(response.status + ' ' + response.statusText);
 												window.location = '/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}';
 											})
@@ -428,7 +428,7 @@
 													'&content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
 											credentials: 'same-origin' })
 			.then(function(response) {
-				if (response.status != 200)
+				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
 				else
 					response.text().then(function(text) {

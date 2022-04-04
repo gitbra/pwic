@@ -42,7 +42,7 @@
 													'&role='+encodeURIComponent(role),
 											credentials: 'same-origin' })
 				.then(function(response) {
-					if (response.status != 200)
+					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
 					else
 						response.text().then(function(text) {
