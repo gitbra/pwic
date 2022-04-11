@@ -26,7 +26,7 @@
 				{% if pwic.password_oauth %}
 					<span title="Federated identification only">{{pwic.emojis.id}}</span>
 				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
-					(<a href="#" onclick="return user_password_popup()">change it</a>)
+					<span class="pwic_js">(<a href="#" onclick="return user_password_popup()">change it</a>)</span>
 				{% endif %}
 			</li>
 		</ul>

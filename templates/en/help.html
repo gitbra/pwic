@@ -356,12 +356,6 @@
 						<td>Disable the RSS feed.</td>
 					</tr>
 					<tr>
-						<td><code>no_safe_mode</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This option is not recommended at all. It allows the Markdown renderer to produce unauthorized HTML content (script, iframe...) that could create security issues. The export of the pages to OpenDocument can be impacted negatively too.</td>
-					</tr>
-					<tr>
 						<td><code>no_search</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -627,7 +621,7 @@
 		<p>Saving as draft means that you are working on a page. It is a work in progress that needs no particular attention, except the one of the current editor. You can delete your own drafts. They are also automatically deleted once you publish a final version.</p>
 		<p>Saving as final means that the document is ready to be reviewed by the validator. It also physically deletes all your own previous revisions marked as draft unless you define the option <code>keep_drafts</code>.</p>
 		<p>If you want to save a document which is neither a draft, nor a final version, just save it with none of these flags. Such a revision is a milestone and can be deleted by an administrator only.</p>
-		<p>Unless <code>no_safe_mode</code> is enabled, it is not possible to write pure HTML code in an article because it would allow security problems with <code>&lt;script&gt;</code>, <code>&lt;iframe&gt;</code> or the export to OpenDocument.</p>
+		<p>It is possible to write pure HTML code outside of a code block. Dangerous attributes are automatically removed, but beware to not break the export to OpenDocument.</p>
 		<p>If enabled by the option <code>mathjax</code>, you can embed mathematical expressions supported by MathJax. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</p>
 		<p>The tags are the base to classify the pages freely. The keywords are separated by a space. You can search for a tag in the search engine by usign a hash (ex: <code>#tag</code>). A tag counts a lot in the evaluation of the results.</p>
 		<p>The attribute <em>Reason</em> of the page is a mandatory text that summarizes the purpose of the modification. It is used in the history to search for old revisions at glance.</p>
@@ -690,7 +684,7 @@
 			<h2>odt - OpenDocument</h2>
 			<p>This file format is public but it is not a DOCX document. The file can be edited in MS Word, LibreOffice and more.</p>
 			<p>The export is designed to be very similar to the HTML rendering online, like as if you copied-pasted the text in your editor. However, slight differences of layout are expectable.</p>
-			<p>The success of the conversion can be altered if you enable the option <code>no_safe_mode</code>.</p>
+			<p>The success of the conversion can be altered if you use HTML tags in your pages.</p>
 
 			<h2>pdf - Desktop PDF</h2>
 			<p>This format is not supported by <em>Pwic.wiki</em>, so it cannot be disabled in the options.</p>
@@ -890,12 +884,6 @@
 				<td>2.10.0</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/pygments/pygments/master/README.rst">BSD-2-Clause License</a></td>
-			</tr>
-			<tr>
-				<td><a href="https://github.com/richleland/pygments-css">pygments CSS</a></td>
-				<td>-</td>
-				<td class="pwic_desktop">Cascading style sheets (CSS)</td>
-				<td><a href="https://raw.githubusercontent.com/richleland/pygments-css/master/UNLICENSE.txt">Unlicense License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/python/cpython/">Python</a></td>

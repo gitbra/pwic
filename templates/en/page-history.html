@@ -13,7 +13,7 @@
 		<h1>[{{pwic.page|escape}}] {{pwic.title|escape}}</h1>
 		<table>
 			<tr>
-				<th><span class="pwic_desktop">Difference</span></th>
+				<th class="pwic_js"><span class="pwic_desktop">Difference</span></th>
 				<th>Rev<span class="pwic_desktop">ision</span></th>
 				<th>Flags</th>
 				<th>Author</th>
@@ -25,7 +25,7 @@
 
 			{% for rev in pwic.revisions %}
 				<tr>
-					<td><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()" /></td>
+					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()" /></td>
 					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">{{rev.revision}}</a></td>
 					<td>
 						{% if rev.draft %}

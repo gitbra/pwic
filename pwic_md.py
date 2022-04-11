@@ -1,7 +1,8 @@
 
 # This is a modified copy of https://github.com/trentm/python-markdown2
 # List of the changes:
-# - all the links are valid in safe_mode, else they are replaced by "#"
+# - type hint
+# - mask of valid links
 # - tag strike replaced by del
 
 
@@ -1382,7 +1383,7 @@ class Markdown(object):
             url = self._strip_anglebrackets.sub(r'\1', url)
         return url, title, end_idx
 
-    _safe_protocols = re.compile(r'(https?|ftp):', re.I)
+    _safe_protocols = re.compile(r'^([a-z]+:|\/|\#)', re.I)     # ~~ PWIC
     def _do_links(self, text):
         """Turn Markdown link shortcuts into XHTML <a> and <img> tags.
 
@@ -1501,11 +1502,7 @@ class Markdown(object):
                         curr_pos = start_idx + len(result)
                         text = text[:start_idx] + result + text[url_end_idx:]
                     elif start_idx >= anchor_allowed_pos:
-                        # -- PWIC
-                        # safe_link = self._safe_protocols.match(url) or url.startswith('#')
-                        # ++
-                        safe_link = True
-                        # ==
+                        safe_link = self._safe_protocols.match(url) or url.startswith('#')
                         if self.safe_mode and not safe_link:
                             result_head = '<a href="#"%s>' % (title_str)
                         else:
@@ -2021,11 +2018,7 @@ class Markdown(object):
 
     _strike_re = re.compile(r"~~(?=\S)(.+?)(?<=\S)~~", re.S)
     def _do_strike(self, text):
-        # -- PWIC
-        # text = self._strike_re.sub(r"<strike>\1</strike>", text)
-        # ++
-        text = self._strike_re.sub(r"<del>\1</del>", text)
-        # ==
+        text = self._strike_re.sub(r"<del>\1</del>", text)      # ~~ PWIC
         return text
 
     _underline_re = re.compile(r"--(?=\S)(.+?)(?<=\S)--", re.S)

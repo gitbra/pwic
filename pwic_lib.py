@@ -81,8 +81,8 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?att
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file_formats', 'keep_sessions', 'http_log_file',
-                                'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'no_safe_mode',
-                                'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
+                                'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains',
+                                'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'language', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
@@ -466,7 +466,7 @@ def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
 
 def pwic_safe_file_name(name: str) -> str:
     ''' Ensure that a file name is acceptable '''
-    name = pwic_safe_name(name, extra='').strip().replace(' ', '_').replace('\t', '_')
+    name = pwic_safe_name(name, extra='').replace(' ', '_').replace('\t', '_')
     name = pwic_recursive_replace(name, '..', '.')
     name = pwic_recursive_replace(name, '__', '_')
     return '' if name[:1] == '.' else name
@@ -507,6 +507,12 @@ def pwic_sha256_file(filename: str) -> str:
         return hash.hexdigest()
     except Exception:
         return ''
+
+
+def pwic_shrink(input: Optional[str]) -> str:
+    if input is None:
+        input = ''
+    return input.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
 
 
 def pwic_size2str(size: Union[int, float]) -> str:
@@ -775,6 +781,54 @@ def pwic_search2string(query: Dict[str, List[str]]) -> str:
 
 
 # ===================================================
+#  HTML cleaner
+# ===================================================
+
+class pwic_html_cleaner(HTMLParser):
+    def reset(self):
+        HTMLParser.reset(self)
+        self._mute = ''                 # Tag switched off until </> is found
+        self._code = ''                 # Special code block
+        self._html = ''                 # Final buffer
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.strip().lower()
+        if (self._mute == '') and (tag in ['applet', 'iframe', 'link', 'meta', 'script', 'style']):
+            self._mute = tag
+            return
+        if (self._code == '') and (tag in ['blockcode', 'code', 'svg']):
+            self._code = tag
+        if self._mute == '':
+            buffer = ''
+            for (k, v) in attrs:
+                k = pwic_shrink(k)
+                if (k in ['alt', 'class', 'height', 'href', 'id', 'src', 'style', 'title', 'width']) or \
+                   ((self._code == 'svg') and (k[:2] != 'on')):
+                    v2 = pwic_shrink(v)
+                    if ('javascript' not in v2) and ('url:' not in v2):
+                        buffer += ' %s="%s"' % (k, v)
+            self._html += '<%s%s>' % (tag, buffer)
+
+    def handle_endtag(self, tag):
+        tag = tag.strip().lower()
+        if self._code == tag:
+            self._code = ''
+        if self._mute == tag:
+            self._mute = ''
+        else:
+            self._html += '</%s>' % (tag)
+
+    def handle_data(self, data):
+        if self._mute == '':
+            if self._code in ['blockcode', 'code']:
+                data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
+            self._html += data
+
+    def get_html(self) -> str:
+        return re.sub(r'<span( class="\w+")?>(\s+)?<\/span>', r'\2', self._html)
+
+
+# ===================================================
 #  html2odt
 # ===================================================
 
@@ -827,7 +881,7 @@ class pwic_html2odt(HTMLParser):
                      'ul': 'text:list'}
         self.attributes = {'a': {'xlink:href': '#href',
                                  'xlink:type': 'simple'},
-                           'b': {'text:style-name': 'Bold'},
+                           'b': {'text:style-name': 'Strong'},
                            'blockcode': {'text:style-name': 'CodeBlock'},
                            'code': {'text:style-name': 'Code'},
                            'del': {'text:style-name': 'Strike'},
@@ -918,7 +972,7 @@ class pwic_html2odt(HTMLParser):
 
         # Mapping of the tag
         if tag not in self.maps:
-            self.odt += '<text:p text:style-name="Error">Unknown tag \'%s\'</text:p>' % tag
+            self.odt += '<text:span text:style-name="Error">Unknown tag \'%s\'.</text:span>' % tag
         else:
             if self.maps[tag] is not None:
                 # Automatic extra tags
@@ -1058,14 +1112,13 @@ class pwic_html2odt(HTMLParser):
             self.odt += self.extrasBefore[tag][1]
 
     def handle_data(self, data: str) -> None:
+        data = escape(data)
         # List item should be enclosed by <p>
         if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
             self.tag_path.append('p')
             self.odt += '<%s>' % self.maps['p']
         # Text alignment for the code
         if self.blockcode_on:
-            data = data.replace('<', '&lt;')
-            data = data.replace('>', '&gt;')
             data = data.replace('\r', '')
             data = data.replace('\n', '<text:line-break/>')
             data = data.replace('\t', '<text:tab/>')

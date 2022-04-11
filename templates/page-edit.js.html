@@ -425,7 +425,7 @@
 		fetch('/api/markdown/convert', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body:	'project={{pwic.project|urlencode}}' +
-													'&content='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
+													'&markdown='+encodeURIComponent(ss == se ? ta.value : ta.value.substring(ss, se)),
 											credentials: 'same-origin' })
 			.then(function(response) {
 				if (!response.ok)

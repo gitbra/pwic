@@ -3,14 +3,14 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1">Connect to Pwic.wiki</div>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} Connect to Pwic.wiki</a></div>
 	</header>
 
 	<article>
 		{% if pwic.env.no_login %}
-			<p class="pwic_warning">{{pwic.emojis.pin}} Your instance is accessible anonymously.</p>
+			<p class="pwic_warning">{{pwic.emojis.pin}} This instance is accessible anonymously.</p>
 		{% endif %}
-		<p class="pwic_error" id="login_js">{{pwic.emojis.red_check}} Your browser is incompatible.</p>
+		<p class="pwic_error" id="login_js">{{pwic.emojis.red_check}} Your browser is incompatible or try to enable JavaScript.</p>
 
 		<form id="login_form" action="/api/login?redirect" method="post">
 			<p><strong>User:</strong> <input class="pwic_fill" type="text" id="login_user" name="user" autofocus autocomplete="username" required="true" spellcheck="false" /></p>

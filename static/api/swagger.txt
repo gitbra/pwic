@@ -272,7 +272,7 @@ paths:
           description: Name of the project
           required: true
         - in: formData
-          name: content
+          name: markdown
           type: string
           description: Content written in Markdown
           required: false
@@ -838,6 +838,63 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations or not found
+  /api/project/users/get:
+    post:
+      summary: Fetch the users of a project by roles
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - application/json
+      parameters:
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: admin
+          type: boolean
+          description: Administrator
+          required: false
+        - in: formData
+          name: manager
+          type: boolean
+          description: Manager
+          required: false
+        - in: formData
+          name: editor
+          type: boolean
+          description: Editor
+          required: false
+        - in: formData
+          name: validator
+          type: boolean
+          description: Validator
+          required: false
+        - in: formData
+          name: reader
+          type: boolean
+          description: Reader
+          required: false
+        - in: formData
+          name: operator
+          type: string
+          enum: [or, and, exact]
+          description: Logical operation
+          required: true
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            type: array
+            items:
+              type: string
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or not found
   /api/server/env/get:
     post:
       summary: Get details about the environment variables

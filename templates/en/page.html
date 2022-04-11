@@ -10,7 +10,7 @@
 					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
 				{% endfor %}
 				{% if not pwic.env.no_search %}
-					<div class="pwic_searchbox">
+					<div class="pwic_searchbox pwic_js">
 						{{pwic.emojis.search}}
 						<input type="text" id="page_search" onkeypress="page_search()" />
 					</div>
@@ -43,21 +43,21 @@
 			{% endif %}
 			<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} Special</a>
 			{% if pwic.manager %}
-				<a href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
+				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 			{% endif %}
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
-				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} Edit</a>
 			{% endif %}
 			{% if not pwic.pure_reader or not pwic.env.no_history %}
 				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} History</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/move">{{pwic.emojis.truck}} Move</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/move">{{pwic.emojis.truck}} Move</a>
 			{% endif %}
 
-			<a href="#" onclick="page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
+			<a class="pwic_js" href="#" onclick="page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
 			{% if not pwic.env.no_printing %}
-				<a class="pwic_desktop" href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
+				<a class="pwic_desktop pwic_js" href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}
 
 			{% set formats = pwic.env.get('file_formats', {'value': ''}).value.split(' ') %}
@@ -65,16 +65,16 @@
 			{% if '*' not in no_formats %}
 				{% for f in formats%}
 					{% if f not in no_formats %}
-						<a href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.save}} {{f|escape|upper}}</a>
+						<a class="pwic_js" href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.save}} {{f|escape|upper}}</a>
 					{% endif %}
 				{% endfor %}
 			{% endif %}
 
 			{% if pwic.validator and (pwic.valuser == '') and pwic.final %}
-				<a href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
+				<a class="pwic_js" href="#" onclick="return page_post_action('validate', 'The validation cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.validate}} Validate</a>
 			{% endif %}
 			{% if pwic.removable %}
-				<a href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
+				<a class="pwic_js" href="#" onclick="return page_post_action('delete', 'WARNING: deleting the revision cannot be undone.\n\nDo you want to continue ?')">{{pwic.emojis.recycle}} Delete</a>
 			{% endif %}
 		</div>
 
@@ -93,7 +93,7 @@
 		{% endif %}
 
 		{% if pwic.tmap|count > 0 %}
-			<div id="pwic_browser_access" title="Show/Hide the map of the article" onclick="page_tmap()">
+			<div id="pwic_browser_access" class="pwic_js" title="Show/Hide the map of the article" onclick="page_tmap()">
 				{{pwic.emojis.pin}}
 			</div>
 			<div id="pwic_browser" class="pwic_hidden">

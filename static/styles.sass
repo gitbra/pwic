@@ -69,9 +69,10 @@ BLOCKQUOTE
 
 CODE
 	display: inline-block
-	border: 1px solid gray
+	white-space: pre-wrap
 	padding: 3px
-	// white-space: pre-wrap
+	max-width: 100%
+	border: 1px solid gray
 	font-family: monospace
 	
 	// Highlight at the end of this file
@@ -476,7 +477,10 @@ SPAN.pwic_progressbar
 	display: none
 
 .pwic_italic
-	font-style: italic
+	font-style: oblique
+
+.pwic_js
+	display: none !important
 
 .pwic_noborder
 	border: none
@@ -626,185 +630,137 @@ TABLE.diff
 
 // --------------------------------
 //  Syntax highlight
-//		https://github.com/richleland/pygments-css/blob/master/pastie.css
 
 ARTICLE
 	CODE
-		background: #ffffff
+		background-color: #FFFFFF
 		.hll
-			background-color: #ffffcc
-		.c
-			color: #888888
+			background-color: #FFFFCC
 		.err
-			color: #a61717
-			background-color: #e3d2d2
+			color: #FF0000
+			border: 1px solid #FF0000
 		.k
-			color: #008800
+			color: #800080
 			font-weight: bold
+		.kc
+			color: #800080
+			font-weight: bold
+		.kd
+			color: #800080
+			font-weight: bold
+		.kn
+			color: #800080
+			font-weight: bold
+		.kp
+			color: #800080
+		.kr
+			color: #800080
+			font-weight: bold
+		.kt
+			color: #B00040
+		.na
+			color: #008080
+		.nb
+			font-weight: bold
+		.nc
+			font-weight: bold
+		.ne
+			font-weight: bold
+		.nl
+			color: #BC7A00
+		.nt
+			color: #2080C0
+			font-weight: bold
+		.nv
+			color: #800080
+		.l
+			color: #0000FF
+		.ld
+			color: #0000FF
+		.s
+			color: #FF0000
+		.sa
+			color: #FF0000
+		.sb
+			color: #FF0000
+		.sc
+			color: #FF0000
+		.dl
+			color: #FF0000
+		.sd
+			color: #FF8000
+		.s2
+			color: #FF0000
+		.se
+			color: #FF8000
+			font-weight: bold
+		.sh
+			color: #FF0000
+		.si
+			color: #FF0000
+		.sx
+			color: #FF0000
+		.sr
+			color: #800000
+		.s1
+			color: #FF0000
+		.ss
+			color: #FF0000
+		.m
+			color: #0000FF
+		.mb
+			color: #0000FF
+		.mf
+			color: #0000FF
+		.mh
+			color: #0000FF
+		.mi
+			color: #0000FF
+		.il
+			color: #0000FF
+		.mo
+			color: #0000FF
+		.ow
+			color: #800080
+			font-weight: bold
+		.c
+			color: #008000
+			font-style: oblique
 		.ch
-			color: #888888
+			color: #808080
+			font-style: oblique
 		.cm
-			color: #888888
+			color: #008000
+			font-style: oblique
 		.cp
-			color: #cc0000
+			color: #BC7A00
 			font-weight: bold
 		.cpf
-			color: #888888
+			color: #408080
 		.c1
-			color: #888888
+			color: #008000
+			font-style: oblique
 		.cs
-			color: #cc0000
-			font-weight: bold
-			background-color: #fff0f0
+			color: #008000
+			font-style: oblique
 		.gd
-			color: #000000
-			background-color: #ffdddd
+			color: #FF0000
 		.ge
-			font-style: italic
+			font-style: oblique
 		.gr
-			color: #aa0000
+			color: #FF0000
+			border: 1px solid #FF0000
 		.gh
-			color: #333333
+			color: #4040FF
+			font-weight: bold
 		.gi
-			color: #000000
-			background-color: #ddffdd
-		.go
-			color: #888888
+			color: #008000
 		.gp
-			color: #555555
+			color: #4040FF
+			font-weight: bold
 		.gs
 			font-weight: bold
 		.gu
-			color: #666666
-		.gt
-			color: #aa0000
-		.kc
-			color: #008800
+			background-color: #D3D3D3
 			font-weight: bold
-		.kd
-			color: #008800
-			font-weight: bold
-		.kn
-			color: #008800
-			font-weight: bold
-		.kp
-			color: #008800
-		.kr
-			color: #008800
-			font-weight: bold
-		.kt
-			color: #888888
-			font-weight: bold
-		.m
-			color: #0000DD
-			font-weight: bold
-		.s
-			color: #dd2200
-			background-color: #fff0f0
-		.na
-			color: #336699
-		.nb
-			color: #003388
-		.nc
-			color: #bb0066
-			font-weight: bold
-		.no
-			color: #003366
-			font-weight: bold
-		.nd
-			color: #555555
-		.ne
-			color: #bb0066
-			font-weight: bold
-		.nf
-			color: #0066bb
-			font-weight: bold
-		.nl
-			color: #336699
-			font-style: italic
-		.nn
-			color: #bb0066
-			font-weight: bold
-		.py
-			color: #336699
-			font-weight: bold
-		.nt
-			color: #bb0066
-			font-weight: bold
-		.nv
-			color: #336699
-		.ow
-			color: #008800
-		.w
-			color: #bbbbbb
-		.mb
-			color: #0000DD
-			font-weight: bold
-		.mf
-			color: #0000DD
-			font-weight: bold
-		.mh
-			color: #0000DD
-			font-weight: bold
-		.mi
-			color: #0000DD
-			font-weight: bold
-		.mo
-			color: #0000DD
-			font-weight: bold
-		.sa
-			color: #dd2200
-			background-color: #fff0f0
-		.sb
-			color: #dd2200
-			background-color: #fff0f0
-		.sc
-			color: #dd2200
-			background-color: #fff0f0
-		.dl
-			color: #dd2200
-			background-color: #fff0f0
-		.sd
-			color: #dd2200
-			background-color: #fff0f0
-		.s2
-			color: #dd2200
-			background-color: #fff0f0
-		.se
-			color: #0044dd
-			background-color: #fff0f0
-		.sh
-			color: #dd2200
-			background-color: #fff0f0
-		.si
-			color: #3333bb
-			background-color: #fff0f0
-		.sx
-			color: #22bb22
-			background-color: #f0fff0
-		.sr
-			color: #008800
-			background-color: #fff0ff
-		.s1
-			color: #dd2200
-			background-color: #fff0f0
-		.ss
-			color: #aa6600
-			background-color: #fff0f0
-		.bp
-			color: #003388
-		.fm
-			color: #0066bb
-			font-weight: bold
-		.vc
-			color: #336699
-		.vg
-			color: #dd7700
-		.vi
-			color: #3333bb
-		.vm
-			color: #336699
-		.il
-			color: #0000DD
-			font-weight: bold
-
+			font-style: oblique

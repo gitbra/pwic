@@ -4,13 +4,13 @@
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.emojis.finger_up}} {{pwic.project_description|escape}}</a></div>
-		{% if (pwic.links|count > 0) or (not pwic.env.no_search) %}
+		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}
 					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
 				{% endfor %}
 				{% if not pwic.env.no_search %}
-					<div class="pwic_searchbox">
+					<div class="pwic_searchbox pwic_js">
 						{{pwic.emojis.search}}
 						<input type="text" id="page_search" onkeypress="page_search()" />
 					</div>
@@ -33,13 +33,13 @@
 
 		<div class="pwic_action_bar">
 			{% if pwic.admin %}
-				<a href="/special/user/create?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
-				<a href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Roles</a>
+				<a class="pwic_js" href="/special/user/create?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} New user</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} Roles</a>
 				<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} Audit</a>
-				<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} Settings</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
+				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} New page</a>
 			{% endif %}
 			{% if not pwic.env.no_rss %}
 				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} RSS</a>
@@ -47,13 +47,13 @@
 			{% if pwic.manager %}
 				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Links</a>
 				{% if not pwic.env.no_graph %}
-					<a href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
+					<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
 				{% endif %}
 			{% endif %}
 			{% if pwic.admin %}
 				<a class="pwic_desktop" href="/api/project/export?project={{pwic.project|urlencode}}">{{pwic.emojis.clamp}} Export</a>
 			{% endif %}
-			<a href="/api">{{pwic.emojis.brick}} API</a>
+			<a class="pwic_js" href="/api">{{pwic.emojis.brick}} API</a>
 			<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} Random page</a>
 		</div>
 
@@ -196,8 +196,8 @@
 
 
 		{% if pwic.tags|count > 0 %}
-			<h1>Progress by tag</h1>
-			<div id="page_progress_tags" class="pwic_tagbox">
+			<h1 class="pwic_js">Progress by tag</h1>
+			<div id="page_progress_tags" class="pwic_tagbox pwic_js">
 				<a href="#" title="Reset">{{pwic.emojis.red_check}}</a>
 				{% for tag in pwic.tags %}
 					<a href="#" title="Un/Select this tag">#{{tag|escape}}</a>

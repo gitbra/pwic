@@ -134,7 +134,8 @@ def main() -> bool:
     spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
     spb.add_argument('--selective', action='store_true', help='Keep the latest pages in cache')
 
-    subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
+    spb = subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
+    spb.add_argument('--count', type=int, default=9, help='Number of log files', metavar='9')
 
     spb = subparsers.add_parser('archive-audit', help='Clean the obsolete entries of audit')
     spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
@@ -207,7 +208,7 @@ def main() -> bool:
     elif args.command == 'clear-cache':
         return clear_cache(args.project, args.selective)
     elif args.command == 'rotate-logs':
-        return rotate_logs()
+        return rotate_logs(args.count)
     elif args.command == 'archive-audit':
         return archive_audit(args.selective, args.complete)
     elif args.command == 'show-git':
@@ -1914,7 +1915,7 @@ def clear_cache(project: str, selective: bool) -> bool:
     return True
 
 
-def rotate_logs() -> bool:
+def rotate_logs(nfiles: int) -> bool:
     # Connect to the database
     sql = db_connect()
     if sql is None:
@@ -1927,6 +1928,7 @@ def rotate_logs() -> bool:
         return False
 
     # Rotate the files
+    nfiles = max(3, nfiles)
     # ... first file
     try:
         rename(fn, fn + '.tmp')
@@ -1935,11 +1937,11 @@ def rotate_logs() -> bool:
         return False
     # ... remove the oldest file
     try:
-        os.remove(fn + '.9.gz')
+        os.remove('%s.%d.gz' % (fn, nfiles))
     except Exception:
         pass
     # ... rotate the files
-    for i in reversed(range(1, 9)):     # i=[1..8]
+    for i in reversed(range(1, nfiles)):    # i=[1..nfiles-1]
         try:
             rename('%s.%d.gz' % (fn, i),
                    '%s.%d.gz' % (fn, i + 1))

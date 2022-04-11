@@ -37,7 +37,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 
 ### For the editors
 
-- Page layout supervised with Markdown
+- Page layout supervised with Markdown and HTML
 - Wysiwyg editor for Markdown
 - Classification of the pages with hashtags
 - Automatic numbering of the headers with no gap
@@ -83,6 +83,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - API and command line to automate the operations
 - Extension points in the code
 - Possible integration with external storage providers
+- No JavaScript needed to read the pages
 
 
 ## Install
@@ -138,7 +139,6 @@ Please use the issue tracker on Github to ask questions, report bugs and request
 - [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
-- [pygments CSS](https://github.com/richleland/pygments-css) is released under Unlicense License
 - [Python](https://github.com/python/cpython/) is released under Python Software Foundation License
 - [SQLite](https://www.sqlite.org) is released in the public domain
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License

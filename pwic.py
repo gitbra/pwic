@@ -49,7 +49,7 @@ from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DO
     pwic_attachment_name, pwic_dt, pwic_dt_diff, pwic_int, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, pwic_mime_compressed, \
     pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, pwic_safe_name, \
     pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
-    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html2odt
+    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html_cleaner, pwic_html2odt
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -81,7 +81,9 @@ class PwicServer():
                  revision: int,
                  markdown: str,
                  cache: bool = True,
-                 headerNumbering: bool = True) -> Tuple[str, object]:
+                 headerNumbering: bool = True,
+                 codeblock: bool = True,
+                 ) -> Tuple[str, object]:
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
         if (page is None) or (revision <= 0) or (pwic_option(sql, project, 'no_cache') is not None):
@@ -100,10 +102,18 @@ class PwicServer():
         if row is not None:
             html = row['html']
         else:
-            html = app['markdown'].convert(markdown).replace('<span></span>', '')
-            html = PwicExtension.on_html(sql, project, page, revision, html)
+            html = app['markdown'].convert(markdown)
+            if codeblock:                                                                           # Incompatible with OpenDocument
+                html = html.replace('<div class="codehilite"><pre><span></span><code>', '<code>')   # With pygments
+                html = html.replace('\n</code></pre></div>', '</code>')
+                html = html.replace('<pre><code>', '<code>')                                        # Without pygments
+                html = html.replace('\n</code></pre>', '</code>')
+            cleaner = pwic_html_cleaner()
+            cleaner.feed(html)
+            html = PwicExtension.on_html(sql, project, page, revision, cleaner.get_html())
             if cache:
-                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html) VALUES (?, ?, ?, ?)''',
+                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html)
+                                VALUES (?, ?, ?, ?)''',
                             (project, page, revision, html))
                 self.dbconn.commit()
         if pwic_option(sql, project, 'no_heading') is not None:
@@ -1987,6 +1997,79 @@ class PwicServer():
         self.dbconn.commit()
         raise web.HTTPOk()
 
+    async def api_project_users_get(self, request: web.Request) -> web.Response:
+        ''' API to fetch the active users of a project based on their roles '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Fetch the submitted data
+        post = await self._handle_post(request)
+        project = pwic_safe_name(post.get('project', ''))
+        admin = pwic_xb(pwic_x(post.get('admin', '')))
+        manager = pwic_xb(pwic_x(post.get('manager', '')))
+        editor = pwic_xb(pwic_x(post.get('editor', '')))
+        validator = pwic_xb(pwic_x(post.get('validator', '')))
+        reader = pwic_xb(pwic_x(post.get('reader', '')))
+        operator = post.get('operator', '')
+        if (project == '') or not (admin or manager or editor or validator or reader) or (operator not in ['or', 'and', 'exact']):
+            raise web.HTTPBadRequest()
+
+        # Verify that the user belongs to the project
+        sql = self.dbconn.cursor()
+        sql.execute(''' SELECT 1
+                        FROM roles
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND disabled = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # List the users
+        data = []
+        if operator == 'or':
+            # The user has one of the selected roles
+            sql.execute(''' SELECT user
+                            FROM roles
+                            WHERE project  = ?
+                              AND ((1 = ? AND admin     = 'X')
+                                OR (1 = ? AND manager   = 'X')
+                                OR (1 = ? AND editor    = 'X')
+                                OR (1 = ? AND validator = 'X')
+                                OR (1 = ? AND reader    = 'X'))
+                              AND disabled = '' ''',
+                        (project, int(admin), int(manager), int(editor), int(validator), int(reader)))
+        elif operator == 'and':
+            # The user has all the selected roles at least
+            sql.execute(''' SELECT user
+                            FROM roles
+                            WHERE project  = ?
+                              AND (0 = ? OR admin     = 'X')
+                              AND (0 = ? OR manager   = 'X')
+                              AND (0 = ? OR editor    = 'X')
+                              AND (0 = ? OR validator = 'X')
+                              AND (0 = ? OR reader    = 'X')
+                              AND disabled = '' ''',
+                        (project, int(admin), int(manager), int(editor), int(validator), int(reader)))
+        else:
+            assert(operator == 'exact')
+            # The user has all the selected roles only
+            sql.execute(''' SELECT user
+                            FROM roles
+                            WHERE project   = ?
+                              AND admin     = ?
+                              AND manager   = ?
+                              AND editor    = ?
+                              AND validator = ?
+                              AND reader    = ?
+                              AND disabled  = '' ''',
+                        (project, pwic_x(admin), pwic_x(manager), pwic_x(editor), pwic_x(validator), pwic_x(reader)))
+        data = [row['user'] for row in sql.fetchall()]
+        data.sort()
+        return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
+
     async def api_project_progress_get(self, request: web.Request) -> web.Response:
         ''' API to analyze the progress of the project '''
         # Verify that the user is connected
@@ -3205,8 +3288,9 @@ class PwicServer():
         elif format == 'odt':
             # MarkDown --> HTML --> ODT
             html = self._md2html(sql, project, page, revision, row['markdown'],
-                                 cache=False,    # No cache to recalculate the headers through the styles
-                                 headerNumbering=False)[0]
+                                 cache=False,    # No cache to recalculate the headers and the code blocks
+                                 headerNumbering=False,
+                                 codeblock=False)[0]
             html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')      # With pygments
             html = html.replace('\n</code></pre></div>', '</blockcode>')
             html = html.replace('<pre><code>', '<blockcode>')                                           # Without pygments
@@ -3328,7 +3412,7 @@ class PwicServer():
         # Get the parameters
         post = await self._handle_post(request)
         project = pwic_safe_name(post.get('project', ''))
-        content = post.get('content', '')
+        markdown = post.get('markdown', '')
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -3346,8 +3430,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Return the converted output
-        html = self._md2html(sql, project, None, 0, content, cache=False)[0]
-        html = PwicExtension.on_html(sql, project, None, 0, html)
+        html = self._md2html(sql, project, None, 0, markdown, cache=False)[0]
         return web.Response(text=html, content_type=pwic_mime('txt'))
 
     async def api_user_create(self, request: web.Request) -> Optional[web.Response]:
@@ -3985,8 +4068,7 @@ def main() -> bool:
     setup(app, EncryptedCookieStorage(skey))    # Storage for the cookies
     del skey
     # ... Markdown parser
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'],
-                               safe_mode=pwic_option(sql, '', 'no_safe_mode') is None)
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'], safe_mode=False)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
@@ -4001,6 +4083,7 @@ def main() -> bool:
                     web.post('/api/project/list', app['pwic'].api_project_list),
                     web.post('/api/project/get', app['pwic'].api_project_get),
                     web.post('/api/project/env/set', app['pwic'].api_project_env_set),
+                    web.post('/api/project/users/get', app['pwic'].api_project_users_get),
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
                     web.get('/api/project/export', app['pwic'].api_project_export),
