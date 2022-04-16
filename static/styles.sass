@@ -44,8 +44,8 @@ HTML
 BODY
 	height: 100%
 	width: 100%
-	margin: 0px
-	padding: 0px
+	margin: 0
+	padding: 0
 	font-family: 'Noto Sans', sans-serif
 
 A
@@ -53,19 +53,19 @@ A
 	color: black
 
 BLOCKQUOTE
-	margin-left: 0px
-	margin-right: 0px
+	margin-left: 0
+	margin-right: 0
 	padding: 10px
 	background-color: #F2F2F2
 	border-left: 5px solid gray
 	border-radius: 10px
 
 	P
-		margin-right: 0px
+		margin-right: 0
 	P:first-child
-		margin-top: 0px
+		margin-top: 0
 	P:last-child
-		margin-bottom: 0px
+		margin-bottom: 0
 
 CODE
 	display: inline-block
@@ -85,7 +85,7 @@ HEADER
 	padding: 10px 50px 10px 50px
 	background-color: #F0F0F0
 	border-bottom: 1px solid black
-	box-shadow: 0px 0px 5px gray
+	box-shadow: 0 0 5px gray
 	font-weight: bold
 
 	.pwic_ph1
@@ -100,7 +100,7 @@ HEADER
 
 		A,DIV
 			float: left
-			margin: 0px 10px 5px 0px
+			margin: 0 10px 5px 0
 			padding: 5px 10px 5px 10px
 			line-height: 20px
 
@@ -128,7 +128,7 @@ ARTICLE
 	display: block
 	margin: auto
 	width: 90%
-	padding: 20px 20px 0px 20px
+	padding: 20px 20px 0 20px
 
 	// -------------------------------- Standard tags
 
@@ -172,7 +172,7 @@ ARTICLE
 	TABLE
 		width: 95%
 		margin: auto
-		border-spacing: 0px
+		border-spacing: 0
 		border-collapse: collapse
 		border: 1px solid gray
 		TR:nth-child(n+1):not(:last-child)
@@ -216,7 +216,7 @@ ARTICLE
 
 		A
 			display: inline-block
-			margin: 0px 0px 5px 5px
+			margin: 0 0 5px 5px
 			padding: 5px 10px 5px 10px
 			border: 1px solid lightgray
 			border-radius: 10px
@@ -224,18 +224,18 @@ ARTICLE
 			text-decoration: none !important
 		A:hover
 			border: 1px solid black
-			border-radius: 0px
+			border-radius: 0
 
 
 	// -------------------------------- Tag box
 
 	.pwic_tagbox
-		margin: 10px 0px 10px 0px
+		margin: 10px 0 10px 0
 		overflow: hidden
 
 		A
 			float: left
-			margin: 0px 5px 5px 0px
+			margin: 0 5px 5px 0
 			padding: 3px 5px 3px 5px
 			border: 1px solid gray
 			border-radius: 10px
@@ -245,7 +245,7 @@ ARTICLE
 		A:hover
 			background-color: lightgray
 			border: 1px solid black
-			border-radius: 0px
+			border-radius: 0
 		A.pwic_selected
 			background-color: lightgray
 
@@ -278,9 +278,9 @@ ARTICLE
 
 	#pwic_progress
 		position: fixed
-		top: 0px
-		left: 0px
-		height: 0px
+		top: 0
+		left: 0
+		height: 0
 		width: 5px
 		background-color: gray
 
@@ -299,7 +299,7 @@ ARTICLE
 		border-radius: 25px
 		border: 2px solid green
 		background-color: rgb(149, 236, 168)
-		box-shadow: 0px 0px 0px 10px white
+		box-shadow: 0 0 0 10px white
 
 		font-size: 22pt
 		text-align: center
@@ -307,7 +307,7 @@ ARTICLE
 		cursor: pointer
 		background-color: green
 		color: white
-		box-shadow: 0px 0px 10px 5px lime
+		box-shadow: 0 0 10px 5px lime
 
 	#pwic_browser
 		position: fixed
@@ -321,7 +321,7 @@ ARTICLE
 
 		padding: 10px
 		border: 1px solid black
-		box-shadow: 0px 0px 0px 10px white
+		box-shadow: 0 0 0 10px white
 		background-color: #F7F7F7
 
 		A
@@ -388,10 +388,10 @@ FOOTER
 
 .pwic_blurcontainer
 	position: absolute
-	left: 0px
-	right: 0px
-	top: 0px
-	bottom: 0px
+	left: 0
+	right: 0
+	top: 0
+	bottom: 0
 	background-color: rgb(255, 255, 255, 75%)
 	backdrop-filter: blur(3px)					// Only Chrome
 
@@ -403,7 +403,7 @@ FOOTER
 	bottom: auto
 	background-color: #FFFFF0
 	padding: 15px
-	box-shadow: 0px 0px 15px gray
+	box-shadow: 0 0 15px gray
 	border: 1px solid black
 	border-radius: 15px
 
@@ -441,7 +441,7 @@ SPAN.pwic_progressbar
 	height: 12px
 	margin-left: 10px
 	margin-right: 10px
-	padding: 0px
+	padding: 0
 	border: 1px solid black
 	box-shadow: inset -1px -1px gray
 	text-align: left
@@ -588,7 +588,7 @@ SPAN.pwic_progressbar
 
 		.pwic_tagbox
 			A,DIV
-				margin: 0px 5px 5px 0px
+				margin: 0 5px 5px 0
 				padding: 3px 10px 3px 10px
 				font-size: smaller
 
@@ -614,7 +614,7 @@ TABLE.diff
 	width: 100%
 	font-family: monospace
 	TD
-		padding: 0px 5px 0px 5px
+		padding: 0 5px 0 5px
 	TD:nth-child(3)
 		width: 45%
 	TD:nth-child(6)

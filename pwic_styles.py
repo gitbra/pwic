@@ -48,11 +48,10 @@ class pwic_styles_html:
     def getCss(self, rel: bool) -> str:
         if rel:
             return '<link rel="stylesheet" type="text/css" href="%s" />' % self.css
-        else:
-            content = ''
-            with open(self.css, 'r') as f:
-                content = f.read()
-            return '<style>%s</style>' % content
+        content = ''
+        with open(self.css, 'r') as f:
+            content = f.read()
+        return '<style>%s</style>' % content
 
 
 # =======================================

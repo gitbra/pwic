@@ -45,7 +45,7 @@ from datetime import datetime
 from pwic_md import Markdown
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
-    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, pwic_apostrophe, \
+    PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, \
     pwic_attachment_name, pwic_dt, pwic_dt_diff, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, \
     pwic_mime_compressed, pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, \
     pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
@@ -455,8 +455,7 @@ class PwicServer():
             if (len(pwic['projects']) == 1) and (len(pwic['joinable_projects']) == 0):
                 suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
                 raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
-            else:
-                return await self._handle_output(request, 'project-select', pwic)
+            return await self._handle_output(request, 'project-select', pwic)
 
         # Fetch the links of the header line
         sql.execute(''' SELECT a.page, a.title
@@ -524,7 +523,7 @@ class PwicServer():
                 return await self._handle_output(request, 'page', pwic)
 
             # Additional information for the special page
-            else:
+            if page_special:
                 # Fetch the recently updated pages
                 sql.execute(''' SELECT page, author, date, time, title, comment, milestone
                                 FROM pages
@@ -748,8 +747,7 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPInternalServerError()
-        else:
-            raise web.HTTPTemporaryRedirect('/%s/%s' % (project, row['page']))
+        raise web.HTTPTemporaryRedirect('/%s/%s' % (project, row['page']))
 
     async def page_audit(self, request: web.Request) -> web.Response:
         ''' Serve the page to monitor the settings and the activty '''
@@ -1015,11 +1013,14 @@ class PwicServer():
                                     ON  b.project = a.project
                                     AND b.page    = a.page
                             WHERE a.project = ?
-                              AND a.latest IN ('%sX')
+                              AND ( a.latest = 'X' OR 1 = ? )
                             ORDER BY a.date DESC,
-                                     a.time DESC''' % ("','" if with_rev else ''),
-                        (project, project))
-            for row in sql.fetchall():
+                                     a.time DESC''',
+                        (project, project, int(with_rev)))
+            while True:
+                row = sql.fetchone()
+                if row is None:
+                    break
                 tagList = pwic_list(row['tags'])
 
                 # Apply the filters
@@ -1070,20 +1071,13 @@ class PwicServer():
                     continue
 
                 # Save the found result
-                pwic['pages'].append({'project': row['project'],
-                                      'page': row['page'],
-                                      'revision': row['revision'],
-                                      'latest': pwic_xb(row['latest']),
-                                      'draft': pwic_xb(row['draft']),
-                                      'final': pwic_xb(row['final']),
-                                      'author': row['author'],
-                                      'date': row['date'],
-                                      'time': row['time'],
-                                      'title': row['title'],
-                                      'valuser': row['valuser'],
-                                      'valdate': row['valdate'],
-                                      'valtime': row['valtime'],
-                                      'score': score})
+                del row['markdown']
+                del row['tags']
+                del row['document_count']
+                for k in ['latest', 'draft', 'final']:
+                    row[k] = pwic_xb(row[k])
+                row['score'] = score
+                pwic['pages'].append(row)
 
         # Search for documents
         if not PwicExtension.on_search_documents(sql, user, pwic, query):
@@ -1092,7 +1086,11 @@ class PwicServer():
                             WHERE project = ?
                             ORDER BY filename''',
                         (project, ))
-            for row in sql.fetchall():
+            while True:
+                row = sql.fetchone()
+                if row is None:
+                    break
+
                 # Apply the filters
                 ok = True
                 for q in query['excluded']:
@@ -1172,7 +1170,7 @@ class PwicServer():
                                 'roles': []}
 
         # Fetch the roles
-        sql.execute(''' SELECT a.user, c.initial, c.password == '%s' AS oauth,
+        sql.execute(''' SELECT a.user, c.initial, c.password AS oauth,
                                a.admin, a.manager, a.editor, a.validator, a.reader, a.disabled
                         FROM roles AS a
                             INNER JOIN roles AS b
@@ -1181,25 +1179,20 @@ class PwicServer():
                                 AND b.admin    = 'X'
                                 AND b.disabled = ''
                             INNER JOIN users AS c
-                                ON  c.user = a.user
+                                ON c.user = a.user
                         WHERE a.project = ?
                         ORDER BY a.admin     DESC,
                                  a.manager   DESC,
                                  a.editor    DESC,
                                  a.validator DESC,
                                  a.reader    DESC,
-                                 a.user      ASC''' % pwic_apostrophe(PWIC_MAGIC_OAUTH),
+                                 a.user      ASC''',
                     (user, project))
         for row in sql.fetchall():
-            pwic['roles'].append({'user': row['user'],
-                                  'initial': pwic_xb(row['initial']),
-                                  'oauth': row['oauth'] == 1,
-                                  'admin': pwic_xb(row['admin']),
-                                  'manager': pwic_xb(row['manager']),
-                                  'editor': pwic_xb(row['editor']),
-                                  'validator': pwic_xb(row['validator']),
-                                  'reader': pwic_xb(row['reader']),
-                                  'disabled': pwic_xb(row['disabled'])})
+            for k in ['initial', 'admin', 'manager', 'editor', 'validator', 'reader', 'disabled']:
+                row[k] = pwic_xb(row[k])
+            row['oauth'] = (row['oauth'] == PWIC_MAGIC_OAUTH)
+            pwic['roles'].append(row)
 
         # Display the page
         if len(pwic['roles']) == 0:
@@ -1431,14 +1424,13 @@ class PwicServer():
         # Transfer the remote file
         if row['exturl'] != '':
             return web.HTTPFound(row['exturl'])
-        else:
-            # ... or the local file
-            headers = MultiDict({'Content-Type': row['mime'],
-                                 'Content-Length': str(row['size'])})
-            if request.rel_url.query.get('attachment', None) is not None:
-                headers['Content-Disposition'] = 'attachment; filename="%s"' % pwic_attachment_name(row['filename'])
-            PwicExtension.on_html_headers(headers, row['project'], None)
-            return web.FileResponse(path=filename, chunk_size=512 * 1024, status=200, headers=headers)
+        # ... or the local file
+        headers = MultiDict({'Content-Type': row['mime'],
+                             'Content-Length': str(row['size'])})
+        if request.rel_url.query.get('attachment', None) is not None:
+            headers['Content-Disposition'] = 'attachment; filename="%s"' % pwic_attachment_name(row['filename'])
+        PwicExtension.on_html_headers(headers, row['project'], None)
+        return web.FileResponse(path=filename, chunk_size=512 * 1024, status=200, headers=headers)
 
     async def document_all_get(self, request: web.Request) -> web.Response:
         ''' Download all the local documents assigned to a page '''
@@ -1490,10 +1482,9 @@ class PwicServer():
         inmemory.close()
         if counter == 0:
             raise web.HTTPNotFound()
-        else:
-            headers = {'Content-Type': str(pwic_mime('zip')),
-                       'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name('%s_%s.zip' % (project, page))}
-            return web.Response(body=buffer, headers=MultiDict(headers))
+        headers = {'Content-Type': str(pwic_mime('zip')),
+                   'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name('%s_%s.zip' % (project, page))}
+        return web.Response(body=buffer, headers=MultiDict(headers))
 
     def _active_auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str) -> bool:
         ''' Assign a user to the projects that require a forced membership '''
@@ -1561,8 +1552,7 @@ class PwicServer():
         # Final redirection (do not use "raise")
         if 'redirect' in request.rel_url.query:
             return web.HTTPFound('/' if ok else '/?failed')
-        else:
-            return web.HTTPOk() if ok else web.HTTPUnauthorized()
+        return web.HTTPOk() if ok else web.HTTPUnauthorized()
 
     async def api_oauth(self, request: web.Request) -> web.Response:
         ''' Manage the federated authentication '''
@@ -1801,8 +1791,7 @@ class PwicServer():
         user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
-        else:
-            return web.Response(text='OK', content_type=pwic_mime('txt'))
+        return web.Response(text='OK', content_type=pwic_mime('txt'))
 
     async def api_server_shutdown(self, request: web.Request) -> None:
         # Check the remote IP address
@@ -1910,12 +1899,12 @@ class PwicServer():
                                title, markdown, tags, comment, milestone,
                                valuser, valdate, valtime
                         FROM pages
-                        WHERE project = ?
-                          AND (page = ? OR '' = ?)
-                          AND latest IN ('%sX')
+                        WHERE   project = ?
+                          AND ( page    = ?   OR '' = ? )
+                          AND ( latest  = 'X' OR 1  = ? )
                         ORDER BY page ASC,
-                                 revision DESC''' % ("','" if allrevs else '', ),
-                    (project, page, page))
+                                 revision DESC''',
+                    (project, page, page, int(allrevs)))
         for row in sql.fetchall():
             if row['page'] not in data:
                 data[row['page']] = {'revisions': [],
@@ -2180,8 +2169,7 @@ class PwicServer():
             if (pos >= len(pages)) or (pages[pos] != tup):
                 insort(pages, tup)
                 return _get_node_id(project, page)
-            else:
-                return 'n%d' % (pos + 1)
+            return 'n%d' % (pos + 1)
 
         def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
             sql.execute(''' SELECT title
@@ -3022,7 +3010,7 @@ class PwicServer():
                     try:
                         os.rename(join(PWIC_DOCUMENTS_PATH % srcproj, f),
                                   join(PWIC_DOCUMENTS_PATH % dstproj, f))
-                    except Exception:
+                    except OSError:
                         ok = False
                 if not ok and not ignore_file_errors:
                     self.dbconn.rollback()
@@ -3180,7 +3168,7 @@ class PwicServer():
                         fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
                         try:
                             os.remove(fn)
-                        except (OSError, FileNotFoundError):
+                        except OSError:
                             if isfile(fn):
                                 ko = True
 
@@ -3202,9 +3190,8 @@ class PwicServer():
         if docKO > 0:
             self.dbconn.rollback()      # Possible partial deletion
             raise web.HTTPInternalServerError()
-        else:
-            self.dbconn.commit()
-            raise web.HTTPOk()
+        self.dbconn.commit()
+        raise web.HTTPOk()
 
     async def api_page_export(self, request: web.Request) -> web.Response:
         ''' API to export a page '''
@@ -3258,8 +3245,7 @@ class PwicServer():
         if done:
             if newbody is None:
                 raise web.HTTPNotFound()
-            else:
-                return web.Response(body=newbody, headers=MultiDict(newheaders))
+            return web.Response(body=newbody, headers=MultiDict(newheaders))
 
         # Format MD
         if extension == 'md':
@@ -3268,7 +3254,7 @@ class PwicServer():
             return web.Response(body=row['markdown'], headers=MultiDict(headers))
 
         # Format HTML
-        elif extension == 'html':
+        if extension == 'html':
             htmlStyles = pwic_styles_html()
             html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
                                       row['date'],
@@ -3285,7 +3271,7 @@ class PwicServer():
             return web.Response(body=html, headers=MultiDict(headers))
 
         # Format ODT
-        elif extension == 'odt':
+        if extension == 'odt':
             # MarkDown --> HTML --> ODT
             html = self._md2html(sql, project, page, revision, row['markdown'],
                                  cache=False,    # No cache to recalculate the headers and the code blocks
@@ -3399,8 +3385,7 @@ class PwicServer():
             return web.Response(body=buffer, headers=MultiDict(headers))
 
         # Other format
-        else:
-            raise web.HTTPUnsupportedMediaType()
+        raise web.HTTPUnsupportedMediaType()
 
     async def api_markdown(self, request: web.Request) -> web.Response:
         ''' Return the HTML corresponding to the posted Markdown '''
@@ -3610,47 +3595,44 @@ class PwicServer():
                               AND user    = ?
                               AND user   <> ?''',
                         (project, userpost, user))
-            if sql.rowcount > 0:
-                pwic_audit(sql, {'author': user,
-                                 'event': 'delete-user',
-                                 'project': project,
-                                 'user': userpost},
-                           request)
-                self.dbconn.commit()
-                return web.Response(text='OK', content_type=pwic_mime('txt'))
-            else:
-                self.dbconn.rollback()
-                raise web.HTTPBadRequest()
-
-        # New role
-        else:
-            newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
-            if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
-                self.dbconn.rollback()
-                raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
-            if not PwicExtension.on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue):
-                self.dbconn.rollback()
-                raise web.HTTPUnauthorized()
-            try:
-                sql.execute(''' UPDATE roles
-                                SET %s = ?
-                                WHERE project = ?
-                                  AND user    = ?''' % roles[roleid],
-                            (newvalue, project, userpost))
-            except sqlite3.IntegrityError:
-                self.dbconn.rollback()
-                raise web.HTTPUnauthorized()
             if sql.rowcount == 0:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
-            else:
-                pwic_audit(sql, {'author': user,
-                                 'event': '%s-%s' % ('grant' if pwic_xb(newvalue) else 'ungrant', roles[roleid]),
-                                 'project': project,
-                                 'user': userpost},
-                           request)
-                self.dbconn.commit()
-                return web.Response(text=newvalue, content_type=pwic_mime('txt'))
+            pwic_audit(sql, {'author': user,
+                             'event': 'delete-user',
+                             'project': project,
+                             'user': userpost},
+                       request)
+            self.dbconn.commit()
+            return web.Response(text='OK', content_type=pwic_mime('txt'))
+
+        # New role
+        newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
+        if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
+            self.dbconn.rollback()
+            raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
+        if not PwicExtension.on_api_user_roles_set(sql, project, user, userpost, roles[roleid], newvalue):
+            self.dbconn.rollback()
+            raise web.HTTPUnauthorized()
+        try:
+            query = ''' UPDATE roles
+                        SET %s = ?
+                        WHERE project = ?
+                          AND user    = ?''' % roles[roleid]
+            sql.execute(query, (newvalue, project, userpost))
+        except sqlite3.IntegrityError:
+            self.dbconn.rollback()
+            raise web.HTTPUnauthorized()
+        if sql.rowcount == 0:
+            self.dbconn.rollback()
+            raise web.HTTPBadRequest()
+        pwic_audit(sql, {'author': user,
+                         'event': '%s-%s' % ('grant' if pwic_xb(newvalue) else 'ungrant', roles[roleid]),
+                         'project': project,
+                         'user': userpost},
+                   request)
+        self.dbconn.commit()
+        return web.Response(text=newvalue, content_type=pwic_mime('txt'))
 
     async def api_document_create(self, request: web.Request) -> None:
         ''' API to create a new document '''
@@ -3804,25 +3786,24 @@ class PwicServer():
             if row['page'] != doc['page']:      # Existing document = Delete + Keep same ID (replace it)
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()      # Existing document on another page = do nothing
-            else:
-                if row['exturl'] == '':
-                    # Local file
-                    try:
-                        fn = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
-                        os.remove(fn)
-                    except (OSError, FileNotFoundError):
-                        if isfile(fn):
-                            self.dbconn.rollback()
-                            raise web.HTTPInternalServerError()
-                else:
-                    # External file
-                    if not PwicExtension.on_api_document_delete(sql, doc['project'], user, doc['page'], row['id'], doc['filename']):
+            if row['exturl'] == '':
+                # Local file
+                try:
+                    fn = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
+                    os.remove(fn)
+                except OSError:
+                    if isfile(fn):
                         self.dbconn.rollback()
                         raise web.HTTPInternalServerError()
-                sql.execute(''' DELETE FROM documents
-                                WHERE id = ?''',
-                            (row['id'], ))
-                forcedId = row['id']
+            else:
+                # External file
+                if not PwicExtension.on_api_document_delete(sql, doc['project'], user, doc['page'], row['id'], doc['filename']):
+                    self.dbconn.rollback()
+                    raise web.HTTPInternalServerError()
+            sql.execute(''' DELETE FROM documents
+                            WHERE id = ?''',
+                        (row['id'], ))
+            forcedId = row['id']
 
         # Upload the file on the server
         try:
@@ -3830,7 +3811,7 @@ class PwicServer():
             f = open(filename, 'wb')            # Rewrite any existing file
             f.write(doc['content'])
             f.close()
-        except Exception:
+        except OSError:
             self.dbconn.rollback()
             raise web.HTTPInternalServerError()
 
@@ -3886,10 +3867,9 @@ class PwicServer():
         # Redirect to the file
         if docid > 0:
             return web.HTTPFound('/special/document/%d%s' % (docid, '?attachment' if attachment else ''))
-        elif '' not in [project, page]:
+        if '' not in [project, page]:
             return web.HTTPFound('/special/documents/%s/%s/download' % (project, page))
-        else:
-            raise web.HTTPBadRequest()
+        raise web.HTTPBadRequest()
 
     async def api_document_list(self, request: web.Request) -> web.Response:
         ''' Return the list of the attached documents '''
@@ -3987,7 +3967,7 @@ class PwicServer():
             fn = join(PWIC_DOCUMENTS_PATH % project, filename)
             try:
                 os.remove(fn)
-            except (OSError, FileNotFoundError):
+            except OSError:
                 if isfile(fn):
                     self.dbconn.rollback()
                     raise web.HTTPInternalServerError()
@@ -4037,7 +4017,7 @@ def main() -> bool:
         print('Error: English template is missing')
         return False
     # ... templates
-    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH), trim_blocks=True, lstrip_blocks=True)
+    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH), autoescape=False, trim_blocks=True, lstrip_blocks=True)
     app['jinja'].filters['ishex'] = pwic_ishex
     # ... SQLite
     app['sql'] = sqlite3.connect(PWIC_DB_SQLITE)

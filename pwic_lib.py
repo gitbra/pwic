@@ -333,24 +333,18 @@ def pwic_mime2icon(mime: str) -> str:
     ''' Return the emoji that corresponds to the MIME '''
     if mime[:6] == 'image/':
         return PWIC_EMOJIS['image']
-    elif mime[:6] == 'video/':
+    if mime[:6] == 'video/':
         return PWIC_EMOJIS['camera']
-    elif mime[:6] == 'audio/':
+    if mime[:6] == 'audio/':
         return PWIC_EMOJIS['headphone']
-    elif mime[:12] == 'application/':
+    if mime[:12] == 'application/':
         return PWIC_EMOJIS['server']
-    else:
-        return PWIC_EMOJIS['sheet']
+    return PWIC_EMOJIS['sheet']
 
 
 # ===================================================
 #  Reusable functions
 # ===================================================
-
-def pwic_apostrophe(value: str) -> str:
-    ''' Escape a string to prepare an SQL query '''
-    return '' if value is None else value.replace("'", "\\'")
-
 
 def pwic_attachment_name(name: str) -> str:
     ''' Return the file name for a proper download '''
@@ -381,8 +375,7 @@ def pwic_int(value: Any, base=10) -> int:
     try:
         if base == 10:
             return int(value)
-        else:
-            return int(value, base)
+        return int(value, base)
     except (ValueError, TypeError):
         return 0
 
@@ -407,12 +400,12 @@ def pwic_flag(flag: str) -> str:
     return emoji
 
 
-def pwic_list(input: Optional[str], do_sort: bool = False) -> List[str]:
+def pwic_list(inputstr: Optional[str], do_sort: bool = False) -> List[str]:
     ''' Build a list of unique values from a string and keep the initial order (by default) '''
-    if input is None:
-        input = ''
-    input = pwic_recursive_replace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
-    values = [] if input == '' else list(OrderedDict((item, None) for item in input.split(' ')))
+    if inputstr is None:
+        inputstr = ''
+    inputstr = pwic_recursive_replace(inputstr.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
+    values = [] if inputstr == '' else list(OrderedDict((e, None) for e in inputstr.split(' ')))
     if do_sort:
         values.sort()
     return values
@@ -483,8 +476,8 @@ def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
     chars = PWIC_CHARS_UNSAFE + extra
     if name is None:
         name = ''
-    for i in range(len(chars)):
-        name = name.replace(chars[i], '')
+    for c in chars:
+        name = name.replace(c, '')
     return name.strip().lower()[:pwic_int(PWIC_DEFAULTS['limit_filename'])]
 
 
@@ -498,9 +491,8 @@ def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     if type(value) == bytearray:
         assert(salt is False)
         return sha256(value).hexdigest()
-    else:
-        text = (PWIC_SALT if salt else '') + str(value)
-        return sha256(text.encode()).hexdigest()
+    text = (PWIC_SALT if salt else '') + str(value)
+    return sha256(text.encode()).hexdigest()
 
 
 def pwic_sha256_file(filename: str) -> str:
@@ -543,8 +535,8 @@ def pwic_sql_print(query: Optional[str]) -> None:
 def pwic_str2bytearray(inputstr: str) -> bytearray:
     ''' Convert string to bytearray '''
     barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
-    for i in range(len(inputstr)):
-        barr.append(ord(inputstr[i]))
+    for c in inputstr:
+        barr.append(ord(c))
     return barr
 
 
@@ -636,8 +628,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
         mask += PWIC_DEFAULTS['heading'][a - b:]
 
     # For each line
-    for i in range(len(lines)):
-        line = lines[i]
+    for i, line in enumerate(lines):
         match = reg_header.match(line)
         if match is not None:
             depth = int(match.group(1))
@@ -697,10 +688,11 @@ def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Op
     tupstr = ''
     tup: Tuple[Union[str, int], ...] = ()
     for key in obj:
-        fields += '%s, ' % key
+        fields += '%s, ' % pwic_safe_name(key)
         tupstr += '?, '
         tup += (obj[key], )
-    sql.execute("INSERT INTO audit.audit (%s) VALUES (%s)" % (fields[:-2], tupstr[:-2]), tup)
+    query = 'INSERT INTO audit.audit (%s) VALUES (%s)' % (fields[:-2], tupstr[:-2])
+    sql.execute(query, tup)
     assert(sql.rowcount == 1)
 
     # Specific event
@@ -963,11 +955,11 @@ class pwic_html2odt(HTMLParser):
         if tag == lastTag == 'p':
             return
         # ... list item should be enclosed by <p>
-        elif tag != 'p' and lastTag == 'li':
+        if (tag != 'p') and (lastTag == 'li'):
             self.tag_path.append('p')
             self.odt += '<%s>' % self.maps['p']
         # ... subitems should close <p>
-        elif tag in ['ul', 'ol'] and lastTag == 'p':
+        elif (tag in ['ul', 'ol']) and (lastTag == 'p'):
             self.tag_path.pop()
             self.odt += '</%s>' % self.maps['p']
         del lastTag
@@ -1068,10 +1060,10 @@ class pwic_html2odt(HTMLParser):
         # Rules
         lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
         # ... no imbricated paragraphs
-        if tag == 'p' and lastTag != 'p':
+        if (tag == 'p') and (lastTag != 'p'):
             return
         # ... list item should be enclosed by <p>
-        elif tag == 'li' and lastTag == 'p':
+        if (tag == 'li') and (lastTag == 'p'):
             self.tag_path.pop()
             self.odt += '</%s>' % self.maps['p']
         del lastTag

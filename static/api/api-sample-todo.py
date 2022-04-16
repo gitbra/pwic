@@ -60,8 +60,8 @@ if tab.rowcount == 0:
     print('There is no work in progress.')
 else:
     tab.field_names = ['Project', 'Page', 'Type', 'Action']
-    for i in range(len(tab.field_names)):
-        tab.align[tab.field_names[i]] = 'l'
+    for f in tab.field_names:
+        tab.align[f] = 'l'
     tab.header = True
     tab.border = True
     print(tab.get_string())

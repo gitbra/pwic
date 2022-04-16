@@ -169,65 +169,66 @@ def main() -> bool:
     args = parser.parse_args()
     if args.command == 'init-db':
         return init_db()
-    elif args.command == 'show-env':
+    if args.command == 'show-env':
         return show_env(args.project, args.var)
-    elif args.command == 'set-env':
+    if args.command == 'set-env':
         return set_env(args.project, args.name, args.value, args.override, args.append, args.remove)
-    elif args.command == 'repair-env':
+    if args.command == 'repair-env':
         return repair_env(args.test)
-    elif args.command == 'show-mime':
+    if args.command == 'show-mime':
         return show_mime()
-    elif args.command == 'show-projects':
+    if args.command == 'show-projects':
         return show_projects()
-    elif args.command == 'create-project':
+    if args.command == 'create-project':
         return create_project(args.project, args.description, args.admin)
-    elif args.command == 'takeover-project':
+    if args.command == 'takeover-project':
         return takeover_project(args.project, args.admin)
-    elif args.command == 'split-project':
+    if args.command == 'split-project':
         return split_project(args.project, args.no_history)
-    elif args.command == 'delete-project':
+    if args.command == 'delete-project':
         return delete_project(args.project)
-    elif args.command == 'create-user':
+    if args.command == 'create-user':
         return create_user(args.user)
-    elif args.command == 'reset-password':
+    if args.command == 'reset-password':
         return reset_password(args.user, args.create, args.oauth)
-    elif args.command == 'assign-user':
+    if args.command == 'assign-user':
         return assign_user(args.project, args.user)
-    elif args.command == 'revoke-user':
+    if args.command == 'revoke-user':
         return revoke_user(args.user, args.force)
-    elif args.command == 'show-audit':
+    if args.command == 'show-audit':
         return show_audit(args.min, args.max)
-    elif args.command == 'show-login':
+    if args.command == 'show-login':
         return show_login(args.days)
-    elif args.command == 'show-stats':
+    if args.command == 'show-stats':
         return show_stats()
-    elif args.command == 'show-inactivity':
+    if args.command == 'show-inactivity':
         return show_inactivity(args.project, args.days)
-    elif args.command == 'compress-static':
+    if args.command == 'compress-static':
         return compress_static(args.revert)
-    elif args.command == 'clear-cache':
+    if args.command == 'clear-cache':
         return clear_cache(args.project, args.selective)
-    elif args.command == 'rotate-logs':
+    if args.command == 'rotate-logs':
         return rotate_logs(args.count)
-    elif args.command == 'archive-audit':
+    if args.command == 'archive-audit':
         return archive_audit(args.selective, args.complete)
-    elif args.command == 'show-git':
+    if args.command == 'show-git':
         return show_git()
-    elif args.command == 'create-backup':
+    if args.command == 'create-backup':
         return create_backup()
-    elif args.command == 'repair-documents':
+    if args.command == 'repair-documents':
         return repair_documents(args.project, args.no_hash, args.no_magic, args.keep_orphans, args.test)
-    elif args.command == 'execute-optimize':
+    if args.command == 'execute-optimize':
         return execute_optimize()
-    elif args.command == 'unlock-db':
+    if args.command == 'unlock-db':
         return unlock_db(args.port, args.secure, args.force)
-    elif args.command == 'execute-sql':
+    if args.command == 'execute-sql':
         return execute_sql()
-    elif args.command == 'shutdown-server':
+    if args.command == 'shutdown-server':
         return shutdown_server(args.port, args.force)
-    else:
-        parser.print_help()
-        return False
+
+    # Default behavior
+    parser.print_help()
+    return False
 
 
 # ===== Database =====
@@ -552,8 +553,7 @@ def show_env(project: str, var: str) -> bool:
         print('\nGlobal and project-dependent variables:')
         print(tab.get_string())
         return True
-    else:
-        return var == ''
+    return var == ''
 
 
 def set_env(project: str, key: str, value: str, override: bool, append: bool, remove: bool) -> bool:
@@ -1046,7 +1046,7 @@ def delete_project(project: str) -> bool:
         if row['exturl'] == '':
             try:
                 os.remove(fn)
-            except (OSError, FileNotFoundError):
+            except OSError:
                 if isfile(fn):
                     print('Error: unable to delete "%s"' % fn)
                     db_rollback()
@@ -1856,7 +1856,7 @@ def compress_static(revert: bool) -> bool:
                     os.remove(fn)
                     print('Removing "%s"' % fn)
                     counter += 1
-                except (OSError, FileNotFoundError):
+                except OSError:
                     print('Failed to remove "%s"' % fn)
     if counter > 0:
         print('%d files were processed' % counter)
@@ -1930,38 +1930,38 @@ def rotate_logs(nfiles: int) -> bool:
     # ... first file
     try:
         rename(fn, fn + '.tmp')
-    except Exception:
+    except OSError:
         print('Error: Pwic.wiki is running, never ran recently, incorrect file name, or no authorization')
         return False
     # ... remove the oldest file
     try:
         os.remove('%s.%d.gz' % (fn, nfiles))
-    except Exception:
+    except OSError:
         pass
     # ... rotate the files
     for i in reversed(range(1, nfiles)):    # i=[1..nfiles-1]
         try:
             rename('%s.%d.gz' % (fn, i),
                    '%s.%d.gz' % (fn, i + 1))
-        except Exception:
+        except OSError:
             pass
     # ... compress last file
     try:
         with open(fn + '.0', 'rb') as src:
             with gzip.open(fn + '.1.gz', 'wb') as dst:
                 copyfileobj(src, dst)
-    except Exception:
+    except OSError:
         print('Error: the compression of the file #1 failed')
         return False
     # ... remove the compressed file
     try:
         os.remove(fn + '.0')
-    except Exception:
+    except OSError:
         pass
     # ... rotate the first file
     try:
         rename(fn + '.tmp', fn + '.0')
-    except Exception:
+    except OSError:
         pass
 
     # Final
@@ -2060,35 +2060,35 @@ def create_backup() -> bool:
     new = PWIC_DB_SQLITE_BACKUP % stamp
     try:
         copyfile(PWIC_DB_SQLITE, new)
-        if isfile(new):
-            # Log the event
-            audit_id = 0
-            sql = db_connect()
+        if not isfile(new):
+            raise FileNotFoundError('Error: file "%s" not created' % new)
+
+        # Log the event
+        audit_id = 0
+        sql = db_connect()
+        if sql is not None:
+            sql.execute(''' SELECT MAX(id) AS id
+                            FROM audit''')
+            audit_id = pwic_int(sql.fetchone()['id'])
+            pwic_audit(sql, {'author': PWIC_USERS['system'],
+                             'event': 'create-backup',
+                             'string': stamp})
+            db_commit()
+
+        # Mark the new database
+        if audit_id > 0:
+            sql = db_connect(master=False, dbfile=new)
             if sql is not None:
-                sql.execute(''' SELECT MAX(id) AS id
-                                FROM audit''')
-                audit_id = pwic_int(sql.fetchone()['id'])
-                pwic_audit(sql, {'author': PWIC_USERS['system'],
-                                 'event': 'create-backup',
-                                 'string': stamp})
+                sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                                VALUES ('', 'pwic_audit_id', ?)''',
+                            (audit_id, ))
                 db_commit()
 
-            # Mark the new database
-            if audit_id > 0:
-                sql = db_connect(master=False, dbfile=new)
-                if sql is not None:
-                    sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
-                                    VALUES ('', 'pwic_audit_id', ?)''',
-                                (audit_id, ))
-                    db_commit()
-
-            # Final
-            chmod(new, S_IREAD)
-            print('Backup of the main database created in "%s"' % new)
-            print('The uploaded documents remain in their place')
-            return True
-        else:
-            raise FileNotFoundError('Error: file "%s" not created' % new)
+        # Final
+        chmod(new, S_IREAD)
+        print('Backup of the main database created in "%s"' % new)
+        print('The uploaded documents remain in their place')
+        return True
     except Exception as e:
         print(str(e))
         return False
@@ -2173,7 +2173,7 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                     if not test:
                         removedirs(path)
                     tab.add_row(['Delete', 'Folder', p, path, 'Orphaned'])
-                except (OSError, FileNotFoundError):
+                except OSError:
                     print('Failed to delete the folder "%s"' % path)
 
     # Check the files per project
@@ -2207,7 +2207,7 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                         if not test:
                             os.remove(path)
                         tab.add_row(['Delete', 'File', p, path, 'Orphaned'])
-                    except (OSError, FileNotFoundError):
+                    except OSError:
                         print('Failed to delete the file "%s"' % path)
 
     # Verify the integrity of the files
@@ -2261,7 +2261,7 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                     except ValueError:
                         pass
 
-            except (OSError, FileNotFoundError):    # Can occur in test mode
+            except OSError:    # Can occur in test mode
                 print('Failed to analyze the file "%s"' % path)
                 continue
 
@@ -2392,8 +2392,7 @@ def shutdown_server(port: int, force: bool) -> bool:
         if isinstance(e, RemoteDisconnected):
             print('OK')
             return True
-        else:
-            print('failed\nError: %s' % str(e))
+        print('failed\nError: %s' % str(e))
     return False
 
 

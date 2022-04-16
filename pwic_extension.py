@@ -323,9 +323,8 @@ class PwicExtension():
         '''
         if request is None:
             return ''
-        else:
-            # return str(request.headers.get('X-Forwarded-For', request.remote))    # Enable this line if you use a reverse proxy
-            return str(request.remote)
+        # return str(request.headers.get('X-Forwarded-For', request.remote))    # Enable this line if you use a reverse proxy
+        return str(request.remote)
 
     @staticmethod
     def on_login(sql: sqlite3.Cursor,                       # Cursor to query the database
