@@ -84,18 +84,18 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file
                                 'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains',
                                 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
-                              'document_name_regex', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
+                              'document_name_regex', 'emojis', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
                               'keep_drafts', 'language', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
                               'max_revision_count', 'max_revision_size', 'mde', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
                               'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_new_user', 'no_printing', 'no_rss',
                               'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                              'odt_page_width', 'quick_fix', 'robots', 'rss_size', 'support_email', 'support_phone', 'support_text',
-                              'support_url', 'title', 'validated_only']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
+                              'odt_page_width', 'quick_fix', 'robots', 'rss_size', 'skipped_tags', 'support_email', 'support_phone',
+                              'support_text', 'support_url', 'title', 'validated_only']
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
                                      'language', 'mathjax', 'mde', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_printing',
-                                     'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max',
-                                     'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'support_email', 'support_phone',
-                                     'support_text', 'support_url', 'title', 'validated_only']
+                                     'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                                     'odt_page_width', 'quick_fix', 'rss_size', 'support_email', 'support_phone', 'support_text', 'support_url',
+                                     'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
@@ -137,7 +137,6 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'plug': '&#x1F50C;',
                'plus': '&#x2795;',
                'printer': '&#x1F5A8;',
-               'save': '&#x1F4BE;',
                'recycle': '&#x267B;',
                'red_check': '&#x274C;',
                'refresh': '&#x1F504;',
@@ -377,12 +376,19 @@ def pwic_dt_diff(date1: str, date2: str) -> int:
     return (d2 - d1).days
 
 
-def pwic_int(value: Any) -> int:
-    ''' Safe conversion to integer '''
+def pwic_int(value: Any, base=10) -> int:
+    ''' Safe conversion to integer in the chosen base '''
     try:
-        return int(value)
+        if base == 10:
+            return int(value)
+        else:
+            return int(value, base)
     except (ValueError, TypeError):
         return 0
+
+
+def pwic_ishex(value: str) -> bool:
+    return pwic_int(str(value), base=16) > 0
 
 
 def pwic_flag(flag: str) -> str:
@@ -401,20 +407,20 @@ def pwic_flag(flag: str) -> str:
     return emoji
 
 
-def pwic_list(input: Optional[str], sorted: bool = False) -> List[str]:
+def pwic_list(input: Optional[str], do_sort: bool = False) -> List[str]:
     ''' Build a list of unique values from a string and keep the initial order (by default) '''
     if input is None:
         input = ''
     input = pwic_recursive_replace(input.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
     values = [] if input == '' else list(OrderedDict((item, None) for item in input.split(' ')))
-    if sorted:
+    if do_sort:
         values.sort()
     return values
 
 
 def pwic_list_tags(tags: str) -> str:
     ''' Reorder a list of tags written as a string '''
-    return ' '.join(pwic_list(tags.replace('#', '').lower(), sorted=True))
+    return ' '.join(pwic_list(tags.replace('#', '').lower(), do_sort=True))
 
 
 def pwic_option(sql: Optional[sqlite3.Cursor],
@@ -500,19 +506,19 @@ def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
 def pwic_sha256_file(filename: str) -> str:
     ''' Calculate the SHA256 as string for the given file '''
     try:
-        hash = sha256()
+        hashval = sha256()
         with open(filename, 'rb') as f:
             for block in iter(lambda: f.read(4096), b''):
-                hash.update(block)
-        return hash.hexdigest()
-    except Exception:
+                hashval.update(block)
+        return hashval.hexdigest()
+    except FileNotFoundError:
         return ''
 
 
-def pwic_shrink(input: Optional[str]) -> str:
-    if input is None:
-        input = ''
-    return input.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
+def pwic_shrink(value: Optional[str]) -> str:
+    if value is None:
+        value = ''
+    return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
 
 
 def pwic_size2str(size: Union[int, float]) -> str:
@@ -534,11 +540,11 @@ def pwic_sql_print(query: Optional[str]) -> None:
                               ' '.join([pwic_recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
 
 
-def pwic_str2bytearray(input: str) -> bytearray:
+def pwic_str2bytearray(inputstr: str) -> bytearray:
     ''' Convert string to bytearray '''
     barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
-    for i in range(len(input)):
-        barr.append(ord(input[i]))
+    for i in range(len(inputstr)):
+        barr.append(ord(inputstr[i]))
     return barr
 
 
@@ -676,31 +682,31 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 #  Traceability of the activities
 # ===================================================
 
-def pwic_audit(sql: sqlite3.Cursor, object: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
+def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
     ''' Save an event into the audit log '''
     # Forced properties of the event
     dt = pwic_dt()
-    object['date'] = dt['date']
-    object['time'] = dt['time']
+    obj['date'] = dt['date']
+    obj['time'] = dt['time']
     if request is not None:
-        object['ip'] = str(request.remote)
-    assert(object.get('event', '') != '')
+        obj['ip'] = str(request.remote)
+    assert(obj.get('event', '') != '')
 
     # Log the event
     fields = ''
-    tups = ''
-    tuple: Tuple[Union[str, int], ...] = ()
-    for key in object:
+    tupstr = ''
+    tup: Tuple[Union[str, int], ...] = ()
+    for key in obj:
         fields += '%s, ' % key
-        tups += '?, '
-        tuple += (object[key], )
-    sql.execute("INSERT INTO audit.audit (%s) VALUES (%s)" % (fields[:-2], tups[:-2]), tuple)
+        tupstr += '?, '
+        tup += (obj[key], )
+    sql.execute("INSERT INTO audit.audit (%s) VALUES (%s)" % (fields[:-2], tupstr[:-2]), tup)
     assert(sql.rowcount == 1)
 
     # Specific event
     from pwic_extension import PwicExtension
     try:
-        PwicExtension.on_audit(sql, object, request is not None)
+        PwicExtension.on_audit(sql, obj, request is not None)
     except Exception:
         pass
 
@@ -785,6 +791,10 @@ def pwic_search2string(query: Dict[str, List[str]]) -> str:
 # ===================================================
 
 class pwic_html_cleaner(HTMLParser):
+    def __init__(self, skipped_tags: str):
+        HTMLParser.__init__(self)
+        self._skipped_tags = pwic_list('applet iframe link meta script style ' + skipped_tags.lower())
+
     def reset(self):
         HTMLParser.reset(self)
         self._mute = ''                 # Tag switched off until </> is found
@@ -793,7 +803,7 @@ class pwic_html_cleaner(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         tag = tag.strip().lower()
-        if (self._mute == '') and (tag in ['applet', 'iframe', 'link', 'meta', 'script', 'style']):
+        if (self._mute == '') and (tag in self._skipped_tags):
             self._mute = tag
             return
         if (self._code == '') and (tag in ['blockcode', 'code', 'svg']):
@@ -982,11 +992,11 @@ class pwic_html2odt(HTMLParser):
                 # Tag itself
                 self.odt += '<' + str(self.maps[tag])
                 if tag in self.attributes:
-                    for property in self.attributes[tag]:
-                        property_value = self.attributes[tag][property]
+                    for property_key in self.attributes[tag]:
+                        property_value = self.attributes[tag][property_key]
                         if property_value[:1] != '#':
-                            if property[:5] != 'dummy':
-                                self.odt += ' %s="%s"' % (property, escape(property_value))
+                            if property_key[:5] != 'dummy':
+                                self.odt += ' %s="%s"' % (property_key, escape(property_value))
                         else:
                             property_value = property_value[1:]
                             if tag == 'p':
@@ -1033,8 +1043,8 @@ class pwic_html2odt(HTMLParser):
                                         if (tag == 'span') and self.blockcode_on and (key == 'class'):
                                             value = 'Code_' + value
 
-                                        if property[:5] != 'dummy':
-                                            self.odt += ' %s="%s"' % (property, escape(value))
+                                        if property_key[:5] != 'dummy':
+                                            self.odt += ' %s="%s"' % (property_key, escape(value))
                                         break
                 if tag in self.noclosing:
                     self.odt += '/'

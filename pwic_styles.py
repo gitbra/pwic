@@ -136,7 +136,7 @@ class pwic_styles_odt:
                             'nl': '<style:style style:name="Code_nl" style:display-name="Code NL" style:family="text"><style:text-properties fo:color="#BC7A00" /></style:style>',
                             'no': '<style:style style:name="Code_no" style:display-name="Code NO" style:family="text"><style:text-properties fo:color="#880000" /></style:style>',
                             'nt': '<style:style style:name="Code_nt" style:display-name="Code NT" style:family="text"><style:text-properties fo:color="#2080C0" fo:font-weight="bold" /></style:style>',
-                            'nv': '<style:style style:name="Code_nv" style:display-name="Code NV" style:family="text"><style:text-properties fo:color="#800080" /></style:style>',
+                            'nv': '<style:style style:name="Code_nv" style:display-name="Code NV" style:family="text"><style:text-properties fo:color="#2F4F4F" /></style:style>',
                             'ow': '<style:style style:name="Code_ow" style:display-name="Code OW" style:family="text"><style:text-properties fo:color="#800080" fo:font-weight="bold" /></style:style>',
                             's': '<style:style style:name="Code_s" style:display-name="Code S" style:family="text"><style:text-properties fo:color="#FF0000" /></style:style>',
                             's1': '<style:style style:name="Code_s1" style:display-name="Code S1" style:family="text"><style:text-properties fo:color="#FF0000" /></style:style>',

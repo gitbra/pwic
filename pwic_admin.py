@@ -446,13 +446,11 @@ CREATE TABLE "documents" (
 
 
 def db_commit() -> None:
-    global db
     if db is not None:
         db.commit()
 
 
 def db_rollback() -> None:
-    global db
     if db is not None:
         db.rollback()
 
@@ -701,13 +699,13 @@ def show_mime() -> bool:
             # Read the declared content type
             handle = winreg.OpenKey(root, name)
             try:
-                value, type = winreg.QueryValueEx(handle, 'Content Type')
+                value, typ = winreg.QueryValueEx(handle, 'Content Type')
             except FileNotFoundError:
-                value, type = None, winreg.REG_NONE
+                value, typ = None, winreg.REG_NONE
             winreg.CloseKey(handle)
 
             # Consider the mime if it exists
-            if type == winreg.REG_SZ:
+            if typ == winreg.REG_SZ:
                 tab.add_row([name, value])
 
     # Final output
@@ -2229,8 +2227,8 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
                         with open(path, 'rb') as fh:
                             content = fh.read(32)
                         ok = False
-                        for bytes in magics:
-                            ok = ok or (content[:len(bytes)] == pwic_str2bytearray(bytes))
+                        for mb in magics:
+                            ok = ok or (content[:len(mb)] == pwic_str2bytearray(mb))
                         if not ok:
                             if not test:
                                 os.remove(path)
@@ -2240,13 +2238,13 @@ def repair_documents(project: str, no_hash: bool, no_magic: bool, keep_orphans: 
 
                 # Size and hash
                 size = getsize(path)
-                hash = row['hash'] if no_hash else pwic_sha256_file(path)
-                if (size != row['size']) or (hash != row['hash']):
+                hashval = row['hash'] if no_hash else pwic_sha256_file(path)
+                if (size != row['size']) or (hashval != row['hash']):
                     if not test:
                         sql.execute(''' UPDATE documents
                                         SET size = ?, hash = ?
                                         WHERE ID = ?''',
-                                    (size, hash, row['id']))
+                                    (size, hashval, row['id']))
                     tab.add_row(['Update', 'Database', p, '%d,%s' % (row['id'], path), 'Modified'])
 
                 # Width and height

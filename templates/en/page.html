@@ -55,9 +55,9 @@
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/move">{{pwic.emojis.truck}} Move</a>
 			{% endif %}
 
-			<a class="pwic_js" href="#" onclick="page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
+			<a class="pwic_js" href="#" onclick="return page_email('Warning: the current page is a draft, so its content may disappear in the future without notice.')">{{pwic.emojis.outbox}} Email</a>
 			{% if not pwic.env.no_printing %}
-				<a class="pwic_desktop pwic_js" href="#" onclick="page_print()">{{pwic.emojis.printer}} Print</a>
+				<a class="pwic_desktop pwic_js" href="#" onclick="return page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}
 
 			{% set formats = pwic.env.get('file_formats', {'value': ''}).value.split(' ') %}

@@ -3,11 +3,7 @@
 
 	// -------------------------------- Toolbar
 
-	function edit_decorate(tag) {
-		return edit_decorate2(tag, tag);
-	}
-
-	function edit_decorate2(tagStart, tagEnd) {
+	function edit_decorate(tagStart, tagEnd) {
 		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
@@ -18,6 +14,16 @@
 		ta.value = ta.value.substring(0, ss) + tagStart + ta.value.substring(ss, se) + tagEnd + ta.value.substring(se);
 		ta.selectionStart = ss + tagStart.length;
 		ta.selectionEnd = se + tagEnd.length;
+		ta.focus();
+		return true;
+	}
+
+	function edit_decorate_end(text) {
+		var	ta = $('#edit_markdown')[0],
+			se = ta.selectionEnd;
+		ta.value = ta.value.substring(0, se) + text + ta.value.substring(se);
+		ta.selectionStart = se + text.length;
+		ta.selectionEnd = ta.selectionStart;
 		ta.focus();
 		return true;
 	}
@@ -33,7 +39,7 @@
 
 		// Check the current selection for an autolink
 		if (ta.value.substring(ss, se).match('^[a-z]{3,5}:\/\/'))
-			return edit_decorate2('<', '>');
+			return edit_decorate('<', '>');
 
 		// Ask for the link
 		var url = prompt(text, '');
@@ -220,7 +226,7 @@
 				{
 					var doc = data[i];
 					buffer += '<tr>\
-									<td><a href="#" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')">{{pwic.emojis.plus}}<\/a><\/td>\
+									<td><a href="#" onclick="return edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')">{{pwic.emojis.plus}}<\/a><\/td>\
 									<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
 									<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
 									<td title="Hash: '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\

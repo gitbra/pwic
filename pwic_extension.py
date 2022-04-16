@@ -52,7 +52,6 @@ class PwicExtension():
             It is up to you to update safely the table of the documents and do the appropriate audit.
             By using the field "documents.exturl", the file must not exist locally anymore.
         '''
-        pass
 
     @staticmethod
     def on_api_document_create_start(sql: sqlite3.Cursor,               # Cursor to query the database
@@ -68,7 +67,7 @@ class PwicExtension():
                                project: str,                # Name of the project
                                user: str,                   # Name of the user
                                page: Optional[str],         # Name of the page
-                               id: Optional[int],           # Identifier of the document
+                               doc_id: Optional[int],       # Identifier of the document
                                filename: str,               # Name of the file
                                ) -> bool:
         ''' Event when the file must be deleted.
@@ -88,7 +87,6 @@ class PwicExtension():
         ''' Event when the list of the documents of a page is requested.
             Modify the parameter 'documents' without reallocating it.
         '''
-        pass
 
     @staticmethod
     def on_api_page_create(sql: sqlite3.Cursor,             # Cursor to query the database
@@ -142,7 +140,7 @@ class PwicExtension():
                            user: str,                       # Name of the user
                            page: str,                       # Name of the page
                            revision: int,                   # Number of the revision
-                           format: str,                     # Extension of the file format
+                           extension: str,                  # Extension of the file format
                            name: str                        # Target file name
                            ) -> Tuple[bool, Any, Dict]:
         ''' Event when a single page is exported.
@@ -177,7 +175,6 @@ class PwicExtension():
         ''' Event when a page is accessed.
             An exception can be raised to guide the navigation.
         '''
-        pass
 
     @staticmethod
     def on_api_page_validate(sql: sqlite3.Cursor,           # Cursor to query the database
@@ -214,7 +211,6 @@ class PwicExtension():
         ''' Event when the project information are queried through the API.
             Modify the parameter 'data' to change the returned content.
         '''
-        pass
 
     @staticmethod
     def on_api_user_create(sql: sqlite3.Cursor,             # Cursor to query the database
@@ -268,7 +264,6 @@ class PwicExtension():
             The database is not committed yet.
             You cannot raise any exception.
         '''
-        pass
 
     @staticmethod
     def on_document_get(sql: sqlite3.Cursor,                # Cursor to query the database
@@ -350,7 +345,6 @@ class PwicExtension():
         ''' Event when email addresses are fetched from the remote OAuth server.
             Modify the parameter 'emails' without reallocating it.
         '''
-        pass
 
     @staticmethod
     def on_project_export_documents(sql: sqlite3.Cursor,                # Cursor to query the database
@@ -361,7 +355,6 @@ class PwicExtension():
         ''' Event when a list of documents is to be exported as an archive for a given project.
             Modify the parameter 'documents' without reallocating it.
         '''
-        pass
 
     @staticmethod
     def on_related_pages(sql: sqlite3.Cursor,               # Cursor to query the database
@@ -375,7 +368,6 @@ class PwicExtension():
             A related link is a tuple made of the URI and its description.
             The URI should respect the formats "/project/page" or "http://your-site.tld/page".
         '''
-        pass
 
     @staticmethod
     def on_render_post(app: web.Application,                # Access to the application (do not change)
@@ -400,7 +392,6 @@ class PwicExtension():
             The variable 'pwic' contains all the calculated data and you can interact with it.
             Raise an exception web.HTTP* to cancel the rendering.
         '''
-        pass
 
     @staticmethod
     def on_search_documents(sql: sqlite3.Cursor,            # Cursor to query the database
@@ -436,7 +427,6 @@ class PwicExtension():
         ''' Event when a search is launched by a user.
             The variable 'query' is the changeable result.
         '''
-        pass
 
     @staticmethod
     def on_server_ready(app: web.Application,               # Full access to the application (changeable)

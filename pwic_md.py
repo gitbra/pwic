@@ -622,8 +622,10 @@ class Markdown(object):
                 # Parse out one emacs var per line.
                 continued_for = None
                 for line in lines[:-1]:  # no var on the last line ("PREFIX End:")
-                    if prefix: line = line[len(prefix):]  # strip prefix
-                    if suffix: line = line[:-len(suffix)]  # strip suffix
+                    if prefix:
+                        line = line[len(prefix):]  # strip prefix
+                    if suffix:
+                        line = line[:-len(suffix)]  # strip suffix
                     line = line.strip()
                     if continued_for:
                         variable = continued_for
@@ -2488,7 +2490,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
               % (tabsize, skip_first_line))
     margin = None
     for i, line in enumerate(lines):
-        if i == 0 and skip_first_line: continue
+        if i == 0 and skip_first_line:
+            continue
         indent = 0
         for ch in line:
             if ch == ' ':
@@ -2501,16 +2504,19 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                 break
         else:
             continue  # skip all-whitespace lines
-        if DEBUG: print("dedent: indent=%d: %r" % (indent, line))
+        if DEBUG:
+            print("dedent: indent=%d: %r" % (indent, line))
         if margin is None:
             margin = indent
         else:
             margin = min(margin, indent)
-    if DEBUG: print("dedent: margin=%r" % margin)
+    if DEBUG:
+        print("dedent: margin=%r" % margin)
 
     if margin is not None and margin > 0:
         for i, line in enumerate(lines):
-            if i == 0 and skip_first_line: continue
+            if i == 0 and skip_first_line:
+                continue
             removed = 0
             for j, ch in enumerate(line):
                 if ch == ' ':
@@ -2518,7 +2524,8 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                 elif ch == '\t':
                     removed += tabsize - (removed % tabsize)
                 elif ch in '\r\n':
-                    if DEBUG: print("dedent: %r: EOL -> strip up to EOL" % line)
+                    if DEBUG:
+                        print("dedent: %r: EOL -> strip up to EOL" % line)
                     lines[i] = lines[i][j:]
                     break
                 else:
@@ -2746,8 +2753,10 @@ def main(argv=None):
         f = open(opts.link_patterns_file)
         try:
             for i, line in enumerate(f.readlines()):
-                if not line.strip(): continue
-                if line.lstrip().startswith("#"): continue
+                if not line.strip():
+                    continue
+                if line.lstrip().startswith("#"):
+                    continue
                 try:
                     pat, href = line.rstrip().rsplit(None, 1)
                 except ValueError:

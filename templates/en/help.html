@@ -135,6 +135,12 @@
 						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
 					</tr>
 					<tr>
+						<td><code>emojis</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>List of emojis that can be used when you edit a page. They are written in hexadecimal notation and separated by a space. For example, <code>2705 274C 2754</code> will propose <code>&#x2705; &#x274C; &#x2754;</code>. Many websites can help you to identify the Unicode symbols that you need.</td>
+					</tr>
+					<tr>
 						<td><code>export_project_revisions</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -431,6 +437,12 @@
 						<td>Maximal number of entries in the RSS feed.</td>
 					</tr>
 					<tr>
+						<td><code>skipped_tags</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Specify the list of additional HTML elements separated by a space that must be removed during the rendering of the pages. This filter applies to the export to OpenDocument too. Some tags are mandatorily removed for security reasons. You should regenerate the cache if you make the option more permissive.</td>
+					</tr>
+					<tr>
 						<td><code>support_email</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -470,7 +482,7 @@
 			<p>To show one or all the parameters, use the command <code>python3 pwic_admin.py show-env</code>.</p>
 			<p>In case you need to clean the obsolete variables, run the command <code>python3 pwic_admin.py repair-env</code>. This could happen after <em>Pwic.wiki</em> is upgraded.</p>
 
-			<h2>Federated authentication</h2>
+			<h2 id="help_sso">Federated authentication</h2>
 			<p>You can connect to <em>Pwic.wiki</em> by using a professional third-party identity provider. The mecanism OAuth relies on secret keys and, obviously, a lot of trust. The user connects from another website and <em>Pwic.wiki</em> pings back the server to fetch the main email address of the user. The account is then automatically configured by default. No other personal information are used.</p>
 			<p>Several project-independent variables must be defined in the following order. Any change requires a restart of the server.</p>
 
@@ -783,6 +795,7 @@
 		<h1 id="help_api"><a href="#top">{{pwic.emojis.finger_up}}</a> Automate Pwic.wiki (API)</h1>
 		<p>The web interface communicates with <em>Pwic.wiki</em> through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
 		<p>You can develop external robots in the limit of your permitted authorizations. Some examples are available in the folder <code>static/api/</code>.</p>
+		<p>You can add your own paths by extending the source code.</p>
 
 
 		<h1 id="help_licenses"><a href="#top">{{pwic.emojis.finger_up}}</a> Read the licenses</h1>
