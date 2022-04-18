@@ -8,9 +8,7 @@
 		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}" />
 	{% endif %}
 	<meta charset="utf-8" />
-	{% block title %}
-		<title>{{pwic.title|escape}}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
-	{% endblock %}
+	<title>{% block title %}{{pwic.title|escape}}{% endblock %}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 	{% if pwic.project and (pwic.project not in pwic.constants.not_project) %}
 		{% if not pwic.env.no_search %}

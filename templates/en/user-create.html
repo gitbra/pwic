@@ -1,6 +1,9 @@
 {% extends 'main.html' %}
 
 
+{% block title %}Create a user{% endblock %}
+
+
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_left}} {% if pwic.env.no_new_user %} Assign {% else %} Create {% endif %} a new user</a></div>

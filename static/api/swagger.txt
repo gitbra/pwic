@@ -675,6 +675,11 @@ paths:
           description: Include the all the revisions of the pages
           required: false
         - in: formData
+          name: no_markdown
+          type: boolean
+          description: Don't provide the content of the page to reduce the size of the transferred data
+          required: false
+        - in: formData
           name: no_document
           type: boolean
           description: Don't list the attached documents

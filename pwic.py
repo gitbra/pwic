@@ -261,7 +261,7 @@ class PwicServer():
         ''' Show the login page '''
         session = await new_session(request)
         session['user_secret'] = pwic_random_hash()
-        return await self._handle_output(request, 'login', {'title': 'Connect to Pwic.wiki'})
+        return await self._handle_output(request, 'login', {})
 
     async def _handle_logout(self, request: web.Request) -> web.Response:
         ''' Show the logout page '''
@@ -280,7 +280,7 @@ class PwicServer():
         # Destroy the session
         session = await get_session(request)
         session.invalidate()
-        return await self._handle_output(request, 'logout', {'title': 'Disconnected from Pwic.wiki'})
+        return await self._handle_output(request, 'logout', {})
 
     async def _handle_output(self, request: web.Request, name: str, pwic: Dict[str, Any]) -> web.Response:
         ''' Serve the right template, in the right language, with the right structure and additional data '''
@@ -775,8 +775,7 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPTemporaryRedirect('/%s/special' % project)  # Project not found, or user not authorized to view it
-        pwic = {'title': 'Audit',
-                'project': project,
+        pwic = {'project': project,
                 'project_description': row['description'],
                 'range': days,
                 'systime': pwic_dt(),
@@ -811,8 +810,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the projects where the user can add pages
-        pwic: Dict[str, Any] = {'title': 'Create a page',
-                                'default_project': pwic_safe_name(request.rel_url.query.get('project', '')),
+        pwic: Dict[str, Any] = {'default_project': pwic_safe_name(request.rel_url.query.get('project', '')),
                                 'default_page': pwic_safe_name(request.rel_url.query.get('page', '')),
                                 'projects': []}
         sql = self.dbconn.cursor()
@@ -839,8 +837,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the projects where users can be created
-        pwic: Dict[str, Any] = {'title': 'Create a user',
-                                'default_project': request.rel_url.query.get('project', ''),
+        pwic: Dict[str, Any] = {'default_project': request.rel_url.query.get('project', ''),
                                 'projects': []}
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
@@ -871,8 +868,7 @@ class PwicServer():
         row = sql.execute(''' SELECT password, initial FROM users WHERE user = ?''', (userpage, )).fetchone()
         if row is None:
             raise web.HTTPNotFound()
-        pwic = {'title': 'User profile',
-                'user': user,
+        pwic = {'user': user,
                 'userpage': userpage,
                 'password_oauth': row['password'] == PWIC_MAGIC_OAUTH,
                 'password_initial': pwic_xb(row['initial']),
@@ -989,8 +985,7 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
-        pwic = {'title': 'Search',
-                'project': project,
+        pwic = {'project': project,
                 'project_description': sql.fetchone()['description'],
                 'terms': pwic_search2string(query),
                 'pages': [],
@@ -1149,8 +1144,7 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
-        pwic = {'title': 'Project-dependent environment variables',
-                'project': project,
+        pwic = {'project': project,
                 'project_description': sql.fetchone()['description'],
                 'changeable_vars': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE)}
         return await self._handle_output(request, 'page-env', pwic=pwic)
@@ -1165,8 +1159,7 @@ class PwicServer():
         # Fetch the name of the project
         project = pwic_safe_name(request.match_info.get('project', ''))
         sql = self.dbconn.cursor()
-        pwic: Dict[str, Any] = {'title': 'Roles',
-                                'project': project,
+        pwic: Dict[str, Any] = {'project': project,
                                 'roles': []}
 
         # Fetch the roles
@@ -1286,8 +1279,7 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
-        pwic = {'title': 'Report of the links',
-                'project': project,
+        pwic = {'project': project,
                 'project_description': sql.fetchone()['description'],
                 'orphans': orphans,
                 'broken': broken,
@@ -1322,8 +1314,7 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
-        pwic = {'title': 'Graph of the project',
-                'project': project,
+        pwic = {'project': project,
                 'project_description': sql.fetchone()['description']}
         return await self._handle_output(request, 'page-graph', pwic=pwic)
 
@@ -1878,6 +1869,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
         page = pwic_safe_name(post.get('page', ''))                                     # Optional
         allrevs = pwic_xb(pwic_x(post.get('all', '')))
+        no_markdown = pwic_xb(pwic_x(post.get('no_markdown', '')))
         no_document = pwic_xb(pwic_x(post.get('no_document', '')))
         data: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
@@ -1912,7 +1904,7 @@ class PwicServer():
             item = {}
             for k in row:
                 if k == 'markdown':
-                    if api_expose_markdown:
+                    if api_expose_markdown and not no_markdown:
                         item[k] = row[k]
                     item['hash'] = pwic_sha256(row[k], salt=False)
                 elif k == 'tags':
@@ -3985,7 +3977,7 @@ class PwicServer():
 
     async def api_swagger(self, request: web.Request) -> web.Response:
         ''' Display the features of the API '''
-        return await self._handle_output(request, 'page-swagger', {'title': 'API specification'})
+        return await self._handle_output(request, 'page-swagger', {})
 
 
 # ====================
@@ -4046,7 +4038,7 @@ def main() -> bool:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                         VALUES ('', 'pwic_session', ?)''',
                     (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
-    setup(app, EncryptedCookieStorage(skey))    # Storage for the cookies
+    setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))  # Storage for the cookies
     del skey
     # ... Markdown parser
     app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'], safe_mode=False)
@@ -4151,6 +4143,10 @@ def main() -> bool:
     for mask in pwic_list(pwic_option(sql, '', 'ip_filter')):
         item: List[Any] = [IPR_EQ, None, None]    # Type, Negated, Mask object
 
+        # Suspension flag
+        if mask[:1] == '#':
+            continue
+
         # Negation flag
         item[1] = (mask[:1] == '~')
         if item[1]:
@@ -4162,7 +4158,7 @@ def main() -> bool:
             item[0] = IPR_NET
             item[2] = ip_network(mask)
         # ... mask for IP
-        elif '*' in mask or '?' in mask:
+        elif ('*' in mask) or ('?' in mask):
             item[0] = IPR_REG
             item[2] = re.compile(mask.replace('.', '\\.').replace('?', '.').replace('*', '.*'))
         # ... raw IP

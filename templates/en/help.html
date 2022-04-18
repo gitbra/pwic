@@ -1,6 +1,9 @@
 {% extends 'main.html' %}
 
 
+{% block title %}Help to use Pwic.wiki{% endblock %}
+
+
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} Help</a></div>
@@ -217,7 +220,7 @@
 						<td><code>ip_filter</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the tilde character <code>~</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files.</td>
+						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the tilde character <code>~</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. Use the prefix <code>#</code> to ignore a value. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files. You need to restart the server to consider the made changes.</td>
 					</tr>
 					<tr>
 						<td><code>legal_notice</code></td>
@@ -810,7 +813,7 @@
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp">aiohttp</a></td>
-				<td>3.7.3</td>
+				<td>3.8.1 (>=3.8)</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>
@@ -822,7 +825,7 @@
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp-session">aiohttp-session</a></td>
-				<td>2.9.0</td>
+				<td>2.11.0 (>=2.10)</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>
