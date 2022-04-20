@@ -102,7 +102,7 @@
 						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>https</code>.</td>
 					</tr>
 					<tr>
-						<td><code>client_max_size</code></td>
+						<td><code>client_size_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>If you handle pages larger than 1 MB, you should enlarge the quantity of data that you can submit by HTTP request else you receive the error 413 <em>Request entity too large</em>. This setting must be configured as well in your reverse proxy server (if you have one).</td>
@@ -136,6 +136,18 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
+					</tr>
+					<tr>
+						<td><code>document_size_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>0</code> to disable the upload.</td>
+					</tr>
+					<tr>
+						<td><code>edit_time_min</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Apply a minimum number of seconds between two edits. This limit does not apply to the managers.</td>
 					</tr>
 					<tr>
 						<td><code>emojis</code></td>
@@ -247,36 +259,6 @@
 						<td>Enable the renderer of mathematical expressions. As a special constraints, the sign <code>\</code> must be doubled. For example, the usual form <code>\(\sqrt{x^2}\)</code> should be written as <code>\\(\\sqrt{x^2}\\)</code> in the online editor.</td>
 					</tr>
 					<tr>
-						<td><code>max_document_size</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>0</code> to disable the upload.</td>
-					</tr>
-					<tr>
-						<td><code>max_page_count</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Maximal number of pages that can be defined per project.</td>
-					</tr>
-					<tr>
-						<td><code>max_project_size</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Define the maximal disk space in bytes allowed for all the attached documents of a project.</td>
-					</tr>
-					<tr>
-						<td><code>max_revision_count</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Maximal number of revisions that can be defined per page. The deleted revisions don't matter for the total.</td>
-					</tr>
-					<tr>
-						<td><code>max_revision_size</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Maximal number of characters per revision. If needed, adjust the option <code>client_max_size</code> accordingly.</td>
-					</tr>
-					<tr>
 						<td><code>mde</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -287,12 +269,6 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Show an online message for informational purposes only. No HTML is allowed.</td>
-					</tr>
-					<tr>
-						<td><code>min_edit_time</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Apply a minimum number of seconds between two edits. This limit does not apply to the managers.</td>
 					</tr>
 					<tr>
 						<td><code>no_cache</code></td>
@@ -401,10 +377,22 @@
 						<td>Width of the paper when you export a page to OpenDocument. The value <code>21cm</code> is used by default (A4).</td>
 					</tr>
 					<tr>
+						<td><code>page_count_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of pages that can be defined per project.</td>
+					</tr>
+					<tr>
 						<td><code>password_regex</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force the passwords to respect a predefined format. Few examples can be found <a href="https://stackoverflow.com/questions/19605150">here</a>. The option does not apply when you reset the password from the console.</td>
+					</tr>
+					<tr>
+						<td><code>project_size_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Define the maximal disk space in bytes allowed for all the attached documents of a project.</td>
 					</tr>
 					<tr>
 						<td><code>pwic_audit_id</code></td>
@@ -425,6 +413,18 @@
 						<td>Under some conditions, a new revision is not created if the content of the page is not changed. A manager can then fix the attributes of a page quickly on behalf of the original author of the latest revision.</td>
 					</tr>
 					<tr>
+						<td><code>revision_count_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of revisions that can be defined per page. The deleted revisions don't matter for the total.</td>
+					</tr>
+					<tr>
+						<td><code>revision_size_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Maximal number of characters per revision. If needed, adjust the option <code>client_size_max</code> accordingly.</td>
+					</tr>
+					<tr>
 						<td><code>robots</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -438,6 +438,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Maximal number of entries in the RSS feed.</td>
+					</tr>
+					<tr>
+						<td><code>show_members_max</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Reduce the display of the members in the special page if their number is greater than the value of this option. Indeed, the list can be big in large organizations. Only the lists of readers and editors are reduced, so that you can always contact the deciders.</td>
 					</tr>
 					<tr>
 						<td><code>skipped_tags</code></td>
@@ -653,7 +659,7 @@
 					</ul>
 				</li>
 				<li>The filename may have to respect a naming convention if the variable <code>document_name_regex</code> set by the administrator contains a regular expression.</li>
-				<li>A file size limit may apply if the administrator has defined the variables <code>max_document_size</code> or <code>max_project_size</code>.</li>
+				<li>A file size limit may apply if the administrator has defined the variables <code>document_size_max</code> or <code>project_size_max</code>.</li>
 				<li>For security reasons, the content of the file is verified if the option <code>magic_bytes</code> is enabled.</li>
 				<li>To host the uploaded files on an external storage, you need to implement a custom code in <code>PwicExtension.on_api_document_*</code>, populate the field <code>documents.exturl</code> and don't keep any local copy.</li>
 			</ul>

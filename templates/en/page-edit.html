@@ -18,33 +18,37 @@
 				<p><strong>Tags:</strong> <input id="edit_tags" class="pwic_fill" type="text" value="{{pwic.tags|escape}}" title="No hash and separated by a space" spellcheck="false" /></p>
 
 				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
-					<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**', '**')" />
-					<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*', '*')" />
-					<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" />
-					<input type="button" value="S" title="~~ Strikethrough ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')" />
-					<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
-					<input type="button" value="Right" title="Shift to the right" onclick="edit_prepend('    ')" />
-
-					<div class="pwic_spacer"></div>
-
-					<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
-					<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
-					<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
-					<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
-					<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
-					<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
-					<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
-
-					<div class="pwic_spacer"></div>
-
-					<input type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
-					<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
-					<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
-					<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`', '`')" />
-					<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```\n', '\n```')" />
-					{% if pwic.env.emojis %}
-						<input type="button" value="Emojis" title="Emojis" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />
-					{% endif %}
+					<div>
+						<input type="button" value="{{pwic.emojis.glasses}}" title="Preview" onclick="edit_preview_md('Preview of &quot;{{pwic.page|urlencode}}&quot;', 'Close the preview')" />
+					</div>
+					<div>
+						<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**', '**')" />
+						<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*', '*')" />
+						<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" />
+						<input type="button" value="S" title="~~ Strikethrough ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')" />
+						<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
+						<input type="button" value="Right" title="Shift to the right" onclick="edit_prepend('    ')" />
+					</div>
+					<div>
+						<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
+						<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
+						<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
+						<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
+						<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
+						<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
+						<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
+					</div>
+					<div>
+						<input id="edit_toolbar_table" type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
+						<input type="button" value="AutoTable" title="Paste as target table" onclick="edit_table_import('You cannot use this feature.')" />
+						<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
+						<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
+						<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`', '`')" />
+						<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```\n', '\n```')" />
+						{% if pwic.env.emojis %}
+							<input type="button" value="{{pwic.emojis.bang}}" title="Emojis" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />
+						{% endif %}
+					</div>
 				</div>
 
 				{% if pwic.env.emojis %}
@@ -64,13 +68,13 @@
 					{% include 'page-edit-easymde.js.html' %}
 				{% endif %}
 
-				{% if (not pwic.env.max_document_size) or (pwic.env.max_document_size.value|int > 0) %}
+				{% if (not pwic.env.document_size_max) or (pwic.env.document_size_max.value|int > 0) %}
 					<h2>Documents</h2>
 					<div id="edit_files_drop" ondrop="edit_drop(event, 'Unsupported feature', 'The file is uploaded and usable in the list below.')" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
 						<input type="button" value="{{pwic.emojis.refresh}}" title="Refresh" onclick="edit_refresh_documents()" style="margin-right: 15px" />
 						Drop the files here
-						{% if pwic.env.max_document_size_str %}
-							(max: {{pwic.env.max_document_size_str.value}})
+						{% if pwic.env.document_size_max_str %}
+							(max: {{pwic.env.document_size_max_str.value}})
 						{% endif %}
 						and save immediately
 					</div>

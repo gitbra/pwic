@@ -282,6 +282,11 @@ CREATE TABLE "audit" (
     PRIMARY KEY("id" AUTOINCREMENT)
 )''')
         sql.execute('''
+CREATE INDEX "audit_index" ON "audit" (
+    "date",
+    "project"
+)''')
+        sql.execute('''
 CREATE TABLE "audit_arch" (
     "id" INTEGER NOT NULL,
     "date" TEXT NOT NULL,
@@ -402,9 +407,9 @@ CREATE TABLE "pages" (
 )''')
         sql.execute('''
 CREATE INDEX "pages_index" ON "pages" (
-    "project" ASC,
-    "page" ASC,
-    "latest" ASC
+    "project",
+    "page",
+    "latest"
 )''')
 
         # Table CACHE
@@ -1723,10 +1728,10 @@ CREATE TABLE "documents" (
                         FROM documents AS a
                             LEFT OUTER JOIN env AS b
                                 ON  b.project = a.project
-                                AND b.key     = 'max_project_size'
+                                AND b.key     = 'project_size_max'
                             LEFT OUTER JOIN env AS c
                                 ON  c.project = ''
-                                AND c.key     = 'max_project_size'
+                                AND c.key     = 'project_size_max'
                         GROUP BY a.project
                         ORDER BY a.project
                     ) AS d

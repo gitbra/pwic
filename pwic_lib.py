@@ -71,36 +71,38 @@ PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',            # Fixed format of th
                  'password': 'initial',                     # Default password for the new accounts
                  'port': '8080',                            # Default HTTP port
                  }
-PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\?attachment)?( "[^"]+")?\)'),   # Find a document in Markdown
-                'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),              # Find the picture ID in IMG.SRC
-                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                     # Name of the pages KB
-                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                           # Check the format of the mime
-                'page': re.compile(r'\]\(\/([^\/#\)]+)\/([^\/#\)]+)(\/rev[0-9]+)?(\?.*)?(\#.*)?\)'),        # Find a page in Markdown
-                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                     # Valid protocols for the links
+PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),      # Find a document in Markdown
+                'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),  # Find the picture ID in IMG.SRC
+                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                         # Name of the pages KB
+                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                               # Check the format of the mime
+                'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)]+)(\/rev[0-9]+)?'),      # Find a page in Markdown
+                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                         # Valid protocols for the links
                 }
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_max_size', 'file_formats', 'keep_sessions', 'http_log_file',
+PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file_formats', 'keep_sessions', 'http_log_file',
                                 'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login', 'oauth_domains',
                                 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
-                              'document_name_regex', 'emojis', 'export_project_revisions', 'file_formats_disabled', 'heading_mask', 'kbid',
-                              'keep_drafts', 'language', 'legal_notice', 'mathjax', 'max_document_size', 'max_page_count', 'max_project_size',
-                              'max_revision_count', 'max_revision_size', 'mde', 'min_edit_time', 'message', 'no_cache', 'no_export_project',
-                              'no_graph', 'no_heading', 'no_help', 'no_history', 'no_index_rev', 'no_new_user', 'no_printing', 'no_rss',
-                              'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                              'odt_page_width', 'quick_fix', 'robots', 'rss_size', 'skipped_tags', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'title', 'validated_only']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask', 'keep_drafts',
-                                     'language', 'mathjax', 'mde', 'message', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_printing',
-                                     'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                                     'odt_page_width', 'quick_fix', 'rss_size', 'support_email', 'support_phone', 'support_text', 'support_url',
-                                     'title', 'validated_only']
+                              'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
+                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'mathjax',
+                              'mde', 'message', 'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history',
+                              'no_index_rev', 'no_new_user', 'no_printing', 'no_rss', 'no_search', 'no_text_selection',
+                              'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'page_count_max',
+                              'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots', 'rss_size',
+                              'show_members_max', 'skipped_tags', 'support_email', 'support_phone', 'support_text', 'support_url',
+                              'title', 'validated_only']
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
+                                     'keep_drafts', 'language', 'mathjax', 'mde', 'message', 'no_graph', 'no_heading', 'no_help',
+                                     'no_history', 'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max',
+                                     'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max',
+                                     'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
+               'bang': '&#x1F4A5;',
                'brick': '&#x1F9F1;',
                'calendar': '&#x1F4C5;',
                'camera': '&#x1F3A5;',               # 1F4F9
@@ -149,10 +151,8 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'sheet': '&#x1F4C4;',
                'star': '&#x2B50;',
                'top': '&#x1F51D;',
-               'trash': '&#x1F5D1;',
                'truck': '&#x1F69A;',
                'unlocked': '&#x1F513;',
-               'updown': '&#x2195;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
                'warning': '&#x26A0;',

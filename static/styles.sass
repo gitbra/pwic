@@ -367,6 +367,7 @@ ARTICLE
 FOOTER
 	display: block
 	padding: 25px 10px 10px 10px
+	margin-bottom: 10px
 
 	> DIV
 		width: 90%
@@ -482,6 +483,9 @@ SPAN.pwic_progressbar
 .pwic_js
 	display: none !important
 
+.pwic_monospace
+	font-family: monospace
+
 .pwic_noborder
 	border: none
 
@@ -493,10 +497,6 @@ SPAN.pwic_progressbar
 
 .pwic_right
 	text-align: right
-
-.pwic_spacer
-	display: inline-block
-	width: 10px
 
 
 // --------------------------------
@@ -518,8 +518,13 @@ SPAN.pwic_progressbar
 		font-weight: bold
 
 #edit_toolbar
+	DIV
+		display: inline-block
+		margin-right: 10px
+
 	INPUT[type=button]
-		padding: 5px 10px 5px 10px
+		padding: 5px 10px
+		margin-top: 5px
 		height: 32px
 		vertical-align: top
 
@@ -557,6 +562,9 @@ SPAN.pwic_progressbar
 	border: 2px solid gray
 	background-color: lightyellow
 
+#edit_files_list INPUT[type="button"]
+	padding: 5px
+
 #graph_viz
 	width: 100%
 	height: 80vh
@@ -565,6 +573,9 @@ SPAN.pwic_progressbar
 	svg
 		width: 100%
 		height: 100%
+
+#roles_table INPUT[type="button"]
+	padding: 5px
 
 
 // --------------------------------
@@ -584,6 +595,9 @@ SPAN.pwic_progressbar
 			font-size: 18pt
 
 		.pwic_ph2
+			white-space: nowrap
+			overflow: hidden
+			text-overflow: ellipsis
 			font-size: 12pt
 
 		.pwic_tagbox

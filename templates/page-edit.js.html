@@ -124,6 +124,69 @@
 		return true;
 	}
 
+	function edit_table_import(errorText) {
+		try {
+			navigator.clipboard.readText()
+				.then(function(input_text) {
+					var i, j, lines, cols,
+						ncols = 0,
+						nlens = [],
+						txt, buffer;
+
+					// Check
+					input_text = input_text.replaceAll('\r', '').trim();
+					if (input_text.length == 0)
+					{
+						$('#edit_toolbar_table').trigger('click');
+						return;
+					}
+
+					// Scan the dimensions of the table
+					lines = input_text.split('\n');
+					for (i=0 ; i<lines.length ; i++)
+					{
+						cols = lines[i].split('\t');
+						ncols = Math.max(ncols, cols.length);
+						for (j=0 ; j<cols.length ; j++)
+						{
+							if (nlens.length <= j)
+								nlens.push(0);
+							nlens[j] = Math.max(nlens[j], cols[j].length);
+						}
+					}
+
+					// Build the final text
+					buffer = '';
+					for (i=0 ; i<lines.length ; i++)
+					{
+						buffer += '\n';
+						cols = lines[i].split('\t');
+						for (j=0 ; j<ncols ; j++)
+						{
+							txt = (j < cols.length ? cols[j] : '');
+							buffer += '| ' + txt + ' '.repeat(nlens[j] - txt.length + 1);
+						}
+						buffer += '|';
+
+						// Header line
+						if (i == 0)
+						{
+							buffer += '\n';
+							for (j=0 ; j<ncols ; j++)
+								buffer += '|' + '-'.repeat(nlens[j] + 2);
+							buffer += '|';
+						}
+					}
+
+					// Paste the table
+					edit_decorate_end('\n' + buffer + '\n\n');
+				});
+		} catch (e) {
+			// See dom.events.testing.asyncClipboard in Firefox
+			alert(errorText);
+		}
+	}
+
 	function edit_footnote() {
 		var	ta = $('#edit_markdown')[0],
 			se = ta.selectionEnd;
@@ -234,7 +297,7 @@
 									<td class="pwic_desktop"><a class="pwic_break" href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 									<td>'+pwic_entities(doc['date'])+'<\/td>\
 									<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
-									<td><input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.trash}}" title="Delete the document" /><\/td>\
+									<td><input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="Delete the document" /><\/td>\
 								<\/tr>';
 				}
 				$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);

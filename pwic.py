@@ -313,7 +313,7 @@ class PwicServer():
             if key not in pwic['env']:
                 pwic['env'][key] = {'value': value,
                                     'global': global_}
-                if key in ['max_document_size', 'max_project_size']:
+                if key in ['document_size_max', 'project_size_max']:
                     pwic['env'][key + '_str'] = {'value': pwic_size2str(pwic_int(value)),
                                                  'global': global_}
 
@@ -537,46 +537,29 @@ class PwicServer():
                     pwic['recents'].append(row)
 
                 # Fetch the team members of the project
-                sql.execute(''' SELECT user, admin, manager, editor, validator, reader, disabled
-                                FROM roles
-                                WHERE project = ?
-                                ORDER BY disabled DESC,
-                                         user     ASC''',
-                            (project, ))
                 pwic['admins'] = []
                 pwic['managers'] = []
                 pwic['editors'] = []
                 pwic['validators'] = []
                 pwic['readers'] = []
-                pwic['disableds'] = []
+                show_members_max = pwic_int(pwic_option(sql, project, 'show_members_max', '-1'))
+                sql.execute(''' SELECT COUNT(user) AS total
+                                FROM roles
+                                WHERE project  = ?
+                                  AND disabled = '' ''',
+                            (project, ))
+                restrict_members = (sql.fetchone()['total'] > show_members_max) and (show_members_max != -1)
+                sql.execute(''' SELECT user, admin, manager, editor, validator, reader
+                                FROM roles
+                                WHERE project  = ?
+                                  AND disabled = ''
+                                ORDER BY user''',
+                            (project, ))
                 for row in sql.fetchall():
                     for k in row:
                         if (k != 'user') and pwic_xb(row[k]):
-                            if (k == 'disabled') or not pwic_xb(row['disabled']):
+                            if not restrict_members or (k not in ['reader', 'editor']):
                                 pwic[k + 's'].append(row['user'])
-
-                # Fetch the inactive users
-                if pwic['admin']:
-                    sql.execute(''' SELECT a.user
-                                    FROM roles AS a
-                                        LEFT JOIN (
-                                            SELECT author, MAX(date) AS date
-                                            FROM audit.audit
-                                            WHERE date >= ?
-                                              AND ( project = ?
-                                                 OR event IN ('login', 'logout')
-                                              )
-                                            GROUP BY author
-                                        ) AS b
-                                            ON b.author = a.user
-                                    WHERE a.project  = ?
-                                      AND a.disabled = ''
-                                      AND b.date     IS NULL
-                                    ORDER BY a.user''',
-                                (dt['date-30d'], project, project))
-                    pwic['inactive_users'] = []
-                    for row in sql.fetchall():
-                        pwic['inactive_users'].append(row['user'])
 
                 # Fetch the pages of the project
                 sql.execute(''' SELECT page, title, revision, final, author,
@@ -628,7 +611,7 @@ class PwicServer():
                     row['mime_icon'] = pwic_mime2icon(row['mime'])
                     row['size'] = pwic_size2str(row['size'])
                     pwic['documents'].append(row)
-                pmax = pwic_int(pwic_option(sql, project, 'max_project_size'))
+                pmax = pwic_int(pwic_option(sql, project, 'project_size_max'))
                 pwic['disk_space'] = {'used': used_size,
                                       'used_str': pwic_size2str(used_size),
                                       'project_max': pmax,
@@ -1163,8 +1146,10 @@ class PwicServer():
                                 'roles': []}
 
         # Fetch the roles
+        dt = pwic_dt()
         sql.execute(''' SELECT a.user, c.initial, c.password AS oauth,
-                               a.admin, a.manager, a.editor, a.validator, a.reader, a.disabled
+                               a.admin, a.manager, a.editor, a.validator,
+                               a.reader, a.disabled, d.activity
                         FROM roles AS a
                             INNER JOIN roles AS b
                                 ON  b.project  = a.project
@@ -1173,6 +1158,14 @@ class PwicServer():
                                 AND b.disabled = ''
                             INNER JOIN users AS c
                                 ON c.user = a.user
+                            LEFT OUTER JOIN (
+                                SELECT author, MAX(date) AS activity
+                                FROM audit.audit
+                                WHERE project  = ?
+                                  AND date    >= ?
+                                GROUP BY author
+                            ) AS d
+                                ON d.author = a.user
                         WHERE a.project = ?
                         ORDER BY a.admin     DESC,
                                  a.manager   DESC,
@@ -1180,11 +1173,13 @@ class PwicServer():
                                  a.validator DESC,
                                  a.reader    DESC,
                                  a.user      ASC''',
-                    (user, project))
+                    (user, project, dt['date-90d'], project))
         for row in sql.fetchall():
+            row['oauth'] = (row['oauth'] == PWIC_MAGIC_OAUTH)
             for k in ['initial', 'admin', 'manager', 'editor', 'validator', 'reader', 'disabled']:
                 row[k] = pwic_xb(row[k])
-            row['oauth'] = (row['oauth'] == PWIC_MAGIC_OAUTH)
+            if row['activity'] is None:
+                row['activity'] = '-'
             pwic['roles'].append(row)
 
         # Display the page
@@ -1233,7 +1228,11 @@ class PwicServer():
         ok = False
         linkmap: Dict[str, List[str]] = {PWIC_DEFAULTS['page']: []}
         broken_docs: Dict[str, List[int]] = {}
-        for row in sql.fetchall():
+        while True:
+            row = sql.fetchone()
+            if row is None:
+                break
+
             ok = True
             page = row['page']
             if page not in linkmap:
@@ -1305,8 +1304,7 @@ class PwicServer():
                           AND manager  = 'X'
                           AND disabled = '' ''',
                     (project, user))
-        if (sql.fetchone() is None) or \
-           (pwic_option(sql, project, 'no_graph') is not None):
+        if (sql.fetchone() is None) or (pwic_option(sql, project, 'no_graph') is not None):
             raise web.HTTPUnauthorized()
 
         # Show the page
@@ -2130,6 +2128,25 @@ class PwicServer():
         if pwic_option(sql, project, 'no_graph') is not None:
             raise web.HTTPUnauthorized()
 
+        # Mapping of the pages
+        pages: List[Tuple[str, str]] = []
+        maps: List[Tuple[str, str, str, str]] = []
+
+        def _make_link(fromProject: str, fromPage: str, toProject: str, toPage: str) -> None:
+            if (fromProject, fromPage) != (toProject, toPage):
+                tup = (toProject, toPage, fromProject, fromPage)
+                pos = bisect_left(maps, tup)
+                if (pos >= len(maps)) or (maps[pos] != tup):
+                    insort(maps, tup)
+
+        def _get_node_id(project: str, page: str) -> str:
+            tup = (project, page)
+            pos = bisect_left(pages, tup)
+            if (pos >= len(pages)) or (pages[pos] != tup):
+                insort(pages, tup)
+                return _get_node_id(project, page)
+            return 'n%d' % (pos + 1)
+
         # Fetch the pages
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
                         FROM roles AS a
@@ -2143,37 +2160,11 @@ class PwicServer():
                         ORDER BY b.project,
                                  b.page''',
                     (project, user))
-
-        # Map the pages
-        pages: List[Tuple[str, str]] = []
-        maps: List[Tuple[str, str, str, str]] = []
-
-        def _make_link(fromProject: str, fromPage: str, toProject: str, toPage: str) -> None:
-            if (fromProject, fromPage) != (toProject, toPage):
-                tup = (toProject, toPage, fromProject, fromPage)
-                pos = bisect_left(maps, tup)
-                if pos >= len(maps) or maps[pos] != tup:
-                    insort(maps, tup)
-
-        def _get_node_id(project: str, page: str) -> str:
-            tup = (project, page)
-            pos = bisect_left(pages, tup)
-            if (pos >= len(pages)) or (pages[pos] != tup):
-                insort(pages, tup)
-                return _get_node_id(project, page)
-            return 'n%d' % (pos + 1)
-
-        def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
-            sql.execute(''' SELECT title
-                            FROM pages
-                            WHERE project = ?
-                              AND page    = ?
-                              AND latest  = 'X' ''',
-                        (project, page))
+        while True:
             row = sql.fetchone()
-            return '' if row is None else row['title']
+            if row is None:
+                break
 
-        for row in sql.fetchall():
             # Reference the processed page
             _get_node_id(row['project'], row['page'])
             _make_link('', '', row['project'], row['page'])
@@ -2186,6 +2177,8 @@ class PwicServer():
             subpages = PWIC_REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
+                    if sp[0] in PWIC_NOT_PROJECT:
+                        continue
                     _get_node_id(sp[0], sp[1])
                     _make_link(row['project'], row['page'], sp[0], sp[1])
         if len(maps) == 0:
@@ -2202,13 +2195,22 @@ class PwicServer():
             authorized_projects.append(row['project'])
 
         # Build the file for GraphViz
+        def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
+            sql.execute(''' SELECT title
+                            FROM pages
+                            WHERE project = ?
+                              AND page    = ?
+                              AND latest  = 'X' ''',
+                        (project, page))
+            row = sql.fetchone()
+            return '' if row is None else row['title']
+
         viz = 'digraph PWIC_WIKI {\n'
         lastProject = ''
         maps.sort(key=lambda tup: 0 if tup[0] == project else 1)    # Main project in first position
         for toProject, toPage, fromProject, fromPage in maps:
             # Detection of a new project
-            changedProject = (toProject != lastProject)
-            if changedProject:
+            if toProject != lastProject:
                 if lastProject != '':
                     viz += '}\n'
                 lastProject = toProject
@@ -2607,14 +2609,14 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Check the maximal number of pages per project
-        max_page_count = pwic_int(pwic_option(sql, project, 'max_page_count'))
-        if max_page_count > 0:
+        page_count_max = pwic_int(pwic_option(sql, project, 'page_count_max'))
+        if page_count_max > 0:
             sql.execute(''' SELECT COUNT(page) AS total
                             FROM pages
                             WHERE project = ?
                               AND latest  = 'X' ''',
                         (project, ))
-            if sql.fetchone()['total'] >= max_page_count:
+            if sql.fetchone()['total'] >= page_count_max:
                 self.dbconn.rollback()
                 raise web.HTTPForbidden()
 
@@ -2696,8 +2698,8 @@ class PwicServer():
 
         # Check the maximal size of a revision
         sql = self.dbconn.cursor()
-        max_revision_size = pwic_int(pwic_option(sql, project, 'max_revision_size'))
-        if 0 < max_revision_size < len(markdown):
+        revision_size_max = pwic_int(pwic_option(sql, project, 'revision_size_max'))
+        if 0 < revision_size_max < len(markdown):
             raise web.HTTPBadRequest()
 
         # Fetch the last revision of the page and the profile of the user
@@ -2731,21 +2733,21 @@ class PwicServer():
             header = pwic_xb(row['header'])     # This field is reserved to the managers, so we keep the existing value
 
         # Check the maximal number of revisions per page
-        max_revision_count = pwic_int(pwic_option(sql, project, 'max_revision_count'))
-        if max_revision_count > 0:
+        revision_count_max = pwic_int(pwic_option(sql, project, 'revision_count_max'))
+        if revision_count_max > 0:
             sql.execute(''' SELECT COUNT(revision) AS total
                             FROM pages
                             WHERE project = ?
                               AND page    = ? ''',
                         (project, page))
-            if sql.fetchone()['total'] >= max_revision_count:
+            if sql.fetchone()['total'] >= revision_count_max:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
         # Check the minimal edit time
         if not manager:
-            min_edit_time = pwic_int(pwic_option(sql, project, 'min_edit_time'))
-            if min_edit_time > 0:
+            edit_time_min = pwic_int(pwic_option(sql, project, 'edit_time_min'))
+            if edit_time_min > 0:
                 sql.execute(''' SELECT MAX(date || ' ' || time) AS last_dt
                                 FROM pages
                                 WHERE project = ?
@@ -2756,7 +2758,7 @@ class PwicServer():
                 if last_dt is not None:
                     d1 = datetime.strptime(last_dt, PWIC_DEFAULTS['dt_mask'])
                     d2 = datetime.strptime('%s %s' % (dt['date'], dt['time']), PWIC_DEFAULTS['dt_mask'])
-                    if (d2 - d1).total_seconds() < min_edit_time:
+                    if (d2 - d1).total_seconds() < edit_time_min:
                         self.dbconn.rollback()
                         raise web.HTTPServiceUnavailable()
 
@@ -3294,7 +3296,11 @@ class PwicServer():
                           AND a.mime LIKE 'image/%%' '''
             sql.execute(query % ','.join(docids), (user, ))
             pictMeta = {}
-            for rowdoc in sql.fetchall():
+            while True:
+                rowdoc = sql.fetchone()
+                if rowdoc is None:
+                    break
+
                 # Optimize the size
                 try:
                     if rowdoc['width'] > MAX_W:
@@ -3306,7 +3312,7 @@ class PwicServer():
                 except ValueError:
                     pass
                 # Store the meta data
-                pictMeta[rowdoc['id']] = {'filename': join(PWIC_DOCUMENTS_PATH % project, rowdoc['filename']),
+                pictMeta[rowdoc['id']] = {'filename': join(PWIC_DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename']),
                                           'link': 'special/document/%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],
                                           'link_odt_img': 'special/document_%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],     # LibreOffice does not support the paths with multiple folders
                                           'compressed': pwic_mime_compressed(pwic_file_ext(rowdoc['filename'])),
@@ -3741,15 +3747,15 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Verify the maximal document size
-        max_document_size = pwic_int(pwic_option(sql, doc['project'], 'max_document_size', '-1'))
-        if (max_document_size >= 0) and (len(doc['content']) > max_document_size):
+        document_size_max = pwic_int(pwic_option(sql, doc['project'], 'document_size_max', '-1'))
+        if (document_size_max >= 0) and (len(doc['content']) > document_size_max):
             self.dbconn.rollback()
-            raise web.HTTPRequestEntityTooLarge(max_document_size, len(doc['content']))
+            raise web.HTTPRequestEntityTooLarge(document_size_max, len(doc['content']))
 
         # Verify the maximal project size
         # ... is there a check ?
-        max_project_size = pwic_int(pwic_option(sql, doc['project'], 'max_project_size', '-1'))
-        if max_project_size >= 0:
+        project_size_max = pwic_int(pwic_option(sql, doc['project'], 'project_size_max', '-1'))
+        if project_size_max >= 0:
             # ... current size of the project
             current_project_size = pwic_int(sql.execute(''' SELECT SUM(size) AS total
                                                             FROM documents
@@ -3762,9 +3768,9 @@ class PwicServer():
                                                            AND filename = ?''',
                                                      (doc['project'], doc['filename'])).fetchone()['total'])
             # ... verify the size
-            if current_project_size - current_file_size + len(doc['content']) > max_project_size:
+            if current_project_size - current_file_size + len(doc['content']) > project_size_max:
                 self.dbconn.rollback()
-                raise web.HTTPRequestEntityTooLarge(max_project_size - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
+                raise web.HTTPRequestEntityTooLarge(project_size_max - current_project_size + current_file_size, len(doc['content']))  # HTTPInsufficientStorage has no hint
 
         # At last, verify that the document doesn't exist yet (not related to a given page)
         forcedId = None
@@ -4023,7 +4029,7 @@ def main() -> bool:
     sql.execute(''' VACUUM main''')
     sql.execute(''' VACUUM audit''')
     # ... client size
-    app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_max_size')))
+    app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_size_max')))
     # ... PWIC
     app['pwic'] = PwicServer(app['sql'])
     # ... session
