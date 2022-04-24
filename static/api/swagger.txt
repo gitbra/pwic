@@ -112,6 +112,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        409:
+          description: Duplicate file name in the project
         413:
           description: File size limits exceeded
         415:
@@ -120,6 +122,34 @@ paths:
           description: File incorrectly managed on the server
         503:
           description: Update temporarily unavailable or ongoing server maintenance
+  /api/document/convert:
+    post:
+      summary: Convert a loaded OpenDocument to Markdown
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/plain
+      parameters:
+        - in: formData
+          name: id
+          type: integer
+          description: Identifier of the document
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        415:
+          description: Incorrect file type
+        422:
+          description: File cannot be converted
+        503:
+          description: Disabled feature
   /api/document/delete:
     post:
       summary: Delete a document attached to a page

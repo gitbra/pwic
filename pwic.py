@@ -47,9 +47,10 @@ from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DO
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, \
     pwic_attachment_name, pwic_dt, pwic_dt_diff, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, \
-    pwic_mime_compressed, pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_sha256, \
-    pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb, \
-    pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html_cleaner, pwic_html2odt
+    pwic_mime_list, pwic_mime_compressed, pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, \
+    pwic_sha256, pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, \
+    pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html_cleaner, \
+    pwic_html2odt, pwic_odt2md
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -425,18 +426,19 @@ class PwicServer():
         # ... or ask the user to pick a project
         else:
             # Projects joined
-            sql.execute(''' SELECT a.project, a.description
+            sql.execute(''' SELECT a.project, a.description, a.date
                             FROM projects AS a
                                 INNER JOIN roles AS b
                                     ON  b.project  = a.project
                                     AND b.user     = ?
                                     AND b.disabled = ''
-                            ORDER BY a.description''',
+                            ORDER BY a.date        DESC,
+                                     a.description ASC''',
                         (user, ))
             pwic['projects'] = [row for row in sql.fetchall()]
 
             # Projects not joined yet
-            sql.execute(''' SELECT a.project, c.description
+            sql.execute(''' SELECT a.project, c.description, c.date
                             FROM env AS a
                                 LEFT OUTER JOIN roles AS b
                                     ON  b.project = a.project
@@ -447,7 +449,8 @@ class PwicServer():
                               AND a.key      = 'auto_join'
                               AND a.value   IN ('passive', 'active')
                               AND b.project IS NULL
-                            ORDER BY description''',
+                            ORDER BY c.date        DESC,
+                                     c.description ASC''',
                         (user, ))
             pwic['joinable_projects'] = [row for row in sql.fetchall()]
 
@@ -3783,7 +3786,7 @@ class PwicServer():
         if row is not None:
             if row['page'] != doc['page']:      # Existing document = Delete + Keep same ID (replace it)
                 self.dbconn.rollback()
-                raise web.HTTPBadRequest()      # Existing document on another page = do nothing
+                raise web.HTTPConflict()        # Existing document on another page = do nothing
             if row['exturl'] == '':
                 # Local file
                 try:
@@ -3981,6 +3984,48 @@ class PwicServer():
         self.dbconn.commit()
         raise web.HTTPOk()
 
+    async def api_document_convert(self, request: web.Request) -> web.Response:
+        ''' Convert an ODT document to MD '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the file to convert
+        post = await self._handle_post(request)
+        docid = pwic_int(post.get('id', 0))
+        if docid == 0:
+            raise web.HTTPBadRequest()
+
+        # Verify that the conversion is possible
+        sql = self.dbconn.cursor()
+        sql.execute(''' SELECT b.project, b.filename, b.mime, b.exturl
+                        FROM roles AS a
+                            INNER JOIN documents AS b
+                                ON  b.id      = ?
+                                AND b.project = a.project
+                        WHERE   a.user     = ?
+                          AND ( a.manager  = 'X'
+                             OR a.editor   = 'X' )
+                          AND   a.disabled = '' ''',
+                    (docid, user))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPUnauthorized()    # Or not found
+        if pwic_option(sql, row['project'], 'odt_document_no_conversion') is not None:
+            raise web.HTTPServiceUnavailable()
+        if row['exturl'] != '':
+            raise web.HTTPUnprocessableEntity()
+        if row['mime'] not in pwic_mime_list('odt'):
+            raise web.HTTPUnsupportedMediaType()
+
+        # Convert to Markdown
+        parser = pwic_odt2md(sql)
+        if parser.load_odt(join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])):
+            return web.Response(text=parser.get_md(), content_type=pwic_mime('txt'))
+        else:
+            raise web.HTTPUnprocessableEntity()
+
     async def api_swagger(self, request: web.Request) -> web.Response:
         ''' Display the features of the API '''
         return await self._handle_output(request, 'page-swagger', {})
@@ -4083,6 +4128,7 @@ def main() -> bool:
                     web.post('/api/document/get', app['pwic'].api_document_get),
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
+                    web.post('/api/document/convert', app['pwic'].api_document_convert),
                     web.get('/api', app['pwic'].api_swagger),
                     web.get('/special/login', app['pwic']._handle_login),
                     web.get('/special/logout', app['pwic']._handle_logout),

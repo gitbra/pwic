@@ -27,7 +27,8 @@ from os.path import splitext
 from hashlib import sha256
 from base64 import b64encode
 from aiohttp import web
-from html import escape
+from zipfile import ZipFile
+from html import escape, unescape
 from html.parser import HTMLParser
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
@@ -88,15 +89,16 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'mathjax',
                               'mde', 'message', 'no_cache', 'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history',
                               'no_index_rev', 'no_new_user', 'no_printing', 'no_rss', 'no_search', 'no_text_selection',
-                              'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'page_count_max',
-                              'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots', 'rss_size',
-                              'show_members_max', 'skipped_tags', 'support_email', 'support_phone', 'support_text', 'support_url',
-                              'title', 'validated_only']
+                              'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
+                              'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max',
+                              'revision_size_max', 'robots', 'rss_size', 'show_members_max', 'skipped_tags', 'support_email',
+                              'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
                                      'keep_drafts', 'language', 'mathjax', 'mde', 'message', 'no_graph', 'no_heading', 'no_help',
-                                     'no_history', 'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_image_height_max',
-                                     'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max',
-                                     'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
+                                     'no_history', 'no_printing', 'no_rss', 'no_search', 'no_text_selection', 'odt_document_no_conversion',
+                                     'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_width', 'quick_fix',
+                                     'rss_size', 'show_members_max', 'support_email', 'support_phone', 'support_text', 'support_url',
+                                     'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
@@ -304,11 +306,17 @@ def pwic_file_ext(filename: str) -> str:
 
 def pwic_mime(ext: str) -> Optional[str]:
     ''' Return the default mime that corresponds to the file extension '''
+    values = pwic_mime_list(ext)
+    return None if len(values) == 0 else values[0]
+
+
+def pwic_mime_list(ext: str) -> List[str]:
+    ''' Return the possible mimes that correspond to the file extension '''
     ext = ext.strip().lower()
     for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
         if ext in mext:
-            return mtyp[0]
-    return None
+            return mtyp
+    return []
 
 
 def pwic_mime_compressed(ext: str) -> bool:
@@ -416,6 +424,11 @@ def pwic_list_tags(tags: str) -> str:
     return ' '.join(pwic_list(tags.replace('#', '').lower(), do_sort=True))
 
 
+def pwic_nns(value: Optional[str]) -> str:
+    ''' Return a non-null string '''
+    return str('' if value is None else value)
+
+
 def pwic_option(sql: Optional[sqlite3.Cursor],
                 project: Optional[str],
                 name: str,
@@ -443,6 +456,13 @@ def pwic_option(sql: Optional[sqlite3.Cursor],
 def pwic_random_hash() -> str:
     ''' Generate a random 64-char-long string '''
     return pwic_sha256(str(urandom(64)))[:32] + pwic_sha256(str(urandom(64)))[32:]
+
+
+def pwic_read_attr(attrs: List[Tuple[str, Optional[str]]], key: str) -> str:
+    for (k, v) in attrs:
+        if k == key:
+            return pwic_nns(v)
+    return ''
 
 
 def pwic_recursive_replace(text: str, search: str, replace: str) -> str:
@@ -793,7 +813,7 @@ class pwic_html_cleaner(HTMLParser):
         self._code = ''                 # Special code block
         self._html = ''                 # Final buffer
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
         tag = tag.strip().lower()
         if (self._mute == '') and (tag in self._skipped_tags):
             self._mute = tag
@@ -811,7 +831,7 @@ class pwic_html_cleaner(HTMLParser):
                         buffer += ' %s="%s"' % (k, v)
             self._html += '<%s%s>' % (tag, buffer)
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str):
         tag = tag.strip().lower()
         if self._code == tag:
             self._code = ''
@@ -820,7 +840,7 @@ class pwic_html_cleaner(HTMLParser):
         else:
             self._html += '</%s>' % (tag)
 
-    def handle_data(self, data):
+    def handle_data(self, data: str):
         if self._mute == '':
             if self._code in ['blockcode', 'code']:
                 data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
@@ -946,7 +966,7 @@ class pwic_html2odt(HTMLParser):
         if pos != -1:
             self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
 
-    def handle_starttag(self, tag: str, attrs) -> None:
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         tag = tag.lower()
 
         # Rules
@@ -996,7 +1016,8 @@ class pwic_html2odt(HTMLParser):
                                     self.odt += ' text:style-name="Blockquote"'
                                     break
                             else:
-                                for key, value in attrs:
+                                for key, value_ns in attrs:
+                                    value = pwic_nns(value_ns)
                                     if key == property_value:
                                         # Fix the base URL for the links
                                         if (tag == 'a') and (key == 'href'):
@@ -1127,3 +1148,202 @@ class pwic_html2odt(HTMLParser):
             data = data.replace(' ', '<text:s/>')
         # Default behavior
         self.odt += data
+
+
+# ===================================================
+#  odt2md
+# ===================================================
+
+class pwic_odt2styles(HTMLParser):
+    def reset(self) -> None:
+        HTMLParser.reset(self)
+        self.styles: Dict[str, Dict[str, bool]] = {}
+        self.reset_marks()
+
+    def reset_marks(self) -> None:
+        self.name = ''
+        self.bold = False
+        self.italic = False
+        self.underline = False
+        self.strike = False
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        tag = tag.strip().lower()
+        # Block
+        if tag == 'style:style':
+            self.reset_marks()
+            if pwic_read_attr(attrs, 'style:family') == 'text':
+                self.name = pwic_read_attr(attrs, 'style:name')
+            else:
+                self.name = ''
+        # Attributes
+        elif tag == 'style:text-properties':
+            value = pwic_read_attr(attrs, 'fo:font-weight')
+            if value != '':
+                self.bold = (value != 'normal')
+            value = pwic_read_attr(attrs, 'fo:font-style')
+            if value != '':
+                self.italic = value in ['italic', 'oblique']
+            value = pwic_read_attr(attrs, 'style:text-underline-type')
+            if value != '':
+                self.underline = (value != 'none')
+            value = pwic_read_attr(attrs, 'style:text-line-through-style')
+            if value != '':
+                self.strike = (value != 'none')
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.strip().lower()
+        if (tag == 'style:style') and (self.name != '') and (self.name[:5] != 'Code_'):
+            if self.bold or self.italic or self.underline or self.strike:
+                self.styles[self.name] = {'bold': self.bold,
+                                          'italic': self.italic,
+                                          'underline': self.underline,
+                                          'strike': self.strike}
+
+    def get_decorator(self, name: str) -> str:
+        deco = ''
+        if name in self.styles:
+            if self.styles[name]['bold']:
+                deco += '**'
+            if self.styles[name]['italic']:
+                deco += '*'
+            if self.styles[name]['underline']:
+                deco += '--'
+            if self.styles[name]['strike']:
+                deco += '~~'
+        return deco
+
+
+class pwic_odt2md(HTMLParser):
+    def __init__(self, sql: sqlite3.Cursor):
+        HTMLParser.__init__(self)
+        if sql is not None:
+            self.base_url = str(pwic_option(sql, '', 'base_url', ''))
+        else:
+            self.base_url = ''
+
+    def reset(self) -> None:
+        HTMLParser.reset(self)
+
+        # Content
+        self.content = ''
+        self.styler = pwic_odt2styles()
+
+        # Parser
+        self.md = ''
+        self.link = ''
+        self.listlevel = 0
+        self.table = False
+        self.table_rows = 0
+        self.table_cols = 0
+        self.spanstack: List[str] = []
+        self.mute = ''
+
+    def load_odt(self, filename: str) -> bool:
+        # Read the contents
+        content = ''
+        styles = ''
+        with ZipFile(filename) as odt:
+            try:
+                with odt.open('content.xml') as f:          # Mandatory
+                    content = f.read().decode()
+                with odt.open('styles.xml') as f:           # Optional
+                    styles = f.read().decode()
+            except KeyError:
+                pass
+        if content == '':
+            return False
+
+        # Extract the main block
+        p1 = content.find('<office:body>')                  # Has no attribute
+        p2 = content.rfind('</office:body>')
+        if (-1 in [p1, p2]) or (p1 > p2):
+            return False
+        self.content = content[p1 + 13:p2].replace('\r', '').strip()
+
+        # Read the styles
+        self.styler.reset()
+        self.styler.feed(styles)
+        return True
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        # Mute
+        if self.mute != '':
+            return
+        tag = tag.strip().lower()
+        # Element
+        if tag == 'text:span':
+            deco = self.styler.get_decorator(pwic_read_attr(attrs, 'text:style-name'))
+            if self.link != '':
+                deco = deco.replace('--', '')
+            self.md += deco
+            self.spanstack.append(deco[::-1])
+        elif tag == 'text:a':
+            self.md += '['
+            self.link = pwic_read_attr(attrs, 'xlink:href')
+            if (self.link[:len(self.base_url)] == self.base_url) and (len(self.link) > len(self.base_url)):
+                self.link = self.link[len(self.base_url):]
+        elif tag == 'draw:frame':
+            self.md += '[IMAGE]'
+            self.mute = tag                                 # Assumed to be not imbricated
+        # Block
+        elif tag == 'text:p':
+            if (self.listlevel == 0) and not self.table:
+                self.md += '\n\n'
+        elif tag == 'text:h':
+            self.md += '\n\n%s ' % ('#' * pwic_int(pwic_read_attr(attrs, 'text:outline-level')))
+        # List
+        elif tag == 'text:list':
+            self.listlevel += 1
+            if self.listlevel == 1:
+                self.md += '\n\n'
+        elif tag == 'text:list-item':
+            self.md += '\n%s- ' % ('    ' * (self.listlevel - 1))
+        # Table
+        elif tag == 'table:table':
+            self.table = True
+            self.table_rows = 0
+            self.table_cols = 0
+        elif tag == 'table:table-row':
+            self.table_rows += 1
+            if self.table_rows == 2:
+                self.md += '\n|%s' % ('---|' * self.table_cols)
+            self.md += '\n| '
+        elif tag == 'table:table-cell':
+            self.table_cols += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.strip().lower()
+        if tag == self.mute:
+            self.mute = ''
+        if tag == 'text:s':
+            self.md += ' '
+        elif tag == 'text:line-break':
+            self.md += '\n'
+        elif tag == 'text:span':
+            try:
+                self.md += self.spanstack.pop()
+            except IndexError:
+                pass
+        elif tag == 'text:a':
+            self.md += '](%s)' % self.link
+            self.link = ''
+        elif tag == 'text:list':
+            self.listlevel -= 1
+            self.listlevel = max(0, self.listlevel)
+        elif tag == 'table:table':
+            self.table = False
+        elif tag == 'table:table-cell':
+            self.md += ' | '
+
+    def handle_data(self, data: str) -> None:
+        if self.mute != '':
+            data = ''
+        elif (self.listlevel > 0) or self.table:
+            data = data.replace('\n', ' ').strip()
+        self.md += unescape(data)
+
+    def get_md(self) -> str:
+        self.feed(self.content)
+        lines = [e.rstrip() for e in self.md.split('\n')]
+        return pwic_recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')

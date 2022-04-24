@@ -353,6 +353,12 @@
 						<td>Enable a basic protection to prevent the user from playing around with his web browser to copy the text of the main page. It also forces the readers to focus on reading the page.</td>
 					</tr>
 					<tr>
+						<td><code>odt_document_no_conversion</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Disable the possibility to convert a document from OpenDocument to Markdown that is used to render the pages.</td>
+					</tr>
+					<tr>
 						<td><code>odt_image_height_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -663,6 +669,7 @@
 				<li>For security reasons, the content of the file is verified if the option <code>magic_bytes</code> is enabled.</li>
 				<li>To host the uploaded files on an external storage, you need to implement a custom code in <code>PwicExtension.on_api_document_*</code>, populate the field <code>documents.exturl</code> and don't keep any local copy.</li>
 			</ul>
+		<p>For a document stored in format OpenDocument Text (odt), you can import its content as a Markdown text by clicking on the button {{pwic.emojis.hammer}}, unless you defined the option <code>odt_document_no_conversion</code>. Its images are excluded from the processing. The embedded convertor from ODT to MD produces a more suitable content in regards of what the renown tool <em>Pandoc</em> can achieve.</p>
 
 
 		<h1 id="help_promote_page"><a href="#top">{{pwic.emojis.finger_up}}</a> Promote to the header line</h1>

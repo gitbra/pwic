@@ -10,24 +10,44 @@
 	</header>
 
 	<article>
-		<h1>Projects</h1>
-		{% if pwic.projects|count == 0 %}
+		{% if (pwic.projects|count + pwic.joinable_projects|count == 0) %}
 			<p>Unfortunately, you have access to no project at all.</p>
-		{% else %}
-			<ul>
+		{% endif %}
+
+		{% if pwic.projects|count > 0 %}
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#projects_1').toggleClass('pwic_hidden')">Projects you joined already</h1>
+			<table id="projects_1">
+				<tr>
+					<th>Project</th>
+					<th>Description</th>
+					<th class="pwic_desktop">Date</th>
+				</tr>
 				{% for p in pwic.projects %}
-					<li><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a> [{{p.project|escape}}]</li>
+					<tr>
+						<td>{{p.project|escape}}</td>
+						<td><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a></td>
+						<td class="pwic_desktop">{{p.date|escape}}</td>
+					</tr>
 				{% endfor %}
-			</ul>
+			</table>
 		{% endif %}
 
 		{% if pwic.joinable_projects|count > 0 %}
-			<h1>Available projects</h1>
-				<ul>
-					{% for p in pwic.joinable_projects %}
-						<li><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a> [{{p.project|escape}}]</li>
-					{% endfor %}
-				</ul>
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#projects_2').toggleClass('pwic_hidden')">Available public projects</h1>
+			<table id="projects_2">
+				<tr>
+					<th>Project</th>
+					<th>Description</th>
+					<th class="pwic_desktop">Date</th>
+				</tr>
+				{% for p in pwic.joinable_projects %}
+					<tr>
+						<td>{{p.project|escape}}</td>
+						<td><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a></td>
+						<td class="pwic_desktop">{{p.date|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
 		{% endif %}
 	</article>
 {% endblock %}

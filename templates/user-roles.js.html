@@ -1,36 +1,6 @@
 <script>
 	'use strict';
 
-	function roles_sort(column) {
-		function _sortkey(obj) {
-			var list = $(obj).find('INPUT[type=checkbox]');
-			if (list.length > 0)
-				return list.attr('checked') || 'not-checked';
-			else
-				return obj.textContent.toLowerCase();
-		}
-		var table, finished, i;
-		table = $('#roles_table')[0];
-		do {	
-			finished = true;
-			for (i=1 ; i<table.rows.length-1 ; i++)
-			{
-				if (_sortkey($(table.rows[i]).find('TD')[column]) > _sortkey($(table.rows[i+1]).find('TD')[column]))
-				{
-					table.rows[i].parentNode.insertBefore(table.rows[i+1], table.rows[i]);
-					finished = false;
-					break;
-				}
-			}
-		} while (!finished);
-	}
-
-	(function(){
-		var i, elements = $('#roles_table TR TH');
-		for (i=0 ; i<elements.length-1 ; i++)
-			elements[i].innerHTML = '<span class="pwic_cursor" title="Sort" onclick="roles_sort('+i+')">' + elements[i].innerHTML + '<\/span> ';
-	}());
-
 	function roles_toggle(id, project, user, role) {
 		var element = $('#roles_tag_' + id);
 		if (element.length > 0)

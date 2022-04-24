@@ -3,7 +3,7 @@
 
 ## Presentation
 
-**Pwic.wiki** (pronounce /puik/) is a lightweight wiki server to support the documentation of your projects through comprehensive features and 5 basic roles. Its purpose is to serve as a common repository where the essential documentation can be easily located, accessed, edited, compared, validated, shared, exported and eventually analyzed by your own scripts.
+**Pwic.wiki** (pronounce /puik/) is a flexible wiki server to support the documentation of your projects through comprehensive features and 5 basic roles. Its purpose is to serve as a common repository where the essential documentation can be easily located, accessed, edited, compared, validated, shared, exported and eventually analyzed by your own scripts.
 
 *Pwic.wiki* is an advanced concept that attempts to fix frequent caveats that you can face when you participate to an IT project. If you ever wasted your time on managing your files, templates, styles and validations, you are probably searching for a fresh solution to support your process!
 
@@ -39,10 +39,11 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 
 - Page layout supervised with Markdown and HTML
 - Wysiwyg editor for Markdown
-- Classification of the pages with hashtags
+- Classification of the pages with hashtags and statuses
 - Automatic numbering of the headers with no gap
 - Mandatory, linear and partially undoable versioning
-- Hashtags and statuses
+- Management of attached documents by name, mime, size and magic bytes
+- Import of texts from OpenDocument
 
 ### For the managers
 
@@ -75,7 +76,6 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Global and project-dependent settings
 - OAuth2-based federated authentication with control of the state (SSO)
 - Cache system
-- Management of the attached documents by name, mime, size and magic bytes
 - Private and public modes
 - Custom CSS and templates
 - Export of an entire project to Markdown and HTML

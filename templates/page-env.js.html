@@ -64,7 +64,7 @@
 												'&value='+encodeURIComponent(value),
 										credentials: 'same-origin' })
 			.then(function(response) {
-				if (!response.ok)
+				if (response.ok)
 					$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
 				else
 					throw Error(response.status + ' ' + response.statusText);
