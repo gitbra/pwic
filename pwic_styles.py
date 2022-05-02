@@ -323,11 +323,6 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:border-bottom="0.0104in solid #000000"
                                         fo:padding-bottom="0.0138in" />
         </style:style>
-        <style:style style:name="Inf"
-                     style:display-name="Inferior"
-                     style:family="text">
-            <style:text-properties style:text-position="sub 66%"/>
-        </style:style>
         <style:style style:name="Italic"
                      style:display-name="Italic"
                      style:family="text">
@@ -356,8 +351,13 @@ class pwic_styles_odt:
                      style:family="text">
             <style:text-properties fo:font-weight="bold"/>
         </style:style>
+        <style:style style:name="Sub"
+                     style:display-name="Subscript"
+                     style:family="text">
+            <style:text-properties style:text-position="sub 66%"/>
+        </style:style>
         <style:style style:name="Sup"
-                     style:display-name="Superior"
+                     style:display-name="Superscript"
                      style:family="text">
             <style:text-properties style:text-position="super 66%"/>
         </style:style>

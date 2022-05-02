@@ -9,13 +9,10 @@
 			se = ta.selectionEnd;
 
 		// Replace the text by another one
-		if (ss == se)
-			return false;
 		ta.value = ta.value.substring(0, ss) + tagStart + ta.value.substring(ss, se) + tagEnd + ta.value.substring(se);
 		ta.selectionStart = ss + tagStart.length;
-		ta.selectionEnd = se + tagEnd.length;
+		ta.selectionEnd = se + tagStart.length;
 		ta.focus();
-		return true;
 	}
 
 	function edit_decorate_end(text) {
@@ -25,7 +22,6 @@
 		ta.selectionStart = se + text.length;
 		ta.selectionEnd = ta.selectionStart;
 		ta.focus();
-		return true;
 	}
 
 	function edit_link(text) {
@@ -34,27 +30,30 @@
 			se = ta.selectionEnd;
 
 		// Find the cursors
-		if (ss == se)
-			return false;
+		if (ss != se)
+		{
+			// Check the current selection for an autolink
+			if (ta.value.substring(ss, se).match('^[a-z]{3,5}:\/\/'))
+			{
+				edit_decorate('<', '>');
+				return;
+			}
 
-		// Check the current selection for an autolink
-		if (ta.value.substring(ss, se).match('^[a-z]{3,5}:\/\/'))
-			return edit_decorate('<', '>');
+			// Ask for the link
+			var url = prompt(text, '');
+			if ((url != null) && (url != ''))
+			{
+				url = url.trim();
+				if (url.match(/^[a-z0-9_\-\.]+(#p[0-9\.]+)?$/i))
+					url = '/{{pwic.project}}/' + url.toLowerCase();
 
-		// Ask for the link
-		var url = prompt(text, '');
-		if ((url == '') || (url == null))
-			return false;
-		url = url.trim();
-		if (url.match(/^[a-z0-9_\-\.]+(#p[0-9\.]+)?$/i))
-			url = '/{{pwic.project}}/' + url.toLowerCase();
-
-		// Replace the text by another one
-		ta.value = ta.value.substring(0, ss) + '[' + ta.value.substring(ss, se) + ']('+url+')' + ta.value.substring(se);
-		ta.selectionStart = ss;
-		ta.selectionEnd = se + 4 + url.length;
+				// Replace the text by another one
+				ta.value = ta.value.substring(0, ss) + '[' + ta.value.substring(ss, se) + ']('+url+')' + ta.value.substring(se);
+				ta.selectionStart = ss;
+				ta.selectionEnd = se + 4 + url.length;
+			}
+		}
 		ta.focus();
-		return true;
 	}
 
 	function edit_prepend(tag) {
@@ -80,7 +79,21 @@
 		ta.selectionStart = ss + tag.length;
 		ta.selectionEnd = se + appended * tag.length;
 		ta.focus();
-		return true;
+	}
+
+	function edit_single_line() {
+		var	ta = $('#edit_markdown')[0],
+			ss = ta.selectionStart,
+			se = ta.selectionEnd;
+		if (ss > se)
+			ss, se = se, ss
+
+		// Merge the selected lines
+		var newtxt = ta.value.substring(ss, se).replaceAll('\r', '').replace(/[\s\t]*\n[\s\t]*/, '\n').replaceAll('\n', ' ');
+		ta.value = ta.value.substring(0, ss) + newtxt + ta.value.substring(se);
+		ta.selectionStart = ss;
+		ta.selectionEnd = ss + newtxt.length;
+		ta.focus();
 	}
 
 	function edit_table(textCol, textRow) {
@@ -120,8 +133,8 @@
 			var	ta = $('#edit_markdown')[0],
 				se = ta.selectionEnd;
 			ta.value = ta.value.substring(0, se) + buffer + ta.value.substring(se);
+			ta.focus();
 		}
-		return true;
 	}
 
 	function edit_table_import(errorText) {
@@ -205,7 +218,6 @@
 		ta.value = ta.value.substring(0, se) + ' [^'+(id+1)+']' + ta.value.substring(se) + '\n\n' + '[^'+(id+1)+']: '
 		ta.selectionStart = ta.selectionEnd = ta.value.length;
 		ta.focus();
-		return true;
 	}
 
 	function edit_join_document(id, filename, mime) {
@@ -245,7 +257,6 @@
 			ta.selectionEnd = ta.selectionStart;
 			ta.focus();
 		}
-		return false;
 	}
 
 	function edit_convert_document(id) {

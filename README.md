@@ -60,7 +60,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 
 - Low technical requirements and bandwidth
 - Affordable solution based on open-source applications
-- Fast setup with Python 3 in 10 minutes
+- Fast setup with Python 3 in 15 minutes
 - No data stored in proprietary formats
 - Local storage of the uploaded files and SQLite database
 - Possible deployment with command lines
@@ -91,7 +91,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 ### Mandatory technical setup
 
 - Install Python >=3.7: `apt-get install python3 python3-pip --no-install-recommends`
-- Install the dependencies: `python3 -m pip install --upgrade "aiohttp>=3.8" aiohttp-cors "aiohttp-session>=2.10" imagesize jinja2 parsimonious PrettyTable pygments`
+- Install the dependencies: `python3 -m pip install --upgrade "aiohttp>=3.8" aiohttp-cors "aiohttp-session>=2.10" imagesize jinja2 parsimonious PrettyTable pygments cryptography setuptools`
 - Clone the repository `git clone https://github.com/gitbra/pwic.git` or uncompress the [latest modifications](https://github.com/gitbra/pwic/archive/refs/heads/master.zip) in a folder of your choice
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
 	- Change the default password in `PWIC_DEFAULTS['password']`

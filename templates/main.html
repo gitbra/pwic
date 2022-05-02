@@ -83,14 +83,7 @@
 		'use strict';
 
 		function pwic_entities(value) {
-			while (true)
-			{
-				var curlen = value.length;
-				value = value.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quote');
-				if (value.length == curlen)
-					break;
-			}
-			return value;
+			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quote');
 		}
 
 		function pwic_is_safe(name) {
@@ -135,55 +128,55 @@
 	<script>
 		'use strict';
 
-		function pwic_table_sort(that, column) {
-			function _sortkey(obj) {
-				var v, list = $(obj).find('INPUT[type=checkbox]');
-				if (list.length > 0)
-					return list.attr('checked') || 'not-checked';
-				else
-				{
-					v = obj.textContent;
-					if (v == '')
-						return '';
+		{% if not pwic.env.no_sort_table %}
+			function pwic_table_sort(that, column) {
+				function _sortkey(obj) {
+					var v, list = $(obj).find('INPUT[type=checkbox]');
+					if (list.length > 0)
+						return list.attr('checked') || 'not-checked';
 					else
-						if (Number.isInteger(v))
-							return parseInt(v);
-						else
-							if (isNaN(v.replace(',', '.')))
-								return v.toLowerCase();
-							else
-								return parseFloat(v.replace(',', '.'));
-				}
-			}
-
-			var e = $(that),
-				table = e.parents('TABLE')[0],
-				i, finished, op, s1, s2;
-			op = parseInt(e.data('sort') || '0');
-			e.data('sort', 1 - op);
-			do {	
-				finished = true;
-				for (i=1 ; i<table.rows.length-1 ; i++)
-				{
-					s1 = _sortkey($(table.rows[i]).find('TD')[column]);
-					s2 = _sortkey($(table.rows[i+1]).find('TD')[column]);
-					if (((op == 0) && (s1 > s2)) || ((op == 1) && (s1 < s2)))
 					{
-						table.rows[i].parentNode.insertBefore(table.rows[i+1], table.rows[i]);
-						finished = false;
-						break;
+						v = obj.textContent;
+						if (v == '')
+							return '';
+						else
+							if (Number.isInteger(v))
+								return parseInt(v);
+							else
+								if (isNaN(v.replace(',', '.')))
+									return v.toLowerCase();
+								else
+									return parseFloat(v.replace(',', '.'));
 					}
 				}
-			} while (!finished);
-		}
 
-		(function() {
+				var e = $(that),
+					table = e.parents('TABLE')[0],
+					i, finished, op, s1, s2;
+				op = parseInt(e.data('sort') || '0');
+				e.data('sort', 1 - op);
+				do {	
+					finished = true;
+					for (i=1 ; i<table.rows.length-1 ; i++)
+					{
+						s1 = _sortkey($(table.rows[i]).find('TD')[column]);
+						s2 = _sortkey($(table.rows[i+1]).find('TD')[column]);
+						if (((op == 0) && (s1 > s2)) || ((op == 1) && (s1 < s2)))
+						{
+							table.rows[i].parentNode.insertBefore(table.rows[i+1], table.rows[i]);
+							finished = false;
+							break;
+						}
+					}
+				} while (!finished);
+			}
+
 			$('TABLE').each(function(i, e) {
 				$(e).find('TR TH').each(function(i, e) {
 					e.innerHTML = '<span class="pwic_cursor" title="Sort" onclick="pwic_table_sort(this, '+i+')">' + (e.innerHTML||'...') + '<\/span>';
 				});
 			});
-		}());
+		{% endif %}
 	</script>
 </body>
 </html>

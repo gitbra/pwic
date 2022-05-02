@@ -1,6 +1,12 @@
 <script>
 	'use strict';
 
+	{% if pwic.env.no_text_selection %}
+		$(document).on('keydown', (event) => { return !((event.key == 'F12') || (event.ctrlKey && event.shiftKey && (event.key == 'I')) || (event.ctrlKey && (event.key == 'u'))); });
+		$(document).on('selectstart', () => { return false; });
+		$(document).on('contextmenu', () => { return false; });
+	{% endif %}
+
 	window.onscroll = function() {
 		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
@@ -97,4 +103,20 @@
 			});
 		return false;
 	}
+
+	{% if not pwic.env.no_copy_code %}
+		function page_copy_code() {
+			var code = $(this).parent().text().substring($(this).text().length);
+			navigator.clipboard.writeText(code);
+		}
+
+		$('CODE').each(function(i, e) {
+			if ((e.clientHeight >= 100) || (e.clientWidth >= 300))
+				$(e).prepend($(document.createElement('DIV'))
+								.addClass('pwic_copy_code' + (e.clientHeight <= 50 ? '_tiny' : ''))
+								.attr('title', 'Copy')
+								.html('{{pwic.emojis.notes}}')
+								.on('click', page_copy_code));
+		});
+	{% endif %}
 </script>

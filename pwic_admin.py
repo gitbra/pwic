@@ -521,7 +521,7 @@ CREATE TABLE "documents" (
         sql = self.db_connect()
         if sql is None:
             return False
-        print('\nGlobal and project-dependent variables:\n')
+        print('\nGlobal and project-dependent variables:')
         if var != '':
             sql.execute(''' SELECT project, key, value
                             FROM env
@@ -1786,12 +1786,13 @@ CREATE TABLE "documents" (
         if sql is None:
             return False
         dt = pwic_dt(days=days)
-        sql.execute(''' SELECT b.date, a.user, a.project, a.admin
+        sql.execute(''' SELECT a.user, a.project, a.admin, a.manager, a.editor, a.validator
                         FROM roles AS a
-                            INNER JOIN (
+                            LEFT OUTER JOIN (
                                 SELECT project, author, MAX(date) AS date
                                 FROM audit.audit
-                                WHERE (project = ?) OR ('' = ?)
+                                WHERE ((project = ?) OR ('' = ?))
+                                  AND date >= ?
                                 GROUP BY project, author
                             ) AS b
                                 ON  b.project = a.project
@@ -1803,19 +1804,24 @@ CREATE TABLE "documents" (
                              OR a.validator = 'X'
                           )
                           AND a.disabled    = ''
-                          AND b.date       <= ?
-                        ORDER BY b.date, a.user, a.project''',
-                    (project, project, project, project, dt['date-nd']))
+                          AND b.date        IS NULL
+                        ORDER BY a.user, a.project''',
+                    (project, project, dt['date-nd'], project, project))
 
         # Report the log
         tab = PrettyTable()
-        tab.field_names = ['Last date', 'User', 'Project', 'Administrator']
+        tab.field_names = ['User', 'Project', 'Roles']
         for f in tab.field_names:
             tab.align[f] = 'l'
         for row in sql.fetchall():
-            tab.add_row([row['date'], row['user'], row['project'], row['admin']])
+            roles = ''
+            for k in ['admin', 'manager', 'editor', 'validator']:
+                if pwic_xb(row[k]):
+                    roles += k[:1].upper()
+            tab.add_row([row['user'], row['project'], roles])
         tab.header = True
         tab.border = True
+        print('The pure readers are not included in the list.')
         print(tab.get_string())
         return True
 

@@ -20,12 +20,14 @@
 				<tr>
 					<th>Project</th>
 					<th>Description</th>
-					<th class="pwic_desktop">Date</th>
+					<th class="pwic_desktop">Last activity</th>
+					<th class="pwic_desktop">Creation date</th>
 				</tr>
 				{% for p in pwic.projects %}
 					<tr>
 						<td>{{p.project|escape}}</td>
 						<td><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a></td>
+						<td class="pwic_desktop">{{(p.last_activity or '-')|escape}}</td>
 						<td class="pwic_desktop">{{p.date|escape}}</td>
 					</tr>
 				{% endfor %}

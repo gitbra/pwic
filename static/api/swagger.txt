@@ -148,6 +148,8 @@ paths:
           description: Incorrect file type
         422:
           description: File cannot be converted
+        500:
+          description: File incorrectly managed on the server
         503:
           description: Disabled feature
   /api/document/delete:
@@ -573,7 +575,7 @@ paths:
           name: ignore_file_errors
           type: boolean
           description: Ignore the failed operations on the files
-          default: 'X'
+          default: true
       responses:
         302:
           description: Successful operation
@@ -623,6 +625,39 @@ paths:
           description: Unsufficient authorizations, or not found
         503:
           description: Update temporarily unavailable
+  /api/project/changes/get:
+    post:
+      summary: Get the recent changes
+      tags:
+        - project
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: days
+          type: string
+          description: Number of days in the past between 0 and 90
+          required: false
+          default: 7
+      responses:
+        200:
+          description: Successful operation
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                project:
+                  type: string
+                date:
+                  type: string
+        400:
+          description: Invalid parameters
   /api/project/env/set:
     post:
       summary: Change a project-dependent setting

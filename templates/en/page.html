@@ -19,14 +19,6 @@
 		{% endif %}
 	</header>
 
-	{% if pwic.env.no_text_selection %}
-		{% include 'page-special-nosel.js.html' %}
-	{% endif %}
-	{% include 'page.js.html' %}
-	{% if not pwic.env.no_search %}
-		{% include 'search.js.html' %}
-	{% endif %}
-
 	<article>
 		<div id="pwic_progress"></div>
 
@@ -178,6 +170,12 @@
 			<div id="page_legal_notice">{{pwic.env.legal_notice.value|escape|replace('\n','<br/>')}}</div>
 		{% endif %}
 	</article>
+
+	<!-- Scripts -->
+	{% include 'page.js.html' %}
+	{% if not pwic.env.no_search %}
+		{% include 'search.js.html' %}
+	{% endif %}
 {% endblock %}
 
 

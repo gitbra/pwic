@@ -3,32 +3,32 @@
 //  Fonts
 //		https://fonts.google.com/specimen/Noto+Sans
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_latin.woff2) format('woff2')
 	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_latin-ext.woff2) format('woff2')
 	unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_cyrillic.woff2) format('woff2')
 	unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_cyrillic-ext.woff2) format('woff2')
 	unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_greek.woff2) format('woff2')
 	unicode-range: U+0370-03FF
 
-@font-face 
+@font-face
 	font-family: 'Noto Sans'
 	src: url(/static/noto_greek-ext.woff2) format('woff2')
 	unicode-range: U+1F00-1FFF
@@ -74,8 +74,26 @@ CODE
 	max-width: 100%
 	border: 1px solid gray
 	font-family: monospace
-	
-	// Highlight at the end of this file
+
+	.pwic_copy_code
+		float: right
+		margin: 5px
+		background-color: white
+		border: 1px solid black
+		border-radius: 15px
+		line-height: 30px
+		width: 30px
+		text-align: center
+		cursor: pointer
+	.pwic_copy_code:hover
+		background-color: lightgray
+
+	.pwic_copy_code_tiny
+		float: right
+		margin-left: 5px
+		background-color: lightgray
+		text-align: center
+		cursor: pointer
 
 
 // --------------------------------
@@ -101,23 +119,23 @@ HEADER
 		A,DIV
 			float: left
 			margin: 0 10px 5px 0
-			padding: 5px 10px 5px 10px
+			padding: 5px 10px
 			line-height: 20px
-
-		A
 			border: 1px solid black
+
 		A:hover
 			background-color: white
 
 		DIV
-			border: 1px solid black
 			background-color: white
 
 			INPUT
 				width: 50px
 				border: none
 			INPUT:focus
-				width: 250px
+				width: 80vw
+				transition: width 0.5s
+			INPUT:not(:focus)
 				transition: width 0.5s
 
 
@@ -138,7 +156,7 @@ ARTICLE
 		border-radius: 10px
 		margin-top: 30px
 		margin-left: 0cm
-		padding: 3px 10px 3px 10px
+		padding: 3px 10px
 		font-size: 20pt
 		font-weight: bold
 
@@ -190,7 +208,7 @@ ARTICLE
 		border-bottom: 1px solid gray
 
 	TH,TD
-		padding: 2px 5px 2px 5px
+		padding: 2px 5px
 
 	INPUT[type=button], INPUT[type=submit]
 		padding: 5px 15px 5px 15px
@@ -217,7 +235,7 @@ ARTICLE
 		A
 			display: inline-block
 			margin: 0 0 5px 5px
-			padding: 5px 10px 5px 10px
+			padding: 5px 10px
 			border: 1px solid lightgray
 			border-radius: 10px
 			background-color: #ECF6F9
@@ -236,7 +254,7 @@ ARTICLE
 		A
 			float: left
 			margin: 0 5px 5px 0
-			padding: 3px 5px 3px 5px
+			padding: 3px 5px
 			border: 1px solid gray
 			border-radius: 10px
 			font-family: monospace
@@ -259,7 +277,7 @@ ARTICLE
 
 		A
 			float: left
-			padding: 5px 10px 5px 10px
+			padding: 5px 10px
 			margin: 5px
 			// width: 200px
 			border: 1px solid lightgray
@@ -373,7 +391,7 @@ FOOTER
 		width: 90%
 		margin: auto
 
-		padding: 5px 10px 5px 10px
+		padding: 5px 10px
 		border: 2px solid black
 		border-radius: 10px
 		background-color: #F8F8F8
@@ -514,8 +532,7 @@ SPAN.pwic_progressbar
 
 #page_topofpage
 	text-align: center
-	A:hover
-		font-weight: bold
+	font-weight: bold
 
 #edit_toolbar
 	DIV
@@ -586,7 +603,7 @@ SPAN.pwic_progressbar
 		display: none !important
 
 	HEADER
-		padding: 5px 10px 5px 10px
+		padding: 5px 10px
 
 		.pwic_ph1
 			white-space: nowrap
@@ -603,7 +620,7 @@ SPAN.pwic_progressbar
 		.pwic_tagbox
 			A,DIV
 				margin: 0 5px 5px 0
-				padding: 3px 10px 3px 10px
+				padding: 3px 10px
 				font-size: smaller
 
 	ARTICLE
@@ -628,7 +645,7 @@ TABLE.diff
 	width: 100%
 	font-family: monospace
 	TD
-		padding: 0 5px 0 5px
+		padding: 0 5px
 	TD:nth-child(3)
 		width: 45%
 	TD:nth-child(6)
@@ -639,19 +656,19 @@ TABLE.diff
 	text-align: right
 
 .diff_add
-	padding: 1px 5px 1px 5px
+	padding: 1px 5px
 	display: inline-block
 	background-color: #E0FFE0
 	border: 1px solid green
 
 .diff_chg
-	padding: 1px 5px 1px 5px
+	padding: 1px 5px
 	display: inline-block
 	background-color: #FFFFE0
 	border: 1px solid yellow
 
 .diff_sub
-	padding: 1px 5px 1px 5px
+	padding: 1px 5px
 	display: inline-block
 	background-color: #FFE0E0
 	border: 1px solid red

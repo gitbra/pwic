@@ -296,6 +296,7 @@ class PwicServer():
                              'version': PWIC_VERSION}
 
         # The project-dependent variables have the priority
+        project = pwic.get('project', '')
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT project, key, value
                         FROM env
@@ -305,7 +306,7 @@ class PwicServer():
                           AND   value   <> ''
                         ORDER BY key     ASC,
                                  project DESC''',
-                    (pwic.get('project', ''), ))
+                    (project, ))
         pwic['env'] = {}
         for row in sql.fetchall():
             (global_, key, value) = (row['project'] == '', row['key'], row['value'])
@@ -318,25 +319,27 @@ class PwicServer():
                     pwic['env'][key + '_str'] = {'value': pwic_size2str(pwic_int(value)),
                                                  'global': global_}
 
-        # Dynamic settings
-        if (name == 'page') and ('no_index_rev' in pwic['env']) and not pwic['latest']:
-            robots = pwic_list(pwic['env'].get('robots', {'value': ''})['value'].lower().replace(',', ' '))
-            if 'archive' in robots:
-                robots.remove('archive')
-            if 'noarchive' not in robots:
-                robots.append('noarchive')
-            if 'index' in robots:
-                robots.remove('index')
-            if 'noindex' not in robots:
-                robots.append('noindex')
-            if 'snippet' in robots:
-                robots.remove('snippet')
-            if 'nosnippet' not in robots:
-                robots.append('nosnippet')
+        # Dynamic settings for the robots
+        if (name == 'search') or \
+           ((name == 'page') and not pwic['latest'] and ('seo_hide_revs' in pwic['env']) and ('validated_only' not in pwic['env'])):
+            # Split
+            values = pwic_list(pwic_option(sql, project, 'robots', ''))
+            robots: Dict[str, Optional[bool]] = {}
+            for k in ['archive', 'follow', 'index', 'snippet']:
+                if ('no' + k) in values:
+                    robots[k] = False
+                elif k in values:
+                    robots[k] = True
+            # Override
+            robots['archive'] = False
+            robots['index'] = False
+            robots['snippet'] = None
+            # Rebuild
             if 'robots' not in pwic['env']:
                 pwic['env']['robots'] = {'value': '',
                                          'global': True}
-            pwic['env']['robots']['value'] = ' '.join(robots)
+            values = [('' if robots[k] else 'no') + k for k in robots if robots[k] is not None]
+            pwic['env']['robots']['value'] = ' '.join(values)
 
         # Session
         session = await get_session(request)
@@ -353,7 +356,7 @@ class PwicServer():
         output = app['jinja'].get_template(template_name).render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, pwic, output)
         headers: MultiDict = MultiDict({})
-        PwicExtension.on_html_headers(headers, pwic.get('project', ''), name)
+        PwicExtension.on_html_headers(headers, project, name)
         return web.Response(text=output, content_type=pwic_mime('html'), headers=headers)
 
     async def page(self, request: web.Request) -> web.Response:
@@ -426,15 +429,24 @@ class PwicServer():
         # ... or ask the user to pick a project
         else:
             # Projects joined
-            sql.execute(''' SELECT a.project, a.description, a.date
+            sql.execute(''' SELECT a.project, a.description, a.date, c.last_activity
                             FROM projects AS a
                                 INNER JOIN roles AS b
                                     ON  b.project  = a.project
                                     AND b.user     = ?
                                     AND b.disabled = ''
-                            ORDER BY a.date        DESC,
-                                     a.description ASC''',
-                        (user, ))
+                                LEFT OUTER JOIN (
+                                    SELECT project, MAX(date) AS last_activity
+                                    FROM audit.audit
+                                    WHERE date   >= ?
+                                      AND author  = ?
+                                    GROUP BY project
+                                ) AS c
+                                    ON c.project = a.project
+                            ORDER BY c.last_activity DESC,
+                                     a.date          DESC,
+                                     a.description   ASC''',
+                        (user, dt['date-90d'], user))
             pwic['projects'] = [row for row in sql.fetchall()]
 
             # Projects not joined yet
@@ -2052,6 +2064,38 @@ class PwicServer():
         data.sort()
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 
+    async def api_project_changes_get(self, request: web.Request) -> web.Response:
+        ''' Get the last changes in a minimalistic format '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the parameters
+        post = await self._handle_post(request)
+        project = pwic_safe_name(post.get('project', ''))
+        days = min(max(0, pwic_int(post.get('days', '7'))), 90)
+        if project == '':
+            raise web.HTTPBadRequest()
+
+        # Select the last changes of the project
+        dt = pwic_dt(days=days)
+        sql = self.dbconn.cursor()
+        sql.execute(''' SELECT b.page, MAX(b.date, b.valdate) AS date
+                        FROM roles AS a
+                            INNER JOIN pages AS b
+                                ON    b.project  = a.project
+                                AND   b.latest   = 'X'
+                                AND ( b.date    >= ?
+                                   OR b.valdate >= ? )
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ''
+                        ORDER BY date DESC,
+                                 b.page ASC''',
+                    (dt['date-nd'], dt['date-nd'], project, user))
+        return web.Response(text=json.dumps(sql.fetchall()), content_type=pwic_mime('json'))
+
     async def api_project_progress_get(self, request: web.Request) -> web.Response:
         ''' API to analyze the progress of the project '''
         # Verify that the user is connected
@@ -3244,13 +3288,13 @@ class PwicServer():
                 raise web.HTTPNotFound()
             return web.Response(body=newbody, headers=MultiDict(newheaders))
 
-        # Format MD
+        # Format MD (md2md)
         if extension == 'md':
             headers = {'Content-Type': 'text/markdown',
                        'Content-Disposition': 'attachment; filename="%s"' % endname}
             return web.Response(body=row['markdown'], headers=MultiDict(headers))
 
-        # Format HTML
+        # Format HTML (md2html)
         if extension == 'html':
             htmlStyles = pwic_styles_html()
             html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
@@ -3267,7 +3311,7 @@ class PwicServer():
                        'Content-Disposition': 'attachment; filename="%s"' % endname}
             return web.Response(body=html, headers=MultiDict(headers))
 
-        # Format ODT
+        # Format ODT (md2odt)
         if extension == 'odt':
             # MarkDown --> HTML --> ODT
             html = self._md2html(sql, project, page, revision, row['markdown'],
@@ -4020,11 +4064,13 @@ class PwicServer():
             raise web.HTTPUnsupportedMediaType()
 
         # Convert to Markdown
-        parser = pwic_odt2md(sql)
-        if parser.load_odt(join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])):
-            return web.Response(text=parser.get_md(), content_type=pwic_mime('txt'))
-        else:
+        try:
+            parser = pwic_odt2md(sql)
+            if parser.load_odt(join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])):
+                return web.Response(text=parser.get_md(), content_type=pwic_mime('txt'))
             raise web.HTTPUnprocessableEntity()
+        except Exception:
+            raise web.HTTPInternalServerError()
 
     async def api_swagger(self, request: web.Request) -> web.Response:
         ''' Display the features of the API '''
@@ -4054,14 +4100,6 @@ def main() -> bool:
     # Modules
     # ... launch time
     app['up'] = pwic_dt()
-    # ... languages
-    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if isdir(join(PWIC_TEMPLATES_PATH, f))])
-    if PWIC_DEFAULTS['language'] not in app['langs']:
-        print('Error: English template is missing')
-        return False
-    # ... templates
-    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH), autoescape=False, trim_blocks=True, lstrip_blocks=True)
-    app['jinja'].filters['ishex'] = pwic_ishex
     # ... SQLite
     app['sql'] = sqlite3.connect(PWIC_DB_SQLITE)
     app['sql'].row_factory = pwic_row_factory
@@ -4073,6 +4111,18 @@ def main() -> bool:
     sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
     sql.execute(''' VACUUM main''')
     sql.execute(''' VACUUM audit''')
+    # ... languages
+    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if isdir(join(PWIC_TEMPLATES_PATH, f))])
+    if PWIC_DEFAULTS['language'] not in app['langs']:
+        print('Error: English template is missing')
+        return False
+    # ... templates
+    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH),
+                               autoescape=False,
+                               auto_reload=pwic_option(sql, '', 'fixed_templates') is None,
+                               lstrip_blocks=True,
+                               trim_blocks=True)
+    app['jinja'].filters['ishex'] = pwic_ishex
     # ... client size
     app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_size_max')))
     # ... PWIC
@@ -4092,7 +4142,7 @@ def main() -> bool:
     setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))  # Storage for the cookies
     del skey
     # ... Markdown parser
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline'], safe_mode=False)
+    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline', 'code-friendly'], safe_mode=False)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
@@ -4108,6 +4158,7 @@ def main() -> bool:
                     web.post('/api/project/get', app['pwic'].api_project_get),
                     web.post('/api/project/env/set', app['pwic'].api_project_env_set),
                     web.post('/api/project/users/get', app['pwic'].api_project_users_get),
+                    web.post('/api/project/changes/get', app['pwic'].api_project_changes_get),
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
                     web.get('/api/project/export', app['pwic'].api_project_export),
