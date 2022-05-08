@@ -1,0 +1,10 @@
+aiohttp>=3.8
+aiohttp-cors
+aiohttp-session>=2.10
+imagesize
+jinja2
+parsimonious
+PrettyTable
+pygments
+cryptography
+setuptools

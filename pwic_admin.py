@@ -1932,14 +1932,13 @@ CREATE TABLE "documents" (
                        '%s.%d.gz' % (fn, i + 1))
             except OSError:
                 pass
-        # ... compress last file
+        # ... compress the last file
         try:
             with open(fn + '.0', 'rb') as src:
                 with gzip.open(fn + '.1.gz', 'wb') as dst:
                     copyfileobj(src, dst)
         except OSError:
-            print('Error: the compression of the file #1 failed')
-            return False
+            pass
         # ... remove the compressed file
         try:
             os.remove(fn + '.0')

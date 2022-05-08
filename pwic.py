@@ -42,7 +42,7 @@ from html import escape
 from random import randint
 from datetime import datetime
 
-from pwic_md import Markdown
+from pwic_md import Markdown, MarkdownError
 from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, PWIC_TEMPLATES_PATH, PWIC_USERS, \
     PWIC_DEFAULTS, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, \
     PWIC_ENV_PRIVATE, PWIC_EMOJIS, PWIC_CHARS_UNSAFE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PWIC_MIMES, PWIC_REGEXES, \
@@ -103,13 +103,17 @@ class PwicServer():
         if row is not None:
             html = row['html']
         else:
-            html = app['markdown'].convert(markdown)
+            try:
+                html = app['markdown'].convert(markdown)
+            except MarkdownError:
+                html = ''
             if codeblock:                                                                           # Incompatible with OpenDocument
                 html = html.replace('<div class="codehilite"><pre><span></span><code>', '<code>')   # With pygments
                 html = html.replace('\n</code></pre></div>', '</code>')
                 html = html.replace('<pre><code>', '<code>')                                        # Without pygments
                 html = html.replace('\n</code></pre>', '</code>')
-            cleaner = pwic_html_cleaner(str(pwic_option(sql, project, 'skipped_tags', '')))
+            cleaner = pwic_html_cleaner(str(pwic_option(sql, project, 'skipped_tags', '')),
+                                        pwic_option(sql, project, 'link_nofollow') is not None)
             cleaner.feed(html)
             html = PwicExtension.on_html(sql, project, page, revision, cleaner.get_html())
             if cache:

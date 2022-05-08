@@ -86,19 +86,19 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file
                                 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
-                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'mathjax',
-                              'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph', 'no_heading', 'no_help',
-                              'no_history', 'no_new_user', 'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_text_selection',
-                              'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                              'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max',
-                              'robots', 'rss_size', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'title', 'validated_only']
+                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_nofollow',
+                              'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph', 'no_heading',
+                              'no_help', 'no_history', 'no_new_user', 'no_printing', 'no_rss', 'no_search', 'no_sort_table',
+                              'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
+                              'odt_page_height', 'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max',
+                              'revision_size_max', 'robots', 'rss_size', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
+                              'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
-                                     'keep_drafts', 'language', 'mathjax', 'mde', 'message', 'no_copy_code', 'no_graph', 'no_heading',
-                                     'no_help', 'no_history', 'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_text_selection',
-                                     'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max', 'odt_page_height',
-                                     'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email', 'support_phone',
-                                     'support_text', 'support_url', 'title', 'validated_only']
+                                     'keep_drafts', 'language', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code', 'no_graph',
+                                     'no_heading', 'no_help', 'no_history', 'no_printing', 'no_rss', 'no_search', 'no_sort_table',
+                                     'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
+                                     'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email',
+                                     'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
@@ -804,9 +804,10 @@ def pwic_search2string(query: Dict[str, List[str]]) -> str:
 # ===================================================
 
 class pwic_html_cleaner(HTMLParser):
-    def __init__(self, skipped_tags: str):
+    def __init__(self, skipped_tags: str, nofollow: bool):
         HTMLParser.__init__(self)
         self._skipped_tags = pwic_list('applet iframe link meta script style ' + skipped_tags.lower())
+        self._nofollow = nofollow
 
     def reset(self):
         HTMLParser.reset(self)
@@ -815,6 +816,16 @@ class pwic_html_cleaner(HTMLParser):
         self._html = ''                 # Final buffer
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
+        def _list2obj(attrs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
+            result = {}
+            for (k, v) in attrs:
+                k = pwic_shrink(k)
+                if k not in result:
+                    result[k] = v or ''
+                else:
+                    result[k] = ('%s %s' % (result[k], v)).strip()
+            return result
+
         tag = tag.strip().lower()
         if (self._mute == '') and (tag in self._skipped_tags):
             self._mute = tag
@@ -822,10 +833,15 @@ class pwic_html_cleaner(HTMLParser):
         if (self._code == '') and (tag in ['blockcode', 'code', 'svg']):
             self._code = tag
         if self._mute == '':
+            # Detect the external links
+            props = _list2obj(attrs)
+            if (tag == 'a') and self._nofollow and ('://' in props.get('href', '')):
+                props['rel'] = 'nofollow'
+
+            # Process the attributes
             buffer = ''
-            for (k, v) in attrs:
-                k = pwic_shrink(k)
-                if (k in ['alt', 'class', 'height', 'href', 'id', 'src', 'style', 'title', 'width']) or \
+            for (k, v) in props.items():
+                if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
                    ((self._code == 'svg') and (k[:2] != 'on')):
                     v2 = pwic_shrink(v)
                     if ('javascript' not in v2) and ('url:' not in v2):
