@@ -45,7 +45,9 @@
 				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} RSS</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Links</a>
+				{% if not pwic.env.no_link_review %}
+					<a href="/{{pwic.project|urlencode}}/special/links">{{pwic.emojis.chains}} Links</a>
+				{% endif %}
 				{% if not pwic.env.no_graph %}
 					<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} Graph</a>
 				{% endif %}

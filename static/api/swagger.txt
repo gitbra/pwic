@@ -144,14 +144,14 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        403:
+          description: Disabled feature
         415:
           description: Incorrect file type
         422:
           description: File cannot be converted
         500:
           description: File incorrectly managed on the server
-        503:
-          description: Disabled feature
   /api/document/delete:
     post:
       summary: Delete a document attached to a page
@@ -779,7 +779,9 @@ paths:
         400:
           description: Invalid parameters
         401:
-          description: Unsufficient authorizations or disabled feature
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
   /api/project/list:
     post:
       summary: List the projects accessible to the user

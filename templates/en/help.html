@@ -51,11 +51,14 @@
 
 		<h1 id="help_setup"><a href="#top">{{pwic.emojis.finger_up}}</a> Setup the server</h1>
 		<p>Refer to the file <code>README.md</code> available at the root directory of the application to know more about the default setup.</p>
-		<p>Depending on the operating system that you use, the command <code>python</code> must be written as <code>python3</code> below.</p>
+
+			<h2>Running commands</h2>
+			<p>By design, the most important configuration cannot be done online, so you will have to invoke the administration console. Execute the command <code>python3 pwic_admin.py [arguments]</code> under Linux or <code>python pwic_admin.py [arguments]</code> under Windows.</p>
+			<p>To simplify this syntax, just type <code>./pa [arguments]</code> under Linux or <code>pa.bat [arguments]</code> under Windows. By convenience, the long syntax for Linux is used below.</p>
 
 			<h2>Initialize the database</h2>
-			<p>The initialization consists in creating the SQLite database and the folders to store the files that you can upload of the server. It is done once at the beginning with the command <code>python3 pwic_admin.py init-db</code>.</p>
-			<p>In rare cases if the Python code fails for example, the database can be locked without timeout. In this case, either restart the server or better run the command <code>python3 pwic_admin.py unlock-db</code>.</p>
+			<p>The initialization consists in creating the SQLite database and the folders that store the uploaded files. It is done once at the beginning with the command <code>python3 pwic_admin.py init-db</code>.</p>
+			<p>In rare cases if the Python code fails for example, the database can be locked without timeout. In this case, try first to run the command <code>python3 pwic_admin.py unlock-db</code> else restart the server.</p>
 
 			<h2>Set the parameters</h2>
 			<p>With the command <code>python3 pwic_admin.py set-env --help</code>, you can define the following parameters that will change <em>Pwic.wiki</em>'s behavior.</p>
@@ -140,7 +143,7 @@
 						<td><code>document_size_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>All the uploaded files must have a size in bytes lower than this limit. Set the value <code>0</code> to disable the upload.</td>
+						<td>All the uploaded files must have a size in bytes lower or equal than this limit. Set the value <code>0</code> to disable the upload of the files.</td>
 					</tr>
 					<tr>
 						<td><code>edit_time_min</code></td>
@@ -200,16 +203,22 @@
 						<td>The format of the HTTP log file can be modified according to <a href="https://docs.aiohttp.org/en/stable/logging.html#format-specification">this specification</a>.</td>
 					</tr>
 					<tr>
-						<td><code>kbid</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article. If you need to change the length of the key, you must edit <code>kb_mask</code> in the source code directly when <em>Pwic.wiki</em> is installed.</td>
-					</tr>
-					<tr>
 						<td><code>https</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>Enable HTTP<strong>S</strong> provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
+					</tr>
+					<tr>
+						<td><code>ip_filter</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the tilde character <code>~</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. Use the prefix <code>#</code> to ignore a value. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files. You need to restart the server to consider the made changes.</td>
+					</tr>
+					<tr>
+						<td><code>kbid</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article. If you need to change the length of the key, you must edit <code>kb_mask</code> in the source code directly when <em>Pwic.wiki</em> is installed.</td>
 					</tr>
 					<tr>
 						<td><code>keep_drafts</code></td>
@@ -234,22 +243,22 @@
 						<td>Language code used on the project on 2 characters that follows the codification ISO 639-1. If the value is not specified, the language of the connection is used.</td>
 					</tr>
 					<tr>
-						<td><code>link_nofollow</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>The external links marked as <code>rel="nofollow"</code> don't contribute to the search engine optimization (SEO). This option is not recommended by default.</td>
-					</tr>
-					<tr>
-						<td><code>ip_filter</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the tilde character <code>~</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. Use the prefix <code>#</code> to ignore a value. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files. You need to restart the server to consider the made changes.</td>
-					</tr>
-					<tr>
 						<td><code>legal_notice</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>A legal text can be displayed at the bottom of the pages.</td>
+					</tr>
+					<tr>
+						<td><code>link_new_tab</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>The external links will open in a new tab. You don't need to regenerate the cache after the value is changed because the option is dynamic client-side.</td>
+					</tr>
+					<tr>
+						<td><code>link_nofollow</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>The external links marked as <code>rel="nofollow"</code> don't contribute to the search engine optimization (SEO). The option applies server-side on the dynamic content only, so the cache must be regenerated if it is changed. This option is not recommended by default.</td>
 					</tr>
 					<tr>
 						<td><code>magic_bytes</code></td>
@@ -322,6 +331,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Disable the ability to see the revisions of a page (a fortiori to access one of its revisions explicitly) when the user is a pure reader. In other words, the pure readers only see the latest revision, or the latest validated revision if the option <code>validated_only</code> is used too.</td>
+					</tr>
+					<tr>
+						<td><code>no_link_review</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Disable the ability to check the broken and orphaned links of a project.</td>
 					</tr>
 					<tr>
 						<td><code>no_login</code></td>

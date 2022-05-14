@@ -29,7 +29,6 @@
 			<p>You have no broken link to a page.</p>
 		{% else %}
 			<p>A broken link displays the error 404 because the targeted page does not exist.</p>
-			<p>Note that the following table does not check the links to the other projects.</p>
 			<table class="pwic_fit">
 				<tr>
 					<th>Page</th>
@@ -37,11 +36,12 @@
 				</tr>
 				{% for page in pwic.broken %}
 					<tr>
-						<td><a href="/{{pwic.project|urlencode}}/{{page.source|urlencode}}">{{page.source|escape}}</a></td>
-						<td>{{pwic.emojis.sheet}} <a href="/special/page/create?project={{pwic.project|urlencode}}&amp;page={{page.destination|urlencode}}" title="Create the page">{{page.destination|escape}}</a></td>
+						<td><a href="/{{pwic.project|urlencode}}/{{page[0]|urlencode}}">{{page[0]|escape}}</a></td>
+						<td>{{pwic.emojis.sheet}} <a href="/special/page/create?project={{pwic.project|urlencode}}&amp;page={{page[1]|urlencode}}" title="Create the page">{{page[1]|escape}}</a></td>
 					</tr>
 				{% endfor %}
 			</table>
+			<p class="pwic_italic">Note: the table does not check the links to the other projects.</p>
 		{% endif %}
 
 
@@ -57,7 +57,7 @@
 				</tr>
 				{% for page in pwic.broken_docs %}
 					<tr>
-						<td><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></td>
+						<td><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}/edit">{{page|escape}}</a></td>
 						<td>{{pwic.broken_docs[page]|sort|join(', ')|escape}}</td>
 					</tr>
 				{% endfor %}

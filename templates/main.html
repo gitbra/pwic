@@ -177,6 +177,10 @@
 				});
 			});
 		{% endif %}
+
+		{% if pwic.env.link_new_tab %}
+			$('a[href^="http"]').attr('target','_blank');
+		{% endif %}
 	</script>
 </body>
 </html>

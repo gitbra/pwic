@@ -78,6 +78,7 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
                 'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                               # Check the format of the mime
                 'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)]+)(\/rev[0-9]+)?'),      # Find a page in Markdown
                 'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                         # Valid protocols for the links
+                'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                     # Find the HTML tags
                 }
 
 # Options
@@ -86,17 +87,17 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file
                                 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
-                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_nofollow',
-                              'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph', 'no_heading',
-                              'no_help', 'no_history', 'no_new_user', 'no_printing', 'no_rss', 'no_search', 'no_sort_table',
-                              'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
+                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',
+                              'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph',
+                              'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user', 'no_printing', 'no_rss', 'no_search',
+                              'no_sort_table', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
                               'odt_page_height', 'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max',
                               'revision_size_max', 'robots', 'rss_size', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
                               'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
-                                     'keep_drafts', 'language', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code', 'no_graph',
-                                     'no_heading', 'no_help', 'no_history', 'no_printing', 'no_rss', 'no_search', 'no_sort_table',
-                                     'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
+                                     'keep_drafts', 'language', 'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code',
+                                     'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_printing', 'no_rss', 'no_search',
+                                     'no_sort_table', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
                                      'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email',
                                      'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
@@ -372,6 +373,7 @@ def pwic_dt(days: int = 0) -> Dict[str, str]:
 
 
 def pwic_dt_diff(date1: str, date2: str) -> int:
+    ''' Calculate the number of days between 2 dates '''
     if date1 > date2:
         date1, date2 = date2, date1
     d1 = datetime.strptime(date1 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
@@ -800,20 +802,26 @@ def pwic_search2string(query: Dict[str, List[str]]) -> str:
 
 
 # ===================================================
-#  HTML cleaner
+#  html2html (cleaner)
 # ===================================================
 
-class pwic_html_cleaner(HTMLParser):
+class PwicHtmlCleaner(HTMLParser):
     def __init__(self, skipped_tags: str, nofollow: bool):
         HTMLParser.__init__(self)
-        self._skipped_tags = pwic_list('applet iframe link meta script style ' + skipped_tags.lower())
-        self._nofollow = nofollow
+        self.skipped_tags = pwic_list('applet embed iframe link meta object script style ' + skipped_tags.lower())
+        self.nofollow = nofollow
 
     def reset(self):
         HTMLParser.reset(self)
-        self._mute = ''                 # Tag switched off until </> is found
-        self._code = ''                 # Special code block
-        self._html = ''                 # Final buffer
+        self.tag_path: List[str] = []
+        self.code = ''                 # Special code block
+        self.html = ''                 # Final buffer
+
+    def is_mute(self) -> bool:
+        for t in self.skipped_tags:
+            if t in self.tag_path:
+                return True
+        return False
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
         def _list2obj(attrs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
@@ -826,52 +834,68 @@ class pwic_html_cleaner(HTMLParser):
                     result[k] = ('%s %s' % (result[k], v)).strip()
             return result
 
-        tag = tag.strip().lower()
-        if (self._mute == '') and (tag in self._skipped_tags):
-            self._mute = tag
+        # Tag path
+        tag = tag.lower()
+        self.tag_path.append(tag)
+        if self.is_mute():
             return
-        if (self._code == '') and (tag in ['blockcode', 'code', 'svg']):
-            self._code = tag
-        if self._mute == '':
-            # Detect the external links
-            props = _list2obj(attrs)
-            if (tag == 'a') and self._nofollow and ('://' in props.get('href', '')):
-                props['rel'] = 'nofollow'
+        if (self.code == '') and (tag in ['blockcode', 'code', 'svg']):
+            self.code = tag
 
-            # Process the attributes
-            buffer = ''
-            for (k, v) in props.items():
-                if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
-                   ((self._code == 'svg') and (k[:2] != 'on')):
-                    v2 = pwic_shrink(v)
-                    if ('javascript' not in v2) and ('url:' not in v2):
-                        buffer += ' %s="%s"' % (k, v)
-            self._html += '<%s%s>' % (tag, buffer)
+        # Detect the external links
+        props = _list2obj(attrs)
+        if (tag == 'a') and self.nofollow and ('://' in props.get('href', '')):
+            props['rel'] = 'nofollow'
+
+        # Process the attributes
+        buffer = ''
+        for (k, v) in props.items():
+            if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
+               ((self.code == 'svg') and (k[:2] != 'on')):
+                v2 = pwic_shrink(v)
+                if ('javascript' not in v2) and ('url:' not in v2):
+                    buffer += ' %s="%s"' % (k, v)
+        self.html += '<%s%s>' % (tag, buffer)
 
     def handle_endtag(self, tag: str):
-        tag = tag.strip().lower()
-        if self._code == tag:
-            self._code = ''
-        if self._mute == tag:
-            self._mute = ''
-        else:
-            self._html += '</%s>' % (tag)
+        # Tag path
+        tag = tag.lower()
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        if tag != lastTag:
+            return
+
+        # Data
+        if self.code == tag:    # Not imbricated
+            self.code = ''
+        if not self.is_mute():
+            self.html += '</%s>' % (tag)
+        self.tag_path.pop()
+
+    def handle_comment(self, data: str):
+        if not self.is_mute():
+            self.handle_data('<!--%s-->' % data)
 
     def handle_data(self, data: str):
-        if self._mute == '':
-            if self._code in ['blockcode', 'code']:
+        if not self.is_mute():
+            if self.code in ['blockcode', 'code']:
                 data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
-            self._html += data
+            self.html += data
 
     def get_html(self) -> str:
-        return re.sub(r'<span( class="\w+")?>(\s+)?<\/span>', r'\2', self._html)
+        self.html = self.html.replace('<hr></hr>', '<hr/>').replace('></img>', '/>')
+        while True:
+            curlen = len(self.html)
+            self.html = re.sub(r'/<(\w+(?<!TH|TD))(\s+\w+="?\w+"?)?>(\s*)<\/\1>/i', r'\2', self.html)
+            if len(self.html) == curlen:
+                break
+        return self.html
 
 
 # ===================================================
 #  html2odt (within md2odt)
 # ===================================================
 
-class pwic_html2odt(HTMLParser):
+class PwicConverter_html2odt(HTMLParser):
     def __init__(self, baseUrl: str, project: str, page: str, pictMeta: Dict = None) -> None:
         # The parser can be feeded only once
         HTMLParser.__init__(self)
@@ -983,6 +1007,19 @@ class pwic_html2odt(HTMLParser):
         if pos != -1:
             self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
 
+    def feed(self, data: str):
+        # Find the unsupported tags
+        unsupported = []
+        for t in PWIC_REGEXES['tag_name'].findall(data):
+            t = t.lower()
+            if (t not in self.maps) and (t not in unsupported):
+                unsupported.append(t)
+
+        # Recleansing
+        cleaner = PwicHtmlCleaner(' '.join(unsupported), False)
+        cleaner.feed(data)
+        HTMLParser.feed(self, cleaner.get_html())
+
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         tag = tag.lower()
 
@@ -1010,83 +1047,81 @@ class pwic_html2odt(HTMLParser):
             self.has_code = True
 
         # Mapping of the tag
-        if tag not in self.maps:
-            self.odt += '<text:span text:style-name="Error">Unknown tag \'%s\'.</text:span>' % tag
-        else:
-            if self.maps[tag] is not None:
-                # Automatic extra tags
-                if tag in self.extrasBefore:
-                    self.odt += self.extrasBefore[tag][0]
+        assert(tag in self.maps)
+        if self.maps[tag] is not None:
+            # Automatic extra tags
+            if tag in self.extrasBefore:
+                self.odt += self.extrasBefore[tag][0]
 
-                # Tag itself
-                self.odt += '<' + str(self.maps[tag])
-                if tag in self.attributes:
-                    for property_key in self.attributes[tag]:
-                        property_value = self.attributes[tag][property_key]
-                        if property_value[:1] != '#':
-                            if property_key[:5] != 'dummy':
-                                self.odt += ' %s="%s"' % (property_key, escape(property_value))
+            # Tag itself
+            self.odt += '<' + str(self.maps[tag])
+            if tag in self.attributes:
+                for property_key in self.attributes[tag]:
+                    property_value = self.attributes[tag][property_key]
+                    if property_value[:1] != '#':
+                        if property_key[:5] != 'dummy':
+                            self.odt += ' %s="%s"' % (property_key, escape(property_value))
+                    else:
+                        property_value = property_value[1:]
+                        if tag == 'p':
+                            if self.blockquote_on:
+                                self.odt += ' text:style-name="Blockquote"'
+                                break
                         else:
-                            property_value = property_value[1:]
-                            if tag == 'p':
-                                if self.blockquote_on:
-                                    self.odt += ' text:style-name="Blockquote"'
+                            for key, value_ns in attrs:
+                                value = pwic_nns(value_ns)
+                                if key == property_value:
+                                    # Fix the base URL for the links
+                                    if (tag == 'a') and (key == 'href'):
+                                        if value[:1] in ['/']:
+                                            value = self.baseUrl + str(value)
+                                        elif value[:1] in ['?', '#', '.']:
+                                            value = '%s/%s/%s%s' % (self.baseUrl, self.project, self.page, value)
+                                        elif value[:2] == './' or value[:3] == '../':
+                                            value = '%s/%s/%s/%s' % (self.baseUrl, self.project, self.page, value)
+
+                                    # Fix the attributes for the pictures
+                                    if tag == 'img':
+                                        if key == 'alt':
+                                            self.lastIMGalt = value
+                                        elif key == 'title':
+                                            self.lastIMGtitle = value
+                                        elif key == 'src':
+                                            if value[:1] == '/':
+                                                value = value[1:]
+                                            if self.pictMeta is not None:
+                                                docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
+                                                if docid_re is not None:
+                                                    width = height = 0
+                                                    docid = pwic_int(docid_re.group(1))
+                                                    if docid in self.pictMeta:
+                                                        if self.pictMeta[docid]['remote'] or (self.pictMeta[docid]['link'] == value):
+                                                            value = self.pictMeta[docid]['link_odt_img']
+                                                        width = self.pictMeta[docid]['width']
+                                                        height = self.pictMeta[docid]['height']
+                                                    if 0 in [width, height]:
+                                                        width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
+                                                    self._replace_marker('{$w}', '%.2f' % (2.54 * width / 120.))
+                                                    self._replace_marker('{$h}', '%.2f' % (2.54 * height / 120.))
+
+                                    # Fix the class name for the syntax highlight
+                                    if (tag == 'span') and self.blockcode_on and (key == 'class'):
+                                        value = 'Code_' + value
+
+                                    if property_key[:5] != 'dummy':
+                                        self.odt += ' %s="%s"' % (property_key, escape(value))
                                     break
-                            else:
-                                for key, value_ns in attrs:
-                                    value = pwic_nns(value_ns)
-                                    if key == property_value:
-                                        # Fix the base URL for the links
-                                        if (tag == 'a') and (key == 'href'):
-                                            if value[:1] in ['/']:
-                                                value = self.baseUrl + str(value)
-                                            elif value[:1] in ['?', '#', '.']:
-                                                value = '%s/%s/%s%s' % (self.baseUrl, self.project, self.page, value)
-                                            elif value[:2] == './' or value[:3] == '../':
-                                                value = '%s/%s/%s/%s' % (self.baseUrl, self.project, self.page, value)
+            if tag in self.noclosing:
+                self.odt += '/'
+            self.odt += '>'
 
-                                        # Fix the attributes for the pictures
-                                        if tag == 'img':
-                                            if key == 'alt':
-                                                self.lastIMGalt = value
-                                            elif key == 'title':
-                                                self.lastIMGtitle = value
-                                            elif key == 'src':
-                                                if value[:1] == '/':
-                                                    value = value[1:]
-                                                if self.pictMeta is not None:
-                                                    docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
-                                                    if docid_re is not None:
-                                                        width = height = 0
-                                                        docid = pwic_int(docid_re.group(1))
-                                                        if docid in self.pictMeta:
-                                                            if self.pictMeta[docid]['remote'] or (self.pictMeta[docid]['link'] == value):
-                                                                value = self.pictMeta[docid]['link_odt_img']
-                                                            width = self.pictMeta[docid]['width']
-                                                            height = self.pictMeta[docid]['height']
-                                                        if 0 in [width, height]:
-                                                            width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
-                                                        self._replace_marker('{$w}', '%.2f' % (2.54 * width / 120.))
-                                                        self._replace_marker('{$h}', '%.2f' % (2.54 * height / 120.))
-
-                                        # Fix the class name for the syntax highlight
-                                        if (tag == 'span') and self.blockcode_on and (key == 'class'):
-                                            value = 'Code_' + value
-
-                                        if property_key[:5] != 'dummy':
-                                            self.odt += ' %s="%s"' % (property_key, escape(value))
-                                        break
-                if tag in self.noclosing:
-                    self.odt += '/'
-                self.odt += '>'
-
-                # Handle the column descriptors of the tables
-                if tag == 'table':
-                    self.table_descriptors.append({'cursor': len(self.odt),
-                                                   'count': 0,
-                                                   'max': 0})
-                if tag in ['th', 'td']:
-                    self.table_descriptors[-1]['count'] += 1
+            # Handle the column descriptors of the tables
+            if tag == 'table':
+                self.table_descriptors.append({'cursor': len(self.odt),
+                                               'count': 0,
+                                               'max': 0})
+            if tag in ['th', 'td']:
+                self.table_descriptors[-1]['count'] += 1
 
         # Automatic extra tags
         if tag in self.extrasAfter:
@@ -1166,12 +1201,23 @@ class pwic_html2odt(HTMLParser):
         # Default behavior
         self.odt += data
 
+    def handle_comment(self, data: str) -> None:
+        # The ODT annotations must be surrounded by <text:p> or <text:list>
+        # Sometimes md2html does not render <p> for block annotations
+        # The missing tag is then added dynamically here
+        missing = (len(self.tag_path) == 0)
+        if missing:
+            self.odt += '<text:p>'
+        self.odt += '''<office:annotation><dc:creator>Unknown</dc:creator><text:p>%s</text:p></office:annotation>''' % escape(data)
+        if missing:
+            self.odt += '</text:p>'
+
 
 # ===================================================
 #  odt2md
 # ===================================================
 
-class pwic_odt2styles(HTMLParser):
+class PwicConverter_odt2styles(HTMLParser):
     def reset(self) -> None:
         HTMLParser.reset(self)
         self.styles: Dict[str, Dict[str, bool]] = {}
@@ -1231,7 +1277,7 @@ class pwic_odt2styles(HTMLParser):
         return deco
 
 
-class pwic_odt2md(HTMLParser):
+class PwicConverter_odt2md(HTMLParser):
     def __init__(self, sql: sqlite3.Cursor):
         HTMLParser.__init__(self)
         if sql is not None:
@@ -1244,7 +1290,7 @@ class pwic_odt2md(HTMLParser):
 
         # Content
         self.content = ''
-        self.styler = pwic_odt2styles()
+        self.styler = PwicConverter_odt2styles()
 
         # Parser
         self.md = ''

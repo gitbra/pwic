@@ -49,8 +49,8 @@ from pwic_lib import PWIC_VERSION, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DO
     pwic_attachment_name, pwic_dt, pwic_dt_diff, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_file_ext, pwic_mime, \
     pwic_mime_list, pwic_mime_compressed, pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, \
     pwic_sha256, pwic_safe_name, pwic_safe_file_name, pwic_safe_user_name, pwic_size2str, pwic_sql_print, pwic_str2bytearray, \
-    pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, pwic_html_cleaner, \
-    pwic_html2odt, pwic_odt2md
+    pwic_x, pwic_xb, pwic_extended_syntax, pwic_audit, pwic_search_parse, pwic_search2string, PwicHtmlCleaner, \
+    PwicConverter_html2odt, PwicConverter_odt2md
 from pwic_extension import PwicExtension
 from pwic_styles import pwic_styles_html, pwic_styles_odt
 
@@ -83,7 +83,7 @@ class PwicServer():
                  markdown: str,
                  cache: bool = True,
                  headerNumbering: bool = True,
-                 codeblock: bool = True,
+                 export_odt: bool = False,
                  ) -> Tuple[str, object]:
         ''' Convert the text from Markdown to HTML '''
         # Read the cache
@@ -107,13 +107,13 @@ class PwicServer():
                 html = app['markdown'].convert(markdown)
             except MarkdownError:
                 html = ''
-            if codeblock:                                                                           # Incompatible with OpenDocument
-                html = html.replace('<div class="codehilite"><pre><span></span><code>', '<code>')   # With pygments
-                html = html.replace('\n</code></pre></div>', '</code>')
-                html = html.replace('<pre><code>', '<code>')                                        # Without pygments
-                html = html.replace('\n</code></pre>', '</code>')
-            cleaner = pwic_html_cleaner(str(pwic_option(sql, project, 'skipped_tags', '')),
-                                        pwic_option(sql, project, 'link_nofollow') is not None)
+            (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
+            html = html.replace('<div class="codehilite"><pre><span></span><code>', otag)           # With pygments
+            html = html.replace('\n</code></pre></div>', ctag)
+            html = html.replace('<pre><code>', otag)                                                # Without pygments
+            html = html.replace('\n</code></pre>', ctag)
+            cleaner = PwicHtmlCleaner(str(pwic_option(sql, project, 'skipped_tags', '')),
+                                      pwic_option(sql, project, 'link_nofollow') is not None)
             cleaner.feed(html)
             html = PwicExtension.on_html(sql, project, page, revision, cleaner.get_html())
             if cache:
@@ -1220,15 +1220,15 @@ class PwicServer():
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self.dbconn.cursor()
 
         # Fetch the documents of the project
-        sql.execute(''' SELECT id
+        sql = self.dbconn.cursor()
+        if pwic_option(sql, project, 'no_link_review') is not None:
+            raise web.HTTPForbidden()
+        sql.execute(''' SELECT CAST(id AS TEXT) AS id
                         FROM documents
                         ORDER BY id''')
-        docids = []
-        for row in sql.fetchall():
-            docids.append(str(row['id']))
+        docids = [row['id'] for row in sql.fetchall()]
 
         # Fetch the pages
         sql.execute(''' SELECT b.page, b.header, b.markdown
@@ -1280,7 +1280,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Find the orphaned and broken links
-        allpages = [key for key in linkmap]
+        allpages = list(linkmap)                    # Keys
         orphans = allpages.copy()
         orphans.remove(PWIC_DEFAULTS['page'])
         broken = []
@@ -1289,8 +1289,7 @@ class PwicServer():
                 if page in orphans:
                     orphans.remove(page)
                 if page not in allpages:
-                    broken.append({'source': link,
-                                   'destination': page})
+                    broken.append((link, page))
 
         # Show the values
         sql.execute(''' SELECT description
@@ -1313,9 +1312,11 @@ class PwicServer():
 
         # Fetch the parameters
         project = pwic_safe_name(request.match_info.get('project', ''))
-        sql = self.dbconn.cursor()
 
         # Check the authorizations
+        sql = self.dbconn.cursor()
+        if pwic_option(sql, project, 'no_graph') is not None:
+            raise web.HTTPForbidden()
         sql.execute(''' SELECT user
                         FROM roles
                         WHERE project  = ?
@@ -1323,7 +1324,7 @@ class PwicServer():
                           AND manager  = 'X'
                           AND disabled = '' ''',
                     (project, user))
-        if (sql.fetchone() is None) or (pwic_option(sql, project, 'no_graph') is not None):
+        if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
 
         # Show the page
@@ -2177,7 +2178,7 @@ class PwicServer():
         # Verify the feature
         sql = self.dbconn.cursor()
         if pwic_option(sql, project, 'no_graph') is not None:
-            raise web.HTTPUnauthorized()
+            raise web.HTTPForbidden()
 
         # Mapping of the pages
         pages: List[Tuple[str, str]] = []
@@ -3321,11 +3322,7 @@ class PwicServer():
             html = self._md2html(sql, project, page, revision, row['markdown'],
                                  cache=False,    # No cache to recalculate the headers and the code blocks
                                  headerNumbering=False,
-                                 codeblock=False)[0]
-            html = html.replace('<div class="codehilite"><pre><span></span><code>', '<blockcode>')      # With pygments
-            html = html.replace('\n</code></pre></div>', '</blockcode>')
-            html = html.replace('<pre><code>', '<blockcode>')                                           # Without pygments
-            html = html.replace('\n</code></pre>', '</blockcode>')
+                                 export_odt=True)[0]
 
             # Extract the meta-informations of the embedded pictures
             MAX_H = max(0, pwic_int(pwic_option(sql, project, 'odt_image_height_max', '900')))
@@ -3375,7 +3372,7 @@ class PwicServer():
             # Convert to ODT
             odtStyles = pwic_styles_odt()
             try:
-                odtGenerator = pwic_html2odt(base_url, project, page, pictMeta=pictMeta)
+                odtGenerator = PwicConverter_html2odt(base_url, project, page, pictMeta=pictMeta)
                 odtGenerator.feed(html)
             except Exception:
                 raise web.HTTPInternalServerError()
@@ -4061,7 +4058,7 @@ class PwicServer():
         if row is None:
             raise web.HTTPUnauthorized()    # Or not found
         if pwic_option(sql, row['project'], 'odt_document_no_conversion') is not None:
-            raise web.HTTPServiceUnavailable()
+            raise web.HTTPForbidden()
         if row['exturl'] != '':
             raise web.HTTPUnprocessableEntity()
         if row['mime'] not in pwic_mime_list('odt'):
@@ -4069,7 +4066,7 @@ class PwicServer():
 
         # Convert to Markdown
         try:
-            parser = pwic_odt2md(sql)
+            parser = PwicConverter_odt2md(sql)
             if parser.load_odt(join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])):
                 return web.Response(text=parser.get_md(), content_type=pwic_mime('txt'))
             raise web.HTTPUnprocessableEntity()
