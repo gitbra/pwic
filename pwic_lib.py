@@ -83,23 +83,26 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file_formats', 'fixed_templates', 'keep_sessions',
-                                'http_log_file', 'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_login',
-                                'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant', 'password_regex']
+                                'http_log_file', 'http_log_format', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_highlight',
+                                'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
+                                'password_regex']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
                               'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',
                               'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph',
                               'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user', 'no_printing', 'no_rss', 'no_search',
-                              'no_sort_table', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
-                              'odt_page_height', 'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max',
-                              'revision_size_max', 'robots', 'rss_size', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
-                              'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
+                              'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max',
+                              'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_width', 'page_count_max',
+                              'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots', 'rss_size',
+                              'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email', 'support_phone', 'support_text',
+                              'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
                                      'keep_drafts', 'language', 'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code',
-                                     'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_printing', 'no_rss', 'no_search',
-                                     'no_sort_table', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max', 'odt_image_width_max',
-                                     'odt_page_height', 'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email',
-                                     'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
+                                     'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_printing', 'no_rss',
+                                     'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion',
+                                     'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape',
+                                     'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email', 'support_phone',
+                                     'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
@@ -885,7 +888,7 @@ class PwicHtmlCleaner(HTMLParser):
         self.html = self.html.replace('<hr></hr>', '<hr/>').replace('></img>', '/>')
         while True:
             curlen = len(self.html)
-            self.html = re.sub(r'/<(\w+(?<!TH|TD))(\s+\w+="?\w+"?)?>(\s*)<\/\1>/i', r'\2', self.html)
+            self.html = re.sub(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)?>(\s*)<\/\1>', r'\3', self.html)
             if len(self.html) == curlen:
                 break
         return self.html

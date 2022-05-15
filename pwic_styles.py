@@ -603,9 +603,9 @@ class pwic_styles_odt:
     </office:styles>
     <office:automatic-styles>
         <style:page-layout style:name="DocumentPage">
-            <style:page-layout-properties fo:page-width=""
-                                          fo:page-height=""
-                                          style:print-orientation="portrait"
+            <style:page-layout-properties fo:page-width="***"
+                                          fo:page-height="***"
+                                          style:print-orientation="***"
                                           fo:margin-top="1in"
                                           fo:margin-left="1in"
                                           fo:margin-bottom="1in"

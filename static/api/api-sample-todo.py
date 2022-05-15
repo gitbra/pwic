@@ -41,7 +41,7 @@ if response.status == 200:
             break
 
         # Parse the page
-        lines = entry['markdown'].replace('\r', '').split('\n')
+        lines = entry['markdown'].split('\n')
         for line in lines:
             line = line.strip()
             if line[:4] == 'BUG ':

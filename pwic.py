@@ -103,6 +103,7 @@ class PwicServer():
         if row is not None:
             html = row['html']
         else:
+            markdown = PwicExtension.on_markdown_pre(sql, project, page, revision, markdown)
             try:
                 html = app['markdown'].convert(markdown)
             except MarkdownError:
@@ -110,7 +111,7 @@ class PwicServer():
             (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
             html = html.replace('<div class="codehilite"><pre><span></span><code>', otag)           # With pygments
             html = html.replace('\n</code></pre></div>', ctag)
-            html = html.replace('<pre><code>', otag)                                                # Without pygments
+            html = html.replace('<pre><code', otag[:-1])                                            # Without pygments
             html = html.replace('\n</code></pre>', ctag)
             cleaner = PwicHtmlCleaner(str(pwic_option(sql, project, 'skipped_tags', '')),
                                       pwic_option(sql, project, 'link_nofollow') is not None)
@@ -2639,6 +2640,8 @@ class PwicServer():
             page = PWIC_DEFAULTS['kb_mask'] % kbid
             # No commit because the creation of the page can fail below
         else:
+            if pwic_option(sql, project, 'no_space_page') is not None:
+                page = page.replace(' ', '_')
             if PWIC_REGEXES['kb_mask'].match(page) is not None:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
@@ -3012,6 +3015,8 @@ class PwicServer():
             raise web.HTTPNotFound()
 
         # Verify that the target page does not exist
+        if pwic_option(sql, dstproj, 'no_space_page') is not None:
+            dstpage = dstpage.replace(' ', '_')
         sql.execute(''' SELECT 1
                         FROM pages
                         WHERE project = ?
@@ -3414,8 +3419,16 @@ class PwicServer():
             if legal_notice != '':
                 legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
             xml = xml.replace('<!-- styles-footer -->', legal_notice)
-            xml = xml.replace('fo:page-width=""', 'fo:page-width="%s"' % str(pwic_option(sql, project, 'odt_page_width', '21cm')).strip().replace(' ', '').replace(',', '.').replace('"', '\\"'))
-            xml = xml.replace('fo:page-height=""', 'fo:page-height="%s"' % str(pwic_option(sql, project, 'odt_page_height', '29.7cm')).strip().replace(' ', '').replace(',', '.').replace('"', '\\"'))
+            pw = str(pwic_option(sql, project, 'odt_page_width', '21cm')).strip().replace(' ', '').replace(',', '.').replace('"', '\\"')
+            ph = str(pwic_option(sql, project, 'odt_page_height', '29.7cm')).strip().replace(' ', '').replace(',', '.').replace('"', '\\"')
+            if pwic_option(sql, project, 'odt_page_landscape') is not None:
+                po = 'landscape'
+                pw, ph = ph, pw
+            else:
+                po = 'portrait'
+            xml = xml.replace('fo:page-width="***"', 'fo:page-width="%s"' % pw)
+            xml = xml.replace('fo:page-height="***"', 'fo:page-height="%s"' % ph)
+            xml = xml.replace('style:print-orientation="***"', 'style:print-orientation="%s"' % po)
             odt.writestr('styles.xml', xml)
             xml = odtStyles.content
             xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
@@ -4143,7 +4156,10 @@ def main() -> bool:
     setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))  # Storage for the cookies
     del skey
     # ... Markdown parser
-    app['markdown'] = Markdown(extras=['tables', 'footnotes', 'fenced-code-blocks', 'strike', 'underline', 'code-friendly'], safe_mode=False)
+    extras = ['code-friendly', 'fenced-code-blocks', 'footnotes', 'strike', 'tables', 'underline']
+    if pwic_option(sql, '', 'no_highlight') is not None:
+        extras.append('highlightjs-lang')                       # highlight.js is not used in the foreground
+    app['markdown'] = Markdown(extras=extras, safe_mode=False)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)

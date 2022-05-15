@@ -338,6 +338,18 @@ class PwicExtension():
         return True
 
     @staticmethod
+    def on_markdown_pre(sql: sqlite3.Cursor,                # Cursor to query the database
+                        project: str,                       # Name of the project
+                        page: Optional[str],                # Name of the page
+                        revision: int,                      # Revision of the page
+                        markdown: str,                      # Current Markdown
+                        ) -> str:
+        ''' Event when a Markdown text is selected prior to conversion.
+            The result is the new Markdown text to be processed.
+        '''
+        return markdown
+
+    @staticmethod
     def on_oauth(sql: sqlite3.Cursor,                       # Cursor to query the database
                  emails: List[str],                         # Array of candidate email addresses (changeable)
                  ) -> None:
