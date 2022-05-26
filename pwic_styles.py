@@ -65,10 +65,10 @@ class pwic_styles_odt:
 
         self.manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
-    <manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>
-    <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>
-    <manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>
-    <manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/>
+    <manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text" />
+    <manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml" />
+    <manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml" />
+    <manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml" />
     <!-- attachments -->
 </manifest:manifest>'''
 
@@ -180,7 +180,7 @@ class pwic_styles_odt:
     <office:font-face-decls>
         <style:font-face style:name="Courier New"
                          style:font-family-generic="system"
-                         style:font-pitch="fixed"/>
+                         style:font-pitch="fixed" />
     </office:font-face-decls>
     <office:styles>
         <style:style style:name="Standard"
@@ -191,26 +191,26 @@ class pwic_styles_odt:
                      style:display-name="Normal"
                      style:family="paragraph">
             <style:paragraph-properties fo:margin-top="3pt"
-                                        fo:margin-bottom="3pt"/>
-            <style:text-properties fo:font-size="12pt"/>
+                                        fo:margin-bottom="3pt" />
+            <style:text-properties fo:font-size="12pt" />
         </style:style>
         <style:default-style style:family="table-column">
-            <style:table-column-properties style:use-optimal-column-width="false"/>
+            <style:table-column-properties style:use-optimal-column-width="false" />
         </style:default-style>
         <style:default-style style:family="table-row">
-            <style:table-row-properties style:use-optimal-row-height="true"/>
+            <style:table-row-properties style:use-optimal-row-height="true" />
         </style:default-style>
         <style:default-style style:family="table-cell">
             <style:table-cell-properties style:vertical-align="middle"
                                          fo:background-color="transparent"
-                                         fo:wrap-option="wrap"/>
+                                         fo:wrap-option="wrap" />
         </style:default-style>
 
         <style:style style:name="Heading"
                      style:family="paragraph"
                      style:class="text"
                      style:parent-style-name="Normal">
-            <style:paragraph-properties fo:keep-with-next="always"/>
+            <style:paragraph-properties fo:keep-with-next="always" />
         </style:style>
         <style:style style:name="H1"
                      style:display-name="Heading 1"
@@ -219,9 +219,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="1">
             <style:paragraph-properties fo:margin-top="12pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="20pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H2"
                      style:display-name="Heading 2"
@@ -230,9 +230,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="2">
             <style:paragraph-properties fo:margin-top="9pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="20pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H3"
                      style:display-name="Heading 3"
@@ -241,9 +241,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="3">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="18pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H4"
                      style:display-name="Heading 4"
@@ -252,9 +252,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="4">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="16pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H5"
                      style:display-name="Heading 5"
@@ -263,9 +263,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="5">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="14pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H6"
                      style:display-name="Heading 6"
@@ -274,9 +274,9 @@ class pwic_styles_odt:
                      style:next-style-name="Normal"
                      style:default-outline-level="6">
             <style:paragraph-properties fo:margin-top="6pt"
-                                        fo:margin-bottom="6pt"/>
+                                        fo:margin-bottom="6pt" />
             <style:text-properties fo:font-size="14pt"
-                                   fo:font-weight="bold"/>
+                                   fo:font-weight="bold" />
         </style:style>
 
         <style:style style:name="Blockquote"
@@ -286,27 +286,28 @@ class pwic_styles_odt:
             <style:paragraph-properties fo:border-left="5px solid #bfbfbf"
                                         fo:background-color="#f2f2f2"
                                         fo:padding="0.05in"
-                                        fo:margin-left="0.4in"/>
+                                        fo:margin-left="0.4in" />
         </style:style>
         <style:style style:name="Code"
                      style:display-name="Code"
                      style:family="text">
             <style:text-properties style:font-name="Courier New"
-                                   fo:font-size="10pt"/>
+                                   fo:font-size="10pt" />
         </style:style>
         <style:style style:name="CodeBlock"
                      style:display-name="Code Block"
                      style:family="paragraph"
                      style:parent-style-name="Normal">
             <style:paragraph-properties fo:border="1px solid #000000"
-                                        fo:padding="1mm"/>
+                                        fo:padding="1mm"
+                                        fo:keep-together="always" />
             <style:text-properties style:font-name="Courier New"
-                                   fo:font-size="10pt"/>
+                                   fo:font-size="10pt" />
         </style:style>
         <style:style style:name="Error"
                      style:display-name="Error"
                      style:family="text">
-            <style:text-properties fo:color="#FF0000"/>
+            <style:text-properties fo:color="#FF0000" />
         </style:style>
         <style:style style:name="Footer"
                      style:display-name="Footer"
@@ -326,7 +327,7 @@ class pwic_styles_odt:
         <style:style style:name="Italic"
                      style:display-name="Italic"
                      style:family="text">
-            <style:text-properties fo:font-style="italic"/>
+            <style:text-properties fo:font-style="italic" />
         </style:style>
         <style:style style:name="Link"
                      style:display-name="Hyperlink"
@@ -335,7 +336,7 @@ class pwic_styles_odt:
                                    style:text-underline-type="single"
                                    style:text-underline-style="solid"
                                    style:text-underline-width="auto"
-                                   style:text-underline-mode="continuous"/>
+                                   style:text-underline-mode="continuous" />
         </style:style>
         <style:style style:name="Strike"
                      style:display-name="Strike"
@@ -344,29 +345,29 @@ class pwic_styles_odt:
                                    style:text-line-through-width="auto"
                                    style:text-line-through-color="font-color"
                                    style:text-line-through-mode="continuous"
-                                   style:text-line-through-type="single"/>
+                                   style:text-line-through-type="single" />
         </style:style>
         <style:style style:name="Strong"
                      style:display-name="Strong"
                      style:family="text">
-            <style:text-properties fo:font-weight="bold"/>
+            <style:text-properties fo:font-weight="bold" />
         </style:style>
         <style:style style:name="Sub"
                      style:display-name="Subscript"
                      style:family="text">
-            <style:text-properties style:text-position="sub 66%"/>
+            <style:text-properties style:text-position="sub 66%" />
         </style:style>
         <style:style style:name="Sup"
                      style:display-name="Superscript"
                      style:family="text">
-            <style:text-properties style:text-position="super 66%"/>
+            <style:text-properties style:text-position="super 66%" />
         </style:style>
         <style:style style:name="Table"
                      style:display-name="Table"
                      style:family="table">
             <style:table-properties table:border-model="collapsing"
                                     style:rel-width="100%"
-                                    table:align="center"/>
+                                    table:align="center" />
         </style:style>
         <style:style style:name="TableCell"
                      style:display-name="Table Cell"
@@ -375,14 +376,14 @@ class pwic_styles_odt:
                                          fo:padding-left="0.075in"
                                          fo:padding-bottom="0in"
                                          fo:padding-right="0.075in"
-                                         fo:border="1px solid #000000"/>
+                                         fo:border="1px solid #000000" />
         </style:style>
         <style:style style:name="TableCellHeader"
                      style:display-name="Table Cell Header"
                      style:family="table-cell"
                      style:parent-style-name="TableCell">
-            <style:table-cell-properties fo:background-color="#f0f0f0"/>
-            <style:text-properties fo:font-weight="bold"/>
+            <style:table-cell-properties fo:background-color="#f0f0f0" />
+            <style:text-properties fo:font-weight="bold" />
         </style:style>
         <style:style style:name="Underline"
                      style:display-name="Underline"
@@ -410,7 +411,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="0.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="2"
@@ -420,7 +421,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="1in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="3"
@@ -430,7 +431,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="1.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="4"
@@ -440,7 +441,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="2in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="5"
@@ -450,7 +451,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="2.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="6"
@@ -460,7 +461,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="3in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="7"
@@ -470,7 +471,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="3.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="8"
@@ -480,7 +481,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="4in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
             <text:list-level-style-bullet text:level="9"
@@ -490,7 +491,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="4.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-bullet>
         </text:list-style>
@@ -503,7 +504,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="0.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="2"
@@ -515,7 +516,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="1in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="3"
@@ -527,7 +528,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="1.5in"
-                                                      fo:text-indent="-0.125in"/>
+                                                      fo:text-indent="-0.125in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="4"
@@ -538,7 +539,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="2in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="5"
@@ -550,7 +551,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="2.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="6"
@@ -562,7 +563,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="3in"
-                                                      fo:text-indent="-0.125in"/>
+                                                      fo:text-indent="-0.125in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="7"
@@ -573,7 +574,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="3.5in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="8" style:num-suffix="."
@@ -584,7 +585,7 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="4in"
-                                                      fo:text-indent="-0.25in"/>
+                                                      fo:text-indent="-0.25in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
             <text:list-level-style-number text:level="9"
@@ -596,26 +597,26 @@ class pwic_styles_odt:
                                              text:list-level-position-and-space-mode="label-alignment">
                     <style:list-level-label-alignment text:label-followed-by="listtab"
                                                       fo:margin-left="4.5in"
-                                                      fo:text-indent="-0.125in"/>
+                                                      fo:text-indent="-0.125in" />
                 </style:list-level-properties>
             </text:list-level-style-number>
         </text:list-style>
     </office:styles>
     <office:automatic-styles>
         <style:page-layout style:name="DocumentPage">
-            <style:page-layout-properties fo:page-width="***"
-                                          fo:page-height="***"
-                                          style:print-orientation="***"
-                                          fo:margin-top="1in"
-                                          fo:margin-left="1in"
-                                          fo:margin-bottom="1in"
-                                          fo:margin-right="1in"
+            <style:page-layout-properties fo:page-width="{$pw}"
+                                          fo:page-height="{$ph}"
+                                          style:print-orientation="{$po}"
+                                          fo:margin-top="{$pm}"
+                                          fo:margin-left="{$pm}"
+                                          fo:margin-bottom="{$pm}"
+                                          fo:margin-right="{$pm}"
                                           style:num-format="1">
                 <style:footnote-sep style:width="0.007in"
                                     style:rel-width="33%"
                                     style:color="#000000"
                                     style:line-style="solid"
-                                    style:adjustment="left"/>
+                                    style:adjustment="left" />
             </style:page-layout-properties>
         </style:page-layout>
     </office:automatic-styles>
@@ -687,7 +688,7 @@ class pwic_styles_odt:
                                                 text:style-name="H%d">
                         <style:list-level-properties text:list-level-position-and-space-mode="label-alignment">
                             <style:list-level-label-alignment text:label-followed-by="listtab"
-                                                              fo:margin-left="%dcm"/>
+                                                              fo:margin-left="%dcm" />
                         </style:list-level-properties>
                     </text:outline-level-style>\n'''
         buffer = ''

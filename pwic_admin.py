@@ -266,58 +266,53 @@ class PwicAdmin():
             return False
 
         # Table AUDIT
-        sql.execute('''
-CREATE TABLE "audit" (
-    "id" INTEGER NOT NULL,
-    "date" TEXT NOT NULL,
-    "time" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "event" TEXT NOT NULL,
-    "user" TEXT NOT NULL DEFAULT '',
-    "project" TEXT NOT NULL DEFAULT '',
-    "page" TEXT NOT NULL DEFAULT '',
-    "revision" INTEGER NOT NULL DEFAULT 0,
-    "string" TEXT NOT NULL DEFAULT '',
-    "ip" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("id" AUTOINCREMENT)
-)''')
-        sql.execute('''
-CREATE INDEX "audit_index" ON "audit" (
-    "date",
-    "project"
-)''')
-        sql.execute('''
-CREATE TABLE "audit_arch" (
-    "id" INTEGER NOT NULL,
-    "date" TEXT NOT NULL,
-    "time" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "event" TEXT NOT NULL,
-    "user" TEXT NOT NULL,
-    "project" TEXT NOT NULL,
-    "page" TEXT NOT NULL,
-    "revision" INTEGER NOT NULL,
-    "string" TEXT NOT NULL,
-    "ip" TEXT NOT NULL,
-    PRIMARY KEY("id")       -- No AUTOINCREMENT
-)''')
+        sql.execute(''' CREATE TABLE "audit" (
+                            "id" INTEGER NOT NULL,
+                            "date" TEXT NOT NULL,
+                            "time" TEXT NOT NULL,
+                            "author" TEXT NOT NULL,
+                            "event" TEXT NOT NULL,
+                            "user" TEXT NOT NULL DEFAULT '',
+                            "project" TEXT NOT NULL DEFAULT '',
+                            "page" TEXT NOT NULL DEFAULT '',
+                            "revision" INTEGER NOT NULL DEFAULT 0,
+                            "string" TEXT NOT NULL DEFAULT '',
+                            "ip" TEXT NOT NULL DEFAULT '',
+                            PRIMARY KEY("id" AUTOINCREMENT)
+                        )''')
+        sql.execute(''' CREATE INDEX "audit_index" ON "audit" (
+                            "date",
+                            "project"
+                        )''')
+        sql.execute(''' CREATE TABLE "audit_arch" (
+                            "id" INTEGER NOT NULL,
+                            "date" TEXT NOT NULL,
+                            "time" TEXT NOT NULL,
+                            "author" TEXT NOT NULL,
+                            "event" TEXT NOT NULL,
+                            "user" TEXT NOT NULL,
+                            "project" TEXT NOT NULL,
+                            "page" TEXT NOT NULL,
+                            "revision" INTEGER NOT NULL,
+                            "string" TEXT NOT NULL,
+                            "ip" TEXT NOT NULL,
+                            PRIMARY KEY("id")       -- No AUTOINCREMENT
+                        )''')
 
         # Triggers
-        sql.execute('''
-CREATE TRIGGER audit_no_update
-    BEFORE UPDATE ON audit
-BEGIN
-    SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
-END''')
-        sql.execute('''
-CREATE TRIGGER audit_archiver
-    BEFORE DELETE ON audit
-BEGIN
-    INSERT INTO audit_arch
-        SELECT *
-        FROM audit
-        WHERE id = OLD.id;
-END''')
+        sql.execute(''' CREATE TRIGGER audit_no_update
+                            BEFORE UPDATE ON audit
+                        BEGIN
+                            SELECT RAISE (ABORT, 'The table AUDIT should not be modified');
+                        END''')
+        sql.execute(''' CREATE TRIGGER audit_archiver
+                            BEFORE DELETE ON audit
+                        BEGIN
+                            INSERT INTO audit_arch
+                                SELECT *
+                                FROM audit
+                                WHERE id = OLD.id;
+                        END''')
         self.db_commit()
         return True
 
@@ -328,122 +323,114 @@ END''')
         dt = pwic_dt()
 
         # Table PROJECTS
-        sql.execute('''
-CREATE TABLE "projects" (
-    "project" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "date" TEXT NOT NULL,
-    PRIMARY KEY("project")
-)''')
+        sql.execute(''' CREATE TABLE "projects" (
+                            "project" TEXT NOT NULL,
+                            "description" TEXT NOT NULL,
+                            "date" TEXT NOT NULL,
+                            PRIMARY KEY("project")
+                        )''')
         sql.execute(''' INSERT INTO projects (project, description, date) VALUES ('', '', '')''')   # Empty projects.project
 
         # Table ENV
-        sql.execute('''
-CREATE TABLE "env" (
-    "project" TEXT NOT NULL,    -- Never default to ''
-    "key" TEXT NOT NULL,
-    "value" TEXT NOT NULL,
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("key","project")
-)''')
+        sql.execute(''' CREATE TABLE "env" (
+                            "project" TEXT NOT NULL,    -- Never default to ''
+                            "key" TEXT NOT NULL,
+                            "value" TEXT NOT NULL,
+                            FOREIGN KEY("project") REFERENCES "projects"("project"),
+                            PRIMARY KEY("key","project")
+                        )''')
 
         # Table USERS
-        sql.execute('''
-CREATE TABLE "users" (
-    "user" TEXT NOT NULL,
-    "password" TEXT NOT NULL,
-    "initial" TEXT NOT NULL CHECK("initial" IN ('', 'X')),
-    "password_date" TEXT NOT NULL,
-    "password_time" TEXT NOT NULL,
-    PRIMARY KEY("user")
-)''')
+        sql.execute(''' CREATE TABLE "users" (
+                            "user" TEXT NOT NULL,
+                            "password" TEXT NOT NULL,
+                            "initial" TEXT NOT NULL CHECK("initial" IN ('', 'X')),
+                            "password_date" TEXT NOT NULL,
+                            "password_time" TEXT NOT NULL,
+                            PRIMARY KEY("user")
+                        )''')
         for e in ['', PWIC_USERS['anonymous'], PWIC_USERS['ghost']]:
             sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
                             VALUES (?, '', '', ?, ?)''',
                         (e, dt['date'], dt['time']))
 
         # Table ROLES
-        sql.execute('''
-CREATE TABLE "roles" (
-    "project" TEXT NOT NULL,
-    "user" TEXT NOT NULL,
-    "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
-    "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
-    "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
-    "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
-    "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
-    "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("user") REFERENCES "users"("user"),
-    PRIMARY KEY("user","project")
-)''')
+        sql.execute(''' CREATE TABLE "roles" (
+                            "project" TEXT NOT NULL,
+                            "user" TEXT NOT NULL,
+                            "admin" TEXT NOT NULL DEFAULT '' CHECK("admin" IN ('', 'X') AND ("admin" = "X" OR "manager" = "X" OR "editor" = "X" OR "validator" = "X" OR "reader" = "X")),
+                            "manager" TEXT NOT NULL DEFAULT '' CHECK("manager" IN ('', 'X')),
+                            "editor" TEXT NOT NULL DEFAULT '' CHECK("editor" IN ('', 'X')),
+                            "validator" TEXT NOT NULL DEFAULT '' CHECK("validator" IN ('', 'X')),
+                            "reader" TEXT NOT NULL DEFAULT '' CHECK("reader" IN ('', 'X')),
+                            "disabled" TEXT NOT NULL DEFAULT '' CHECK("disabled" IN ('', 'X')),
+                            FOREIGN KEY("project") REFERENCES "projects"("project"),
+                            FOREIGN KEY("user") REFERENCES "users"("user"),
+                            PRIMARY KEY("user","project")
+                        )''')
 
         # Table PAGES
-        sql.execute('''
-CREATE TABLE "pages" (
-    "project" TEXT NOT NULL,
-    "page" TEXT NOT NULL CHECK("page" <> ''),
-    "revision" INTEGER NOT NULL CHECK("revision" > 0),
-    "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" IN ('', 'X')),
-    "draft" TEXT NOT NULL DEFAULT '' CHECK("draft" IN ('', 'X')),
-    "final" TEXT NOT NULL DEFAULT '' CHECK("final" IN ('', 'X')),
-    "header" TEXT NOT NULL DEFAULT '' CHECK("header" IN ('', 'X')),
-    "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" IN ('', 'X')),
-    "author" TEXT NOT NULL CHECK("author" <> ''),
-    "date" TEXT NOT NULL CHECK("date" <> ''),
-    "time" TEXT NOT NULL CHECK("time" <> ''),
-    "title" TEXT NOT NULL CHECK("title" <> ''),
-    "markdown" TEXT NOT NULL DEFAULT '',
-    "tags" TEXT NOT NULL DEFAULT '',
-    "comment" TEXT NOT NULL CHECK("comment" <> ''),
-    "milestone" TEXT NOT NULL DEFAULT '',
-    "valuser" TEXT NOT NULL DEFAULT '',
-    "valdate" TEXT NOT NULL DEFAULT '',
-    "valtime" TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY("project","page","revision"),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
-    FOREIGN KEY("valuser") REFERENCES "users"("user"),
-    FOREIGN KEY("project") REFERENCES "projects"("project")
-)''')
-        sql.execute('''
-CREATE INDEX "pages_index" ON "pages" (
-    "project",
-    "page",
-    "latest"
-)''')
+        sql.execute(''' CREATE TABLE "pages" (
+                            "project" TEXT NOT NULL,
+                            "page" TEXT NOT NULL CHECK("page" <> ''),
+                            "revision" INTEGER NOT NULL CHECK("revision" > 0),
+                            "latest" TEXT NOT NULL DEFAULT 'X' CHECK("latest" IN ('', 'X')),
+                            "draft" TEXT NOT NULL DEFAULT '' CHECK("draft" IN ('', 'X')),
+                            "final" TEXT NOT NULL DEFAULT '' CHECK("final" IN ('', 'X')),
+                            "header" TEXT NOT NULL DEFAULT '' CHECK("header" IN ('', 'X')),
+                            "protection" TEXT NOT NULL DEFAULT '' CHECK("protection" IN ('', 'X')),
+                            "author" TEXT NOT NULL CHECK("author" <> ''),
+                            "date" TEXT NOT NULL CHECK("date" <> ''),
+                            "time" TEXT NOT NULL CHECK("time" <> ''),
+                            "title" TEXT NOT NULL CHECK("title" <> ''),
+                            "markdown" TEXT NOT NULL DEFAULT '',
+                            "tags" TEXT NOT NULL DEFAULT '',
+                            "comment" TEXT NOT NULL CHECK("comment" <> ''),
+                            "milestone" TEXT NOT NULL DEFAULT '',
+                            "valuser" TEXT NOT NULL DEFAULT '',
+                            "valdate" TEXT NOT NULL DEFAULT '',
+                            "valtime" TEXT NOT NULL DEFAULT '',
+                            PRIMARY KEY("project","page","revision"),
+                            FOREIGN KEY("author") REFERENCES "users"("user"),
+                            FOREIGN KEY("valuser") REFERENCES "users"("user"),
+                            FOREIGN KEY("project") REFERENCES "projects"("project")
+                        )''')
+        sql.execute(''' CREATE INDEX "pages_index" ON "pages" (
+                            "project",
+                            "page",
+                            "latest"
+                        )''')
 
         # Table CACHE
-        sql.execute('''
-CREATE TABLE "cache" (
-    "project" TEXT NOT NULL,
-    "page" TEXT NOT NULL,
-    "revision" INTEGER NOT NULL,
-    "html" TEXT NOT NULL,
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    PRIMARY KEY("project","page","revision")
-)''')
+        sql.execute(''' CREATE TABLE "cache" (
+                            "project" TEXT NOT NULL,
+                            "page" TEXT NOT NULL,
+                            "revision" INTEGER NOT NULL,
+                            "html" TEXT NOT NULL,
+                            FOREIGN KEY("project") REFERENCES "projects"("project"),
+                            PRIMARY KEY("project","page","revision")
+                        )''')
 
         # Table DOCUMENTS
-        sql.execute('''
-CREATE TABLE "documents" (
-    "id" INTEGER NOT NULL,
-    "project" TEXT NOT NULL CHECK("project" <> ''),
-    "page" TEXT NOT NULL CHECK("page" <> ''),
-    "filename" TEXT NOT NULL CHECK("filename" <> ''),
-    "mime" TEXT NOT NULL CHECK("mime" <> ''),
-    "size" INTEGER NOT NULL CHECK("size" > 0),
-    "width" INTEGER NOT NULL CHECK("width" >= 0),
-    "height" INTEGER NOT NULL CHECK("height" >= 0),
-    "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
-    "author" TEXT NOT NULL CHECK("author" <> ''),
-    "date" TEXT NOT NULL CHECK("date" <> ''),
-    "time" TEXT NOT NULL CHECK("time" <> ''),
-    "exturl" TEXT NOT NULL,
-    FOREIGN KEY("project") REFERENCES "projects"("project"),
-    FOREIGN KEY("author") REFERENCES "users"("user"),
-    PRIMARY KEY("id" AUTOINCREMENT),
-    UNIQUE("project","filename")
-)''')
+        sql.execute(''' CREATE TABLE "documents" (
+                            "id" INTEGER NOT NULL,
+                            "project" TEXT NOT NULL CHECK("project" <> ''),
+                            "page" TEXT NOT NULL CHECK("page" <> ''),
+                            "filename" TEXT NOT NULL CHECK("filename" <> ''),
+                            "mime" TEXT NOT NULL CHECK("mime" <> ''),
+                            "size" INTEGER NOT NULL CHECK("size" > 0),
+                            "width" INTEGER NOT NULL CHECK("width" >= 0),
+                            "height" INTEGER NOT NULL CHECK("height" >= 0),
+                            "hash" TEXT NOT NULL DEFAULT '' CHECK("hash" <> ''),
+                            "author" TEXT NOT NULL CHECK("author" <> ''),
+                            "date" TEXT NOT NULL CHECK("date" <> ''),
+                            "time" TEXT NOT NULL CHECK("time" <> ''),
+                            "exturl" TEXT NOT NULL,
+                            FOREIGN KEY("project") REFERENCES "projects"("project"),
+                            FOREIGN KEY("author") REFERENCES "users"("user"),
+                            PRIMARY KEY("id" AUTOINCREMENT),
+                            UNIQUE("project","filename")
+                        )''')
         self.db_commit()
         return True
 

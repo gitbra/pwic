@@ -16,8 +16,8 @@
 
 	// Manage the save button
 	$('INPUT[type=button]').on('click', function() {
-		var key = $(this).data('key');
-		var value = $('INPUT[type=text][data-key='+key+']').val();
+		var key = $(this).data('key'),
+			value = $('INPUT[type=text][data-key='+key+']').val();
 		env_set(key, value);
 	});
 
@@ -64,10 +64,10 @@
 												'&value='+encodeURIComponent(value),
 										credentials: 'same-origin' })
 			.then(function(response) {
-				if (response.ok)
-					$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
-				else
+				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
+				$('INPUT[type=text][data-key='+key+']').data('saved', value);
+				$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
 			})
 			.catch(function(error) {
 				alert(error);

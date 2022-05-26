@@ -137,7 +137,7 @@
 						<td><code>document_name_regex</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention.</td>
+						<td>Set a <a href="https://docs.python.org/3.7/howto/regex.html" target="_blank">regular expression</a> to force any uploaded files to respect a strict naming convention. For example, you can use the pattern <code>\.(7z|gz|zip)$</code> to allow some file extensions only. The file names are always checked in lower case.</td>
 					</tr>
 					<tr>
 						<td><code>document_size_max</code></td>
@@ -406,19 +406,19 @@
 						<td><code>odt_image_height_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Maximal height in pixels of the pictures exported to OpenDocument. The value <code>600</code> is used by default.</td>
+						<td>Maximal height of the pictures exported to OpenDocument expressed in unit <code>cm</code>, <code>in</code>, <code>mm</code>, <code>pc</code>, <code>pt</code> or <code>px</code>. The value <code>600px</code> is used by default.</td>
 					</tr>
 					<tr>
 						<td><code>odt_image_width_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Maximal width in pixels of the pictures exported to OpenDocument. The value <code>900</code> is used by default.</td>
+						<td>Maximal width of the pictures exported to OpenDocument expressed in unit <code>cm</code>, <code>in</code>, <code>mm</code>, <code>pc</code>, <code>pt</code> or <code>px</code>. The value <code>900px</code> is used by default.</td>
 					</tr>
 					<tr>
 						<td><code>odt_page_height</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Height of the paper when you export a page to OpenDocument. The value <code>29.7cm</code> is used by default (A4).</td>
+						<td>Height of the paper when you export a page to OpenDocument and expressed in unit <code>cm</code>, <code>in</code>, <code>mm</code>, <code>pc</code>, <code>pt</code> or <code>px</code>. The value <code>29.7cm</code> is used by default (format A4).</td>
 					</tr>
 					<tr>
 						<td><code>odt_page_landscape</code></td>
@@ -427,10 +427,16 @@
 						<td>With this option, the page layout is landscape when you export a page to OpenDocument. By default, the portrait layout is used.</td>
 					</tr>
 					<tr>
+						<td><code>odt_page_margin</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Size of the borders of the paper exported to OpenDocument. The value should be expressed in unit <code>cm</code>, <code>in</code>, <code>mm</code>, <code>pc</code>, <code>pt</code> or <code>px</code>. The default value <code>2.5cm</code> (~1 in) is used by convenience.</td>
+					</tr>
+					<tr>
 						<td><code>odt_page_width</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Width of the paper when you export a page to OpenDocument. The value <code>21cm</code> is used by default (A4).</td>
+						<td>Width of the paper when you export a page to OpenDocument and expressed in unit <code>cm</code>, <code>in</code>, <code>mm</code>, <code>pc</code>, <code>pt</code> or <code>px</code>. The value <code>21cm</code> is used by default (format A4).</td>
 					</tr>
 					<tr>
 						<td><code>page_count_max</code></td>
@@ -497,6 +503,12 @@
 						<td>Maximal number of entries in the RSS feed.</td>
 					</tr>
 					<tr>
+						<td><code>rstrip</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Remove the trailing space characters when a page is saved.</td>
+					</tr>
+					<tr>
 						<td><code>seo_hide_revs</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -549,6 +561,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Force the default redirection of the pure readers to the last validated revision of a page if it exists. This feature allows the editors to prepare the upcoming revisions of a page without showing them by default, and to publish only validated pages to the end-users. As a complement, use the option <code>no_history</code> to hide the history of the page.</td>
+					</tr>
+					<tr>
+						<td><code>zip_no_exec</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Forbid the upload of ZIP files that contain an executable content.</td>
 					</tr>
 				</table>
 			<p>To show one or all the parameters, use the command <code>python3 pwic_admin.py show-env</code>.</p>

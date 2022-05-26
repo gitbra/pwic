@@ -82,8 +82,17 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Export of an entire project to Markdown and HTML
 - Traceable activities
 - API and command line to automate the operations
-- Extension points in the code
-- Possible integration with external storage providers
+- Extensible code base:
+	- Enhanced authorizations
+	- Named emojis
+	- Content checks
+	- Content includes
+	- Automatic pages
+	- Redirections
+	- Related pages
+	- External cloud storage
+	- Automatic renaming of the files
+	- ...
 - No JavaScript needed to read the pages
 
 

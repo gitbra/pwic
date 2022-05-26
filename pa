@@ -1,9 +1,9 @@
 #!/usr/bin/sh
 
 # cd /pwic-path
-if [ $1 == 'start' ]; then
+if [ $1 = 'start' ]; then
   nohup python3 pwic.py --host 127.0.0.1 --port 8080 > /dev/null &
-elif [ $1 == 'stop' ]; then
+elif [ $1 = 'stop' ]; then
   python3 pwic_admin.py shutdown-server --port 8080 --force
 else
   python3 pwic_admin.py "$@"

@@ -75,11 +75,13 @@ PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',            # Fixed format of th
 PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),      # Find a document in Markdown
                 'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),  # Find the picture ID in IMG.SRC
                 'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                         # Name of the pages KB
+                'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                 # Length in XML
                 'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                               # Check the format of the mime
                 'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)]+)(\/rev[0-9]+)?'),      # Find a page in Markdown
                 'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                         # Valid protocols for the links
                 'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                     # Find the HTML tags
                 }
+PWIC_DPI = 120.                                     # Pixels per inch
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file_formats', 'fixed_templates', 'keep_sessions',
@@ -92,17 +94,17 @@ PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join',
                               'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph',
                               'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user', 'no_printing', 'no_rss', 'no_search',
                               'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max',
-                              'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_width', 'page_count_max',
-                              'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots', 'rss_size',
-                              'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email', 'support_phone', 'support_text',
-                              'support_url', 'title', 'validated_only']
+                              'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_margin', 'odt_page_width',
+                              'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots',
+                              'rss_size', 'rstrip', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email', 'support_phone',
+                              'support_text', 'support_url', 'title', 'validated_only', 'zip_no_exec']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
                                      'keep_drafts', 'language', 'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code',
                                      'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_printing', 'no_rss',
                                      'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion',
                                      'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape',
-                                     'odt_page_width', 'quick_fix', 'rss_size', 'show_members_max', 'support_email', 'support_phone',
-                                     'support_text', 'support_url', 'title', 'validated_only']
+                                     'odt_page_margin', 'odt_page_width', 'quick_fix', 'rss_size', 'rstrip', 'show_members_max',
+                                     'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
@@ -302,6 +304,7 @@ PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
                       (['yaml'], ['text/yaml'], None, False),
                       (['z'], ['application/x-compress'], ['\x1F\xA0'], True),
                       (['zip'], ['application/x-zip-compressed'], ZIP, True)]
+PWIC_EXECS = ['bat', 'cat', 'cmd', 'com', 'dll', 'docm', 'drv', 'exe', 'potm', 'ppsm', 'pptm', 'ps1', 'scr', 'sh', 'sys', 'vbs', 'xlsm']
 
 
 def pwic_file_ext(filename: str) -> str:
@@ -364,6 +367,46 @@ def pwic_attachment_name(name: str) -> str:
     return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
 
+def pwic_convert_length(value: Optional[Union[str, int, float]], target_unit: str, precision: int, dpi: float = PWIC_DPI) -> str:
+    # Conversion factors
+    factors = {'cm': (dpi / 2.54, 'px'),
+               'mm': (0.1, 'cm'),
+               'in': (2.54, 'cm'),
+               'pt': (1. / 72., 'in'),
+               'pc': (12., 'pt'),
+               'px': (1., 'px'),
+               'em': (0., 'px'),                # Relative length
+               '': (1., '')}
+
+    # Read the input value
+    if (value is None) or (target_unit not in factors):
+        return '0'
+    if not isinstance(value, str):
+        length = float(value)
+        unit = 'px'
+    else:
+        value = value.strip().replace(' ', '').replace(',', '.').lower()
+        m = PWIC_REGEXES['length'].match(value)
+        if m is None:
+            return '0'
+        try:
+            length = float(m.group(1))
+        except ValueError:
+            return '0'
+        unit = m.group(3) or 'px'
+
+    # Convert to pixels
+    while True:
+        (k, unit) = factors[unit]
+        length *= k
+        if unit == 'px':
+            break
+
+    # Convert to the target unit
+    length /= factors[target_unit][0]
+    return str(round(length, precision)) + target_unit
+
+
 def pwic_dt(days: int = 0) -> Dict[str, str]:
     ''' Return some key dates and time '''
     from pwic_extension import PwicExtension
@@ -387,9 +430,9 @@ def pwic_dt_diff(date1: str, date2: str) -> int:
 def pwic_int(value: Any, base=10) -> int:
     ''' Safe conversion to integer in the chosen base '''
     try:
-        if base == 10:
-            return int(value)
-        return int(value, base)
+        if base != 10:
+            return int(value, base)
+        return int(float(value) if '.' in str(value) else value)
     except (ValueError, TypeError):
         return 0
 
@@ -988,7 +1031,7 @@ class PwicConverter_html2odt(HTMLParser):
                            'ul': {'text:style-name': 'ListStructure',
                                   'text:continue-numbering': 'true'}}
         self.noclosing = ['br', 'hr']
-        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}cm" svg:height="{$h}cm" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
+        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}" svg:height="{$h}" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
         self.extrasAfter = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
                             'td': ('<text:p>', '</text:p>'),
                             'th': ('<text:p>', '</text:p>')}
@@ -1104,8 +1147,8 @@ class PwicConverter_html2odt(HTMLParser):
                                                         height = self.pictMeta[docid]['height']
                                                     if 0 in [width, height]:
                                                         width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
-                                                    self._replace_marker('{$w}', '%.2f' % (2.54 * width / 120.))
-                                                    self._replace_marker('{$h}', '%.2f' % (2.54 * height / 120.))
+                                                    self._replace_marker('{$w}', pwic_convert_length(width, 'cm', 2))
+                                                    self._replace_marker('{$h}', pwic_convert_length(height, 'cm', 2))
 
                                     # Fix the class name for the syntax highlight
                                     if (tag == 'span') and self.blockcode_on and (key == 'class'):

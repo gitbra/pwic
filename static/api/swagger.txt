@@ -112,6 +112,8 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
+        403:
+          description: Forbidden content
         409:
           description: Duplicate file name in the project
         413:

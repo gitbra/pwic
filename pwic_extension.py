@@ -346,6 +346,7 @@ class PwicExtension():
                         ) -> str:
         ''' Event when a Markdown text is selected prior to conversion.
             The result is the new Markdown text to be processed.
+            The control hash key is not affected.
         '''
         return markdown
 

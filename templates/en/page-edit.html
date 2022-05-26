@@ -45,9 +45,9 @@
 					<div>
 						<input id="edit_toolbar_table" type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
 						<input type="button" value="AutoTable" title="Paste as target table" onclick="edit_table_import('You cannot use this feature.')" />
-						<input type="button" value="List" title="- List" onclick="edit_prepend('- ')" />
-						<input type="button" value="Quote" title="> Quote" onclick="edit_prepend('> ')" />
-						<input type="button" value="Keyword" title="`Keyword`" onclick="edit_decorate('`', '`')" />
+						<input type="button" value="- List" title="- List" onclick="edit_prepend('- ')" />
+						<input type="button" value="&gt; Quote" title="> Quote" onclick="edit_prepend('> ')" />
+						<input type="button" value="`Keyword`" title="`Keyword`" onclick="edit_decorate('`', '`')" />
 						<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```\n', '\n```')" />
 						{% if pwic.env.emojis %}
 							<input type="button" value="{{pwic.emojis.bang}}" title="Emojis" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />
