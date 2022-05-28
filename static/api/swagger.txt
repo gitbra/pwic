@@ -156,31 +156,21 @@ paths:
           description: File incorrectly managed on the server
   /api/document/delete:
     post:
-      summary: Delete a document attached to a page
+      summary: Delete a document of a project
       tags:
         - document
       consumes:
         - application/x-www-form-urlencoded
       parameters:
         - in: formData
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-        - in: formData
-          name: page
-          type: string
-          description: Name of the page
-          required: true
-        - in: formData
           name: id
           type: integer
           description: Identifier of the document
           required: true
         - in: formData
-          name: filename
+          name: project
           type: string
-          description: File name of the document to make sure that you delete the right document
+          description: Name of the project
           required: true
       responses:
         200:
@@ -188,7 +178,7 @@ paths:
         400:
           description: Invalid parameters
         401:
-          description: Unsufficient authorizations
+          description: Unsufficient authorizations, or not found
         500:
           description: File incorrectly managed on the server
         503:
@@ -290,6 +280,40 @@ paths:
           description: Unsufficient authorizations
         404:
           description: Unknown project or page
+  /api/document/rename:
+    post:
+      summary: Rename a local document
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: id
+          type: integer
+          description: Identifier of the document
+          required: true
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+        - in: formData
+          name: filename
+          type: string
+          description: New file name
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations, or not found
+        500:
+          description: File incorrectly managed on the server
+        503:
+          description: Update temporarily unavailable or ongoing server maintenance
   /api/markdown/convert:
     post:
       summary: Convert Markdown to HTML

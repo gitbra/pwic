@@ -333,7 +333,10 @@
 						{
 							doc = data[i];
 							buffer += '<tr>\
-											<td><input type="button" value="{{pwic.emojis.plus}}" title="Add a link" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>'+{% if not pwic.env.odt_document_no_conversion %}(doc['filename'].endsWith('.odt') ? ' <input type="button" value="{{pwic.emojis.hammer}}" title="Import the content of the document" onclick="edit_convert_document('+doc['id']+')" \/>' : '')+{% endif %}'<\/td>\
+											<td>\
+												<input type="button" value="{{pwic.emojis.plus}}" title="Add a link" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>' +
+												{% if not pwic.env.odt_document_no_conversion %}(doc['filename'].endsWith('.odt') ? ' <input type="button" value="{{pwic.emojis.hammer}}" title="Import the content of the document" onclick="edit_convert_document('+doc['id']+')" \/>' : '')+{% endif %}
+											'<\/td>\
 											<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
 											<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
 											<td title="Hash: '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
@@ -341,7 +344,10 @@
 											<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 											<td>'+pwic_entities(doc['date'])+'<\/td>\
 											<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
-											<td><input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="Delete the document" /><\/td>\
+											<td>\
+												<input type="button" value="{{pwic.emojis.sparkles}}" title="Rename the document" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
+												<input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="Delete the document" />\
+											<\/td>\
 										<\/tr>';
 						}
 						$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);
@@ -411,15 +417,38 @@
 		event.stopPropagation();
 	}
 
+	function edit_rename_document(id, filename) {
+		var newfn = prompt('Type the new file name:', filename);
+		if (newfn != filename)
+		{
+			fetch('/api/document/rename', {	method: 'POST',
+											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+											body:	'id='+encodeURIComponent(id)+
+													'&project={{pwic.project|urlencode}}'+
+													'&filename='+encodeURIComponent(newfn),
+											credentials: 'same-origin' })
+				.then(function(response) {
+					if (!response.ok)
+						throw Error(response.status + ' ' + response.statusText);
+					else
+						setTimeout(function() {
+							edit_refresh_documents();
+						}, 1000);
+				})
+				.catch(function(error) {
+					alert(error);
+				});
+		}
+		return false;
+	}
+
 	function edit_delete_document(id, filename) {
 		if (confirm('Are sure to delete "'+filename+'"?'))
 		{
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body:	'project={{pwic.project|urlencode}}'+
-													'&page={{pwic.page|urlencode}}' +
-													'&id='+encodeURIComponent(id) +
-													'&filename='+encodeURIComponent(filename),
+											body:	'id='+encodeURIComponent(id)+
+													'&project={{pwic.project|urlencode}}',
 											credentials: 'same-origin' })
 				.then(function(response) {
 					if (!response.ok)
@@ -438,6 +467,11 @@
 
 
 	// -------------------------------- Submit a page
+
+	$('#edit_comment').on('dblclick', function() {
+		if ($(this).val() == '')
+			$(this).val($(this).prop('placeholder'));
+	});
 
 	var edit_submittable = false,
 		edit_preview_hwnd = null;

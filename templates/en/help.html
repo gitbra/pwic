@@ -101,7 +101,7 @@
 						<td><code>base_url</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Verify the option <code>https</code>.</td>
+						<td>Define the base HTTP(S) address of your website so that the links can be rebuilt correctly when some data are exported. Don't write the trailing character <code>/</code>. Restart the server after the option is set. Verify the option <code>https</code>.</td>
 					</tr>
 					<tr>
 						<td><code>client_size_max</code></td>
@@ -201,6 +201,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>The format of the HTTP log file can be modified according to <a href="https://docs.aiohttp.org/en/stable/logging.html#format-specification">this specification</a>.</td>
+					</tr>
+					<tr>
+						<td><code>http_referer</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Enable the check on the HTTP referer for the POST requests (that is for the API) in regards of the option <code>base_url</code> that must be defined. This security feature is not reliable and old-fashioned. The option does not apply on the static files. Restart the server after the option is set.</td>
 					</tr>
 					<tr>
 						<td><code>https</code></td>

@@ -133,7 +133,7 @@
 				function _sortkey(obj) {
 					var v, list = $(obj).find('INPUT[type=checkbox]');
 					if (list.length > 0)
-						return list.attr('checked') || 'not-checked';
+						return (!list.prop('checked')).toString();
 					else
 					{
 						v = obj.textContent;

@@ -275,7 +275,7 @@ class PwicAdmin():
                             "user" TEXT NOT NULL DEFAULT '',
                             "project" TEXT NOT NULL DEFAULT '',
                             "page" TEXT NOT NULL DEFAULT '',
-                            "revision" INTEGER NOT NULL DEFAULT 0,
+                            "reference" INTEGER NOT NULL DEFAULT 0,
                             "string" TEXT NOT NULL DEFAULT '',
                             "ip" TEXT NOT NULL DEFAULT '',
                             PRIMARY KEY("id" AUTOINCREMENT)
@@ -293,7 +293,7 @@ class PwicAdmin():
                             "user" TEXT NOT NULL,
                             "project" TEXT NOT NULL,
                             "page" TEXT NOT NULL,
-                            "revision" INTEGER NOT NULL,
+                            "reference" INTEGER NOT NULL,
                             "string" TEXT NOT NULL,
                             "ip" TEXT NOT NULL,
                             PRIMARY KEY("id")       -- No AUTOINCREMENT
@@ -311,7 +311,7 @@ class PwicAdmin():
                             INSERT INTO audit_arch
                                 SELECT *
                                 FROM audit
-                                WHERE id = OLD.id;
+                                WHERE reference = OLD.reference;
                         END''')
         self.db_commit()
         return True
@@ -801,7 +801,7 @@ class PwicAdmin():
                          'event': 'create-revision',
                          'project': project,
                          'page': PWIC_DEFAULTS['page'],
-                         'revision': 1})
+                         'reference': 1})
 
         # Finalization
         self.db_commit()
