@@ -4211,6 +4211,14 @@ app = web.Application()
 
 
 def main() -> bool:
+    # Check root
+    try:
+        if os.geteuid() == 0:
+            print('Error: Pwic.wiki should not be started with the root account')
+            return False
+    except AttributeError:
+        pass    # No check on Windows
+
     # Check the databases
     if not isfile(PWIC_DB_SQLITE) or not isfile(PWIC_DB_SQLITE_AUDIT):
         print('Error: the databases are not initialized')

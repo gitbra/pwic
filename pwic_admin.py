@@ -32,7 +32,9 @@ from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from subprocess import call
 from stat import S_IREAD
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from urllib.parse import urlencode
 from http.client import RemoteDisconnected
 
 from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, \
@@ -136,6 +138,12 @@ class PwicAdmin():
         spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
         spb.add_argument('--selective', action='store_true', help='Keep the latest pages in cache')
 
+        spb = subparsers.add_parser('regenerate-cache', help='Regenerate the cache of the pages through mass HTTP requests')
+        spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+        spb.add_argument('--user', default='', help='User account to access some private projects')
+        spb.add_argument('--full', action='store_true', help='Include the revisions (not recommended)')
+        spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+
         spb = subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
         spb.add_argument('--count', type=int, default=9, help='Number of log files', metavar='9')
 
@@ -158,7 +166,6 @@ class PwicAdmin():
 
         spb = subparsers.add_parser('unlock-db', help='Unlock the database after an internal Python error')
         spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
-        spb.add_argument('--secure', action='store_true', help='Use HTTPS')
         spb.add_argument('--force', action='store_true', help='No confirmation')
 
         subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
@@ -209,6 +216,8 @@ class PwicAdmin():
             return self.compress_static(args.revert)
         if args.command == 'clear-cache':
             return self.clear_cache(args.project, args.selective)
+        if args.command == 'regenerate-cache':
+            return self.regenerate_cache(args.project, args.user, args.full, args.port)
         if args.command == 'rotate-logs':
             return self.rotate_logs(args.count)
         if args.command == 'archive-audit':
@@ -222,7 +231,7 @@ class PwicAdmin():
         if args.command == 'execute-optimize':
             return self.execute_optimize()
         if args.command == 'unlock-db':
-            return self.unlock_db(args.port, args.secure, args.force)
+            return self.unlock_db(args.port, args.force)
         if args.command == 'execute-sql':
             return self.execute_sql()
         if args.command == 'shutdown-server':
@@ -1887,6 +1896,107 @@ class PwicAdmin():
             print('Please expect a workload of regeneration for a short period of time.')
         return True
 
+    def regenerate_cache(self, project: str, user: str, full: bool, port: int) -> bool:
+        # Connect to the database
+        sql = self.db_connect()
+        if sql is None:
+            return False
+
+        # Fetch the projects
+        user = pwic_safe_user_name(user or PWIC_USERS['anonymous'])
+        project = pwic_safe_name(project)
+        sql.execute(''' SELECT project
+                        FROM roles
+                        WHERE user     = ?
+                          AND disabled = '' ''',
+                    (user, ))
+        projects = [row['project'] for row in sql.fetchall()]
+        if project != '':
+            if project in projects:
+                projects = [project]
+            else:
+                projects = []
+        if len(projects) == 0:
+            print('Error: no project found')
+            return False
+        projects.sort()
+
+        # Detection of HTTPS
+        if pwic_option(sql, '', 'https') is None:
+            protocol = 'http'
+        else:
+            protocol = 'https'
+            ssl._create_default_https_context = ssl._create_unverified_context
+
+        # Authentication
+        headers = {}
+        if user[:4] != 'pwic':
+            print('Password of the account "%s": ' % user, end='')
+            try:
+                response = urlopen(Request('%s://127.0.0.1:%d/api/login' % (protocol, port),
+                                           urlencode({'user': user,
+                                                      'password': input()}).encode(),
+                                           method='POST'))
+            except Exception as e:
+                if isinstance(e, HTTPError):
+                    print('Error: %d %s' % (e.getcode(), e.reason))
+                elif isinstance(e, URLError):
+                    print('Error: the host is not running or cannot be reached')
+                else:
+                    print(str(e))
+                return False
+            headers['Cookie'] = response.headers.get('Set-Cookie', '')
+
+        # Prepare the query
+        query = ''' SELECT a.project, a.page, a.revision
+                    FROM pages AS a
+                        LEFT OUTER JOIN cache AS b
+                            ON  b.project  = a.project
+                            AND b.page     = a.page
+                            AND b.revision = a.revision
+                    WHERE a.project  = ?
+                      AND b.html    IS NULL'''
+        if not full:
+            query += ''' AND ( a.latest   = 'X'
+                            OR a.valuser != '' )'''
+        query += ''' LIMIT 5'''
+
+        # Select the pages by project and by blocks of N entries (to avoid concurrent locks)
+        nmax = 0
+        ok = 0
+        ko = 0
+        for p in projects:
+            if (((pwic_option(sql, p, 'no_cache') is not None)
+                 or (pwic_option(sql, p, 'no_history') is not None)
+                 or (pwic_option(sql, p, 'validated_only') is not None))):
+                print('\rProject "%s" is excluded' % p)
+                continue
+            sql.execute(''' SELECT COUNT(*) AS total
+                            FROM pages
+                            WHERE project = ?''',
+                        (p, ))
+            nmax += sql.fetchone()['total']     # Moving max number of regeneratable pages
+            while True:
+                once = False
+                sql.execute(query, (p, ))
+                for row in sql.fetchall():
+                    # Refresh the page
+                    try:
+                        url = '%s://127.0.0.1:%d/%s/%s/rev%d' % (protocol, port, row['project'], row['page'], row['revision'])
+                        urlopen(Request(url, None, headers=headers, method='GET'))
+                        once = True
+                        ok += 1
+                        if ok % 10 == 0:
+                            print('\r%d pages' % ok, end='', flush=True)
+                    except Exception:
+                        ko += 1
+                    assert(ok + ko <= nmax)     # Catch the infinite loops
+                if not once:
+                    break
+        print('\r%d pages' % ok)
+        del headers
+        return (ok > 0) and (ko == 0)
+
     def rotate_logs(self, nfiles: int) -> bool:
         # Connect to the database
         sql = self.db_connect()
@@ -2262,7 +2372,7 @@ class PwicAdmin():
         print('Done')
         return True
 
-    def unlock_db(self, port: bool, secure: bool, force: bool) -> bool:
+    def unlock_db(self, port: bool, force: bool) -> bool:
         # Ask for confirmation
         if not force:
             print('This special function must be called with full knowledge of the facts.')
@@ -2271,10 +2381,20 @@ class PwicAdmin():
             if input() != 'YES':
                 return False
 
+        # Detection of HTTPS
+        sql = self.db_connect()
+        if sql is None:
+            return False
+        if pwic_option(sql, '', 'https') is None:
+            protocol = 'http'
+        else:
+            protocol = 'https'
+            ssl._create_default_https_context = ssl._create_unverified_context
+
         # Connect to the API
         print('Sending the signal... ', end='', flush=True)
         try:
-            url = 'http%s://127.0.0.1:%d/api/server/unlock' % ('s' if secure else '', port)
+            url = '%s://127.0.0.1:%d/api/server/unlock' % (protocol, port)
             urlopen(Request(url, None, method='POST'))
             print('OK')
             return True

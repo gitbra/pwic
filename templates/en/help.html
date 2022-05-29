@@ -777,8 +777,8 @@
 
 
 		<h1 id="help_read_page"><a href="#top">{{pwic.emojis.finger_up}}</a> Read a page</h1>
-		<p>You must have an account to be able to read the documentation, unless the option <code>no_login</code> and the anonymous user on the project are enabled.</p>
-		<p>The pages are saved into a cache to improve the overall performances of the server. After certain technical operations, it might be needed to clear the cache with the command <code>python3 pwic_admin.py clear-cache</code>. The pages are regenerated on-the-fly only and the cache is not used to export <a href="#help_export_page">a page</a> or <a href="#help_export_project">a project</a>.</p>
+		<p>You must have an account to be able to read the documentation, unless the option <code>no_login</code> and the anonymous user are enabled for the concerned projects.</p>
+		<p>The pages are saved into a cache to improve the overall performances of the server at the cost of the disk space. After certain technical operations or over the time, it might be needed to clear the cache with the command <code>python3 pwic_admin.py clear-cache</code>. To not wait for the on-the-fly caching of the pages, you can regenerate in mass the cache with the command <code>python3 pwic_admin.py regenerate-cache</code>. The cache is not used to export <a href="#help_export_page">a page</a> or <a href="#help_export_project">a project</a>.</p>
 
 
 		<h1 id="help_export_page"><a href="#top">{{pwic.emojis.finger_up}}</a> Export a page</h1>
