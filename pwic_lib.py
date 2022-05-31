@@ -169,6 +169,11 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'watch': '&#x231A;'}
 
 
+# Custom exception
+class PwicError(Exception):
+    pass
+
+
 # ===================================================
 #  MIMES
 #  https://www.iana.org/assignments/media-types/media-types.xhtml
@@ -559,7 +564,8 @@ def pwic_safe_user_name(name: str) -> str:
 def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
     if type(value) == bytearray:
-        assert(salt is False)
+        if salt:
+            raise PwicError
         return sha256(value).hexdigest()
     text = (PWIC_SALT if salt else '') + str(value)
     return sha256(text.encode()).hexdigest()
@@ -751,7 +757,8 @@ def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Op
     obj['time'] = dt['time']
     if request is not None:
         obj['ip'] = str(request.remote)
-    assert(obj.get('event', '') != '')
+    if obj.get('event', '') == '':
+        raise PwicError
 
     # Log the event
     fields = ''
@@ -761,15 +768,16 @@ def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Op
         fields += '%s, ' % pwic_safe_name(key)
         tupstr += '?, '
         tup += (obj[key], )
-    query = 'INSERT INTO audit.audit (%s) VALUES (%s)' % (fields[:-2], tupstr[:-2])
-    sql.execute(query, tup)
-    assert(sql.rowcount == 1)
+    query = 'INSERT INTO audit.audit (%s) VALUES (%s)'
+    sql.execute(query % (fields[:-2], tupstr[:-2]), tup)
+    if sql.rowcount != 1:
+        raise PwicError
 
     # Specific event
     from pwic_extension import PwicExtension
     try:
         PwicExtension.on_audit(sql, obj, request is not None)
-    except Exception:
+    except Exception:       # nosec B110
         pass
 
 
@@ -1094,7 +1102,8 @@ class PwicConverter_html2odt(HTMLParser):
             self.has_code = True
 
         # Mapping of the tag
-        assert(tag in self.maps)
+        if tag not in self.maps:
+            raise PwicError
         if self.maps[tag] is not None:
             # Automatic extra tags
             if tag in self.extrasBefore:
@@ -1189,7 +1198,8 @@ class PwicConverter_html2odt(HTMLParser):
         del lastTag
 
         # Identify the tag
-        assert(self.tag_path[-1] == tag)
+        if self.tag_path[-1] != tag:
+            raise PwicError
         self.tag_path.pop()
 
         # Automatic extra tags

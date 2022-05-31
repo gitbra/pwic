@@ -757,7 +757,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Show a random page
-        n = randint(0, n - 1)
+        n = randint(0, n - 1)                   # nosec B311
         sql.execute(''' SELECT page
                         FROM pages
                         WHERE project = ?
@@ -804,10 +804,10 @@ class PwicServer():
 
         # Read the audit data
         sql.execute(''' SELECT id, date, time, author, event, user,
-                               project, page, revision, string
+                               project, page, reference, string
                         FROM audit.audit
-                        WHERE project = ?
-                          AND date   >= ?
+                        WHERE project  = ?
+                          AND date    >= ?
                         ORDER BY id DESC''',
                     (project, dt['date-nd']))
         pwic['audits'] = []
@@ -1919,16 +1919,17 @@ class PwicServer():
 
         # Fetch the pages
         api_expose_markdown = pwic_option(sql, project, 'api_expose_markdown') is not None
-        sql.execute(''' SELECT page, revision, latest, draft, final,
-                               header, protection, author, date, time,
-                               title, %s markdown, tags, comment, milestone,
-                               valuser, valdate, valtime
-                        FROM pages
-                        WHERE   project = ?
-                          AND ( page    = ?   OR '' = ? )
-                          AND ( latest  = 'X' OR 1  = ? )
-                        ORDER BY page ASC,
-                                 revision DESC''' % ('' if api_expose_markdown else "'' AS "),
+        query = ''' SELECT page, revision, latest, draft, final,
+                           header, protection, author, date, time,
+                           title, %s markdown, tags, comment, milestone,
+                           valuser, valdate, valtime
+                    FROM pages
+                    WHERE   project = ?
+                      AND ( page    = ?   OR '' = ? )
+                      AND ( latest  = 'X' OR 1  = ? )
+                    ORDER BY page ASC,
+                             revision DESC'''
+        sql.execute(query % ('' if api_expose_markdown else "'' AS "),
                     (project, page, page, int(allrevs)))
         while True:
             row = sql.fetchone()
@@ -2076,7 +2077,6 @@ class PwicServer():
                               AND disabled = '' ''',
                         (project, int(admin), int(manager), int(editor), int(validator), int(reader)))
         else:
-            assert(operator == 'exact')
             # The user has all the selected roles only
             sql.execute(''' SELECT user
                             FROM roles
@@ -3588,7 +3588,7 @@ class PwicServer():
         # Verify the format of the new password
         sql = self.dbconn.cursor()
         password_regex = str(pwic_option(sql, '', 'password_regex', ''))
-        if password_regex != '':
+        if password_regex != '':    # nosec B105
             try:
                 if re.compile(password_regex).match(new1) is None:
                     raise web.HTTPBadRequest()
@@ -3703,8 +3703,9 @@ class PwicServer():
             query = ''' UPDATE roles
                         SET %s = ?
                         WHERE project = ?
-                          AND user    = ?''' % roles[roleid]
-            sql.execute(query, (newvalue, project, userpost))
+                          AND user    = ?'''
+            sql.execute(query % roles[roleid],
+                        (newvalue, project, userpost))
         except sqlite3.IntegrityError:
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()

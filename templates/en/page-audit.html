@@ -58,7 +58,7 @@
 					<th>Event</th>
 					<th class="pwic_desktop">Project</th>
 					<th>Page</th>
-					<th class="pwic_desktop">Revision</th>
+					<th class="pwic_desktop">Reference</th>
 					<th class="pwic_desktop">String</th>
 				</tr>
 
@@ -79,8 +79,14 @@
 							{% endif %}
 						</td>
 						<td class="pwic_desktop">
-							{% if audit.revision > 0 %}
-								<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.revision|urlencode}}">{{audit.revision|escape}}</a>
+							{% if audit.reference > 0 %}
+								{% if audit.event[-9:] == '-revision' %}
+									<a href="/{{audit.project|urlencode}}/{{audit.page|urlencode}}/rev{{audit.reference|urlencode}}">{{audit.reference|escape}}</a>
+								{% elif audit.event[-9:] == '-document' %}
+									<a href="/special/document/{{audit.reference|urlencode}}?attachment" target="_blank">{{audit.reference|escape}}</a>
+								{% else %}
+									?
+								{% endif %}
 							{% endif %}
 						</td>
 						<td class="pwic_desktop">

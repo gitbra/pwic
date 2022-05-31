@@ -55,6 +55,14 @@ class PwicAdmin():
         except AttributeError:
             pass
 
+        # Check root
+        try:
+            if os.geteuid() == 0:
+                print('Error: Pwic.wiki cannot be administrated with the root account')
+                return False
+        except AttributeError:
+            pass    # No check on Windows
+
         # Prepare the command line (subparsers cannot be grouped)
         parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic.wiki Management Console v%s' % PWIC_VERSION)
 
@@ -151,7 +159,8 @@ class PwicAdmin():
         spb.add_argument('--selective', type=int, default=90, help='Horizon for a selective cleanup', metavar='90')
         spb.add_argument('--complete', type=int, default=0, help='Horizon for a complete cleanup', metavar='365')
 
-        subparsers.add_parser('show-git', help='Show the current git version')
+        spb = subparsers.add_parser('show-git', help='Show the current git version')
+        spb.add_argument('--agree', action='store_true', help='If you understand what this command does')
 
         subparsers.add_parser('create-backup', help='Make a backup copy of the database file *without* the attached documents')
 
@@ -223,7 +232,7 @@ class PwicAdmin():
         if args.command == 'archive-audit':
             return self.archive_audit(args.selective, args.complete)
         if args.command == 'show-git':
-            return self.show_git()
+            return self.show_git(args.agree)
         if args.command == 'create-backup':
             return self.create_backup()
         if args.command == 'repair-documents':
@@ -786,14 +795,12 @@ class PwicAdmin():
         # Add the project
         sql.execute(''' INSERT INTO projects (project, description, date) VALUES (?, ?, ?)''',
                     (project, description, dt['date']))
-        assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'create-project',
                          'project': project})
 
         # Add the role
         sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
-        assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'grant-admin',
                          'project': project,
@@ -805,7 +812,6 @@ class PwicAdmin():
         sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
                         VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using **Pwic.wiki**. This is the homepage.', 'Initial commit')''',
                     (project, PWIC_DEFAULTS['page'], admin, dt['date'], dt['time']))
-        assert(sql.rowcount > 0)
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'create-revision',
                          'project': project,
@@ -886,19 +892,16 @@ class PwicAdmin():
 
         # Fetch the projects
         projects = sorted(set(projects))
-        assert(len(projects) > 0)
-        ok = True
+        if len(projects) == 0:
+            return False
         for p in projects:
             sql.execute(''' SELECT project
                             FROM projects
                             WHERE project = ?''',
                         (p, ))
-            if sql.fetchone() is None:
-                ok = False
-                projects.remove(p)
+            if (sql.fetchone() is None) or (p != pwic_safe_name(p)):
                 print('Error: unknown project "%s"' % p)
-        if not ok:
-            return False
+                return False
 
         # Create the new database
         fn = PWIC_DB_SQLITE_BACKUP % 'split'
@@ -1205,7 +1208,6 @@ class PwicAdmin():
         sql.execute(''' INSERT INTO roles (project, user, reader, disabled)
                         VALUES (?, ?, 'X', '')''',
                     (project, user))
-        assert(sql.rowcount == 1)
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'grant-reader',
                          'project': project,
@@ -1314,7 +1316,7 @@ class PwicAdmin():
         if sql is None:
             return False
         sql.execute(''' SELECT id, date, time, author, event, user,
-                               project, page, revision, ip, string
+                               project, page, reference, ip, string
                         FROM audit.audit
                         WHERE date >= ? AND date <= ?
                         ORDER BY id ASC''',
@@ -1322,11 +1324,12 @@ class PwicAdmin():
 
         # Report the log
         tab = PrettyTable()
-        tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Revision', 'IP', 'String']
+        tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Reference', 'IP', 'String']
         for f in tab.field_names:
             tab.align[f] = 'l'
         for row in sql.fetchall():
-            tab.add_row([row['id'], row['date'], row['time'], row['author'], row['event'], row['user'], row['project'], row['page'], row['revision'], row['ip'], row['string']])
+            tab.add_row([row['id'], row['date'], row['time'], row['author'], row['event'], row['user'], row['project'],
+                         row['page'], '' if row['reference'] == 0 else str(row['reference']), row['ip'], row['string']])
         tab.header = True
         tab.border = True
         print(tab.get_string())
@@ -1391,10 +1394,13 @@ class PwicAdmin():
                 tuples = ()
             sql.execute(query, tuples)
             for row in sql.fetchall():
+                value = row.get('kpi', '')
+                if value in [0, None]:
+                    value = ''
                 tab.add_row([kpi,
                              row.get('project', ''),
                              row.get('period', ''),
-                             row.get('kpi', '')])
+                             value])
 
         # Users
         _totals(sql, 'Number of users (ever created)',
@@ -1898,7 +1904,7 @@ class PwicAdmin():
 
     def regenerate_cache(self, project: str, user: str, full: bool, port: int) -> bool:
         # Connect to the database
-        sql = self.db_connect()
+        sql = self.db_connect()             # Don't lock this connection
         if sql is None:
             return False
 
@@ -1939,7 +1945,7 @@ class PwicAdmin():
                                            method='POST'))
             except Exception as e:
                 if isinstance(e, HTTPError):
-                    print('Error: %d %s' % (e.getcode(), e.reason))
+                    print('Error: %d %s' % (pwic_int(e.getcode()), e.reason))
                 elif isinstance(e, URLError):
                     print('Error: the host is not running or cannot be reached')
                 else:
@@ -1959,7 +1965,7 @@ class PwicAdmin():
         if not full:
             query += ''' AND ( a.latest   = 'X'
                             OR a.valuser != '' )'''
-        query += ''' LIMIT 5'''
+        query += ''' LIMIT 500'''
 
         # Select the pages by project and by blocks of N entries (to avoid concurrent locks)
         nmax = 0
@@ -1975,7 +1981,7 @@ class PwicAdmin():
                             FROM pages
                             WHERE project = ?''',
                         (p, ))
-            nmax += sql.fetchone()['total']     # Moving max number of regeneratable pages
+            nmax += sql.fetchone()['total']             # Moving max number of regeneratable pages
             while True:
                 once = False
                 sql.execute(query, (p, ))
@@ -1990,7 +1996,9 @@ class PwicAdmin():
                             print('\r%d pages' % ok, end='', flush=True)
                     except Exception:
                         ko += 1
-                    assert(ok + ko <= nmax)     # Catch the infinite loops
+                    if ok + ko > nmax:
+                        print('\nError: possible infinite loop, check your options')
+                        return False
                 if not once:
                     break
         print('\r%d pages' % ok)
@@ -2115,17 +2123,24 @@ class PwicAdmin():
         print('%d entries moved to the table "audit_arch". Do what you want with it.' % counter)
         return True
 
-    def show_git(self) -> bool:
+    def show_git(self, agree: bool = False) -> bool:
         # Check the git repository
         if not isdir('./.git/'):
             print('Error: no git repository is used')
             return False
 
+        # Show the warning
+        if not agree:
+            print('For security reasons, you should run this command with the parameter "--agree".\n')
+            print('Latest commit: unknown')
+            print('Current version: unknown')
+            return False
+
         # Show the information
         print('Latest commit: ', end='', flush=True)
-        call(['git', 'rev-parse', 'HEAD'])
+        call(['git', 'rev-parse', 'HEAD'])                      # nosec B603
         print('Current version: ', end='', flush=True)
-        call(['git', 'describe', '--tags'])
+        call(['git', 'describe', '--tags'])                     # nosec B603
         return True
 
     def create_backup(self, ) -> bool:
