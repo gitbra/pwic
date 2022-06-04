@@ -17,18 +17,339 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional
-from pwic_lib import PWIC_DEFAULTS, pwic_mime
+
+from typing import Dict, List, Optional, Tuple, Union
+import sqlite3
+from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
+from io import BytesIO
+from os.path import isfile, join
+import re
+from html import escape
+from html.parser import HTMLParser
+
+from pwic_md import Markdown, MarkdownError
+from pwic_lib import (PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_REGEXES, PWIC_VERSION,
+                      PwicError, pwic_convert_length, pwic_dt, pwic_extended_syntax,
+                      pwic_file_ext, pwic_int, pwic_list, pwic_mime, pwic_mime_compressed,
+                      pwic_nns, pwic_option, pwic_shrink)
+from pwic_extension import PwicExtension
 
 
-# ===============================
-#  Helper for the export to HTML
-# ===============================
+class PwicExporter():
+    def __init__(self, app_markdown: Markdown, user: str):
+        self.app_markdown = app_markdown
+        self.user = user
+        self.options = {'relative_html': False}
+
+    # ===========
+    #  Interface
+    # ===========
+
+    def convert(self,
+                sql: Optional[sqlite3.Cursor],
+                project: str,
+                page: str,
+                revision: int,
+                extension: str,
+                ) -> Optional[str]:
+        # Read the revision without the cache
+        if (sql is None) or (revision == 0):
+            return None
+        sql.execute(''' SELECT project, page, revision, latest, author,
+                               date, time, title, markdown, tags
+                        FROM pages
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?''',
+                    (project, page, revision))
+        row = sql.fetchone()
+        if row is None:
+            return None
+
+        # Dynamic constants
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        legal_notice = str(pwic_option(sql, project, 'legal_notice', '')).strip()
+        legal_notice = re.sub(r'\<[^\>]+\>', '', legal_notice)
+
+        # Convert the revision
+        if extension == 'md':
+            return PwicExtension.on_markdown_pre(sql, project, page, revision, row['markdown']).replace('\r', '')
+        if extension == 'html':
+            html = self.md2corehtml(sql, row, export_odt=False)
+            return self._corehtml2html(sql, row, html, base_url, legal_notice)
+        if extension == 'odt':
+            return self._md2odt(sql, row, base_url, legal_notice)
+        return None
+
+    def set_option(self, name: str, value: bool) -> None:
+        self.options[name] = value
+
+    # ======
+    #  HTML
+    # ======
+
+    def md2corehtml(self, sql: sqlite3.Cursor, row: Dict, export_odt: bool) -> str:
+        # Convert MD to HTML without the headers
+        markdown = PwicExtension.on_markdown_pre(sql, row['project'], row['page'], row['revision'], row['markdown'])
+        try:
+            html = self.app_markdown.convert(markdown.replace('\r', ''))
+        except MarkdownError:
+            html = ''
+        (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
+        html = html.replace('<div class="codehilite"><pre><span></span><code>', otag)       # With pygments
+        html = html.replace('\n</code></pre></div>', ctag)
+        html = html.replace('<pre><code', otag[:-1])                                        # Without pygments
+        html = html.replace('\n</code></pre>', ctag)
+        cleaner = PwicCleanerHtml(str(pwic_option(sql, row['project'], 'skipped_tags', '')),
+                                  pwic_option(sql, row['project'], 'link_nofollow') is not None)
+        cleaner.feed(html)
+        html = cleaner.get_html()
+        return PwicExtension.on_html(sql, row['project'], row['page'], row['revision'], html)
+
+    def _corehtml2html(self, sql: sqlite3.Cursor, row: Dict, html: str, base_url: str, legal_notice: str):
+        # Convert HTML without headers to full HTML
+        htmlStyles = PwicStylerHtml()
+        html = pwic_extended_syntax(html,
+                                    pwic_option(sql, row['project'], 'heading_mask'),
+                                    pwic_option(sql, row['project'], 'no_heading') is None)[0]
+        html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
+                                  row['date'],
+                                  row['time'],
+                                  row['page'].replace('<', '&lt;').replace('>', '&gt;'),
+                                  row['title'].replace('<', '&lt;').replace('>', '&gt;'),
+                                  htmlStyles.getCss(rel=self.options['relative_html']).replace('src:url(/', 'src:url(%s/' % escape(base_url)),
+                                  '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
+                                  html)
+        if not self.options['relative_html']:
+            html = html.replace('<a href="/', '<a href="%s/' % escape(base_url))
+            html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % escape(base_url))
+        return html
+
+    # =====
+    #  ODT
+    # =====
+
+    def _odt_get_pict(self, sql: sqlite3.Cursor, row: Dict) -> Dict[int, Dict[str, Union[str, int, bool]]]:
+        # Extract the meta-informations of the embedded pictures
+        MAX_H = max(0, pwic_int(pwic_convert_length(pwic_option(sql, row['project'], 'odt_image_height_max', '900px'), '', 0)))
+        MAX_W = max(0, pwic_int(pwic_convert_length(pwic_option(sql, row['project'], 'odt_image_width_max', '600px'), '', 0)))
+        docids = ['0']
+        subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
+        if subdocs is not None:
+            for sd in subdocs:
+                sd = str(pwic_int(sd[0]))
+                if sd not in docids:
+                    docids.append(sd)
+        query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.width, a.height, a.exturl
+                    FROM documents AS a
+                        INNER JOIN roles AS b
+                            ON  b.project  = a.project
+                            AND b.user     = ?
+                            AND b.disabled = ''
+                    WHERE a.id   IN (%s)
+                      AND a.mime LIKE 'image/%%' '''
+        sql.execute(query % ','.join(docids), (self.user, ))
+        pict = {}
+        while True:
+            rowdoc = sql.fetchone()
+            if rowdoc is None:
+                break
+
+            # Optimize the size of the picture
+            try:
+                if rowdoc['width'] > MAX_W:
+                    rowdoc['height'] *= MAX_W / rowdoc['width']
+                    rowdoc['width'] = MAX_W
+                if rowdoc['height'] > MAX_H:
+                    rowdoc['width'] *= MAX_H / rowdoc['height']
+                    rowdoc['height'] = MAX_H
+            except ValueError:
+                pass
+
+            # Store the meta data
+            entry = {}
+            entry['filename'] = join(PWIC_DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename'])
+            entry['link'] = 'special/document/%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])
+            entry['link_odt_img'] = 'special/document_%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])     # LibreOffice does not support the paths with multiple folders
+            entry['compressed'] = pwic_mime_compressed(pwic_file_ext(rowdoc['filename']))
+            entry['manifest'] = ('<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime'])) if rowdoc['exturl'] == '' else ''
+            entry['width'] = pwic_int(rowdoc['width'])
+            entry['height'] = pwic_int(rowdoc['height'])
+            entry['remote'] = (rowdoc['exturl'] != '')
+            pict[rowdoc['id']] = entry
+        return pict
+
+    def _md2odt(self, sql: sqlite3.Cursor, row: Dict, base_url: str, legal_notice: str):
+        # Convert to ODT
+        html = self.md2corehtml(sql, row, export_odt=True)
+        pict = self._odt_get_pict(sql, row)
+        try:
+            odtGenerator = PwicMapperOdt(base_url, row['project'], row['page'], pict)
+            odtGenerator.feed(html)
+        except Exception:
+            return None
+
+        # Prepare the ODT file in the memory
+        inmemory = BytesIO()
+        odt = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
+        odt.writestr('mimetype', str(pwic_mime('odt')), compress_type=ZIP_STORED, compresslevel=0)   # Must be the first file of the ZIP and not compressed
+
+        # Manifest
+        buffer = ''
+        for id in pict:
+            meta = pict[id]
+            if not meta['remote'] and isfile(meta['filename']):
+                content = b''
+                with open(meta['filename'], 'rb') as f:
+                    content = f.read()
+                if meta['compressed']:
+                    odt.writestr(str(meta['link_odt_img']), content, compress_type=ZIP_STORED, compresslevel=0)
+                else:
+                    odt.writestr(str(meta['link_odt_img']), content)
+                del content
+                buffer += '%s\n' % meta['manifest']
+        odtStyles = PwicStylerOdt()
+        odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', buffer))
+
+        # Properties of the file
+        dt = pwic_dt()
+        buffer = odtStyles.meta % (PWIC_VERSION,
+                                   escape(row['title']),
+                                   escape(row['project']), escape(row['page']),
+                                   ('<meta:keyword>%s</meta:keyword>' % escape(row['tags'])) if row['tags'] != '' else '',
+                                   escape(row['author']),
+                                   escape(row['date']), escape(row['time']),
+                                   escape(self.user),
+                                   escape(dt['date']), escape(dt['time']),
+                                   row['revision'])
+        odt.writestr('meta.xml', buffer)
+
+        # Styles
+        xml = odtStyles.styles
+        xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
+        xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(pwic_option(sql, row['project'], 'heading_mask')))
+        if legal_notice != '':
+            legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
+        xml = xml.replace('<!-- styles-footer -->', legal_notice)
+        pw = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_width', '21cm'), 'cm', 1)
+        ph = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_height', '29.7cm'), 'cm', 1)
+        if pwic_option(sql, row['project'], 'odt_page_landscape') is not None:
+            po = 'landscape'
+            pw, ph = ph, pw
+        else:
+            po = 'portrait'
+        xml = xml.replace('{$pw}', pw)
+        xml = xml.replace('{$ph}', ph)
+        xml = xml.replace('{$po}', po)
+        xml = xml.replace('{$pm}', pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_margin', '2.5cm'), 'cm', 2))
+        odt.writestr('styles.xml', xml)
+
+        # Content of the page
+        page_url = '%s/%s/%s/rev%d' % (base_url, row['project'], row['page'], row['revision'])
+        xml = odtStyles.content
+        xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
+        xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
+        odt.writestr('content.xml', xml)
+        odt.close()
+
+        # Result
+        stream = inmemory.getvalue()
+        inmemory.close()
+        return stream
 
 
-class pwic_styles_html:
+# ================
+#  Tools for HTML
+# ================
+
+class PwicCleanerHtml(HTMLParser):      # html2html
+    def __init__(self, skipped_tags: str, nofollow: bool):
+        HTMLParser.__init__(self)
+        self.skipped_tags = pwic_list('applet embed iframe link meta object script style ' + skipped_tags.lower())
+        self.nofollow = nofollow
+
+    def reset(self):
+        HTMLParser.reset(self)
+        self.tag_path: List[str] = []
+        self.code = ''                  # Special code block
+        self.html = ''                  # Final buffer
+
+    def is_mute(self) -> bool:
+        for t in self.skipped_tags:
+            if t in self.tag_path:
+                return True
+        return False
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
+        def _list2obj(attrs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
+            result = {}
+            for (k, v) in attrs:
+                k = pwic_shrink(k)
+                if k not in result:
+                    result[k] = v or ''
+                else:
+                    result[k] = ('%s %s' % (result[k], v)).strip()
+            return result
+
+        # Tag path
+        tag = tag.lower()
+        self.tag_path.append(tag)
+        if self.is_mute():
+            return
+        if (self.code == '') and (tag in ['blockcode', 'code', 'svg']):
+            self.code = tag
+
+        # Detect the external links
+        props = _list2obj(attrs)
+        if (tag == 'a') and self.nofollow and ('://' in props.get('href', '')):
+            props['rel'] = 'nofollow'
+
+        # Process the attributes
+        buffer = ''
+        for (k, v) in props.items():
+            if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
+               ((self.code == 'svg') and (k[:2] != 'on')):
+                v2 = pwic_shrink(v)
+                if ('javascript' not in v2) and ('url:' not in v2):
+                    buffer += ' %s="%s"' % (k, v)
+        self.html += '<%s%s>' % (tag, buffer)
+
+    def handle_endtag(self, tag: str):
+        # Tag path
+        tag = tag.lower()
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        if tag != lastTag:
+            return
+
+        # Data
+        if self.code == tag:    # Not imbricated
+            self.code = ''
+        if not self.is_mute():
+            self.html += '</%s>' % (tag)
+        self.tag_path.pop()
+
+    def handle_comment(self, data: str):
+        if not self.is_mute():
+            self.handle_data('<!--%s-->' % data)
+
+    def handle_data(self, data: str):
+        if not self.is_mute():
+            if self.code in ['blockcode', 'code']:
+                data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
+            self.html += data
+
+    def get_html(self) -> str:
+        self.html = self.html.replace('<hr></hr>', '<hr/>').replace('></img>', '/>')
+        while True:
+            curlen = len(self.html)
+            self.html = re.sub(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)?>(\s*)<\/\1>', r'\3', self.html)
+            if len(self.html) == curlen:
+                break
+        return self.html
+
+
+class PwicStylerHtml:
     def __init__(self) -> None:
-        self.mime = str(pwic_mime('html'))
         self.css = 'static/styles.css'
         self.html = '''<!DOCTYPE html>
 <html>
@@ -54,15 +375,332 @@ class pwic_styles_html:
         return '<style>%s</style>' % content
 
 
-# =======================================
-#  Helper for the export to OpenDocument
-# =======================================
+# =========================
+#  Tools for OpenDocument
+# =========================
+
+class PwicMapperOdt(HTMLParser):        # html2odt
+    def __init__(self, base_url: str, project: str, page: str, pict: Dict = None) -> None:
+        # The parser can be feeded only once
+        HTMLParser.__init__(self)
+
+        # External parameters
+        self.base_url = base_url
+        self.project = project
+        self.page = page
+        self.pict = pict
+
+        # Mappings
+        self.maps = {'a': 'text:a',
+                     'b': 'text:span',
+                     'blockquote': None,
+                     'blockcode': 'text:p',
+                     'br': 'text:line-break',
+                     'code': 'text:span',
+                     'del': 'text:span',
+                     'div': None,
+                     'em': 'text:span',
+                     'h1': 'text:h',
+                     'h2': 'text:h',
+                     'h3': 'text:h',
+                     'h4': 'text:h',
+                     'h5': 'text:h',
+                     'h6': 'text:h',
+                     'hr': 'text:p',
+                     'i': 'text:span',
+                     'img': 'draw:image',
+                     'ins': 'text:span',
+                     'li': 'text:list-item',
+                     'ol': 'text:list',
+                     'p': 'text:p',
+                     'span': 'text:span',
+                     'strike': 'text:span',
+                     'strong': 'text:span',
+                     'sub': 'text:span',
+                     'sup': 'text:span',
+                     'table': 'table:table',
+                     'tbody': None,
+                     'td': 'table:table-cell',
+                     'th': 'table:table-cell',
+                     'thead': None,
+                     'tr': 'table:table-row',
+                     'u': 'text:span',
+                     'ul': 'text:list'}
+        self.attributes = {'a': {'xlink:href': '#href',
+                                 'xlink:type': 'simple'},
+                           'b': {'text:style-name': 'Strong'},
+                           'blockcode': {'text:style-name': 'CodeBlock'},
+                           'code': {'text:style-name': 'Code'},
+                           'del': {'text:style-name': 'Strike'},
+                           'em': {'text:style-name': 'Italic'},
+                           'h1': {'text:style-name': 'H1',
+                                  'text:outline-level': '1'},
+                           'h2': {'text:style-name': 'H2',
+                                  'text:outline-level': '2'},
+                           'h3': {'text:style-name': 'H3',
+                                  'text:outline-level': '3'},
+                           'h4': {'text:style-name': 'H4',
+                                  'text:outline-level': '4'},
+                           'h5': {'text:style-name': 'H5',
+                                  'text:outline-level': '5'},
+                           'h6': {'text:style-name': 'H6',
+                                  'text:outline-level': '6'},
+                           'hr': {'text:style-name': 'HR'},
+                           'i': {'text:style-name': 'Italic'},
+                           'img': {'xlink:href': '#src',
+                                   'xlink:type': 'simple',
+                                   'xlink:show': 'embed',
+                                   'xlink:actuate': 'onLoad',
+                                   'dummy:alt': '#alt',
+                                   'dummy:title': '#title'},
+                           'ins': {'text:style-name': 'Underline'},
+                           'ol': {'text:style-name': 'ListStructureNumeric',
+                                  'text:continue-numbering': 'true'},
+                           'p': {'text:style-name': '#'},
+                           'span': {'text:style-name': '#class'},
+                           'strike': {'text:style-name': 'Strike'},
+                           'strong': {'text:style-name': 'Strong'},
+                           'sub': {'text:style-name': 'Sub'},
+                           'sup': {'text:style-name': 'Sup'},
+                           'table': {'table:style-name': 'Table'},
+                           'td': {'table:style-name': 'TableCell'},
+                           'th': {'table:style-name': 'TableCellHeader'},
+                           'u': {'text:style-name': 'Underline'},
+                           'ul': {'text:style-name': 'ListStructure',
+                                  'text:continue-numbering': 'true'}}
+        self.noclosing = ['br', 'hr']
+        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}" svg:height="{$h}" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
+        self.extrasAfter = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
+                            'td': ('<text:p>', '</text:p>'),
+                            'th': ('<text:p>', '</text:p>')}
+
+        # Processing
+        self.tag_path: List[str] = []
+        self.table_descriptors: List[Dict[str, int]] = []
+        self.blockquote_on = False
+        self.blockcode_on = False
+        self.has_code = False
+        self.lastIMGalt = ''
+        self.lastIMGtitle = ''
+
+        # Output
+        self.odt = ''
+
+    def _replace_marker(self, joker: str, content: str) -> None:
+        pos = self.odt.rfind(joker)
+        if pos != -1:
+            self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
+
+    def feed(self, data: str):
+        # Find the unsupported tags
+        unsupported = []
+        for t in PWIC_REGEXES['tag_name'].findall(data):
+            t = t.lower()
+            if (t not in self.maps) and (t not in unsupported):
+                unsupported.append(t)
+
+        # Recleansing
+        cleaner = PwicCleanerHtml(' '.join(unsupported), False)
+        cleaner.feed(data)
+        HTMLParser.feed(self, cleaner.get_html())
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        tag = tag.lower()
+
+        # Rules
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        # ... no imbricated paragraphs
+        if tag == lastTag == 'p':
+            return
+        # ... list item should be enclosed by <p>
+        if (tag != 'p') and (lastTag == 'li'):
+            self.tag_path.append('p')
+            self.odt += '<%s>' % self.maps['p']
+        # ... subitems should close <p>
+        elif (tag in ['ul', 'ol']) and (lastTag == 'p'):
+            self.tag_path.pop()
+            self.odt += '</%s>' % self.maps['p']
+        del lastTag
+
+        # Identify the new tag
+        self.tag_path.append(tag)
+        if tag == 'blockquote':
+            self.blockquote_on = True
+        if tag == 'blockcode':
+            self.blockcode_on = True
+            self.has_code = True
+
+        # Mapping of the tag
+        if tag not in self.maps:
+            raise PwicError
+        if self.maps[tag] is not None:
+            # Automatic extra tags
+            if tag in self.extrasBefore:
+                self.odt += self.extrasBefore[tag][0]
+
+            # Tag itself
+            self.odt += '<' + str(self.maps[tag])
+            if tag in self.attributes:
+                for property_key in self.attributes[tag]:
+                    property_value = self.attributes[tag][property_key]
+                    if property_value[:1] != '#':
+                        if property_key[:5] != 'dummy':
+                            self.odt += ' %s="%s"' % (property_key, escape(property_value))
+                    else:
+                        property_value = property_value[1:]
+                        if tag == 'p':
+                            if self.blockquote_on:
+                                self.odt += ' text:style-name="Blockquote"'
+                                break
+                        else:
+                            for key, value_ns in attrs:
+                                value = pwic_nns(value_ns)
+                                if key == property_value:
+                                    # Fix the base URL for the links
+                                    if (tag == 'a') and (key == 'href'):
+                                        if value[:1] in ['/']:
+                                            value = self.base_url + str(value)
+                                        elif value[:1] in ['?', '#', '.']:
+                                            value = '%s/%s/%s%s' % (self.base_url, self.project, self.page, value)
+                                        elif value[:2] == './' or value[:3] == '../':
+                                            value = '%s/%s/%s/%s' % (self.base_url, self.project, self.page, value)
+
+                                    # Fix the attributes for the pictures
+                                    if tag == 'img':
+                                        if key == 'alt':
+                                            self.lastIMGalt = value
+                                        elif key == 'title':
+                                            self.lastIMGtitle = value
+                                        elif key == 'src':
+                                            if value[:1] == '/':
+                                                value = value[1:]
+                                            if self.pict is not None:
+                                                docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
+                                                if docid_re is not None:
+                                                    width = height = 0
+                                                    docid = pwic_int(docid_re.group(1))
+                                                    if docid in self.pict:
+                                                        if self.pict[docid]['remote'] or (self.pict[docid]['link'] == value):
+                                                            value = self.pict[docid]['link_odt_img']
+                                                        width = self.pict[docid]['width']
+                                                        height = self.pict[docid]['height']
+                                                    if 0 in [width, height]:
+                                                        width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
+                                                    self._replace_marker('{$w}', pwic_convert_length(width, 'cm', 2))
+                                                    self._replace_marker('{$h}', pwic_convert_length(height, 'cm', 2))
+
+                                    # Fix the class name for the syntax highlight
+                                    if (tag == 'span') and self.blockcode_on and (key == 'class'):
+                                        value = 'Code_' + value
+
+                                    if property_key[:5] != 'dummy':
+                                        self.odt += ' %s="%s"' % (property_key, escape(value))
+                                    break
+            if tag in self.noclosing:
+                self.odt += '/'
+            self.odt += '>'
+
+            # Handle the column descriptors of the tables
+            if tag == 'table':
+                self.table_descriptors.append({'cursor': len(self.odt),
+                                               'count': 0,
+                                               'max': 0})
+            if tag in ['th', 'td']:
+                self.table_descriptors[-1]['count'] += 1
+
+        # Automatic extra tags
+        if tag in self.extrasAfter:
+            self.odt += self.extrasAfter[tag][0]
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+
+        # Rules
+        lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        # ... no imbricated paragraphs
+        if (tag == 'p') and (lastTag != 'p'):
+            return
+        # ... list item should be enclosed by <p>
+        if (tag == 'li') and (lastTag == 'p'):
+            self.tag_path.pop()
+            self.odt += '</%s>' % self.maps['p']
+        del lastTag
+
+        # Identify the tag
+        if self.tag_path[-1] != tag:
+            raise PwicError
+        self.tag_path.pop()
+
+        # Automatic extra tags
+        if tag in self.extrasAfter:
+            self.odt += self.extrasAfter[tag][1]
+
+        # Final mapping
+        if tag in self.maps:
+            if tag not in self.noclosing:
+                if tag == 'blockquote':
+                    self.blockquote_on = False
+                if tag == 'blockcode':
+                    self.blockcode_on = False
+                if self.maps[tag] is not None:
+                    self.odt += '</%s>' % self.maps[tag]
+
+                    # Handle the descriptors of the tables
+                    if tag == 'tr':
+                        self.table_descriptors[-1]['max'] = max(self.table_descriptors[-1]['count'],
+                                                                self.table_descriptors[-1]['max'])
+                        self.table_descriptors[-1]['count'] = 0
+                    if tag == 'table':
+                        cursor = self.table_descriptors[-1]['cursor']
+                        self.odt = (self.odt[:cursor]
+                                    + '<table:table-columns>'
+                                    + ''.join(['<table:table-column/>' for _ in range(self.table_descriptors[-1]['max'])])
+                                    + '</table:table-columns>'
+                                    + self.odt[cursor:])
+                        self.table_descriptors.pop()
+
+        # Dynamic replacement text for a picture
+        if tag == 'img':
+            if self.lastIMGalt != '':
+                self.odt += '<svg:title>%s</svg:title>' % escape(self.lastIMGalt)
+                self.lastIMGalt = ''
+            if self.lastIMGtitle != '':
+                self.odt += '<svg:desc>%s</svg:desc>' % escape(self.lastIMGtitle)
+                self.lastIMGtitle = ''
+
+        # Automatic extra tags
+        if tag in self.extrasBefore:
+            self.odt += self.extrasBefore[tag][1]
+
+    def handle_data(self, data: str) -> None:
+        data = escape(data)
+        # List item should be enclosed by <p>
+        if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
+            self.tag_path.append('p')
+            self.odt += '<%s>' % self.maps['p']
+        # Text alignment for the code
+        if self.blockcode_on:
+            data = data.replace('\r', '')
+            data = data.replace('\n', '<text:line-break/>')
+            data = data.replace('\t', '<text:tab/>')
+            data = data.replace(' ', '<text:s/>')
+        # Default behavior
+        self.odt += data
+
+    def handle_comment(self, data: str) -> None:
+        # The ODT annotations must be surrounded by <text:p> or <text:list>
+        # Sometimes md2html does not render <p> for block annotations
+        # The missing tag is then added dynamically here
+        missing = (len(self.tag_path) == 0)
+        if missing:
+            self.odt += '<text:p>'
+        self.odt += '''<office:annotation><dc:creator>Unknown</dc:creator><text:p>%s</text:p></office:annotation>''' % escape(data)
+        if missing:
+            self.odt += '</text:p>'
 
 
-class pwic_styles_odt:
+class PwicStylerOdt:
     def __init__(self) -> None:
-        self.mime = str(pwic_mime('odt'))
-
         self.manifest = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
     <manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text" />

@@ -301,7 +301,7 @@ class PwicExtension():
                 revision: int,                              # Revision of the page
                 html: str,                                  # Current converted Markdown to HTML code
                 ) -> str:
-        ''' Event when a page is converted to HTML and cached.
+        ''' Event when a page is converted to HTML and cached, or previewed during its edition.
             The result is the converted HTML code.
             Warning: the conversion to HTML is used in the export to OpenDocument (odt). Changing
                      the HTML inappropriately may result in a technical failure of this feature.

@@ -568,8 +568,6 @@ paths:
           description: Rejected by a custom rule
         415:
           description: Invalid file format
-        500:
-          description: Failed export (open a support ticket)
   /api/page/move:
     post:
       summary: Rename and/or move a page

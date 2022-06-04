@@ -42,19 +42,19 @@ from html import escape
 from random import randint
 from datetime import datetime
 
-from pwic_md import Markdown, MarkdownError
+from pwic_md import Markdown
 from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_EMOJIS,
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_MAGIC_OAUTH,
                       PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_TEMPLATES_PATH, PWIC_USERS,
                       PWIC_VERSION,
-                      pwic_attachment_name, pwic_audit, pwic_convert_length, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext,
-                      pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime_list,
-                      pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_safe_file_name,
-                      pwic_safe_name, pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str,
-                      pwic_sql_print, pwic_str2bytearray, pwic_x, pwic_xb,
-                      PwicHtmlCleaner, PwicConverter_html2odt, PwicConverter_odt2md)
+                      pwic_attachment_name, pwic_audit, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext, pwic_int, pwic_ishex,
+                      pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime_list, pwic_mime2icon,
+                      pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_safe_file_name, pwic_safe_name,
+                      pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_sql_print,
+                      pwic_str2bytearray, pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
-from pwic_styles import pwic_styles_html, pwic_styles_odt
+from pwic_exporter import PwicExporter, PwicStylerHtml
+from pwic_importer import PwicConverter_odt2md
 
 IPR_EQ, IPR_NET, IPR_REG = range(3)
 
@@ -76,59 +76,6 @@ class PwicServer():
             return True
         except sqlite3.OperationalError:
             return False
-
-    def _md2html(self,
-                 sql: sqlite3.Cursor,
-                 project: str,
-                 page: Optional[str],
-                 revision: int,
-                 markdown: str,
-                 cache: bool = True,
-                 headerNumbering: bool = True,
-                 export_odt: bool = False,
-                 ) -> Tuple[str, object]:
-        ''' Convert the text from Markdown to HTML '''
-        # Read the cache
-        if (page is None) or (revision <= 0) or (pwic_option(sql, project, 'no_cache') is not None):
-            cache = False
-        if cache:
-            row = sql.execute(''' SELECT html
-                                  FROM cache
-                                  WHERE project  = ?
-                                    AND page     = ?
-                                    AND revision = ?''',
-                              (project, page, revision)).fetchone()
-        else:
-            row = None
-
-        # Update the cache
-        if row is not None:
-            html = row['html']
-        else:
-            markdown = PwicExtension.on_markdown_pre(sql, project, page, revision, markdown)
-            try:
-                html = app['markdown'].convert(markdown)
-            except MarkdownError:
-                html = ''
-            (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
-            html = html.replace('<div class="codehilite"><pre><span></span><code>', otag)           # With pygments
-            html = html.replace('\n</code></pre></div>', ctag)
-            html = html.replace('<pre><code', otag[:-1])                                            # Without pygments
-            html = html.replace('\n</code></pre>', ctag)
-            cleaner = PwicHtmlCleaner(str(pwic_option(sql, project, 'skipped_tags', '')),
-                                      pwic_option(sql, project, 'link_nofollow') is not None)
-            cleaner.feed(html)
-            html = PwicExtension.on_html(sql, project, page, revision, cleaner.get_html())
-            if cache:
-                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html)
-                                VALUES (?, ?, ?, ?)''',
-                            (project, page, revision, html))
-                self.dbconn.commit()
-        if pwic_option(sql, project, 'no_heading') is not None:
-            headerNumbering = False
-        return pwic_extended_syntax(html,
-                                    pwic_option(sql, project, 'heading_mask'),
-                                    headerNumbering=headerNumbering)
 
     def _check_mime(self, obj: Dict[str, Any]) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
@@ -267,7 +214,7 @@ class PwicServer():
             data = await request.text()
             result = parse_qs(data)
             for res in result:
-                result[res] = result[res][0]
+                result[res] = result[res][0].replace('\r', '')
                 if res not in ['markdown']:
                     result[res] = result[res][:pwic_int(PWIC_DEFAULTS['limit_field'])]
         return result
@@ -395,102 +342,13 @@ class PwicServer():
         pwic: Dict[str, Any] = {'project': project,
                                 'page': page,
                                 'revision': revision}
-        dt = pwic_dt()
 
-        # Fetch the name of the project...
+        # Fetch the name of the project or ask the user to pick a project
         sql = self.dbconn.cursor()
-        if project != '':
-            # Verify if the project exists
-            sql.execute(''' SELECT description
-                            FROM projects
-                            WHERE project = ?''',
-                        (project, ))
-            row = sql.fetchone()
-            if row is None:
-                raise web.HTTPTemporaryRedirect('/')  # Project not found
-            pwic['project_description'] = row['description']
-            pwic['title'] = row['description']
-
-            # Grant the default rights as a reader
-            if (user[:4] != 'pwic') and (pwic_option(sql, project, 'auto_join', globale=False) == 'passive'):
-                if sql.execute(''' SELECT 1
-                                   FROM roles
-                                   WHERE project = ?
-                                     AND user    = ?''',
-                               (project, user)).fetchone() is None:
-                    sql.execute(''' INSERT INTO roles (project, user, reader)
-                                    VALUES (?, ?, 'X')''', (project, user))
-                    if sql.rowcount > 0:
-                        pwic_audit(sql, {'author': PWIC_USERS['system'],
-                                         'event': 'grant-reader',
-                                         'project': project,
-                                         'user': user,
-                                         'string': 'auto_join'},
-                                   request)
-                        self.dbconn.commit()
-
-            # Verify the access
-            sql.execute(''' SELECT admin, manager, editor, validator, reader
-                            FROM roles
-                            WHERE project  = ?
-                              AND user     = ?
-                              AND disabled = '' ''',
-                        (project, user))
-            row = sql.fetchone()
-            if row is None:
-                return await self._handle_output(request, 'project-access', pwic)  # Unauthorized users can request an access
-            pwic['admin'] = pwic_xb(row['admin'])
-            pwic['manager'] = pwic_xb(row['manager'])
-            pwic['editor'] = pwic_xb(row['editor'])
-            pwic['validator'] = pwic_xb(row['validator'])
-            pwic['reader'] = pwic_xb(row['reader'])
-            pwic['pure_reader'] = pwic['reader'] and not pwic['admin'] and not pwic['manager'] and not pwic['editor'] and not pwic['validator']
-
-        # ... or ask the user to pick a project
-        else:
-            # Projects joined
-            sql.execute(''' SELECT a.project, a.description, a.date, c.last_activity
-                            FROM projects AS a
-                                INNER JOIN roles AS b
-                                    ON  b.project  = a.project
-                                    AND b.user     = ?
-                                    AND b.disabled = ''
-                                LEFT OUTER JOIN (
-                                    SELECT project, MAX(date) AS last_activity
-                                    FROM audit.audit
-                                    WHERE date   >= ?
-                                      AND author  = ?
-                                    GROUP BY project
-                                ) AS c
-                                    ON c.project = a.project
-                            ORDER BY c.last_activity DESC,
-                                     a.date          DESC,
-                                     a.description   ASC''',
-                        (user, dt['date-90d'], user))
-            pwic['projects'] = [row for row in sql.fetchall()]
-
-            # Projects not joined yet
-            sql.execute(''' SELECT a.project, c.description, c.date
-                            FROM env AS a
-                                LEFT OUTER JOIN roles AS b
-                                    ON  b.project = a.project
-                                    AND b.user    = ?
-                                INNER JOIN projects AS c
-                                    ON c.project = a.project
-                            WHERE a.project <> ''
-                              AND a.key      = 'auto_join'
-                              AND a.value   IN ('passive', 'active')
-                              AND b.project IS NULL
-                            ORDER BY c.date        DESC,
-                                     c.description ASC''',
-                        (user, ))
-            pwic['joinable_projects'] = [row for row in sql.fetchall()]
-
-            # Output
-            if (len(pwic['projects']) == 1) and (len(pwic['joinable_projects']) == 0):
-                suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
-                raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
-            return await self._handle_output(request, 'project-select', pwic)
+        if project == '':
+            return await self._page_pick(request, sql, user, pwic)
+        if not await self._page_prepare(request, sql, project, user, pwic):
+            return await self._handle_output(request, 'project-access', pwic)   # Unauthorized users can request an access
 
         # Fetch the links of the header line
         sql.execute(''' SELECT a.page, a.title
@@ -500,238 +358,359 @@ class PwicServer():
                           AND a.header  = 'X'
                         ORDER BY a.title''',
                     (project, ))
-        pwic['links'] = []
-        for row in sql.fetchall():
-            pwic['links'].append(row)
+        pwic['links'] = sql.fetchall()
+        for i, row in enumerate(pwic['links']):
             if row['page'] == PWIC_DEFAULTS['page']:
-                pwic['links'].insert(0, pwic['links'].pop())    # Move to the top because it is the home page
+                pwic['links'].insert(0, pwic['links'].pop(i))   # Move to the top because it is the home page
+                break
 
         # Verify that the page exists
         if not page_special:
             revision = self._redirect_revision(sql, project, user, page, revision)
             if revision == 0:
-                return await self._handle_output(request, 'page-404', pwic)  # Page not found
-
-        # Custom event
-        PwicExtension.on_api_page_requested(sql, action, project, page, revision)
+                return await self._handle_output(request, 'page-404', pwic)     # Page not found
 
         # Show the requested page
+        PwicExtension.on_api_page_requested(sql, action, project, page, revision)
         if action == 'view':
-            if not page_special:
-                # Content of the page
-                sql.execute(''' SELECT revision, latest, draft, final, protection,
-                                       author, date, time, title, markdown,
-                                       tags, valuser, valdate, valtime
-                                FROM pages
-                                WHERE project  = ?
-                                  AND page     = ?
-                                  AND revision = ?''',
-                            (project, page, revision))
-                row = sql.fetchone()
-                for k in ['latest', 'draft', 'final', 'protection']:
-                    row[k] = pwic_xb(row[k])
-                row['tags'] = pwic_list(row['tags'])
-                pwic.update(row)
-                pwic['html'], pwic['tmap'] = self._md2html(sql, project, page, revision, row['markdown'])
-                pwic['hash'] = pwic_sha256(row['markdown'], salt=False)
-                pwic['removable'] = ((pwic['admin']
-                                      and not pwic['final']
-                                      and (pwic['valuser'] == ''))
-                                     or ((pwic['author'] == user)
-                                         and pwic['draft']))
-
-                # File gallery
-                pwic['images'] = []
-                pwic['documents'] = []
-                sql.execute(''' SELECT id, filename, mime, size, author, date, time
-                                FROM documents
-                                WHERE project = ?
-                                  AND page    = ?
-                                ORDER BY filename''',
-                            (project, page))
-                for row in sql.fetchall():
-                    row['size'] = pwic_size2str(row['size'])
-                    category = 'images' if row['mime'][:6] == 'image/' else 'documents'
-                    pwic[category].append(row)
-
-                # Related links
-                pwic['relations'] = []
-                PwicExtension.on_related_pages(sql, project, user, page, pwic['relations'])
-                pwic['relations'].sort(key=lambda x: x[1])
-                return await self._handle_output(request, 'page', pwic)
-
-            # Additional information for the special page
             if page_special:
-                # Fetch the recently updated pages
-                sql.execute(''' SELECT page, author, date, time, title, comment, milestone
-                                FROM pages
-                                WHERE project = ?
-                                  AND latest  = 'X'
-                                  AND date   >= ?
-                                ORDER BY date DESC, time DESC''',
-                            (project, dt['date-30d']))
-                pwic['recents'] = []
-                for row in sql.fetchall():
-                    pwic['recents'].append(row)
+                return await self._page_view_special(request, sql, project, user, page, revision, pwic)
+            return await self._page_view(request, sql, project, user, page, revision, pwic)
+        if action == 'edit':
+            return await self._page_edit(request, sql, project, page, revision, pwic)
+        if action == 'history':
+            return await self._page_history(request, sql, project, user, page, pwic)
+        if action == 'move':
+            return await self._page_move(request, sql, project, user, page, pwic)
+        raise web.HTTPNotFound()
 
-                # Fetch the team members of the project
-                pwic['admins'] = []
-                pwic['managers'] = []
-                pwic['editors'] = []
-                pwic['validators'] = []
-                pwic['readers'] = []
-                show_members_max = pwic_int(pwic_option(sql, project, 'show_members_max', '-1'))
-                sql.execute(''' SELECT COUNT(user) AS total
-                                FROM roles
-                                WHERE project  = ?
-                                  AND disabled = '' ''',
-                            (project, ))
-                restrict_members = (sql.fetchone()['total'] > show_members_max) and (show_members_max != -1)
-                sql.execute(''' SELECT user, admin, manager, editor, validator, reader
-                                FROM roles
-                                WHERE project  = ?
-                                  AND disabled = ''
-                                ORDER BY user''',
-                            (project, ))
-                for row in sql.fetchall():
-                    for k in row:
-                        if (k != 'user') and pwic_xb(row[k]):
-                            if not restrict_members or (k not in ['reader', 'editor']):
-                                pwic[k + 's'].append(row['user'])
+    async def _page_prepare(self, request: web.Request, sql: sqlite3.Cursor, project: str, user: str, pwic: Dict[str, Any]) -> bool:
+        # Verify if the project exists
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPTemporaryRedirect('/')    # Project not found
+        pwic['project_description'] = row['description']
+        pwic['title'] = row['description']
 
-                # Fetch the pages of the project
-                sql.execute(''' SELECT page, title, revision, final, author,
-                                       date, time, milestone, valuser, valdate,
-                                       valtime
-                                FROM pages
-                                WHERE project = ?
-                                  AND latest  = 'X'
-                                ORDER BY page ASC, revision DESC''',
-                            (project, ))
-                pwic['pages'] = []
-                for row in sql.fetchall():
-                    pwic['pages'].append(row)
+        # Grant the default rights as a reader
+        if (user[:4] != 'pwic') and (pwic_option(sql, project, 'auto_join', globale=False) == 'passive'):
+            if sql.execute(''' SELECT 1
+                               FROM roles
+                               WHERE project = ?
+                                 AND user    = ?''',
+                           (project, user)).fetchone() is None:
+                sql.execute(''' INSERT INTO roles (project, user, reader)
+                                VALUES (?, ?, 'X')''', (project, user))
+                if sql.rowcount > 0:
+                    pwic_audit(sql, {'author': PWIC_USERS['system'],
+                                     'event': 'grant-reader',
+                                     'project': project,
+                                     'user': user,
+                                     'string': 'auto_join'},
+                               request)
+                    self.dbconn.commit()
 
-                # Fetch the tags of the project
-                sql.execute(''' SELECT tags
-                                FROM pages
-                                WHERE project = ?
-                                  AND latest  = 'X'
-                                  AND tags   <> '' ''',
-                            (project, ))
-                tags = ''
-                for row in sql.fetchall():
-                    tags += ' ' + row['tags']
-                pwic['tags'] = sorted(pwic_list(tags.strip()))
+        # Verify the access
+        sql.execute(''' SELECT admin, manager, editor, validator, reader
+                        FROM roles
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND disabled = '' ''',
+                    (project, user))
+        row = sql.fetchone()
+        if row is None:
+            return False
+        pwic['admin'] = pwic_xb(row['admin'])
+        pwic['manager'] = pwic_xb(row['manager'])
+        pwic['editor'] = pwic_xb(row['editor'])
+        pwic['validator'] = pwic_xb(row['validator'])
+        pwic['reader'] = pwic_xb(row['reader'])
+        pwic['pure_reader'] = pwic['reader'] and not pwic['admin'] and not pwic['manager'] and not pwic['editor'] and not pwic['validator']
+        return True
 
-                # Fetch the documents of the project
-                sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
-                                       b.hash, b.author, b.date, b.time, b.exturl, c.occurrence
-                                FROM roles AS a
-                                    INNER JOIN documents AS b
-                                        ON b.project = a.project
-                                    INNER JOIN (
-                                        SELECT hash, COUNT(hash) AS occurrence
-                                        FROM documents
-                                        GROUP BY hash
-                                        HAVING project = ?
-                                    ) AS c
-                                        ON c.hash = b.hash
-                                WHERE a.project  = ?
-                                  AND a.user     = ?
-                                  AND a.disabled = ''
-                                ORDER BY filename''',
-                            (project, project, user))
-                pwic['documents'] = []
-                used_size = 0
-                for row in sql.fetchall():
-                    used_size += row['size']
-                    row['mime_icon'] = pwic_mime2icon(row['mime'])
-                    row['size'] = pwic_size2str(row['size'])
-                    pwic['documents'].append(row)
-                pmax = pwic_int(pwic_option(sql, project, 'project_size_max'))
-                pwic['disk_space'] = {'used': used_size,
-                                      'used_str': pwic_size2str(used_size),
-                                      'project_max': pmax,
-                                      'project_max_str': pwic_size2str(pmax),
-                                      'percentage': min(100, float('%.2f' % (0 if pmax == 0 else 100. * used_size / pmax)))}
-                return await self._handle_output(request, 'page-special', pwic)
+    async def _page_pick(self, request: web.Request, sql: sqlite3.Cursor, user: str, pwic: Dict[str, Any]) -> web.Response:
+        # Projects joined
+        dt = pwic_dt()
+        sql.execute(''' SELECT a.project, a.description, a.date, c.last_activity
+                        FROM projects AS a
+                            INNER JOIN roles AS b
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ''
+                            LEFT OUTER JOIN (
+                                SELECT project, MAX(date) AS last_activity
+                                FROM audit.audit
+                                WHERE date   >= ?
+                                  AND author  = ?
+                                GROUP BY project
+                            ) AS c
+                                ON c.project = a.project
+                        ORDER BY c.last_activity DESC,
+                                 a.date          DESC,
+                                 a.description   ASC''',
+                    (user, dt['date-90d'], user))
+        pwic['projects'] = sql.fetchall()
 
-        # Edit the requested page
-        elif action == 'edit':
-            sql.execute(''' SELECT revision, draft, final, header, protection,
-                                   title, markdown, tags, comment, milestone
-                            FROM pages
-                            WHERE project  = ?
-                              AND page     = ?
-                              AND revision = ?
-                              AND latest   = 'X' ''',
-                        (project, page, revision))
-            row = sql.fetchone()
-            if row is None:
-                raise web.HTTPBadRequest()
-            for k in ['draft', 'final', 'header', 'protection']:
-                row[k] = pwic_xb(row[k])
-            pwic.update(row)
-            return await self._handle_output(request, 'page-edit', pwic)
+        # Projects not joined yet
+        sql.execute(''' SELECT a.project, c.description, c.date
+                        FROM env AS a
+                            LEFT OUTER JOIN roles AS b
+                                ON  b.project = a.project
+                                AND b.user    = ?
+                            INNER JOIN projects AS c
+                                ON c.project = a.project
+                        WHERE a.project <> ''
+                          AND a.key      = 'auto_join'
+                          AND a.value   IN ('passive', 'active')
+                          AND b.project IS NULL
+                        ORDER BY c.date        DESC,
+                                 c.description ASC''',
+                    (user, ))
+        pwic['joinable_projects'] = sql.fetchall()
 
-        # Show the history of the page
-        elif action == 'history':
-            # Redirect the pure reader if the history is disabled
-            if pwic['pure_reader'] and (pwic_option(sql, project, 'no_history') is not None):
-                raise web.HTTPTemporaryRedirect('/%s/%s' % (project, page))
+        # Output
+        if (len(pwic['projects']) == 1) and (len(pwic['joinable_projects']) == 0):
+            suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
+            raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
+        return await self._handle_output(request, 'project-select', pwic)
 
-            # Extract the revisions
-            sql.execute(''' SELECT revision, latest, draft, final, author,
-                                   date, time, title, comment, milestone,
-                                   valuser, valdate, valtime
-                            FROM pages
-                            WHERE project = ?
-                              AND page    = ?
-                            ORDER BY revision DESC''',
-                        (project, page))
-            pwic['revisions'] = []
-            for row in sql.fetchall():
-                if pwic_xb(row['latest']):
-                    pwic['title'] = row['title']
-                for k in ['latest', 'draft', 'final']:
-                    row[k] = pwic_xb(row[k])
-                pwic['revisions'].append(row)
-            return await self._handle_output(request, 'page-history', pwic)
+    async def _page_view(self, request: web.Request, sql: sqlite3.Cursor, project: str, user: str, page: str, revision: int, pwic: Dict[str, Any]) -> web.Response:
+        # Content of the page
+        sql.execute(''' SELECT revision, latest, draft, final, protection,
+                               author, date, time, title, markdown,
+                               tags, valuser, valdate, valtime
+                        FROM pages
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?''',
+                    (project, page, revision))
+        row = sql.fetchone()
+        for k in ['latest', 'draft', 'final', 'protection']:
+            row[k] = pwic_xb(row[k])
+        row['tags'] = pwic_list(row['tags'])
+        pwic.update(row)
 
-        # Move the requested page
-        elif action == 'move':
-            # Check the current authorizations
-            if not pwic['manager']:
-                raise web.HTTPUnauthorized()
-
-            # Select the possible target projects
-            pwic['projects'] = []
-            sql.execute(''' SELECT a.project, b.description
-                            FROM roles AS a
-                                INNER JOIN projects AS b
-                                    ON b.project = a.project
-                            WHERE a.user     = ?
-                              AND a.manager  = 'X'
-                              AND a.disabled = ''
-                            ORDER BY b.description''',
-                        (user, ))
-            for row in sql.fetchall():
-                pwic['projects'].append(row)
-
-            # Render the page
-            sql.execute(''' SELECT title
-                            FROM pages
-                            WHERE project = ?
-                              AND page    = ?
-                              AND latest  = 'X' ''',
-                        (project, page))
-            pwic['title'] = sql.fetchone()['title']
-            return await self._handle_output(request, 'page-move', pwic)
-
-        # Default behavior
+        # Read the HTML cache
+        cache = pwic_option(sql, project, 'no_cache') is None
+        if cache:
+            row = sql.execute(''' SELECT html
+                                  FROM cache
+                                  WHERE project  = ?
+                                    AND page     = ?
+                                    AND revision = ?''',
+                              (project, page, revision)).fetchone()
         else:
-            raise web.HTTPNotFound()
+            row = None
+
+        # Update the HTML cache if needed
+        if row is not None:
+            html = row['html']
+        else:
+            row = {'project': project,
+                   'page': page,
+                   'revision': revision,
+                   'markdown': pwic['markdown']}
+            converter = PwicExporter(app['markdown'], user)
+            html = converter.md2corehtml(sql, row, export_odt=False)
+            del converter
+            if cache:
+                sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html)
+                                VALUES (?, ?, ?, ?)''',
+                            (project, page, revision, html))
+                self.dbconn.commit()
+
+        # Enhance the page
+        pwic['html'], pwic['tmap'] = pwic_extended_syntax(html,
+                                                          pwic_option(sql, project, 'heading_mask'),
+                                                          headerNumbering=pwic_option(sql, project, 'no_heading') is None)
+        pwic['hash'] = pwic_sha256(pwic['markdown'], salt=False)
+        pwic['removable'] = ((pwic['admin']
+                              and not pwic['final']
+                              and (pwic['valuser'] == ''))
+                             or ((pwic['author'] == user)
+                                 and pwic['draft']))
+
+        # File gallery
+        query = ''' SELECT id, filename, mime, size, author, date, time
+                    FROM documents
+                    WHERE project = ?
+                      AND page    = ?
+                      AND mime %s LIKE 'image/%%'
+                    ORDER BY filename'''
+        for cat, op in [('images', ''), ('documents', 'NOT')]:
+            sql.execute(query % op, (project, page))
+            pwic[cat] = sql.fetchall()
+            for row in pwic[cat]:
+                row['size'] = pwic_size2str(row['size'])
+
+        # Related links
+        pwic['relations'] = []
+        PwicExtension.on_related_pages(sql, project, user, page, pwic['relations'])
+        pwic['relations'].sort(key=lambda x: x[1])
+        return await self._handle_output(request, 'page', pwic)
+
+    async def _page_view_special(self, request: web.Request, sql: sqlite3.Cursor, project: str, user: str, page: str, revision: int, pwic: Dict[str, Any]) -> web.Response:
+        # Fetch the recently updated pages
+        dt = pwic_dt()
+        sql.execute(''' SELECT page, author, date, time, title, comment, milestone
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                          AND date   >= ?
+                        ORDER BY date DESC, time DESC''',
+                    (project, dt['date-30d']))
+        pwic['recents'] = sql.fetchall()
+
+        # Fetch the team members of the project
+        pwic['admins'] = []
+        pwic['managers'] = []
+        pwic['editors'] = []
+        pwic['validators'] = []
+        pwic['readers'] = []
+        show_members_max = pwic_int(pwic_option(sql, project, 'show_members_max', '-1'))
+        sql.execute(''' SELECT COUNT(user) AS total
+                        FROM roles
+                        WHERE project  = ?
+                          AND disabled = '' ''',
+                    (project, ))
+        restrict_members = (sql.fetchone()['total'] > show_members_max) and (show_members_max != -1)
+        sql.execute(''' SELECT user, admin, manager, editor, validator, reader
+                        FROM roles
+                        WHERE project  = ?
+                          AND disabled = ''
+                        ORDER BY user''',
+                    (project, ))
+        for row in sql.fetchall():
+            for k in row:
+                if (k != 'user') and pwic_xb(row[k]):
+                    if not restrict_members or (k not in ['reader', 'editor']):
+                        pwic[k + 's'].append(row['user'])
+
+        # Fetch the pages of the project
+        sql.execute(''' SELECT page, title, revision, final, author,
+                               date, time, milestone, valuser, valdate,
+                               valtime
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                        ORDER BY page ASC, revision DESC''',
+                    (project, ))
+        pwic['pages'] = sql.fetchall()
+
+        # Fetch the tags of the project
+        sql.execute(''' SELECT tags
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                          AND tags   <> '' ''',
+                    (project, ))
+        tags = ''
+        for row in sql.fetchall():
+            tags += ' ' + row['tags']
+        pwic['tags'] = sorted(pwic_list(tags.strip()))
+
+        # Fetch the documents of the project
+        sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
+                               b.hash, b.author, b.date, b.time, b.exturl, c.occurrence
+                        FROM roles AS a
+                            INNER JOIN documents AS b
+                                ON b.project = a.project
+                            INNER JOIN (
+                                SELECT hash, COUNT(hash) AS occurrence
+                                FROM documents
+                                GROUP BY hash
+                                HAVING project = ?
+                            ) AS c
+                                ON c.hash = b.hash
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = ''
+                        ORDER BY filename''',
+                    (project, project, user))
+        pwic['documents'] = sql.fetchall()
+        used_size = 0
+        for row in pwic['documents']:
+            used_size += row['size']
+            row['mime_icon'] = pwic_mime2icon(row['mime'])
+            row['size'] = pwic_size2str(row['size'])
+        pmax = pwic_int(pwic_option(sql, project, 'project_size_max'))
+        pwic['disk_space'] = {'used': used_size,
+                              'used_str': pwic_size2str(used_size),
+                              'project_max': pmax,
+                              'project_max_str': pwic_size2str(pmax),
+                              'percentage': min(100, float('%.2f' % (0 if pmax == 0 else 100. * used_size / pmax)))}
+        return await self._handle_output(request, 'page-special', pwic)
+
+    async def _page_edit(self, request: web.Request, sql: sqlite3.Cursor, project: str, page: str, revision: int, pwic: Dict[str, Any]) -> web.Response:
+        sql.execute(''' SELECT revision, draft, final, header, protection,
+                               title, markdown, tags, comment, milestone
+                        FROM pages
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?
+                          AND latest   = 'X' ''',
+                    (project, page, revision))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPBadRequest()
+        for k in ['draft', 'final', 'header', 'protection']:
+            row[k] = pwic_xb(row[k])
+        pwic.update(row)
+        return await self._handle_output(request, 'page-edit', pwic)
+
+    async def _page_history(self, request: web.Request, sql: sqlite3.Cursor, project: str, user: str, page: str, pwic: Dict[str, Any]) -> web.Response:
+        # Redirect the pure reader if the history is disabled
+        if pwic['pure_reader'] and (pwic_option(sql, project, 'no_history') is not None):
+            raise web.HTTPTemporaryRedirect('/%s/%s' % (project, page))
+
+        # Extract the revisions
+        sql.execute(''' SELECT revision, latest, draft, final, author,
+                               date, time, title, comment, milestone,
+                               valuser, valdate, valtime
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?
+                        ORDER BY revision DESC''',
+                    (project, page))
+        pwic['revisions'] = sql.fetchall()
+        for row in pwic['revisions']:
+            if pwic_xb(row['latest']):
+                pwic['title'] = row['title']
+            for k in ['latest', 'draft', 'final']:
+                row[k] = pwic_xb(row[k])
+        return await self._handle_output(request, 'page-history', pwic)
+
+    async def _page_move(self, request: web.Request, sql: sqlite3.Cursor, project: str, user: str, page: str, pwic: Dict[str, Any]) -> web.Response:
+        # Check the current authorizations
+        if not pwic['manager']:
+            raise web.HTTPUnauthorized()
+
+        # Select the possible target projects
+        pwic['projects'] = []
+        sql.execute(''' SELECT a.project, b.description
+                        FROM roles AS a
+                            INNER JOIN projects AS b
+                                ON b.project = a.project
+                        WHERE a.user     = ?
+                          AND a.manager  = 'X'
+                          AND a.disabled = ''
+                        ORDER BY b.description''',
+                    (user, ))
+        pwic['projects'] = sql.fetchall()
+
+        # Render the page
+        sql.execute(''' SELECT title
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?
+                          AND latest  = 'X' ''',
+                    (project, page))
+        pwic['title'] = sql.fetchone()['title']
+        return await self._handle_output(request, 'page-move', pwic)
 
     async def page_random(self, request: web.Request) -> web.Response:
         ''' Serve a random page '''
@@ -810,10 +789,9 @@ class PwicServer():
                           AND date    >= ?
                         ORDER BY id DESC''',
                     (project, dt['date-nd']))
-        pwic['audits'] = []
-        for row in sql.fetchall():
+        pwic['audits'] = sql.fetchall()
+        for row in pwic['audits']:
             del(row['id'])
-            pwic['audits'].append(row)
         return await self._handle_output(request, 'page-audit', pwic)
 
     async def page_help(self, request: web.Request) -> web.Response:
@@ -832,8 +810,7 @@ class PwicServer():
 
         # Fetch the projects where the user can add pages
         pwic: Dict[str, Any] = {'default_project': pwic_safe_name(request.rel_url.query.get('project', '')),
-                                'default_page': pwic_safe_name(request.rel_url.query.get('page', '')),
-                                'projects': []}
+                                'default_page': pwic_safe_name(request.rel_url.query.get('page', ''))}
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
@@ -844,8 +821,7 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY b.description''',
                     (user, ))
-        for row in sql.fetchall():
-            pwic['projects'].append(row)
+        pwic['projects'] = sql.fetchall()
 
         # Show the page
         return await self._handle_output(request, 'page-create', pwic=pwic)
@@ -858,8 +834,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the projects where users can be created
-        pwic: Dict[str, Any] = {'default_project': request.rel_url.query.get('project', ''),
-                                'projects': []}
+        pwic: Dict[str, Any] = {'default_project': request.rel_url.query.get('project', '')}
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
@@ -870,8 +845,7 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY b.description''',
                     (user, ))
-        for row in sql.fetchall():
-            pwic['projects'].append(row)
+        pwic['projects'] = sql.fetchall()
 
         # Show the page
         return await self._handle_output(request, 'user-create', pwic=pwic)
@@ -892,10 +866,7 @@ class PwicServer():
         pwic = {'user': user,
                 'userpage': userpage,
                 'password_oauth': row['password'] == PWIC_MAGIC_OAUTH,
-                'password_initial': pwic_xb(row['initial']),
-                'projects': [],
-                'documents': [],
-                'pages': []}
+                'password_initial': pwic_xb(row['initial'])}
 
         # Fetch the commonly-accessible projects assigned to the user
         sql.execute(''' SELECT a.project, c.description
@@ -910,8 +881,7 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY c.description''',
                     (user, userpage))
-        for row in sql.fetchall():
-            pwic['projects'].append(row)
+        pwic['projects'] = sql.fetchall()
 
         # Fetch the own documents
         sql.execute(''' SELECT b.id, b.project, b.page, b.filename, b.mime, b.size,
@@ -932,10 +902,10 @@ class PwicServer():
                         ORDER BY date DESC,
                                  time DESC''',
                     (userpage, user))
-        for row in sql.fetchall():
+        pwic['documents'] = sql.fetchall()
+        for row in pwic['documents']:
             row['mime_icon'] = pwic_mime2icon(row['mime'])
             row['size'] = pwic_size2str(row['size'])
-            pwic['documents'].append(row)
 
         # Fetch the latest pages updated by the selected user
         dt = pwic_dt()
@@ -968,8 +938,7 @@ class PwicServer():
                         ORDER BY date DESC,
                                  time DESC''',
                     (userpage, dt['date-90d'], userpage, dt['date-90d'], user))
-        for row in sql.fetchall():
-            pwic['pages'].append(row)
+        pwic['pages'] = sql.fetchall()
 
         # Show the page
         return await self._handle_output(request, 'user', pwic=pwic)
@@ -1208,13 +1177,13 @@ class PwicServer():
                                  a.reader    DESC,
                                  a.user      ASC''',
                     (user, project, dt['date-90d'], project))
-        for row in sql.fetchall():
+        pwic['roles'] = sql.fetchall()
+        for row in pwic['roles']:
             row['oauth'] = (row['oauth'] == PWIC_MAGIC_OAUTH)
             for k in ['initial', 'admin', 'manager', 'editor', 'validator', 'reader', 'disabled']:
                 row[k] = pwic_xb(row[k])
             if row['activity'] is None:
                 row['activity'] = '-'
-            pwic['roles'].append(row)
 
         # Display the page
         if len(pwic['roles']) == 0:
@@ -1394,8 +1363,8 @@ class PwicServer():
         # Show the page
         def _diff(tfrom: str, tto: str) -> str:
             diff = HtmlDiff()
-            tfrom2 = tfrom.replace('\r', '').split('\n')
-            tto2 = tto.replace('\r', '').split('\n')
+            tfrom2 = tfrom.split('\n')
+            tto2 = tto.split('\n')
             return diff.make_table(tfrom2, tto2)            \
                        .replace('&nbsp;', ' ')              \
                        .replace(' nowrap="nowrap"', '')     \
@@ -1881,11 +1850,10 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY a.project ASC''',
                     (user, account))
-        data = []
-        for row in sql.fetchall():
+        data = sql.fetchall()
+        for row in data:
             for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
                 row[k] = pwic_xb(row[k])
-            data.append(row)
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 
     async def api_project_get(self, request: web.Request) -> web.Response:
@@ -1987,7 +1955,7 @@ class PwicServer():
         post = await self._handle_post(request)
         project = pwic_safe_name(post.get('project', ''))
         key = pwic_safe_name(post.get('key', ''))
-        value = post.get('value', '').replace('\r', '').strip()
+        value = post.get('value', '').strip()
         if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE) or (key[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
@@ -2265,9 +2233,7 @@ class PwicServer():
                         WHERE user     = ?
                           AND disabled = '' ''',
                     (user, ))
-        authorized_projects = []
-        for row in sql.fetchall():
-            authorized_projects.append(row['project'])
+        authorized_projects = [row['project'] for row in sql.fetchall()]
 
         # Build the file for GraphViz
         def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
@@ -2332,65 +2298,63 @@ class PwicServer():
 
         # Verify that the export is authorized
         sql = self.dbconn.cursor()
+        sql.execute(''' SELECT 1
+                        FROM roles
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND admin    = 'X'
+                          AND disabled = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
         if pwic_option(sql, project, 'no_export_project') is not None:
             raise web.HTTPForbidden()
         with_revisions = pwic_option(sql, project, 'export_project_revisions') is not None
 
-        # Fetch the pages
-        sql.execute(''' SELECT b.page, b.revision, b.latest, b.author, b.date, b.time, b.title, b.markdown
-                        FROM roles AS a
-                            INNER JOIN pages AS b
-                                ON b.project = a.project
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.admin    = 'X'
-                          AND a.disabled = ''
-                        ORDER BY b.page''',
-                    (project, user))
-        pages = []
-        for row in sql.fetchall():
-            if not with_revisions and not pwic_xb(row['latest']):
-                continue
-            pages.append(row)
-        if len(pages) == 0:
-            raise web.HTTPNotFound()
-
         # Fetch the attached documents
-        sql.execute(''' SELECT id, filename, mime, exturl
+        sql.execute(''' SELECT id, filename, SUBSTR(mime, 1, 6) == 'image/' AS image, exturl
                         FROM documents
                         WHERE project = ?''',
                     (project, ))
-        documents = []
-        for row in sql.fetchall():
-            documents.append({'id': row['id'],
-                              'filename': row['filename'],
-                              'image': row['mime'][:6] == 'image/',
-                              'exturl': row['exturl']})
+        documents = sql.fetchall()
+        for doc in documents:
+            doc['image'] = (doc['image'] == 1)
 
         # Build the ZIP file
         folder_rev = 'revisions/'
-        htmlStyles = pwic_styles_html()
+        converter = PwicExporter(app['markdown'], user)
+        converter.set_option('relative_html', True)
         try:
             inmemory = BytesIO()
             ziparch = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
 
-            # Pages of the project
-            for page in pages:
+            # Fetch the relevant pages
+            sql_sub = self.dbconn.cursor()
+            sql.execute(''' SELECT page, revision, latest, author, date, time, title, markdown
+                            FROM pages
+                            WHERE   project = ?
+                              AND ( latest  = 'X'
+                                 OR draft   = '' )''',
+                        (project, ))
+            while True:
+                page = sql.fetchone()
+                if page is None:
+                    break
+                if not with_revisions and not pwic_xb(page['latest']):
+                    continue
+
                 # Raw markdown
                 if with_revisions:
                     ziparch.writestr('%s%s.rev%d.md' % (folder_rev, page['page'], page['revision']), page['markdown'])
                 if pwic_xb(page['latest']):
                     ziparch.writestr('%s.md' % page['page'], page['markdown'])
 
-                # HTML
-                html = htmlStyles.html % (page['author'].replace('"', '&quote;'),
-                                          page['date'],
-                                          page['time'],
-                                          page['page'].replace('<', '&lt;').replace('>', '&gt;'),
-                                          page['title'].replace('<', '&lt;').replace('>', '&gt;'),
-                                          htmlStyles.getCss(rel=True),
-                                          '',
-                                          self._md2html(sql, project, page['page'], page['revision'], page['markdown'])[0])
+                # Regenerate HTML
+                html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
+                if html is None:
+                    continue
+
+                # Fix the relative links
                 for doc in documents:
                     if doc['exturl'] == '':
                         if doc['image']:
@@ -2408,12 +2372,13 @@ class PwicServer():
                     ziparch.writestr('%s.html' % page['page'], html)
 
             # Dependent files for the pages
+            cssfn = PwicStylerHtml().css
             content = b''
-            with open(htmlStyles.css, 'rb') as f:
+            with open(cssfn, 'rb') as f:
                 content = f.read()
-            ziparch.writestr(htmlStyles.css, content)
+            ziparch.writestr(cssfn, content)
             if with_revisions:
-                ziparch.writestr(folder_rev + htmlStyles.css, content)
+                ziparch.writestr(folder_rev + cssfn, content)
             del content
 
             # Attached documents
@@ -2444,7 +2409,7 @@ class PwicServer():
         # Return the file
         buffer = inmemory.getvalue()
         inmemory.close()
-        headers = {'Content-Type': 'application/x-zip-compressed',
+        headers = {'Content-Type': str(pwic_mime('zip')),
                    'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}
         return web.Response(body=buffer, headers=MultiDict(headers))
 
@@ -2759,7 +2724,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         page = pwic_safe_name(post.get('page', ''))
         title = post.get('title', '').strip()
-        markdown = post.get('markdown', '').replace('\r', '')       # No strip()
+        markdown = post.get('markdown', '')                 # No strip()
         tags = pwic_list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
@@ -3282,7 +3247,7 @@ class PwicServer():
         project = pwic_safe_name(post.get('project', ''))
         page = pwic_safe_name(post.get('page', ''))
         revision = pwic_int(post.get('revision', 0))
-        extension = post.get('format', '').lower()
+        extension = post.get('format', '').strip().lower()
         if '' in [project, page, extension]:
             raise web.HTTPBadRequest()
 
@@ -3295,182 +3260,23 @@ class PwicServer():
         if (extension in file_formats_disabled) or ('*' in file_formats_disabled):
             raise web.HTTPForbidden()
 
-        # Read the selected revision
-        sql.execute(''' SELECT latest, author, date, time, title, markdown, tags
-                        FROM pages
-                        WHERE project  = ?
-                          AND page     = ?
-                          AND revision = ?''',
-                    (project, page, revision))
-        row = sql.fetchone()
-        if row is None:
-            raise web.HTTPNotFound()
-
-        # Initialization
-        dt = pwic_dt()
-        page_url = '%s/%s/%s/rev%d' % (app['base_url'], project, page, revision)
-        endname = pwic_attachment_name('%s_%s_rev%d.%s' % (project, page, revision, extension))
-
-        # Fetch the legal notice
-        legal_notice = str(pwic_option(sql, project, 'legal_notice', '')).strip()
-        legal_notice = re.sub(r'\<[^\>]+\>', '', legal_notice)
-        legal_notice = legal_notice.replace('\r', '')
-
         # Handle the own file formats
+        endname = pwic_attachment_name('%s_%s_rev%d.%s' % (project, page, revision, extension))
         done, newbody, newheaders = PwicExtension.on_api_page_export(sql, project, user, page, revision, extension, endname)
         if done:
             if newbody is None:
                 raise web.HTTPNotFound()
             return web.Response(body=newbody, headers=MultiDict(newheaders))
 
-        # Format MD (md2md)
-        if extension == 'md':
-            headers = {'Content-Type': 'text/markdown',
-                       'Content-Disposition': 'attachment; filename="%s"' % endname}
-            return web.Response(body=row['markdown'], headers=MultiDict(headers))
-
-        # Format HTML (md2html)
-        if extension == 'html':
-            htmlStyles = pwic_styles_html()
-            html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
-                                      row['date'],
-                                      row['time'],
-                                      page.replace('<', '&lt;').replace('>', '&gt;'),
-                                      row['title'].replace('<', '&lt;').replace('>', '&gt;'),
-                                      htmlStyles.getCss(rel=False).replace('src:url(/', 'src:url(%s/' % app['base_url']),
-                                      '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
-                                      self._md2html(sql, project, page, revision, row['markdown'])[0])
-            html = html.replace('<a href="/', '<a href="%s/' % app['base_url'])
-            html = html.replace('<img src="/special/document/', '<img src="%s/special/document/' % app['base_url'])
-            headers = {'Content-Type': htmlStyles.mime,
-                       'Content-Disposition': 'attachment; filename="%s"' % endname}
-            return web.Response(body=html, headers=MultiDict(headers))
-
-        # Format ODT (md2odt)
-        if extension == 'odt':
-            # MarkDown --> HTML --> ODT
-            html = self._md2html(sql, project, page, revision, row['markdown'],
-                                 cache=False,    # No cache to recalculate the headers and the code blocks
-                                 headerNumbering=False,
-                                 export_odt=True)[0]
-
-            # Extract the meta-informations of the embedded pictures
-            MAX_H = max(0, pwic_int(pwic_convert_length(pwic_option(sql, project, 'odt_image_height_max', '900px'), '', 0)))
-            MAX_W = max(0, pwic_int(pwic_convert_length(pwic_option(sql, project, 'odt_image_width_max', '600px'), '', 0)))
-            docids = ['0']
-            subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
-            if subdocs is not None:
-                for sd in subdocs:
-                    sd = str(pwic_int(sd[0]))
-                    if sd not in docids:
-                        docids.append(sd)
-            query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.width, a.height, a.exturl
-                        FROM documents AS a
-                            INNER JOIN roles AS b
-                                ON  b.project  = a.project
-                                AND b.user     = ?
-                                AND b.disabled = ''
-                        WHERE a.id   IN (%s)
-                          AND a.mime LIKE 'image/%%' '''
-            sql.execute(query % ','.join(docids), (user, ))
-            pictMeta = {}
-            while True:
-                rowdoc = sql.fetchone()
-                if rowdoc is None:
-                    break
-
-                # Optimize the size
-                try:
-                    if rowdoc['width'] > MAX_W:
-                        rowdoc['height'] *= MAX_W / rowdoc['width']
-                        rowdoc['width'] = MAX_W
-                    if rowdoc['height'] > MAX_H:
-                        rowdoc['width'] *= MAX_H / rowdoc['height']
-                        rowdoc['height'] = MAX_H
-                except ValueError:
-                    pass
-                # Store the meta data
-                pictMeta[rowdoc['id']] = {'filename': join(PWIC_DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename']),
-                                          'link': 'special/document/%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],
-                                          'link_odt_img': 'special/document_%d' % rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'],     # LibreOffice does not support the paths with multiple folders
-                                          'compressed': pwic_mime_compressed(pwic_file_ext(rowdoc['filename'])),
-                                          'manifest': '<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime']) if rowdoc['exturl'] == '' else '',
-                                          'width': pwic_int(rowdoc['width']),
-                                          'height': pwic_int(rowdoc['height']),
-                                          'remote': rowdoc['exturl'] != ''}
-
-            # Convert to ODT
-            odtStyles = pwic_styles_odt()
-            try:
-                odtGenerator = PwicConverter_html2odt(app['base_url'], project, page, pictMeta=pictMeta)
-                odtGenerator.feed(html)
-            except Exception:
-                raise web.HTTPInternalServerError()
-
-            # Prepare the ODT file in the memory
-            inmemory = BytesIO()
-            odt = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
-            odt.writestr('mimetype', odtStyles.mime, compress_type=ZIP_STORED, compresslevel=0)  # Must be the first file of the ZIP and not compressed
-
-            # Manifest
-            attachments = ''
-            for meta in pictMeta:
-                meta = pictMeta[meta]
-                if not meta['remote'] and isfile(meta['filename']):
-                    content = b''
-                    with open(meta['filename'], 'rb') as f:
-                        content = f.read()
-                    if meta['compressed']:
-                        odt.writestr(meta['link_odt_img'], content, compress_type=ZIP_STORED, compresslevel=0)
-                    else:
-                        odt.writestr(meta['link_odt_img'], content)
-                    del content
-                    attachments += '%s\n' % meta['manifest']
-            odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', attachments))
-
-            # Content-related ODT data
-            odt.writestr('meta.xml', odtStyles.meta % (PWIC_VERSION,
-                                                       escape(row['title']),
-                                                       escape(project), escape(page),
-                                                       ('<meta:keyword>%s</meta:keyword>' % escape(row['tags'])) if row['tags'] != '' else '',
-                                                       escape(row['author']),
-                                                       escape(row['date']), escape(row['time']),
-                                                       escape(user),
-                                                       escape(dt['date']), escape(dt['time']),
-                                                       revision))
-            xml = odtStyles.styles
-            xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
-            xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(pwic_option(sql, project, 'heading_mask')))
-            if legal_notice != '':
-                legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
-            xml = xml.replace('<!-- styles-footer -->', legal_notice)
-            pw = pwic_convert_length(pwic_option(sql, project, 'odt_page_width', '21cm'), 'cm', 1)
-            ph = pwic_convert_length(pwic_option(sql, project, 'odt_page_height', '29.7cm'), 'cm', 1)
-            if pwic_option(sql, project, 'odt_page_landscape') is not None:
-                po = 'landscape'
-                pw, ph = ph, pw
-            else:
-                po = 'portrait'
-            xml = xml.replace('{$pw}', pw)
-            xml = xml.replace('{$ph}', ph)
-            xml = xml.replace('{$po}', po)
-            xml = xml.replace('{$pm}', pwic_convert_length(pwic_option(sql, project, 'odt_page_margin', '2.5cm'), 'cm', 2))
-            odt.writestr('styles.xml', xml)
-            xml = odtStyles.content
-            xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
-            xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
-            odt.writestr('content.xml', xml)
-            odt.close()
-
-            # Return the file
-            buffer = inmemory.getvalue()
-            inmemory.close()
-            headers = {'Content-Type': odtStyles.mime,
-                       'Content-Disposition': 'attachment; filename="%s"' % endname}
-            return web.Response(body=buffer, headers=MultiDict(headers))
-
-        # Other format
-        raise web.HTTPUnsupportedMediaType()
+        # Convert the page (md2md, md2html, md2odt)
+        converter = PwicExporter(app['markdown'], user)
+        data = converter.convert(sql, project, page, revision, extension)
+        del converter
+        if data is None:
+            raise web.HTTPUnsupportedMediaType()
+        headers = {'Content-Type': str(pwic_mime(extension) or pwic_mime('')),
+                   'Content-Disposition': 'attachment; filename="%s"' % endname}
+        return web.Response(body=data, headers=MultiDict(headers))
 
     async def api_markdown(self, request: web.Request) -> web.Response:
         ''' Return the HTML corresponding to the posted Markdown '''
@@ -3486,7 +3292,7 @@ class PwicServer():
         if project == '':
             raise web.HTTPBadRequest()
 
-        # Verify that the user is able to write
+        # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT user
                         FROM roles
@@ -3499,8 +3305,13 @@ class PwicServer():
         if sql.fetchone() is None:
             raise web.HTTPUnauthorized()
 
-        # Return the converted output
-        html = self._md2html(sql, project, None, 0, markdown, cache=False)[0]
+        # Return the converted output (md2html)
+        converter = PwicExporter(app['markdown'], user)
+        row = {'project': project,
+               'page': None,
+               'revision': 0,
+               'markdown': markdown}
+        html = converter.md2corehtml(sql, row, export_odt=False)
         return web.Response(text=html, content_type=pwic_mime('txt'))
 
     async def api_user_create(self, request: web.Request) -> Optional[web.Response]:
@@ -4013,14 +3824,13 @@ class PwicServer():
                           AND a.disabled = ''
                         ORDER BY b.filename''',
                     (page, project, user))
-        documents = []
-        for row in sql.fetchall():
+        documents = sql.fetchall()
+        for row in documents:
             row['mime_icon'] = pwic_mime2icon(row['mime'])
             row['size'] = pwic_size2str(row['size'])
             row['used'] = (('(/special/document/%d)' % row['id']) in markdown
                            or ('(/special/document/%d "' % row['id']) in markdown)
             row['url'] = '%s/special/document/%d/%s' % (app['base_url'], row['id'], row['filename'])
-            documents.append(row)
         PwicExtension.on_api_document_list(sql, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=pwic_mime('json'))
 

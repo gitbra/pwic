@@ -21,7 +21,7 @@
 				{% endfor %}
 			</select>
 		</p>
-		<p><strong>Target page identifier:</strong> <input id="move_dst_page" class="pwic_fill" type="text" spellcheck="false" /></p>
+		<p><strong>Target page identifier:</strong> <input id="move_dst_page" class="pwic_fill" type="text" placeholder="{{pwic.page|escape}}" spellcheck="false" /></p>
 
 		<p><input type="button" value="{{pwic.emojis.truck}} Move the page" onclick="move_submit('The parameters are not acceptable.')" /></p>
 

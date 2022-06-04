@@ -82,7 +82,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Export of an entire project to Markdown and HTML
 - Traceable activities
 - API and command line to automate the operations
-- Extensible code base:
+- Extensible code base for the following possibilities:
 	- Enhanced authorizations
 	- Named emojis
 	- Content checks
@@ -92,6 +92,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 	- Related pages
 	- External cloud storage
 	- Automatic renaming of the files
+	- Bridged chat notifications
 	- ...
 - No JavaScript needed to read the pages
 

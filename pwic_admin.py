@@ -545,7 +545,7 @@ class PwicAdmin():
             if (project != '') and (row['project'] not in ['', project]):
                 continue
             value = '(Secret value not displayed)' if (row['key'] in PWIC_ENV_PRIVATE) or (row['key'][:4] == 'pwic') else row['value']
-            value = value.replace('\r', '').replace('\n', '\\n')
+            value = value.replace('\n', '\\n')
             if dolist:
                 print('%s.%s = %s' % ('*' if row['project'] == '' else row['project'], row['key'], value))
             else:
