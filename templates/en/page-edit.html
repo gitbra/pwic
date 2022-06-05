@@ -29,7 +29,12 @@
 						<input type="button" value="^2" title="<sup> Superscript </sup>" onclick="edit_decorate('<sup>', '</sup>')" />
 						<input type="button" value="_2" title="<sub> Subscript </sub>" onclick="edit_decorate('<sub>', '</sub>')" />
 						<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
-						<input type="button" value="Right" title="Shift to the right" onclick="edit_prepend('    ')" />
+					</div>
+					<div>
+						<input type="button" value="{{pwic.emojis.double}}" title="No double spaces" onclick="edit_double_spaces()" />
+						<input type="button" value="{{pwic.emojis.right}}" title="Shift to the right" onclick="edit_prepend('    ')" />
+						<input type="button" value="{{pwic.emojis.left}}" title="Shift to the left" onclick="edit_left_line()" />
+						<input type="button" value="{{pwic.emojis.noblank}}" title="No blank line" onclick="edit_no_blank_line()" />
 						<input type="button" value="{{pwic.emojis.oneline}}" title="As single line" onclick="edit_single_line()" />
 					</div>
 					<div>

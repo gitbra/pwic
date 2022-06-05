@@ -44,6 +44,19 @@ class PwicExtension():
     # ==============================
 
     @staticmethod
+    def on_api_document_convert(sql: sqlite3.Cursor,                    # Cursor to query the database
+                                project: str,                           # Name of the project
+                                user: str,                              # Name of the user
+                                page: str,                              # Name of the page
+                                doc_id: int,                            # Identifier of the document
+                                markdown: str,                          # Converted Markdown
+                                ) -> str:
+        ''' Event when a file is converted to Markdown.
+            The result is the new converted text.
+        '''
+        return markdown
+
+    @staticmethod
     def on_api_document_create_end(sql: sqlite3.Cursor,                 # Cursor to query the database
                                    document: Dict[str, Any],            # Document as defined in the database and extra fields
                                    ) -> None:
@@ -75,7 +88,7 @@ class PwicExtension():
             For the external files, you must delete the file with your custom logic, so the result tells if the operation is successful.
             The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
         '''
-        # local_path = os.join(PWIC_DOCUMENTS_PATH % project, filename)
+        # local_path = os.path.join(PWIC_DOCUMENTS_PATH % project, filename)
         return True
 
     @staticmethod
@@ -100,7 +113,7 @@ class PwicExtension():
         ''' Event when a local file is renamed.
             The result tells if the renaming of the document is possible.
         '''
-        # local_path = os.join(PWIC_DOCUMENTS_PATH % project, filename)
+        # local_path = os.path.join(PWIC_DOCUMENTS_PATH % project, filename)
         return True
 
     @staticmethod

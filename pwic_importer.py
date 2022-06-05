@@ -19,19 +19,211 @@
 
 from typing import Dict, List, Optional, Tuple
 import sqlite3
+from os.path import join
 import re
 from zipfile import ZipFile
 from html import unescape
 from html.parser import HTMLParser
 
-from pwic_lib import pwic_int, pwic_option, pwic_read_attr, pwic_recursive_replace
+from pwic_lib import PWIC_DOCUMENTS_PATH, pwic_file_ext, pwic_int, pwic_option, pwic_read_attr, pwic_recursive_replace
+from pwic_extension import PwicExtension
+from pwic_exporter import PwicCleanerHtml
+
+
+class PwicImporter():
+    def __init__(self, user: str):
+        self.user = user
+
+    def convert(self, sql: Optional[sqlite3.Cursor], id: int) -> Optional[str]:
+        # Read the document
+        if (sql is None) or (id == 0):
+            return None
+        sql.execute(''' SELECT project, page, filename
+                        FROM documents
+                        WHERE id     = ?
+                          AND exturl = '' ''',
+                    (id, ))
+        row = sql.fetchone()
+        if row is None:
+            return None
+
+        # Convert the document
+        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
+        extension = pwic_file_ext(row['filename'])
+        try:
+            result = ''
+            if extension in PwicImporterHtml.get_extensions():
+                result = PwicImporterHtml().get_md(filename)
+            if extension in PwicImporterOdt.get_extensions():
+                result = PwicImporterOdt(base_url).get_md(filename)
+        except Exception:
+            return None
+        return PwicExtension.on_api_document_convert(sql, row['project'], self.user, row['page'], id, result)
+
+    @staticmethod
+    def get_allowed_extensions() -> List[str]:
+        return ['odt', 'htm', 'html']
+
+
+# ===================================================
+#  html2md
+# ===================================================
+
+class PwicImporterHtml(HTMLParser):       # html2md
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.map_open = {'a': '[',
+                         'b': '**',
+                         'blockcode': '\n\n> ',
+                         'br': '\n',
+                         'code': '`',
+                         'div': '\n',
+                         'em': '*',
+                         'h1': '\n\n# ',
+                         'h2': '\n\n## ',
+                         'h3': '\n\n### ',
+                         'h4': '\n\n#### ',
+                         'h5': '\n\n##### ',
+                         'h6': '\n\n###### ',
+                         'i': '*',
+                         'img': '![IMAGE',
+                         'li': '\n- ',
+                         'ol': '\n',
+                         'p': '\n\n',
+                         'pre': '```',
+                         's': '~~',
+                         'strike': '~~',
+                         'strong': '**',
+                         'sub': '_',
+                         'sup': '^',
+                         'tr': '\n| ',
+                         'u': '--',
+                         'ul': '\n'}
+        self.map_close = {'a': '](#href)',
+                          'b': '**',
+                          'code': '`',
+                          'em': '*',
+                          'h1': '\n',
+                          'h2': '\n',
+                          'h3': '\n',
+                          'h4': '\n',
+                          'h5': '\n',
+                          'h6': '\n',
+                          'i': '*',
+                          'img': '](#src)',
+                          'ol': '\n',
+                          'pre': '```',
+                          's': '~~',
+                          'strike': '~~',
+                          'strong': '**',
+                          'sub': '_',
+                          'sup': '^',
+                          'td': ' |',
+                          'th': ' |',
+                          'u': '--',
+                          'ul': '\n'}
+
+    def reset(self) -> None:
+        HTMLParser.reset(self)
+        self.md = ''
+        self.pre = False
+        self.last_tag = ''
+        self.last_href = ''
+        self.last_src = ''
+        self.table_col_max = 0
+        self.table_col_cur = 0
+        self.table_lin_cur = 0
+
+    def feed(self, data: str):
+        cleaner = PwicCleanerHtml('', False)
+        cleaner.feed(data)
+        HTMLParser.feed(self, cleaner.get_html())
+
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        if not self.pre and (tag == 'pre'):
+            self.pre = True
+        if not self.pre:
+            if tag == 'a':
+                self.last_href = pwic_read_attr(attrs, 'href')
+            if tag == 'img':
+                self.last_src = pwic_read_attr(attrs, 'src')
+            if (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
+                self.md = self.md.rstrip()
+            if tag == 'table':
+                self.table_col_max = 0
+                self.table_col_cur = 0
+                self.table_lin_cur = 0
+            if tag == 'tr':
+                self.md = self.md.rstrip()
+                if self.last_tag == 'table':
+                    self.md += '\n'
+                self.table_col_cur = 0
+                self.table_lin_cur += 1
+                if self.table_lin_cur == 2:
+                    self.md += '\n|' + ('---|' * self.table_col_max)
+            if tag in ['th', 'td']:
+                self.md = self.md.rstrip() + ' '
+                self.table_col_cur += 1
+                self.table_col_max = max(self.table_col_max, self.table_col_cur)
+        if tag in self.map_open:
+            self.md += self.map_open[tag]
+        self.last_tag = tag
+
+    def handle_endtag(self, tag: str) -> None:
+        if self.pre and (tag == 'pre'):
+            self.pre = False
+        if tag in self.map_close:
+            value = self.map_close[tag]
+            if not self.pre:
+                if tag == 'a':
+                    value = value.replace('#href', self.last_href)
+                    self.last_href = ''
+                if tag == 'img':
+                    value = value.replace('#src', self.last_src)
+                    self.last_src = ''
+                if (tag in ['td', 'th']) and (self.last_tag == 'tr'):
+                    self.md = self.md.rstrip() + ' '
+            self.md += value
+
+    def handle_data(self, data: str) -> None:
+        if not self.pre:
+            data = pwic_recursive_replace(data.replace('\t', ' '), '  ', ' ', strip=False)
+        self.md += data
+
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['htm', 'html']
+
+    def get_md(self, filename: str) -> str:
+        # Read the HTML content
+        try:
+            content = b''
+            with open(filename, 'rb') as f:
+                content = f.read()
+            html = content.decode()
+        except Exception:
+            return ''
+
+        # Extract the main content
+        for tag in ['body', 'article']:
+            p1 = html.find('<' + tag)
+            p2 = html.rfind('</%s>' % tag)
+            if (-1 not in [p1, p2]) and (p1 < p2):
+                p1 = html.find('>', p1)
+                html = html[p1 + 1:p2].replace('\r', '').strip()
+
+        # Convert
+        self.feed(html)
+        lines = [e.rstrip() for e in self.md.split('\n')]
+        return pwic_recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
 
 
 # ===================================================
 #  odt2md
 # ===================================================
 
-class PwicConverter_odt2styles(HTMLParser):
+class PwicStylerOdt(HTMLParser):
     def reset(self) -> None:
         HTMLParser.reset(self)
         self.styles: Dict[str, Dict[str, bool]] = {}
@@ -91,20 +283,17 @@ class PwicConverter_odt2styles(HTMLParser):
         return deco
 
 
-class PwicConverter_odt2md(HTMLParser):
-    def __init__(self, sql: Optional[sqlite3.Cursor]):
+class PwicImporterOdt(HTMLParser):
+    def __init__(self, base_url: str):
         HTMLParser.__init__(self)
-        if sql is not None:
-            self.base_url = str(pwic_option(sql, '', 'base_url', ''))
-        else:
-            self.base_url = ''
+        self.base_url = base_url
 
     def reset(self) -> None:
         HTMLParser.reset(self)
 
         # Content
         self.content = ''
-        self.styler = PwicConverter_odt2styles()
+        self.styler = PwicStylerOdt()
 
         # Parser
         self.md = ''
@@ -120,14 +309,14 @@ class PwicConverter_odt2md(HTMLParser):
         # Read the contents
         content = ''
         styles = ''
-        with ZipFile(filename) as odt:
-            try:
+        try:
+            with ZipFile(filename) as odt:
                 with odt.open('content.xml') as f:          # Mandatory
                     content = f.read().decode()
                 with odt.open('styles.xml') as f:           # Optional
                     styles = f.read().decode()
-            except KeyError:
-                pass
+        except (FileNotFoundError, KeyError):
+            pass
         if content == '':
             return False
 
@@ -225,7 +414,13 @@ class PwicConverter_odt2md(HTMLParser):
             data = re.sub(r'[\s\t]+$', ' ', data)   # Soft strip for end
         self.md += unescape(data)
 
-    def get_md(self) -> str:
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['odt']
+
+    def get_md(self, filename) -> str:
+        if not self.load_odt(filename):
+            return ''
         self.feed(self.content)
         lines = [e.rstrip() for e in self.md.split('\n')]
         return pwic_recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')

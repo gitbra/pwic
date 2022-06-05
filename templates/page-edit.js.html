@@ -81,19 +81,36 @@
 		ta.focus();
 	}
 
-	function edit_single_line() {
+	function _edit_block_transform(f) {
+		// Locate the text
 		var	ta = $('#edit_markdown')[0],
 			ss = ta.selectionStart,
 			se = ta.selectionEnd;
 		if (ss > se)
 			ss, se = se, ss
 
-		// Merge the selected lines
-		var newtxt = ta.value.substring(ss, se).replaceAll('\r', '').replace(/[\s\t]*\n[\s\t]*/, '\n').replaceAll('\n', ' ');
+		// Transform the text
+		var newtxt = f(ta.value.substring(ss, se));
 		ta.value = ta.value.substring(0, ss) + newtxt + ta.value.substring(se);
 		ta.selectionStart = ss;
 		ta.selectionEnd = ss + newtxt.length;
 		ta.focus();
+	}
+
+	function edit_double_spaces() {
+		_edit_block_transform((s) => s.replace(/  +/g, ' '));
+	}
+
+	function edit_left_line() {
+		_edit_block_transform((s) => s.replaceAll('\r', '').replace(/\n\s+/g, '\n'));
+	}
+
+	function edit_no_blank_line() {
+		_edit_block_transform((s) => s.replaceAll('\r', '').replaceAll(/\n\s*\n/g, '\n'));
+	}
+
+	function edit_single_line() {
+		_edit_block_transform((s) => s.replaceAll('\r', '').replace(/[\s\t]*\n[\s\t]*/, '\n').replaceAll('\n', ' '));
 	}
 
 	function edit_table(textCol, textRow) {
@@ -335,7 +352,7 @@
 							buffer += '<tr>\
 											<td>\
 												<input type="button" value="{{pwic.emojis.plus}}" title="Add a link" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>' +
-												{% if not pwic.env.odt_document_no_conversion %}(doc['filename'].endsWith('.odt') ? ' <input type="button" value="{{pwic.emojis.hammer}}" title="Import the content of the document" onclick="edit_convert_document('+doc['id']+')" \/>' : '')+{% endif %}
+												(doc['convertible'] ? ' <input class="pwic_desktop" type="button" value="{{pwic.emojis.hammer}}" title="Import the content of the document" onclick="edit_convert_document('+doc['id']+')" \/>' : '') +
 											'<\/td>\
 											<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
 											<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\

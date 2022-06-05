@@ -88,17 +88,17 @@ PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'file
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
                               'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',
-                              'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_export_project', 'no_graph',
-                              'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user', 'no_printing', 'no_rss', 'no_search',
-                              'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion', 'odt_image_height_max',
-                              'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_margin', 'odt_page_width',
-                              'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max', 'robots',
-                              'rss_size', 'rstrip', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email', 'support_phone',
-                              'support_text', 'support_url', 'title', 'validated_only', 'zip_no_exec']
+                              'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_document_conversion',
+                              'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user',
+                              'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection',
+                              'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_margin',
+                              'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max',
+                              'robots', 'rss_size', 'rstrip', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
+                              'support_phone', 'support_text', 'support_url', 'title', 'validated_only', 'zip_no_exec']
 PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
                                      'keep_drafts', 'language', 'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code',
-                                     'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_printing', 'no_rss',
-                                     'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_document_no_conversion',
+                                     'no_document_conversion', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review',
+                                     'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection',
                                      'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape',
                                      'odt_page_margin', 'odt_page_width', 'quick_fix', 'rss_size', 'rstrip', 'show_members_max',
                                      'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
@@ -117,6 +117,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'cloud': '&#x2601;',
                'dice': '&#x1F3B2;',
                'door': '&#x1F6AA;',
+               'double': '&#x268B;',
                'eye': '&#x1F441;',
                'finger_left': '&#x1F448;',
                'finger_up': '&#x261D;',
@@ -135,9 +136,11 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'inbox': '&#x1F4E5;',
                'key': '&#x1F511;',
                'laptop': '&#x1F4BB;',
+               'left': '&#x226A;',
                'locked': '&#x1F512;',
+               'noblank': '&#x22DB;',
                'notes': '&#x1F4CB;',
-               'oneline': '&#x22DB;',
+               'oneline': '&#x2AA5;',
                'outbox': '&#x1F4E4;',
                'padlock': '&#x1F510;',
                'pill': '&#x1F48A;',
@@ -148,6 +151,7 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'recycle': '&#x267B;',
                'red_check': '&#x274C;',
                'refresh': '&#x1F504;',
+               'right': '&#x226B;',
                'rss': '&#x1F50A;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
@@ -514,21 +518,23 @@ def pwic_random_hash() -> str:
     return pwic_sha256(str(urandom(64)))[:32] + pwic_sha256(str(urandom(64)))[32:]
 
 
-def pwic_read_attr(attrs: List[Tuple[str, Optional[str]]], key: str) -> str:
+def pwic_read_attr(attrs: List[Tuple[str, Optional[str]]], key: str, default: str = '') -> str:
     for (k, v) in attrs:
         if k == key:
             return pwic_nns(v)
-    return ''
+    return default
 
 
-def pwic_recursive_replace(text: str, search: str, replace: str) -> str:
+def pwic_recursive_replace(text: str, search: str, replace: str, strip: bool = True) -> str:
     ''' Replace a string recursively '''
     while True:
         curlen = len(text)
         text = text.replace(search, replace)
         if len(text) == curlen:
             break
-    return text.strip()
+    if strip:
+        text = text.strip()
+    return text
 
 
 def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):

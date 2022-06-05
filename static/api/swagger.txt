@@ -148,12 +148,8 @@ paths:
           description: Unsufficient authorizations
         403:
           description: Disabled feature
-        415:
-          description: Incorrect file type
         422:
           description: File cannot be converted
-        500:
-          description: File incorrectly managed on the server
   /api/document/delete:
     post:
       summary: Delete a document of a project

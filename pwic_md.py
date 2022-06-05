@@ -5,7 +5,7 @@
 # - type hint
 # - mask of valid links
 # - tag strike replaced by del
-# - modified underline to cover <?--Test-->
+# - modified underline to cover <!--Test-->
 # - removed command line
 
 
@@ -1377,9 +1377,9 @@ class Markdown(object):
         end of string if it's reached before the balance point is found.
         """
         i = start
-        l = len(text)
+        lt = len(text)
         count = 1
-        while count > 0 and i < l:
+        while count > 0 and i < lt:
             if text[i] == open_c:
                 count += 1
             elif text[i] == close_c:
@@ -2575,7 +2575,7 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
     """
     DEBUG = False
     if DEBUG:
-        print("dedent: dedent(..., tabsize=%d, skip_first_line=%r)"\
+        print("dedent: dedent(..., tabsize=%d, skip_first_line=%r)"
               % (tabsize, skip_first_line))
     margin = None
     for i, line in enumerate(lines):
@@ -2622,7 +2622,7 @@ def _dedentlines(lines, tabsize=8, skip_first_line=False):
                                      "line %r while removing %d-space margin"
                                      % (ch, line, margin))
                 if DEBUG:
-                    print("dedent: %r: %r -> removed %d/%d"\
+                    print("dedent: %r: %r -> removed %d/%d"
                           % (line, ch, removed, margin))
                 if removed == margin:
                     lines[i] = lines[i][j+1:]

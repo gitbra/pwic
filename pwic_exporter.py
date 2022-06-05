@@ -268,7 +268,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         self.skipped_tags = pwic_list('applet embed iframe link meta object script style ' + skipped_tags.lower())
         self.nofollow = nofollow
 
-    def reset(self):
+    def reset(self) -> None:
         HTMLParser.reset(self)
         self.tag_path: List[str] = []
         self.code = ''                  # Special code block
@@ -413,6 +413,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                      'li': 'text:list-item',
                      'ol': 'text:list',
                      'p': 'text:p',
+                     's': 'text:span',
                      'span': 'text:span',
                      'strike': 'text:span',
                      'strong': 'text:span',
@@ -457,6 +458,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                            'ol': {'text:style-name': 'ListStructureNumeric',
                                   'text:continue-numbering': 'true'},
                            'p': {'text:style-name': '#'},
+                           's': {'text:style-name': 'Strike'},
                            'span': {'text:style-name': '#class'},
                            'strike': {'text:style-name': 'Strike'},
                            'strong': {'text:style-name': 'Strong'},

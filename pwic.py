@@ -47,14 +47,14 @@ from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, P
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_MAGIC_OAUTH,
                       PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_TEMPLATES_PATH, PWIC_USERS,
                       PWIC_VERSION,
-                      pwic_attachment_name, pwic_audit, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext, pwic_int, pwic_ishex,
-                      pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime_list, pwic_mime2icon,
+                      pwic_attachment_name, pwic_audit, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext, pwic_int,
+                      pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime2icon,
                       pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_safe_file_name, pwic_safe_name,
                       pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_sql_print,
                       pwic_str2bytearray, pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
-from pwic_importer import PwicConverter_odt2md
+from pwic_importer import PwicImporter
 
 IPR_EQ, IPR_NET, IPR_REG = range(3)
 
@@ -3814,6 +3814,7 @@ class PwicServer():
         if row is None:
             raise web.HTTPNotFound()
         markdown = row['markdown']
+        conversion_allowed = pwic_option(sql, project, 'no_document_conversion') is None
         sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time, b.exturl
                         FROM roles AS a
                             INNER JOIN documents AS b
@@ -3831,6 +3832,7 @@ class PwicServer():
             row['used'] = (('(/special/document/%d)' % row['id']) in markdown
                            or ('(/special/document/%d "' % row['id']) in markdown)
             row['url'] = '%s/special/document/%d/%s' % (app['base_url'], row['id'], row['filename'])
+            row['convertible'] = conversion_allowed and (pwic_file_ext(row['filename']) in PwicImporter.get_allowed_extensions())
         PwicExtension.on_api_document_list(sql, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=pwic_mime('json'))
 
@@ -3966,19 +3968,19 @@ class PwicServer():
         raise web.HTTPOk()
 
     async def api_document_convert(self, request: web.Request) -> web.Response:
-        ''' Convert an ODT document to MD '''
+        ''' Convert a document to MD '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
-        # Get the file to convert
+        # Get the parameters
         post = await self._handle_post(request)
         docid = pwic_int(post.get('id', 0))
         if docid == 0:
             raise web.HTTPBadRequest()
 
-        # Verify that the conversion is possible
+        # Verify the authorizations
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT b.project, b.filename, b.mime, b.exturl
                         FROM roles AS a
@@ -3993,21 +3995,17 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPUnauthorized()    # Or not found
-        if pwic_option(sql, row['project'], 'odt_document_no_conversion') is not None:
+        if pwic_option(sql, row['project'], 'no_document_conversion') is not None:
             raise web.HTTPForbidden()
         if row['exturl'] != '':
             raise web.HTTPUnprocessableEntity()
-        if row['mime'] not in pwic_mime_list('odt'):
-            raise web.HTTPUnsupportedMediaType()
 
         # Convert to Markdown
-        try:
-            parser = PwicConverter_odt2md(sql)
-            if parser.load_odt(join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])):
-                return web.Response(text=parser.get_md(), content_type=pwic_mime('txt'))
+        converter = PwicImporter(user)
+        data = converter.convert(sql, docid)
+        if data is None:
             raise web.HTTPUnprocessableEntity()
-        except Exception:
-            raise web.HTTPInternalServerError()
+        return web.Response(text=data, content_type=pwic_mime('md'))
 
     async def api_swagger(self, request: web.Request) -> web.Response:
         ''' Display the features of the API '''
