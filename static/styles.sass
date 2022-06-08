@@ -62,10 +62,17 @@ BLOCKQUOTE
 
 	P
 		margin-right: 0
-	P:first-child
-		margin-top: 0
-	P:last-child
-		margin-bottom: 0
+		&:first-child
+			margin-top: 0
+		&:last-child
+			margin-bottom: 0
+
+	&.spoiler
+		cursor: help
+		*
+			visibility: hidden
+		&:hover *
+			visibility: visible
 
 CODE
 	display: inline-block
@@ -154,37 +161,31 @@ ARTICLE
 		background-color: #F4F4F4
 		border-bottom: 1px solid black
 		border-radius: 10px
-		margin-top: 30px
-		margin-left: 0cm
+		margin: 30px 10px 10px 0cm
 		padding: 3px 10px
-		font-size: 20pt
+		font-size: 24pt
 		font-weight: bold
 
 	H2
-		margin-top: 20px
-		margin-left: 1cm
-		font-size: 20pt
+		margin: 20px 10px 20px 1cm
+		font-size: 22pt
 		font-weight: bold
 		border-bottom: 1px solid lightgray
 
 	H3
-		margin-top: 10px
-		margin-left: 2cm
-		font-size: 18pt
+		margin: 20px 10px 20px 2cm
+		font-size: 20pt
 
 	H4
-		margin-top: 10px
-		margin-left: 3cm
-		font-size: 16pt
+		margin: 20px 10px 20px 3cm
+		font-size: 18pt
 
 	H5
-		margin-top: 10px
-		margin-left: 4cm
-		font-size: 14pt
+		margin: 20px 10px 20px 4cm
+		font-size: 16pt
 
 	H6
-		margin-top: 10px
-		margin-left: 5cm
+		margin: 20px 10px 20px 5cm
 		font-size: 14pt
 
 	TABLE
@@ -240,9 +241,10 @@ ARTICLE
 			border-radius: 10px
 			background-color: #ECF6F9
 			text-decoration: none !important
-		A:hover
-			border: 1px solid black
-			border-radius: 0
+
+			&:hover
+				border: 1px solid black
+				border-radius: 0
 
 
 	// -------------------------------- Tag box
@@ -260,12 +262,13 @@ ARTICLE
 			font-family: monospace
 			color: black
 			text-decoration: none
-		A:hover
-			background-color: lightgray
-			border: 1px solid black
-			border-radius: 0
-		A.pwic_selected
-			background-color: lightgray
+
+			&:hover
+				background-color: lightgray
+				border: 1px solid black
+				border-radius: 0
+			&.pwic_selected
+				background-color: lightgray
 
 
 	// -------------------------------- File gallery
@@ -288,8 +291,8 @@ ARTICLE
 			SPAN
 				color: red
 				text-decoration: underline
-		A:hover
-			border: 1px solid black
+			&:hover
+				border: 1px solid black
 
 
 	// -------------------------------- Progress
@@ -352,31 +355,27 @@ ARTICLE
 			color: black				// Invalidates the general A
 			text-decoration: none		// Invalidates the general A
 
-		A.pwic_browser_item_h1
-			padding-left: 10px
-			border-bottom: 1px solid gray
-			font-size: 16pt
-			font-weight: bold
+			&:hover
+				background-color: lightyellow
+				font-weight: bold
 
-		A.pwic_browser_item_h2
-			padding-left: 20px
-			font-size: 14pt
+			&.pwic_browser_item_h1
+				padding-left: 10px
+				border-bottom: 1px solid gray
+				font-size: 16pt
+				font-weight: bold
+			&.pwic_browser_item_h2
+				padding-left: 20px
+				font-size: 14pt
+			&.pwic_browser_item_h3
+				padding-left: 30px
+			&.pwic_browser_item_h4
+				padding-left: 40px
+			&.pwic_browser_item_h5
+				padding-left: 50px
+			&.pwic_browser_item_h6
+				padding-left: 60px
 
-		A.pwic_browser_item_h3
-			padding-left: 30px
-
-		A.pwic_browser_item_h4
-			padding-left: 40px
-
-		A.pwic_browser_item_h5
-			padding-left: 50px
-
-		A.pwic_browser_item_h6
-			padding-left: 60px
-
-		A:hover
-			background-color: lightyellow
-			font-weight: bold
 
 
 // --------------------------------
@@ -646,10 +645,10 @@ TABLE.diff
 	font-family: monospace
 	TD
 		padding: 0 5px
-	TD:nth-child(3)
-		width: 45%
-	TD:nth-child(6)
-		width: 45%
+		&:nth-child(3)
+			width: 45%
+		&:nth-child(6)
+			width: 45%
 
 .diff_header
 	background-color: #F0F0F0

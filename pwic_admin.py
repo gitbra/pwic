@@ -486,7 +486,6 @@ class PwicAdmin():
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'init-db'})
         for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PWIC_DEFAULTS['port']),
-                             ('file_formats', 'md html odt'),
                              ('robots', 'noarchive noindex nofollow')]:
             sql.execute(''' INSERT INTO env (project, key, value)
                             VALUES ('', ?, ?)''',

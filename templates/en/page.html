@@ -52,10 +52,9 @@
 				<a class="pwic_desktop pwic_js" href="#" onclick="return page_print()">{{pwic.emojis.printer}} Print</a>
 			{% endif %}
 
-			{% set formats = pwic.env.get('file_formats', {'value': ''}).value.split(' ') %}
 			{% set no_formats = pwic.env.get('file_formats_disabled', {'value': ''}).value.split(' ') %}
 			{% if '*' not in no_formats %}
-				{% for f in formats%}
+				{% for f in pwic.file_formats %}
 					{% if f not in no_formats %}
 						<a class="pwic_js" href="#" title="Export to {{f|escape|upper}}" onclick="return page_export('{{f|escape}}')">{{pwic.emojis.save}} {{f|escape|upper}}</a>
 					{% endif %}
@@ -129,10 +128,12 @@
 			<div id="page_section_files">
 				{% if pwic.documents|count > 0 %}
 					<div class="pwic_file_gallery">
-						<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
-							<span>Download all</span>
-							<br/>{{pwic.emojis.inbox}}
-						</a>
+						{% if pwic.documents|count + pwic.images|count > 1 %}
+							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
+								<span>Download all</span>
+								<br/>{{pwic.emojis.inbox}}
+							</a>
+						{% endif %}
 						{% for doc in pwic.documents %}
 							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
 								<span>{{doc.filename|escape}}</span>
@@ -144,7 +145,7 @@
 
 				{% if pwic.images|count > 0 %}
 					<div class="pwic_file_gallery">
-						{% if pwic.documents|count == 0 %}
+						{% if (pwic.documents|count == 0) and (pwic.images|count > 1) %}
 							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
 								<span>Download all</span>
 								<br/>{{pwic.emojis.inbox}}

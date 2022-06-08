@@ -495,7 +495,8 @@ class PwicServer():
         pwic.update(row)
 
         # Read the HTML cache
-        cache = pwic_option(sql, project, 'no_cache') is None
+        cache = ((pwic_option(sql, project, 'no_cache') is None)
+                 and PwicExtension.on_cache(sql, project, user, page, revision))
         if cache:
             row = sql.execute(''' SELECT html
                                   FROM cache
@@ -533,6 +534,7 @@ class PwicServer():
                               and (pwic['valuser'] == ''))
                              or ((pwic['author'] == user)
                                  and pwic['draft']))
+        pwic['file_formats'] = PwicExporter.get_allowed_extensions()
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -4085,7 +4087,7 @@ def main() -> bool:
     setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))  # Storage for the cookies
     del skey
     # ... Markdown parser
-    extras = ['code-friendly', 'fenced-code-blocks', 'footnotes', 'strike', 'tables', 'underline']
+    extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'underline']
     if pwic_option(sql, '', 'no_highlight') is not None:
         extras.append('highlightjs-lang')                       # highlight.js is not used in the foreground
     app['markdown'] = Markdown(extras=extras, safe_mode=False)

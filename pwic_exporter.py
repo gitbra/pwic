@@ -53,7 +53,7 @@ class PwicExporter():
                 extension: str,
                 ) -> Optional[str]:
         # Read the revision without the cache
-        if (sql is None) or (revision == 0):
+        if (sql is None) or (revision == 0) or (extension not in PwicExporter.get_allowed_extensions()):
             return None
         sql.execute(''' SELECT project, page, revision, latest, author,
                                date, time, title, markdown, tags
@@ -83,6 +83,10 @@ class PwicExporter():
 
     def set_option(self, name: str, value: bool) -> None:
         self.options[name] = value
+
+    @staticmethod
+    def get_allowed_extensions() -> List[str]:
+        return ['md', 'html', 'odt']
 
     # ======
     #  HTML
@@ -860,7 +864,7 @@ class PwicStylerOdt:
                      style:default-outline-level="1">
             <style:paragraph-properties fo:margin-top="12pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="20pt"
+            <style:text-properties fo:font-size="24pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H2"
@@ -871,7 +875,7 @@ class PwicStylerOdt:
                      style:default-outline-level="2">
             <style:paragraph-properties fo:margin-top="9pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="20pt"
+            <style:text-properties fo:font-size="22pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H3"
@@ -882,7 +886,7 @@ class PwicStylerOdt:
                      style:default-outline-level="3">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="18pt"
+            <style:text-properties fo:font-size="20pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H4"
@@ -893,7 +897,7 @@ class PwicStylerOdt:
                      style:default-outline-level="4">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="16pt"
+            <style:text-properties fo:font-size="18pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H5"
@@ -904,7 +908,7 @@ class PwicStylerOdt:
                      style:default-outline-level="5">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="14pt"
+            <style:text-properties fo:font-size="16pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H6"
