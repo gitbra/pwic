@@ -19,16 +19,16 @@
 
 				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
 					<div>
-						<input type="button" value="{{pwic.emojis.glasses}}" title="Preview" onclick="edit_preview_md('Preview of &quot;{{pwic.page|urlencode}}&quot;', 'Close the preview')" />
+						<input type="button" value="{{pwic.emojis.glasses}}" title="Preview" onclick="edit_preview_md('Preview of &quot;{{pwic.page|urlencode}}&quot;', 'Close the preview')" data-shortcut="Ctrl+P" />
 					</div>
 					<div>
-						<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**', '**')" />
-						<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*', '*')" />
-						<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" />
+						<input type="button" value="B" title="** Bold **" style="font-weight: bold" onclick="edit_decorate('**', '**')" data-shortcut="Ctrl+B" />
+						<input type="button" value="I" title="* Italic *" style="font-style: italic" onclick="edit_decorate('*', '*')" data-shortcut="Ctrl+I" />
+						<input type="button" value="U" title="-- Underline --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" data-shortcut="Ctrl+U" />
 						<input type="button" value="S" title="~~ Strikethrough ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')" />
 						<input type="button" value="^2" title="<sup> Superscript </sup>" onclick="edit_decorate('<sup>', '</sup>')" />
 						<input type="button" value="_2" title="<sub> Subscript </sub>" onclick="edit_decorate('<sub>', '</sub>')" />
-						<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" />
+						<input type="button" value="{{pwic.emojis.chains}}" title="[Link](url)" onclick="edit_link('Paste the link:')" data-shortcut="Ctrl+K" />
 					</div>
 					<div>
 						<input type="button" value="{{pwic.emojis.double}}" title="No double spaces" onclick="edit_double_spaces()" />
@@ -38,22 +38,22 @@
 						<input type="button" value="{{pwic.emojis.oneline}}" title="As single line" onclick="edit_single_line()" />
 					</div>
 					<div>
-						<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" />
-						<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" />
-						<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" />
-						<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" />
-						<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" />
-						<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" />
+						<input type="button" value="H1" title="# Title 1" onclick="edit_prepend('# ')" data-shortcut="Ctrl+Shift+F1" />
+						<input type="button" value="H2" title="## Title 2" onclick="edit_prepend('## ')" data-shortcut="Ctrl+Shift+F2" />
+						<input type="button" value="H3" title="### Title 3" onclick="edit_prepend('### ')" data-shortcut="Ctrl+Shift+F3" />
+						<input type="button" value="H4" title="#### Title 4" onclick="edit_prepend('#### ')" data-shortcut="Ctrl+Shift+F4" />
+						<input type="button" value="H5" title="##### Title 5" onclick="edit_prepend('##### ')" data-shortcut="Ctrl+Shift+F5" />
+						<input type="button" value="H6" title="###### Title 6" onclick="edit_prepend('###### ')" data-shortcut="Ctrl+Shift+F6" />
 						<input type="button" value="Footnote" title="[^1] Footnote" onclick="edit_footnote()" />
-						<input type="button" value="[Annotation]" title="&lt;!-- Footnote --&gt;" onclick="edit_decorate('&lt;!-- ', ' --&gt;')" />
+						<input type="button" value="[Annotation]" title="&lt;!-- Annotation --&gt;" onclick="edit_decorate('&lt;!-- ', ' --&gt;')" />
 					</div>
 					<div>
 						<input id="edit_toolbar_table" type="button" value="Table" title="Table | Table" onclick="edit_table('Number of columns', 'Number of rows')" />
 						<input type="button" value="AutoTable" title="Paste as target table" onclick="edit_table_import('You cannot use this feature.')" />
-						<input type="button" value="- List" onclick="edit_prepend('- ')" />
+						<input type="button" value="- List" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L" />
 						<input type="button" value="> Quote" onclick="edit_prepend('> ')" />
 						<input type="button" value=">! Spoiler" onclick="edit_prepend('>! ')" />
-						<input type="button" value="`Keyword`" onclick="edit_decorate('`', '`')" />
+						<input type="button" value="`Keyword`" title="`Monospace keyword`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl+'" />
 						<input type="button" value="Code" title="```Code```" onclick="edit_decorate('```\n', '\n```')" />
 						{% if pwic.env.emojis %}
 							<input type="button" value="{{pwic.emojis.bang}}" title="Emojis" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />

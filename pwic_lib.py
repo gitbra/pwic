@@ -84,7 +84,7 @@ PWIC_DPI = 120.                                     # Pixels per inch
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'fixed_templates', 'keep_sessions', 'http_log_file',
                                 'http_log_format', 'http_referer', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_highlight',
                                 'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
-                                'password_regex']
+                                'password_regex', 'strict_cookies']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
                               'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',

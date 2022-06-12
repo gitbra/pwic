@@ -312,7 +312,24 @@
 	// -------------------------------- Editor
 
 	$('#edit_markdown').on('keydown', function(event) {
-		if (event.key == 'Tab')
+		// Pressed key as string
+		event = event || window.event;
+		var key = '';
+		if (event.ctrlKey)
+			key += '+Ctrl';
+		if (event.altKey)
+			key += '+Alt';
+		if (event.shiftKey)
+			key += '+Shift';
+		if ((event.keyCode >= 0x41) && (event.keyCode <= 0x5A))
+			key += '+' + event.key.toUpperCase();
+		if (([9, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123].indexOf(event.keyCode) !== -1) || (event.key.length == 1))
+			key += '+' + event.key.substr(0, 3);
+		if (key.length > 1)
+			key = key.substr(1);
+
+		// Block alignment
+		if (key == 'Tab')
 		{
 			var	ta = $('#edit_markdown')[0],
 				ss = ta.selectionStart,
@@ -327,9 +344,19 @@
 				edit_prepend("\t");
 			return false;
 		}
-		else
-			return true;
+
+		// Automatic shortcuts
+		var buts = $("#edit_toolbar INPUT[type='button'][data-shortcut='"+pwic_slash(key)+"']");
+		if (buts.length == 1)
+		{
+			buts.trigger('click');
+			event.preventDefault();
+			return false
+		}
+		return true;
 	});
+
+	$('[data-shortcut]').each((i, e) => e.title = (e.title || '') + ' (' + e.dataset['shortcut'] + ')');
 
 
 	// -------------------------------- File drop

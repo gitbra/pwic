@@ -824,6 +824,7 @@ class PwicAdmin():
         print('- Administrator : %s' % admin)
         print('- Password      : "%s" or the existing password' % PWIC_DEFAULTS['password'])
         print('')
+        print('WARNING:')
         print("To create new pages in the project, you must change your password and grant the role 'manager' or 'editor' to the suitable user account.")
         print('')
         print('Thanks for using Pwic.wiki!')

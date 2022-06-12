@@ -24,7 +24,7 @@
 								'&redirect_uri='+encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
 								'&login='+encodeURIComponent($('#login_user').val()) +
 								'&scope=user%3Aemail' +
-								'&state={{pwic.session.user_secret|urlencode}}' +
+								'&state={{pwic.oauth_user_secret|urlencode}}' +
 								'&allow_signup=false';
 
 		{% elif pwic.env.oauth_provider.value == 'google' %}
@@ -33,7 +33,7 @@
 								'&redirect_uri='+encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
 								'&scope='+encodeURIComponent('https://www.googleapis.com/auth/userinfo.email') +
 								'&access_type=online' +
-								'&state={{pwic.session.user_secret|urlencode}}' +
+								'&state={{pwic.oauth_user_secret|urlencode}}' +
 								'&login_hint='+encodeURIComponent($('#login_user').val()) +
 								'&response_type=code';
 
@@ -44,7 +44,7 @@
 						'&redirect_uri='+encodeURIComponent('{{pwic.env.base_url.value}}/api/oauth') +
 						'&scope='+encodeURIComponent('https://graph.microsoft.com/user.read') +
 						'&response_mode=query' +
-						'&state={{pwic.session.user_secret|urlencode}}' +
+						'&state={{pwic.oauth_user_secret|urlencode}}' +
 						'&login_hint='+encodeURIComponent($('#login_user').val());
 			{% if pwic.env.oauth_domains %}
 				var main = '{{pwic.env.oauth_domains.value|escape}}'.trim().split(' ')[0];

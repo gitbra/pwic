@@ -310,7 +310,7 @@ class PwicServer():
 
         # Session
         session = await get_session(request)
-        pwic['session'] = {'user_secret': session.get('user_secret', None)}
+        pwic['oauth_user_secret'] = session.get('user_secret', None)
 
         # Render the template
         pwic['template'] = name
@@ -1481,20 +1481,20 @@ class PwicServer():
                    'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name('%s_%s.zip' % (project, page))}
         return web.Response(body=buffer, headers=MultiDict(headers))
 
-    def _active_auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str) -> bool:
+    def _auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str, categories: List[str]) -> bool:
         ''' Assign a user to the projects that require a forced membership '''
         ok = False
         if user[:4] not in ['', 'pwic']:
-            sql.execute(''' SELECT a.project
-                            FROM env AS a
-                                LEFT OUTER JOIN roles AS b
-                                    ON  b.project = a.project
-                                    AND b.user    = ?
-                            WHERE a.project <> ''
-                              AND a.key      = 'auto_join'
-                              AND a.value    = 'active'
-                              AND b.project IS NULL''',
-                        (user, ))
+            query = ''' SELECT a.project
+                        FROM env AS a
+                            LEFT OUTER JOIN roles AS b
+                                ON  b.project = a.project
+                                AND b.user    = ?
+                        WHERE a.project <> ''
+                          AND a.key      = 'auto_join'
+                          AND a.value   IN ('%s')
+                          AND b.project IS NULL'''
+            sql.execute(query % ("', '".join(categories)), (user, ))
             for row in sql.fetchall():
                 sql.execute(''' INSERT OR IGNORE INTO roles (project, user, reader)
                                 VALUES (?, ?, 'X')''', (row['project'], user))
@@ -1533,7 +1533,7 @@ class PwicServer():
         if sql.fetchone() is not None:
             ok = PwicExtension.on_login(sql, user, lang, ip)
             if ok:
-                self._active_auto_join(sql, request, user)
+                self._auto_join(sql, request, user, ['active'])
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
@@ -1699,7 +1699,7 @@ class PwicServer():
                              'user': user,
                              'string': PWIC_MAGIC_OAUTH},
                        request)
-        self._active_auto_join(sql, request, user)
+        self._auto_join(sql, request, user, ['active', 'sso'])
 
         # Register the session
         session = await new_session(request)
@@ -3036,10 +3036,10 @@ class PwicServer():
                               AND exturl  = '' ''',
                         (srcproj, srcpage))
             for row in sql.fetchall():
-                files.append(row['filename'])
                 if isfile(join(PWIC_DOCUMENTS_PATH % dstproj, row['filename'])):
                     self.dbconn.rollback()
                     raise web.HTTPConflict()
+                files.append(row['filename'])
 
         # Custom check
         if not PwicExtension.on_api_page_move(sql, srcproj, user, srcpage, dstproj, dstpage):
@@ -4084,7 +4084,10 @@ def main() -> bool:
         sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                         VALUES ('', 'pwic_session', ?)''',
                     (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
-    setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))  # Storage for the cookies
+    if pwic_option(sql, '', 'strict_cookies') is not None:
+        setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))
+    else:
+        setup(app, EncryptedCookieStorage(skey, httponly=True))
     del skey
     # ... Markdown parser
     extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'underline']
