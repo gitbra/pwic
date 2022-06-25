@@ -329,7 +329,7 @@ class PwicAdmin():
                             INSERT INTO audit_arch
                                 SELECT *
                                 FROM audit
-                                WHERE reference = OLD.reference;
+                                WHERE id = OLD.id;
                         END''')
         self.db_commit()
         return True
@@ -2120,7 +2120,7 @@ class PwicAdmin():
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'archive-audit'})
         self.db_commit()
-        print('%d entries moved to the table "audit_arch". Do what you want with it.' % counter)
+        print('%d entries moved to the table "audit_arch". Do what you want with them.' % counter)
         return True
 
     def show_git(self, agree: bool = False) -> bool:

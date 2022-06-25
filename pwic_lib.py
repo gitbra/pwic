@@ -81,7 +81,7 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
 PWIC_DPI = 120.                                     # Pixels per inch
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'fixed_templates', 'keep_sessions', 'http_log_file',
+PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'db_async', 'fixed_templates', 'keep_sessions', 'http_log_file',
                                 'http_log_format', 'http_referer', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_highlight',
                                 'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
                                 'password_regex', 'strict_cookies']

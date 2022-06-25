@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # This demo program queries the API to fetch the work in progress left in the content of the pages.
 # Programmers generally leave lines starting with "TODO" or "BUG", and followed by a comment.
 # This technique highlights the remaining things to do before the documentation is complete.

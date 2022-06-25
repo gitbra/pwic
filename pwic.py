@@ -4056,8 +4056,11 @@ def main() -> bool:
     sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
     sql.execute(''' VACUUM main''')
     sql.execute(''' VACUUM audit''')
+    if pwic_option(sql, '', 'db_async') is not None:
+        sql.execute(''' PRAGMA main.synchronous = OFF''')
+        sql.execute(''' PRAGMA audit.synchronous = OFF''')
     # ... languages
-    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if isdir(join(PWIC_TEMPLATES_PATH, f))])
+    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if (len(f) == 2) and isdir(join(PWIC_TEMPLATES_PATH, f))])
     if PWIC_DEFAULTS['language'] not in app['langs']:
         print('Error: English template is missing')
         return False

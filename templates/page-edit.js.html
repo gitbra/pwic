@@ -309,6 +309,7 @@
 			});
 	}
 
+
 	// -------------------------------- Editor
 
 	$('#edit_markdown').on('keydown', function(event) {
@@ -323,8 +324,9 @@
 			key += '+Shift';
 		if ((event.keyCode >= 0x41) && (event.keyCode <= 0x5A))
 			key += '+' + event.key.toUpperCase();
-		if (([9, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123].indexOf(event.keyCode) !== -1) || (event.key.length == 1))
-			key += '+' + event.key.substr(0, 3);
+		else
+			if (([9, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123].indexOf(event.keyCode) !== -1) || (event.key.length == 1))
+				key += '+' + event.key.substr(0, 3);
 		if (key.length > 1)
 			key = key.substr(1);
 

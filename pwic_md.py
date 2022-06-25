@@ -4,9 +4,8 @@
 # List of the changes:
 # - type hint
 # - mask of valid links
-# - tag strike replaced by del
-# - modified underline to cover <!--Test-->
 # - removed command line
+# - bracketed links
 
 
 # Copyright (c) 2012 Trent Mick.
@@ -1489,11 +1488,10 @@ class Markdown(object):
 
             # Now determine what this is by the remainder.
             p += 1
-            if p == text_length:
-                return text
+            # -- PWIC
 
             # Inline anchor or img?
-            if text[p] == '(':  # attempt at perf improvement
+            if text[p:p + 1] == '(':  # attempt at perf improvement     # ~~ PWIC
                 url, title, url_end_idx = self._extract_url_and_title(text, p)
                 if url is not None:
                     # Handle an inline anchor or img.
@@ -2089,10 +2087,10 @@ class Markdown(object):
 
     _strike_re = re.compile(r"~~(?=\S)(.+?)(?<=\S)~~", re.S)
     def _do_strike(self, text):
-        text = self._strike_re.sub(r"<del>\1</del>", text)      # ~~ PWIC
+        text = self._strike_re.sub(r"<s>\1</s>", text)
         return text
 
-    _underline_re = re.compile(r"(?<!<!)--(?!>)(?=\S)(.+?)(?<=\S)(?<!<!)--(?!>)", re.S)     # ~~ PWIC
+    _underline_re = re.compile(r"(?<!<!)--(?!>)(?=\S)(.+?)(?<=\S)(?<!<!)--(?!>)", re.S)
     def _do_underline(self, text):
         text = self._underline_re.sub(r"<u>\1</u>", text)
         return text
