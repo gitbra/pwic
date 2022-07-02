@@ -10,7 +10,14 @@
 	</header>
 
 	<article>
-		{% if (pwic.projects|count + pwic.joinable_projects|count == 0) %}
+		<div class="pwic_action_bar">
+			<a class="pwic_js" href="/api">{{pwic.emojis.brick}} API</a>
+			{% if not pwic.env.no_help %}
+				<a href="/special/help">{{pwic.emojis.help}} Help</a>
+			{% endif %}
+		</div>
+
+		{% if (pwic.projects|count + pwic.joinable_projects|count) == 0 %}
 			<p>Unfortunately, you have access to no project at all.</p>
 		{% endif %}
 

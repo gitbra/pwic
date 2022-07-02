@@ -1777,7 +1777,7 @@ class PwicServer():
                 if k not in data:
                     data[k] = []
                 data[k].append(v)
-        data = {'ip': request.remote,
+        data = {'ip': PwicExtension.on_ip_header(request),
                 'headers': data}
         return web.Response(text=json.dumps(data), content_type=pwic_mime('json'))
 

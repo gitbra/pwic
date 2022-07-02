@@ -74,7 +74,7 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
                 'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                         # Name of the pages KB
                 'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                 # Length in XML
                 'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                               # Check the format of the mime
-                'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)]+)(\/rev[0-9]+)?'),      # Find a page in Markdown
+                'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),    # Find a page in Markdown
                 'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                         # Valid protocols for the links
                 'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                     # Find the HTML tags
                 }
@@ -758,12 +758,14 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 
 def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
     ''' Save an event into the audit log '''
+    from pwic_extension import PwicExtension
+
     # Forced properties of the event
     dt = pwic_dt()
     obj['date'] = dt['date']
     obj['time'] = dt['time']
     if request is not None:
-        obj['ip'] = str(request.remote)
+        obj['ip'] = PwicExtension.on_ip_header(request)
     if obj.get('event', '') == '':
         raise PwicError
 
@@ -781,7 +783,6 @@ def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Op
         raise PwicError
 
     # Specific event
-    from pwic_extension import PwicExtension
     try:
         PwicExtension.on_audit(sql, obj, request is not None)
     except Exception:       # nosec B110
