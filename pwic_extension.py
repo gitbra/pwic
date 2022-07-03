@@ -58,6 +58,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_document_create_end(sql: sqlite3.Cursor,                 # Cursor to query the database
+                                   request: web.Request,                # HTTP request
                                    document: Dict[str, Any],            # Document as defined in the database and extra fields
                                    ) -> None:
         ''' Event after a file is loaded on the server. The database is committed already.
@@ -68,6 +69,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_document_create_start(sql: sqlite3.Cursor,               # Cursor to query the database
+                                     request: web.Request,              # HTTP request
                                      document: Dict[str, Any],          # Submitted document (changeable)
                                      ) -> bool:
         ''' Event when a new document is submitted and before many internal checks are executed.
@@ -76,12 +78,13 @@ class PwicExtension():
         return True
 
     @staticmethod
-    def on_api_document_delete(sql: sqlite3.Cursor,         # Cursor to query the database
-                               project: str,                # Name of the project
-                               user: str,                   # Name of the user
-                               page: Optional[str],         # Name of the page
-                               doc_id: Optional[int],       # Identifier of the document
-                               filename: str,               # Name of the file
+    def on_api_document_delete(sql: sqlite3.Cursor,                     # Cursor to query the database
+                               request: Optional[web.Request],          # HTTP request
+                               project: str,                            # Name of the project
+                               user: str,                               # Name of the user
+                               page: Optional[str],                     # Name of the page
+                               doc_id: Optional[int],                   # Identifier of the document
+                               filename: str,                           # Name of the file
                                ) -> bool:
         ''' Event when the file must be deleted.
             For the local files, the result tells if the deletion of the document is possible and Pwic.wiki will perform the deletion.
@@ -93,6 +96,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_document_list(sql: sqlite3.Cursor,                       # Cursor to query the database
+                             request: web.Request,                      # HTTP request
                              project: str,                              # Name of the project
                              page: str,                                 # Name of the page
                              documents: List[Dict[str, Any]],           # List of the documents (changeable)
@@ -103,6 +107,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_document_rename(sql: sqlite3.Cursor,         # Cursor to query the database
+                               request: web.Request,        # HTTP request
                                project: str,                # Name of the project
                                user: str,                   # Name of the user
                                page: str,                   # Name of the page
@@ -118,6 +123,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_create(sql: sqlite3.Cursor,             # Cursor to query the database
+                           request: web.Request,            # HTTP request
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
                            page: str,                       # Name of the page
@@ -132,6 +138,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_delete(sql: sqlite3.Cursor,             # Cursor to query the database
+                           request: web.Request,            # HTTP request
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
                            page: str,                       # Name of the page
@@ -144,6 +151,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_edit(sql: sqlite3.Cursor,               # Cursor to query the database
+                         request: web.Request,              # HTTP request
                          project: str,                      # Name of the project
                          user: str,                         # Name of the user
                          page: str,                         # Name of the page
@@ -164,6 +172,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_export(sql: sqlite3.Cursor,             # Cursor to query the database
+                           request: web.Request,            # HTTP request
                            project: str,                    # Name of the project
                            user: str,                       # Name of the user
                            page: str,                       # Name of the page
@@ -181,6 +190,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_move(sql: sqlite3.Cursor,               # Cursor to query the database
+                         request: web.Request,              # HTTP request
                          project: str,                      # Source project
                          user: str,                         # Name of the user
                          page: str,                         # Source page
@@ -195,6 +205,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_requested(sql: sqlite3.Cursor,          # Cursor to query the database
+                              request: web.Request,         # HTTP request
                               action: str,                  # Performed action
                               project: str,                 # Name of the project
                               page: str,                    # Name of the page
@@ -206,6 +217,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_page_validate(sql: sqlite3.Cursor,           # Cursor to query the database
+                             request: web.Request,          # HTTP request
                              project: str,                  # Name of the project
                              user: str,                     # Name of the user
                              page: str,                     # Name of the page
@@ -218,6 +230,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_project_env_set(sql: sqlite3.Cursor,         # Cursor to query the database
+                               request: web.Request,        # HTTP request
                                project: str,                # Name of the project
                                user: str,                   # Name of the user
                                key: str,                    # Name of the option modified for the project
@@ -231,6 +244,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_project_info_get(sql: sqlite3.Cursor,                                # Cursor to query the database
+                                request: web.Request,                               # HTTP request
                                 project: str,                                       # Name of the project
                                 user: str,                                          # Name of the user
                                 page: str,                                          # Name of a precise page
@@ -242,6 +256,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_user_create(sql: sqlite3.Cursor,             # Cursor to query the database
+                           request: web.Request,            # HTTP request
                            project: str,                    # Name of the project
                            admin: str,                      # Name of the administrator
                            user: str,                       # Sanitized name of the new user account
@@ -254,6 +269,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_user_password_change(sql: sqlite3.Cursor,    # Cursor to query the database
+                                    request: web.Request,   # HTTP request
                                     user: str,              # Name of the user whose password is modified
                                     new_password: str,      # New desired password
                                     ) -> bool:
@@ -264,6 +280,7 @@ class PwicExtension():
 
     @staticmethod
     def on_api_user_roles_set(sql: sqlite3.Cursor,          # Cursor to query the database
+                              request: web.Request,         # HTTP request
                               project: str,                 # Name of the project
                               admin: str,                   # Name of the administrator
                               user: str,                    # Name of the user whose rights are modified
@@ -295,6 +312,7 @@ class PwicExtension():
 
     @staticmethod
     def on_cache(sql: sqlite3.Cursor,                       # Cursor to query the database
+                 request: web.Request,                      # HTTP request
                  project: str,                              # Name of the project
                  user: str,                                 # Name of the user
                  page: str,                                 # Name of the page
@@ -334,7 +352,9 @@ class PwicExtension():
         return html
 
     @staticmethod
-    def on_html_headers(headers: MultiDict,                 # Output HTTP headers
+    def on_html_headers(sql: sqlite3.Cursor,                # Cursor to query the database
+                        request: web.Request,               # HTTP request
+                        headers: MultiDict,                 # Output HTTP headers
                         project: str,                       # Name of the project
                         template: Optional[str],            # Layout of the page. 'None' denotes a file download
                         ) -> None:
@@ -368,6 +388,7 @@ class PwicExtension():
 
     @staticmethod
     def on_login(sql: sqlite3.Cursor,                       # Cursor to query the database
+                 request: web.Request,                      # HTTP request
                  user: str,                                 # Name of the user
                  language: str,                             # Selected language
                  ip: str,                                   # IP address
@@ -392,6 +413,7 @@ class PwicExtension():
 
     @staticmethod
     def on_oauth(sql: sqlite3.Cursor,                       # Cursor to query the database
+                 request: web.Request,                      # HTTP request
                  emails: List[str],                         # Array of candidate email addresses (changeable)
                  ) -> None:
         ''' Event when email addresses are fetched from the remote OAuth server.
@@ -400,6 +422,7 @@ class PwicExtension():
 
     @staticmethod
     def on_project_export_documents(sql: sqlite3.Cursor,                # Cursor to query the database
+                                    request: web.Request,               # HTTP request
                                     project: str,                       # Name of the project
                                     user: str,                          # Name of the user
                                     documents: List[Dict[str, Any]],    # List of the documents to be exported (changeable)
@@ -410,6 +433,7 @@ class PwicExtension():
 
     @staticmethod
     def on_related_pages(sql: sqlite3.Cursor,               # Cursor to query the database
+                         request: web.Request,              # HTTP request
                          project: str,                      # Name of the project
                          user: str,                         # Name of the user
                          page: str,                         # Name of the page
@@ -424,6 +448,7 @@ class PwicExtension():
     @staticmethod
     def on_render_post(app: web.Application,                # Access to the application (do not change)
                        sql: sqlite3.Cursor,                 # Cursor to query the database
+                       request: web.Request,                # HTTP request
                        pwic: Dict[str, Any],                # Rendered content (not changeable)
                        html: str,                           # Current output to HTML
                        ) -> str:
@@ -447,6 +472,7 @@ class PwicExtension():
 
     @staticmethod
     def on_search_documents(sql: sqlite3.Cursor,            # Cursor to query the database
+                            request: web.Request,           # HTTP request
                             user: str,                      # Name of the user
                             pwic: Dict[str, Any],           # Work area
                             query: Dict[str, List[str]],    # Search terms
@@ -459,6 +485,7 @@ class PwicExtension():
 
     @staticmethod
     def on_search_pages(sql: sqlite3.Cursor,                # Cursor to query the database
+                        request: web.Request,               # HTTP request
                         user: str,                          # Name of the user
                         pwic: Dict[str, Any],               # Work area
                         query: Dict[str, List[str]],        # Search terms
@@ -471,6 +498,7 @@ class PwicExtension():
 
     @staticmethod
     def on_search_terms(sql: sqlite3.Cursor,                            # Cursor to query the database
+                        request: web.Request,                           # HTTP request
                         project: str,                                   # Name of the project
                         user: str,                                      # Name of the user
                         query: Optional[Dict[str, List[str]]],          # Not-null parsed search terms (changeable)
