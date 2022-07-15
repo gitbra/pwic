@@ -21,6 +21,12 @@
 			function _pc(a, b) {
 				return (b == 0 ? '' : Math.floor(100 * a / b) + ' %');
 			}
+			function _sl(terms, text, entries) {
+				if ({% if pwic.env.no_search %} true {% else %} false {% endif %} || (entries == 0))
+					return encodeURIComponent(text);
+				else
+					return '<a href="/{{pwic.project|urlencode}}/special/search?q=%23'+encodeURIComponent(terms)+'" target="_blank">'+encodeURIComponent(text)+'<\/a>';
+			}
 
 			// Get the selected tags
 			var tags = '';
@@ -48,22 +54,16 @@
 						{
 							var item = data[tag];
 							buffer += '<tr>'
-										+'<td>'
-											{% if not pwic.env.no_search %}
-												+'<a href="/{{pwic.project|urlencode}}/special/search?q=%23'+encodeURIComponent(tag)+'">'+encodeURIComponent(tag)+'<\/a>'
-											{% else %}
-												+encodeURIComponent(tag)
-											{% endif %}
-										+'<\/td>'
-										+'<td>'+item['draft']+'<\/td>'
-										+'<td>'+_pc(item['draft'], item['total'])+'<\/td>'
-										+'<td>'+item['step']+'<\/td>'
-										+'<td>'+_pc(item['step'], item['total'])+'<\/td>'
-										+'<td>'+item['final']+'<\/td>'
-										+'<td>'+_pc(item['final'], item['total'])+'<\/td>'
-										+'<td>'+item['validated']+'<\/td>'
-										+'<td>'+_pc(item['validated'], item['total'])+'<\/td>'
-									+'<\/tr>';
+										+ '<td>' + _sl(tag, tag, 1) + '<\/td>'
+										+ '<td>' + _sl(tag + ' :draft', item['draft'], item['draft']) + '<\/td>'
+										+ '<td>' + _pc(item['draft'], item['total']) + '<\/td>'
+										+ '<td>' + _sl(tag + ' -:draft -:final -:validated', item['step'], item['step']) + '<\/td>'
+										+ '<td>' + _pc(item['step'], item['total']) + '<\/td>'
+										+ '<td>' + _sl(tag + ' :final', item['final'], item['final']) + '<\/td>'
+										+ '<td>' + _pc(item['final'], item['total']) + '<\/td>'
+										+ '<td>' + _sl(tag + ' :validated', item['validated'], item['validated']) + '<\/td>'
+										+ '<td>' + _pc(item['validated'], item['total']) + '<\/td>'
+									+ '<\/tr>';
 						}
 					}
 				}

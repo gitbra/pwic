@@ -84,7 +84,7 @@ PWIC_DPI = 120.                                     # Pixels per inch
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'db_async', 'fixed_templates', 'keep_sessions', 'http_log_file',
                                 'http_log_format', 'http_referer', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_highlight',
                                 'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
-                                'password_regex', 'strict_cookies']
+                                'password_regex', 'registration_link', 'strict_cookies']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
                               'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',
@@ -376,6 +376,7 @@ def pwic_attachment_name(name: str) -> str:
 
 
 def pwic_convert_length(value: Optional[Union[str, int, float]], target_unit: str, precision: int, dpi: float = PWIC_DPI) -> str:
+    ''' Convert a length from a unit to another one '''
     # Conversion factors
     factors = {'cm': (dpi / 2.54, 'px'),
                'mm': (0.1, 'cm'),
@@ -450,6 +451,7 @@ def pwic_ishex(value: str) -> bool:
 
 
 def pwic_flag(flag: str) -> str:
+    ''' Convert a country in ISO format to emoji '''
     # Check the parameter
     flag = flag.strip().lower()
     if len(flag) != 2:
@@ -495,22 +497,25 @@ def pwic_option(sql: Optional[sqlite3.Cursor],
     ''' Read a variable from the table ENV that can be project-dependent or not '''
     if sql is None:
         return default
-    query = ''' SELECT value
-                FROM env
-                WHERE project = ?
-                  AND key     = ?
-                  AND value  <> '' '''
-    row = None
-    if name in PWIC_ENV_PROJECT_INDEPENDENT:
-        project = ''
-    if project not in ['', None]:
-        row = sql.execute(query, (project, name)).fetchone()
-    if (row is None) and globale:
-        row = sql.execute(query, ('', name)).fetchone()
-    result = default if row is None else row['value']
-    if isinstance(result, str):
-        result = result.replace('\r', '')
-    return result
+    try:
+        query = ''' SELECT value
+                    FROM env
+                    WHERE project = ?
+                      AND key     = ?
+                      AND value  <> '' '''
+        row = None
+        if name in PWIC_ENV_PROJECT_INDEPENDENT:
+            project = ''
+        if project not in ['', None]:
+            row = sql.execute(query, (project, name)).fetchone()
+        if (row is None) and globale:
+            row = sql.execute(query, ('', name)).fetchone()
+        result = default if row is None else row['value']
+        if isinstance(result, str):
+            result = result.replace('\r', '')
+        return result
+    except sqlite3.OperationalError:    # During init-db
+        return default
 
 
 def pwic_random_hash() -> str:
@@ -591,6 +596,7 @@ def pwic_sha256_file(filename: str) -> str:
 
 
 def pwic_shrink(value: Optional[str]) -> str:
+    ''' Convert a string into its shortest value in lower case '''
     if value is None:
         value = ''
     return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
@@ -753,12 +759,16 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
 
 
 # ===================================================
-#  Traceability of the activities
+#  System
 # ===================================================
 
 def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
     ''' Save an event into the audit log '''
     from pwic_extension import PwicExtension
+
+    # Check
+    if PwicExtension.on_audit_skip(sql, request, obj):
+        return
 
     # Forced properties of the event
     dt = pwic_dt()
@@ -784,9 +794,43 @@ def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Op
 
     # Specific event
     try:
-        PwicExtension.on_audit(sql, obj, request is not None)
+        PwicExtension.on_audit(sql, request, obj)
     except Exception:       # nosec B110
         pass
+
+
+def pwic_connect(dbfile: str = PWIC_DB_SQLITE,
+                 dbaudit: Optional[str] = PWIC_DB_SQLITE_AUDIT,
+                 trace: bool = False,
+                 in_memory: bool = True,
+                 asynchronous: bool = False,
+                 vacuum: bool = False,
+                 ) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+    ''' Connect to the database with the relevant options '''
+    # Connection
+    db = sqlite3.connect(dbfile)
+    db.row_factory = pwic_row_factory
+    if trace:
+        db.set_trace_callback(pwic_sql_print)
+
+    # Cursor and options
+    sql = db.cursor()
+    attached = dbaudit is not None
+    if attached:
+        sql.execute(''' ATTACH DATABASE ? AS audit''', (dbaudit, ))
+    if in_memory:
+        sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
+        if attached:
+            sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
+    if asynchronous or (pwic_option(sql, '', 'db_async') is not None):
+        sql.execute(''' PRAGMA main.synchronous = OFF''')
+        if attached:
+            sql.execute(''' PRAGMA audit.synchronous = OFF''')
+    if vacuum:
+        sql.execute(''' VACUUM main''')
+        if attached:
+            sql.execute(''' VACUUM audit''')
+    return db, sql
 
 
 # ===================================================

@@ -37,10 +37,10 @@ from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from http.client import RemoteDisconnected
 
-from pwic_lib import PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH, \
-    PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLY, \
-    PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, pwic_audit, pwic_dt, pwic_int, pwic_option, pwic_magic_bytes, \
-    pwic_row_factory, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb
+from pwic_lib import (PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH,
+                      PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLY,
+                      PWIC_ENV_PRIVATE, PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, pwic_audit, pwic_connect, pwic_dt, pwic_int, pwic_option,
+                      pwic_magic_bytes, pwic_safe_name, pwic_safe_user_name, pwic_sha256, pwic_sha256_file, pwic_str2bytearray, pwic_xb)
 from pwic_extension import PwicExtension
 
 
@@ -252,18 +252,13 @@ class PwicAdmin():
 
     # ===== Database =====
 
-    def db_connect(self, init: bool = False, master: bool = True, dbfile: str = PWIC_DB_SQLITE) -> Optional[sqlite3.Cursor]:
+    def db_connect(self, init: bool = False, dbfile: str = PWIC_DB_SQLITE) -> Optional[sqlite3.Cursor]:
         if not init and not isfile(dbfile):
             print('Error: the database is not created yet')
             return None
         try:
-            self.db = sqlite3.connect(dbfile)
-            self.db.row_factory = pwic_row_factory
-            sql = self.db.cursor()
-            sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
-            if master:
-                sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
-                sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
+            self.db, sql = pwic_connect(dbfile=dbfile,
+                                        dbaudit=PWIC_DB_SQLITE_AUDIT if dbfile == PWIC_DB_SQLITE else None)
             return sql
         except sqlite3.OperationalError:
             print('Error: the database cannot be opened')
@@ -279,7 +274,7 @@ class PwicAdmin():
             return False
 
     def db_create_tables_audit(self) -> bool:
-        sql = self.db_connect(init=True, master=False, dbfile=PWIC_DB_SQLITE_AUDIT)
+        sql = self.db_connect(init=True, dbfile=PWIC_DB_SQLITE_AUDIT)
         if sql is None:
             return False
 
@@ -335,7 +330,7 @@ class PwicAdmin():
         return True
 
     def db_create_tables_main(self, dbfile: str = PWIC_DB_SQLITE) -> bool:
-        sql = self.db_connect(init=True, master=True, dbfile=dbfile)
+        sql = self.db_connect(init=True, dbfile=dbfile)
         if sql is None:
             return False
         dt = pwic_dt()
@@ -471,7 +466,7 @@ class PwicAdmin():
             return False
 
         # Create the dbfiles
-        ok = self.db_create_tables_audit() and self.db_create_tables_main()
+        ok = self.db_create_tables_audit() and self.db_create_tables_main()     # Audit first
         if not ok:
             print('Error: the databases cannot be created')
             return False
@@ -485,8 +480,7 @@ class PwicAdmin():
         # Add the default, safe or mandatory configuration
         pwic_audit(sql, {'author': PWIC_USERS['system'],
                          'event': 'init-db'})
-        for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PWIC_DEFAULTS['port']),
-                             ('robots', 'noarchive noindex nofollow')]:
+        for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PWIC_DEFAULTS['port'])]:
             sql.execute(''' INSERT INTO env (project, key, value)
                             VALUES ('', ?, ?)''',
                         (key, value))
@@ -2172,7 +2166,7 @@ class PwicAdmin():
 
             # Mark the new database
             if audit_id > 0:
-                sql = self.db_connect(master=False, dbfile=new)
+                sql = self.db_connect(dbfile=new)
                 if sql is not None:
                     sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                                     VALUES ('', 'pwic_audit_id', ?)''',
@@ -2433,7 +2427,12 @@ class PwicAdmin():
                 sql = self.db_connect()
                 if sql is None:
                     return False
-                sql.execute(query)
+                try:
+                    sql.execute(query)
+                except sqlite3.OperationalError as e:
+                    print('\nError: %s' % str(e))
+                    self.db_rollback()
+                    return False
                 rc = sql.rowcount
 
                 # Buffering

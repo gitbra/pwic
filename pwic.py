@@ -47,11 +47,10 @@ from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, P
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_MAGIC_OAUTH,
                       PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_TEMPLATES_PATH, PWIC_USERS,
                       PWIC_VERSION,
-                      pwic_attachment_name, pwic_audit, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext, pwic_int,
-                      pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime2icon,
-                      pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_row_factory, pwic_safe_file_name, pwic_safe_name,
-                      pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_sql_print,
-                      pwic_str2bytearray, pwic_x, pwic_xb)
+                      pwic_attachment_name, pwic_audit, pwic_connect, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext,
+                      pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime2icon,
+                      pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name, pwic_safe_user_name,
+                      pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_str2bytearray, pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -4093,19 +4092,7 @@ def main() -> bool:
     # ... launch time
     app['up'] = pwic_dt()
     # ... SQLite
-    app['sql'] = sqlite3.connect(PWIC_DB_SQLITE)
-    app['sql'].row_factory = pwic_row_factory
-    if args.sql_trace:
-        app['sql'].set_trace_callback(pwic_sql_print)
-    sql = app['sql'].cursor()
-    sql.execute(''' ATTACH DATABASE ? AS audit''', (PWIC_DB_SQLITE_AUDIT, ))
-    sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
-    sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
-    sql.execute(''' VACUUM main''')
-    sql.execute(''' VACUUM audit''')
-    if pwic_option(sql, '', 'db_async') is not None:
-        sql.execute(''' PRAGMA main.synchronous = OFF''')
-        sql.execute(''' PRAGMA audit.synchronous = OFF''')
+    app['sql'], sql = pwic_connect(trace=args.sql_trace, vacuum=True)
     # ... languages
     app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if (len(f) == 2) and isdir(join(PWIC_TEMPLATES_PATH, f))])
     if PWIC_DEFAULTS['language'] not in app['langs']:

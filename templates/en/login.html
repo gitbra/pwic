@@ -18,26 +18,26 @@
 		<form id="login_form" action="/api/login?redirect" method="post">
 			<p><strong>User:</strong> <input class="pwic_fill" type="text" id="login_user" name="user" autofocus autocomplete="username" required="true" spellcheck="false" /></p>
 			<p><strong>Password:</strong> <input class="pwic_fill" type="password" id="login_password" name="password" autocomplete="current-password" /></p>
-			<p
-				{% if pwic.constants.languages|count == 1 %}
-					class="pwic_hidden"
-				{% endif %}
-			><strong>Language:</strong><br/>
-				<select id="login_language" name="language">
-					{% for lang in pwic.constants.languages %}
-						<option value="{{lang|escape}}"
-							{% if lang == pwic.constants.default_language %}
-								selected="selected"
-							{% endif %}
-						>{{lang|escape}}</option>
-					{% endfor %}
-				</select>
+			<p {% if pwic.constants.languages|count == 1 %} class="pwic_hidden" {% endif %}>
+				<strong>Language:</strong>
+				<br/><select id="login_language" name="language">
+						{% for lang in pwic.constants.languages %}
+							<option value="{{lang|escape}}"
+								{% if lang == pwic.constants.default_language %}
+									selected="selected"
+								{% endif %}
+							>{{lang|escape}}</option>
+						{% endfor %}
+					</select>
 			</p>
 			<p>
 				<input type="submit" value="{{pwic.emojis.plug}} Log in" />
 				<input type="button" value="{{pwic.emojis.alien}} Anonymous login" onclick="login_anonymous()" />
 				{% if pwic.env.oauth_provider %}
 					<input type="button" value="{{pwic.emojis.id}} Federated login" onclick="login_oauth()" />
+				{% endif %}
+				{% if pwic.env.registration_link %}
+					<input type="button" value="{{pwic.emojis.users}} Register" onclick="login_register()" />
 				{% endif %}
 			</p>
 		</form>

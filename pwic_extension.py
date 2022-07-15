@@ -294,8 +294,8 @@ class PwicExtension():
 
     @staticmethod
     def on_audit(sql: sqlite3.Cursor,                       # Cursor to query the database
+                 request: Optional[web.Request],            # HTTP request, None if called from the console
                  event: Dict[str, Any],                     # Details of the event
-                 online: bool,                              # Event coming from the Internet (True) or the console (False)
                  ) -> None:
         ''' Event after an auditable operation is just executed:
                 archive-audit   change-password  clear-cache      create-backup     create-document    create-project   create-revision
@@ -309,6 +309,16 @@ class PwicExtension():
             The database is not committed yet.
             You cannot raise any exception.
         '''
+
+    @staticmethod
+    def on_audit_skip(sql: sqlite3.Cursor,                  # Cursor to query the database
+                      request: Optional[web.Request],       # HTTP request, None if called from the console
+                      event: Dict[str, Any],                # Details of the event
+                      ) -> bool:
+        ''' Event to block some audit events. You have no possibility to recover the rejected events.
+            The result tells if the audit event is skipped.
+        '''
+        return False
 
     @staticmethod
     def on_cache(sql: sqlite3.Cursor,                       # Cursor to query the database

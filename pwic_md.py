@@ -5,7 +5,6 @@
 # - type hint
 # - mask of valid links
 # - removed command line
-# - bracketed links
 
 
 # Copyright (c) 2012 Trent Mick.
@@ -1488,10 +1487,9 @@ class Markdown(object):
 
             # Now determine what this is by the remainder.
             p += 1
-            # -- PWIC
 
             # Inline anchor or img?
-            if text[p:p + 1] == '(':  # attempt at perf improvement     # ~~ PWIC
+            if text[p:p + 1] == '(':  # attempt at perf improvement
                 url, title, url_end_idx = self._extract_url_and_title(text, p)
                 if url is not None:
                     # Handle an inline anchor or img.

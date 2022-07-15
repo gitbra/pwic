@@ -59,6 +59,13 @@
 	}
 {% endif %}
 
+{% if pwic.env.registration_link %}
+	function login_register() {
+		window.location = '{{pwic.env.registration_link.value|escape}}';
+		return true;
+	}
+{% endif %}
+
 	if (window.fetch)
 		$('#login_js').addClass('pwic_hidden');
 </script>

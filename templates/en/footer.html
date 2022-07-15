@@ -11,9 +11,9 @@
 		{% endif %}
 		&mdash;
 		{% if (pwic.user != '') and (pwic.user[:4] != 'pwic') %}
-			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<strong><a href="/special/logout" onclick="return confirm('Are you sure to disconnect from Pwic.wiki?')">Log out</a></strong>)
+			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="Your profile" rel="nofollow">{{pwic.user|escape}}</a> (<a class="pwic_bold" href="/special/logout" onclick="return confirm('Are you sure to disconnect from Pwic.wiki?')">Log out</a>)
 		{% else %}
-			 <a href="/special/login">Log in</a>
+			 <a class="pwic_bold" href="/special/login">Log in</a>
 		{% endif %}
 	</div>
 </footer>
