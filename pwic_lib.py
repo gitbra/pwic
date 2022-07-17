@@ -37,7 +37,7 @@ from string import ascii_lowercase, ascii_uppercase
 # ===================================================
 
 # Paths
-PWIC_VERSION = '1.0-rc8'
+PWIC_VERSION = '1.0'
 PWIC_DB = './db'
 PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'

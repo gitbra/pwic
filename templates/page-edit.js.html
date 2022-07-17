@@ -181,7 +181,7 @@
 						{
 							if (nlens.length <= j)
 								nlens.push(0);
-							nlens[j] = Math.max(nlens[j], cols[j].length);
+							nlens[j] = Math.max(nlens[j], cols[j].trim().length);
 						}
 					}
 					nice = (nlens.reduce((a, b) => a + b, 0) <= 128);		// To shorten large tables
@@ -194,7 +194,7 @@
 						cols = lines[i].split('\t');
 						for (j=0 ; j<ncols ; j++)
 						{
-							txt = (j < cols.length ? cols[j] : '');
+							txt = (j < cols.length ? cols[j] : '').trim();
 							buffer += '| ' + txt + ' '.repeat((nice ? nlens[j] - txt.length : 0) + 1);
 						}
 						buffer += '|';
