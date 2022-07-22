@@ -1,0 +1,928 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Generator: Poedit 3.1.1\n"
+"X-Poedit-Basepath: .\n"
+
+#: ../templates/html/block-support.html
+msgid "By email:"
+msgstr "Par courriel :"
+
+msgid "By phone:"
+msgstr "Par téléphone :"
+
+msgid "On a portal:"
+msgstr "Sur un portail :"
+
+#: ../templates/html/footer.html
+msgid "Top of the page"
+msgstr "Haut de page"
+
+msgid "Powered by"
+msgstr "Propulsé par"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Your profile"
+msgstr "Votre profil"
+
+msgid "'Are you sure to disconnect from Pwic.wiki?'"
+msgstr "'Êtes-vous sûr de vouloir vous déconnecter ?'"
+
+msgid "Log out"
+msgstr "Se déconnecter"
+
+msgid "Log in"
+msgstr "Se connecter"
+
+msgid "'The operation is a success.'"
+msgstr "'L\\'opération est un succès.'"
+
+msgid "'The operation failed.'"
+msgstr "'L\\'opération est un échec.'"
+
+#: ../templates/html/help.html
+msgid "Help for Pwic.wiki"
+msgstr "Aide de Pwic.wiki"
+
+msgid "Help for Pwic.wiki (in English only)"
+msgstr "Aide de Pwic.wiki (en anglais seulement)"
+
+#: ../templates/html/login.html
+msgid "Connect to Pwic.wiki"
+msgstr "Se connecter à Pwic.wiki"
+
+msgid "This instance is accessible anonymously."
+msgstr "Votre instance est accessible anonymement."
+
+msgid "Your browser is incompatible or enable JavaScript."
+msgstr "Votre navigateur est incompatible ou activez le JavaScript."
+
+msgid "User:"
+msgstr "Utilisateur :"
+
+msgid "Password:"
+msgstr "Mot de passe :"
+
+msgid "Language:"
+msgstr "Langue :"
+
+msgid "Anonymous login"
+msgstr "Connexion anonyme"
+
+msgid "Federated login"
+msgstr "Connexion fédérée"
+
+msgid "Register"
+msgstr "Enregistrement"
+
+#: ../templates/html/logout.html
+msgid "Disconnected from Pwic.wiki"
+msgstr "Se déconnecter de Pwic.wiki"
+
+msgid "You are disconnected."
+msgstr "Vous êtes déconnecté."
+
+msgid "You successfully logged out."
+msgstr "Vous êtes déconnecté avec succès."
+
+#: ../templates/html/main.html
+msgid "Search in"
+msgstr "Rechercher dans"
+
+msgid "Recent changes for"
+msgstr "Changements récents pour"
+
+msgid "Sort"
+msgstr "Trier"
+
+#: ../templates/html/page-404.html
+msgid "Page not found"
+msgstr "Page non trouvée"
+
+msgid "The page does not exist."
+msgstr "La page n'existe pas."
+
+msgid ""
+"Please verify your authorizations, the spelling of the link and the revision "
+"level of the page."
+msgstr ""
+"Veuillez vérifier vos autorisations, la syntaxe du lien et la révision de la "
+"page."
+
+msgid "You can go back to:"
+msgstr "Vous pouvez retourner en arrière vers:"
+
+msgid "your last browsed page"
+msgstr "votre dernière page visitée"
+
+msgid "the latest revision of the page"
+msgstr "la dernière révision de la page"
+
+msgid "the home page of the project"
+msgstr "la page d'accueil du projet"
+
+msgid "the creation of the missing page"
+msgstr "la création de la page manquante"
+
+msgid "the special page of the project"
+msgstr "la page spéciale du projet"
+
+msgid "the selection of a new project"
+msgstr "la sélection d'un nouveau projet"
+
+#: ../templates/html/page-audit.html
+msgid "Audit"
+msgstr "Audit"
+
+msgid "Audit of the activities"
+msgstr "Audit des activités"
+
+msgid "Settings"
+msgstr "Paramètres"
+
+msgid "Reference time"
+msgstr "Temps de référence"
+
+msgid "Environment variables"
+msgstr "Variables d'environnement"
+
+msgid "Key"
+msgstr "Clé"
+
+msgid "Scope"
+msgstr "Périmètre"
+
+msgid "Value"
+msgstr "Valeur"
+
+msgid "Global"
+msgstr "Global"
+
+msgid "Project-dependent"
+msgstr "Dépendant du projet"
+
+msgid "Audit of the last"
+msgstr "Audit des derniers"
+
+msgid "days"
+msgstr "jours"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Time"
+msgstr "Heure"
+
+msgid "Author"
+msgstr "Auteur"
+
+msgid "Event"
+msgstr "Événement"
+
+msgid "Project"
+msgstr "Projet"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "Reference"
+msgstr "Référence"
+
+msgid "String"
+msgstr "Chaîne"
+
+#: ../templates/html/page-create.html
+msgid "Create a page"
+msgstr "Créer une page"
+
+msgid "Create a new page"
+msgstr "Créer une nouvelle page"
+
+msgid ""
+"You have no authorization to create a new page. Please contact your manager."
+msgstr ""
+"Vous n'avez pas d'autorisation pour créer une nouvelle page. Veuillez "
+"contacter votre manager."
+
+msgid "New page"
+msgstr "Nouvelle page"
+
+msgid "Project:"
+msgstr "Projet :"
+
+msgid "Page identifier:"
+msgstr "Identifiant de la page :"
+
+msgid "Generate a knowledge base article"
+msgstr "Générer un article de base de connaissance"
+
+msgid "Tags:"
+msgstr "Étiquettes :"
+
+msgid "No hash and separated by a space"
+msgstr "Sans dièse et séparés par un espace"
+
+msgid "Milestone:"
+msgstr "Jalon :"
+
+msgid "Copy in reference to another page"
+msgstr "Copier en référence à une autre page"
+
+msgid "Copy and merge the tags"
+msgstr "Copier et fusionner les étiquettes"
+
+msgid "Create the page"
+msgstr "Créer la page"
+
+#: ../templates/html/page-edit.html
+msgid "Edit the page"
+msgstr "Éditer la page"
+
+msgid "You are not authorized to edit the page."
+msgstr "Vous n'êtes pas autorisé à éditer la page."
+
+msgid "Title:"
+msgstr "Titre :"
+
+msgid "Preview"
+msgstr "Aperçu"
+
+msgid "Bold"
+msgstr "Gras"
+
+msgid "Italic"
+msgstr "Italique"
+
+msgid "Underline"
+msgstr "Souligné"
+
+msgid "Strikethrough"
+msgstr "Barré"
+
+msgid "Superscript"
+msgstr "Exposant"
+
+msgid "Subscript"
+msgstr "Indice"
+
+msgid "Link"
+msgstr "Lien"
+
+msgid "No double spaces"
+msgstr "Pas de double espace"
+
+msgid "Shift to the right"
+msgstr "Décaler à droite"
+
+msgid "Shift to the left"
+msgstr "Décaler à gauche"
+
+msgid "No blank line"
+msgstr "Pas de ligne vide"
+
+msgid "As single line"
+msgstr "Sur une ligne unique"
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "Footnote"
+msgstr "Note de pied"
+
+msgid "Annotation"
+msgstr "Annotation"
+
+msgid "Table"
+msgstr "Table"
+
+msgid "AutoTable"
+msgstr "AutoTable"
+
+msgid "List"
+msgstr "Liste"
+
+msgid "Quote"
+msgstr "Citation"
+
+msgid "Spoiler"
+msgstr "Spoiler"
+
+msgid "Keyword"
+msgstr "Mot-clé"
+
+msgid "Monospace keyword"
+msgstr "Mot-clé à chasse fixe"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Emojis"
+msgstr "Emojis"
+
+msgid "Refresh"
+msgstr "Rafraîchir"
+
+msgid "Drop the files here"
+msgstr "Déposez les fichiers ici"
+
+msgid "max:"
+msgstr "max :"
+
+msgid "and save immediately"
+msgstr "et sauvegarder immédiatement"
+
+msgid "Edit"
+msgstr "Éditer"
+
+msgid "File name"
+msgstr "Nom de fichier"
+
+msgid "For the latest saved revision only"
+msgstr "Pour la dernière révision sauvegardée uniquement"
+
+msgid "Used"
+msgstr "Utilisé"
+
+msgid "Size"
+msgstr "Taille"
+
+msgid "Mime"
+msgstr "Mime"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Attributes"
+msgstr "Attributs"
+
+msgid "Reason for the modification:"
+msgstr "Motif de la modification :"
+
+msgid "Free text to report the expected readiness of the page"
+msgstr "Texte libre pour rapporter les échéances attendues de la page"
+
+msgid "Save as draft"
+msgstr "Sauvegarder comme brouillon"
+
+msgid "Final version"
+msgstr "Version finale"
+
+msgid "Header line *"
+msgstr "Ligne d'entête *"
+
+msgid "Protected page *"
+msgstr "Page protégée *"
+
+msgid "Save the modifications"
+msgstr "Sauvegarder les modifications"
+
+#: ../templates/html/page-env.html
+msgid "Project-dependent environment variables"
+msgstr "Variables d'environnement dépendantes du projet"
+
+msgid "Project-dependent settings"
+msgstr "Paramètres dépendants du projet"
+
+msgid ""
+"The following settings are changeable online and they are applicable to the "
+"current project only."
+msgstr ""
+"Les paramètres suivants sont modifiables en ligne et ne s'appliquent qu'au "
+"projet en cours."
+
+msgid "Variable"
+msgstr "Variable"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "'Are you sure to reset the current changes?'"
+msgstr "'Êtes-vous sûr de vouloir annuler les changements en cours ?'"
+
+msgid "Cancel the current modifications"
+msgstr "Annuler les modifications en cours"
+
+#: ../templates/html/page-graph.html
+msgid "Graph of the project"
+msgstr "Graphe du projet"
+
+msgid "Visual representation of the pages"
+msgstr "Représentation visuelle des pages"
+
+msgid "Download as a file"
+msgstr "Télécharger comme fichier"
+
+#: ../templates/html/page-history.html
+msgid "History of the modifications"
+msgstr "Historique des modifications"
+
+msgid "Compare"
+msgstr "Comparer"
+
+msgid "Rev<span class=\"pwic_desktop\">ision</span>"
+msgstr "Rév<span class=\"pwic_desktop\">ision</span>"
+
+msgid "Flags"
+msgstr "Attributs"
+
+msgid "Comment"
+msgstr "Commentaire"
+
+msgid "Milestone"
+msgstr "Jalon"
+
+msgid "Draft"
+msgstr "Brouillon"
+
+msgid "Marked as final"
+msgstr "Marqué comme final"
+
+#: ../templates/html/page-links.html
+msgid "Report of the links"
+msgstr "Rapport des liens"
+
+msgid "Verification of the links"
+msgstr "Vérification des liens"
+
+msgid "Orphaned pages"
+msgstr "Pages orphelines"
+
+msgid "You have no orphaned page."
+msgstr "Vous n'avez pas de page orpheline."
+
+msgid ""
+"These pages cannot be reached by simple clicks but are still referenced by "
+"the search engine."
+msgstr ""
+"Ces pages ne sont pas accessibles par de simples clics mais sont toujours "
+"référencées par le moteur de recherche."
+
+msgid "Broken links to a page"
+msgstr "Liens cassés vers une page"
+
+msgid "You have no broken link to a page."
+msgstr "Vous n'avez pas de lien cassé vers une page."
+
+msgid ""
+"A broken link displays the error 404 because the targeted page does not "
+"exist."
+msgstr ""
+"Un lien cassé affiche une erreur 404 parce que la page cible n'existe pas."
+
+msgid "Non-existent page"
+msgstr "Page inexistante"
+
+msgid "Note: the table does not check the links to the other projects."
+msgstr ""
+"Remarque : le tableau ne vérifie pas les liens vers les autres projets."
+
+msgid "Broken links to a document"
+msgstr "Liens cassés vers un document"
+
+msgid "You have no broken link to a document."
+msgstr "Vous n'avez pas de lien cassé vers un document."
+
+msgid ""
+"Managing the files without updating the pages may result in invalid links."
+msgstr ""
+"Gérer les fichiers sans mettre à jour les pages peut créer des liens "
+"invalides."
+
+msgid "Non-existent document"
+msgstr "Document inexistant"
+
+#: ../templates/html/page-move.html
+msgid "Move a page"
+msgstr "Déplacer une page"
+
+msgid "Move the page and its attachments"
+msgstr "Déplacer une page et ses pièces jointes"
+
+msgid "Target project:"
+msgstr "Projet cible :"
+
+msgid "Target page identifier:"
+msgstr "Identifiant de la page cible :"
+
+msgid "Move the page"
+msgstr "Déplacer la page"
+
+msgid ""
+"This form can be used to rename an existing page. No link will be updated in "
+"mass."
+msgstr ""
+"Ce formulaire peut être utilisé pour renommer une page existante. Aucun lien "
+"ne sera mis à jour en masse."
+
+#: ../templates/html/page-special.html
+msgid "New user"
+msgstr "Nouvel utilisateur"
+
+msgid "Roles"
+msgstr "Rôles"
+
+msgid "RSS"
+msgstr "RSS"
+
+msgid "Links"
+msgstr "Liens"
+
+msgid "Graph"
+msgstr "Graphe"
+
+msgid "Export"
+msgstr "Exporter"
+
+msgid "API"
+msgstr "API"
+
+msgid "Random page"
+msgstr "Page aléatoire"
+
+msgid "Internal support"
+msgstr "Support interne"
+
+msgid "Expand/Collapse"
+msgstr "Dérouler/Enrouler"
+
+msgid "Recent updates"
+msgstr "Mises à jour récentes"
+
+msgid "Team members"
+msgstr "Membres de l'équipe"
+
+msgid "Administrators:"
+msgstr "Administrateurs :"
+
+msgid "Managers:"
+msgstr "Managers :"
+
+msgid "Editors:"
+msgstr "Éditeurs :"
+
+msgid "Validators:"
+msgstr "Validateurs :"
+
+msgid "Readers:"
+msgstr "Lecteurs :"
+
+msgid "All the pages of the project"
+msgstr "Toutes les pages du projet"
+
+msgid "Revision"
+msgstr "Révision"
+
+msgid "Progress by tag"
+msgstr "Progression par étiquette"
+
+msgid "Tag"
+msgstr "Étiquette"
+
+msgid "Step"
+msgstr "Étape"
+
+msgid "Final"
+msgstr "Final"
+
+msgid "Validated"
+msgstr "Validé"
+
+msgid "All the documents of the project"
+msgstr "Tous les documents du projet"
+
+msgid "Disk space usage:"
+msgstr "Utilisation de l'espace disque :"
+
+msgid "Hash"
+msgstr "Hash"
+
+msgid "Download"
+msgstr "Télécharger"
+
+#: ../templates/html/page.html
+msgid "The page is protected"
+msgstr "La page est protégée"
+
+msgid "Special"
+msgstr "Spécial"
+
+msgid "History"
+msgstr "Historique"
+
+msgid "Move"
+msgstr "Déplacer"
+
+msgid "Email"
+msgstr "Courriel"
+
+msgid "Print"
+msgstr "Imprimer"
+
+msgid "Export to"
+msgstr "Exporter vers"
+
+msgid "'The validation cannot be undone.\\n\\nDo you want to continue?'"
+msgstr "'La validation ne peut pas être annulée.\\n\\nVoulez-vous continuer ?'"
+
+msgid "Validate"
+msgstr "Valider"
+
+msgid ""
+"'Warning: deleting the revision cannot be undone.\\n\\nDo you want to "
+"continue?'"
+msgstr ""
+"'Attention : supprimer une révision ne peut pas être annulé.\\n\\nVoulez-"
+"vous continuer ?'"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Show/Hide the map of the article"
+msgstr "Afficher/Cacher le plan de l'article"
+
+msgid "Attached documents"
+msgstr "Documents attachés"
+
+msgid "Related pages:"
+msgstr "Pages liées :"
+
+msgid "Search for related classified pages"
+msgstr "Rechercher des pages classifiées apparentées"
+
+msgid "Download all"
+msgstr "Tout télécharger"
+
+#: ../templates/html/project-access.html
+msgid "No access"
+msgstr "Pas d'accès"
+
+msgid "Access denied"
+msgstr "Accès refusé"
+
+msgid "You don't have the authorizations to access this project."
+msgstr "Vous n'avez pas d'autorisation pour accéder à ce projet."
+
+#: ../templates/html/project-select.html
+msgid "Select your project"
+msgstr "Sélectionnez votre projet"
+
+msgid "Unfortunately, you have access to no project at all."
+msgstr "Malheureusement, vous n'avez accès à aucun projet."
+
+msgid "Projects you joined already"
+msgstr "Projets déjà rejoints"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Last activity"
+msgstr "Dernière activité"
+
+msgid "Creation date"
+msgstr "Date de création"
+
+msgid "Available public projects"
+msgstr "Projets publics disponibles"
+
+#: ../templates/html/search.html
+msgid "Search"
+msgstr "Rechercher"
+
+msgid "results"
+msgstr "résultats"
+
+msgid "Search terms:"
+msgstr "Termes de la recherche :"
+
+msgid "Include the old revisions"
+msgstr "Inclure les anciennes révisions"
+
+msgid "Pages"
+msgstr "Pages"
+
+msgid "Score"
+msgstr "Score"
+
+msgid "Documents"
+msgstr "Documents"
+
+#: ../templates/html/user-create.html
+msgid "Create a user"
+msgstr "Créer un utilisateur"
+
+msgid "Assign"
+msgstr "Affecter"
+
+msgid "Create"
+msgstr "Créer"
+
+msgid "a new user"
+msgstr "un nouvel utilisateur"
+
+msgid ""
+"You have no authorization to create a new user. Please contact your "
+"administrator."
+msgstr ""
+"Vous n'avez pas d'autorisation pour créer un nouvel utilisateur. Veuillez "
+"contacter votre administrateur."
+
+msgid ""
+"Reminder: your password must be changed before you can add a new user to the "
+"selected project."
+msgstr ""
+"Rappel : votre mot de passe doit être changé avant de pouvoir ajouter un "
+"nouvel utilisateur au projet sélectionné."
+
+msgid "User name:"
+msgstr "Utilisateur :"
+
+msgid "Create the user"
+msgstr "Créer l'utilisateur"
+
+#: ../templates/html/user-roles.html
+msgid "Roles of the users"
+msgstr "Rôles des utilisateurs"
+
+msgid ""
+"Reminder: the password of a user must be changed before his roles can be "
+"changed."
+msgstr ""
+"Rappel : le mot de passe d'un utilisateur doit être changé avant que ses "
+"rôles puissent être modifiés."
+
+msgid "User"
+msgstr "Utilisateur"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Pwd"
+msgstr "Mdp"
+
+msgid "Activity"
+msgstr "Activité"
+
+msgid "A<span class=\"pwic_desktop\">dmin</span>"
+msgstr "A<span class=\"pwic_desktop\">dmin</span>"
+
+msgid "M<span class=\"pwic_desktop\">anager</span>"
+msgstr "M<span class=\"pwic_desktop\">anager</span>"
+
+msgid "E<span class=\"pwic_desktop\">ditor</span>"
+msgstr "É<span class=\"pwic_desktop\">diteur</span>"
+
+msgid "V<span class=\"pwic_desktop\">alidator</span>"
+msgstr "V<span class=\"pwic_desktop\">alideur</span>"
+
+msgid "R<span class=\"pwic_desktop\">eader</span>"
+msgstr "L<span class=\"pwic_desktop\">ecteur</span>"
+
+msgid "Dis<span class=\"pwic_desktop\">abled</span>"
+msgstr "Dés<span class=\"pwic_desktop\">activé</span>"
+
+msgid "Del<span class=\"pwic_desktop\">ete</span>"
+msgstr "Suppr<span class=\"pwic_desktop\">imer</span>"
+
+msgid "Special account"
+msgstr "Compte spécial"
+
+msgid "Federated authentication"
+msgstr "Authentification fédérée"
+
+msgid "The user must change his password"
+msgstr "L'utilisateur doit changer son mot de passe"
+
+#: ../templates/html/user.html
+msgid "User's profile"
+msgstr "Profil de l'utilisateur"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "Own password:"
+msgstr "Mot de passe personnalisé :"
+
+msgid "Federated identification only"
+msgstr "Authentification fédérée seulement"
+
+msgid "change it"
+msgstr "le changer"
+
+msgid "Projects:"
+msgstr "Projets :"
+
+msgid "Change your password"
+msgstr "Changer votre mot de passe"
+
+msgid ""
+"Warning: the site is not using a secure protocol. Please choose a dedicated "
+"password that you use nowhere else."
+msgstr ""
+"Attention : ce site n'utilise pas de protocole sécurisé. Veuillez choisir un "
+"mot de passe que vous n'utilisez nulle part ailleurs."
+
+msgid "Current password:"
+msgstr "Mot de passe actuel :"
+
+msgid "New password:"
+msgstr "Nouveau mot de passe :"
+
+msgid "Repeat password:"
+msgstr "Répétez le mot de passe :"
+
+msgid "Contributions in the last 90 days"
+msgstr "Contributions des 90 derniers jours"
+
+msgid "The user has no recent contribution."
+msgstr "L'utilisateur n'a pas de contribution récente."
+
+msgid "Uploaded documents"
+msgstr "Documents chargés"
+
+msgid "The user owns no document."
+msgstr "L'utilisateur n'a chargé aucun document."
+
+#: ../templates/js/page-create.js
+msgid "'The parameters are not acceptable.'"
+msgstr "'Les paramètres ne sont pas acceptables.'"
+
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr "'Collez le lien :'"
+
+msgid "'Number of columns:'"
+msgstr "'Nombre de colonnes :'"
+
+msgid "'Number of rows:'"
+msgstr "'Nombre de lignes :'"
+
+msgid "'You cannot use this feature.'"
+msgstr "'Vous ne pouvez pas utiliser cette fonctionnalité.'"
+
+msgid "'The file is uploaded and usable in the list below.'"
+msgstr "'Le fichier a été chargé et est disponible dans la liste ci-dessous.'"
+
+msgid "'Unsupported feature.'"
+msgstr "'Fonctionnalité non supportée.'"
+
+msgid "'Some fields are mandatory.'"
+msgstr "'Quelques champs sont obligatoires.'"
+
+msgid ""
+"'Your session is not valid anymore. Please reconnect from another tab and "
+"retry.'"
+msgstr ""
+"'Votre session n\\'est plus valide. Veuillez vous reconnecter depuis un "
+"nouvel onglet et réessayez.'"
+
+msgid ""
+"'Warning: the page has been modified in parallel of your current "
+"modifications.\\n\\nConsequently, your changes will be posted as a removable "
+"draft. You must merge the changes manually later.'"
+msgstr ""
+"'Attention : la page a été modifiée en parallèle de vos modifications en "
+"cours.\\n\\nPar conséquent, vos modifications seront publiées sous forme d"
+"\\'un brouillon révocable. Vous devrez fusionner les modifications "
+"manuellement plus tard.'"
+
+msgid "'The server or your Internet connection is down.'"
+msgstr "'Le serveur ou votre connexion Internet est interrompu.'"
+
+msgid "'Preview of the page'"
+msgstr "'Aperçu de la page'"
+
+msgid "Close the preview"
+msgstr "Fermer l\\'aperçu"
+
+#: ../templates/js/page.js
+msgid ""
+"'Warning: the current page is a draft, so its content may disappear in the "
+"future without notice.'"
+msgstr ""
+"'Attention : la page courante est un brouillon, donc son contenu pourra "
+"disparaître à tout moment sans prévenir.'"
+
+#: ../templates/js/user.js
+msgid "'The form is inconsistent.'"
+msgstr "'Le formulaire est inconsistant.'"
+
+msgid ""
+"'Failure to save your new password. Verify that it matches with the security "
+"rules.'"
+msgstr ""
+"'Échec à la sauvegarde de votre nouveau mot de passe. Vérifiez qu\\'il est "
+"conforme aux règles de sécurité.'"
+
+msgid "'Your password has been changed successfully.'"
+msgstr "'Votre mot de passe a été changé avec succès.'"

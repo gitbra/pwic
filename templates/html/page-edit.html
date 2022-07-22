@@ -1,0 +1,124 @@
+{% extends 'html/main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">{{pwic.emojis.finger_left}} {% trans %}Edit the page{% endtrans %}</a></div>
+	</header>
+
+	<article>
+		<h1>[{{pwic.page|escape}}] {{pwic.title|escape}}</h1>
+
+		{% if not pwic.manager and (pwic.protection or not pwic.editor) %}
+			<p class="pwic_error">{{pwic.emojis.padlock}} {% trans %}You are not authorized to edit the page.{% endtrans %}</p>
+		{% else %}
+			<form id="edit_form" action="/api/page/edit" method="post">
+				<p><strong><span class="pwic_red">*</span> {% trans %}Title:{% endtrans %}</strong> <input id="edit_title" class="pwic_fill" type="text" value="{{pwic.title|escape}}" /></p>
+
+				<p><strong>{% trans %}Tags:{% endtrans %}</strong> <input id="edit_tags" class="pwic_fill" type="text" value="{{pwic.tags|escape}}" title="{% trans %}No hash and separated by a space{% endtrans %}" spellcheck="false" /></p>
+
+				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
+					<div>
+						<input type="button" value="{{pwic.emojis.glasses}}" title="{% trans %}Preview{% endtrans %}" onclick="edit_preview_md('{{pwic.page|urlencode}}')" data-shortcut="Ctrl+P" />
+					</div>
+					<div>
+						<input type="button" value="B" title="** {% trans %}Bold{% endtrans %} **" style="font-weight: bold" onclick="edit_decorate('**', '**')" data-shortcut="Ctrl+B" />
+						<input type="button" value="I" title="* {% trans %}Italic{% endtrans %} *" style="font-style: italic" onclick="edit_decorate('*', '*')" data-shortcut="Ctrl+I" />
+						<input type="button" value="U" title="-- {% trans %}Underline{% endtrans %} --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" data-shortcut="Ctrl+U" />
+						<input type="button" value="S" title="~~ {% trans %}Strikethrough{% endtrans %} ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')" />
+						<input type="button" value="^2" title="<sup> {% trans %}Superscript{% endtrans %} </sup>" onclick="edit_decorate('<sup>', '</sup>')" />
+						<input type="button" value="_2" title="<sub> {% trans %}Subscript{% endtrans %} </sub>" onclick="edit_decorate('<sub>', '</sub>')" />
+						<input type="button" value="{{pwic.emojis.chains}}" title="[{% trans %}Link{% endtrans %}](url)" onclick="edit_link()" data-shortcut="Ctrl+K" />
+					</div>
+					<div>
+						<input type="button" value="{{pwic.emojis.double}}" title="{% trans %}No double spaces{% endtrans %}" onclick="edit_double_spaces()" />
+						<input type="button" value="{{pwic.emojis.right}}" title="{% trans %}Shift to the right{% endtrans %}" onclick="edit_prepend('    ')" />
+						<input type="button" value="{{pwic.emojis.left}}" title="{% trans %}Shift to the left{% endtrans %}" onclick="edit_left_line()" />
+						<input type="button" value="{{pwic.emojis.noblank}}" title="{% trans %}No blank line{% endtrans %}" onclick="edit_no_blank_line()" />
+						<input type="button" value="{{pwic.emojis.oneline}}" title="{% trans %}As single line{% endtrans %}" onclick="edit_single_line()" />
+					</div>
+					<div>
+						<input type="button" value="H1" title="# {% trans %}Title{% endtrans %} 1" onclick="edit_prepend('# ')" data-shortcut="Ctrl+Shift+F1" />
+						<input type="button" value="H2" title="## {% trans %}Title{% endtrans %} 2" onclick="edit_prepend('## ')" data-shortcut="Ctrl+Shift+F2" />
+						<input type="button" value="H3" title="### {% trans %}Title{% endtrans %} 3" onclick="edit_prepend('### ')" data-shortcut="Ctrl+Shift+F3" />
+						<input type="button" value="H4" title="#### {% trans %}Title{% endtrans %} 4" onclick="edit_prepend('#### ')" data-shortcut="Ctrl+Shift+F4" />
+						<input type="button" value="H5" title="##### {% trans %}Title{% endtrans %} 5" onclick="edit_prepend('##### ')" data-shortcut="Ctrl+Shift+F5" />
+						<input type="button" value="H6" title="###### {% trans %}Title{% endtrans %} 6" onclick="edit_prepend('###### ')" data-shortcut="Ctrl+Shift+F6" />
+						<input type="button" value="{% trans %}Footnote{% endtrans %}" title="[^1] {% trans %}Footnote{% endtrans %}" onclick="edit_footnote()" />
+						<input type="button" value="[{% trans %}Annotation{% endtrans %}]" title="&lt;!-- {% trans %}Annotation{% endtrans %} --&gt;" onclick="edit_decorate('&lt;!-- ', ' --&gt;')" />
+					</div>
+					<div>
+						<input id="edit_toolbar_table" type="button" value="Table" title="{% trans %}Table{% endtrans %} | {% trans %}Table{% endtrans %}" onclick="edit_table()" />
+						<input type="button" value="{% trans %}AutoTable{% endtrans %}" title="Paste as target table" onclick="edit_table_import()" />
+						<input type="button" value="- {% trans %}List{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L" />
+						<input type="button" value="> {% trans %}Quote{% endtrans %}" onclick="edit_prepend('> ')" />
+						<input type="button" value=">! {% trans %}Spoiler{% endtrans %}" onclick="edit_prepend('>! ')" />
+						<input type="button" value="`{% trans %}Keyword{% endtrans %}`" title="`{% trans %}Monospace keyword{% endtrans %}`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl+'" />
+						<input type="button" value="{% trans %}Code{% endtrans %}" title="```{% trans %}Code{% endtrans %}```" onclick="edit_decorate('```\n', '\n```')" />
+						{% if pwic.env.emojis %}
+							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />
+						{% endif %}
+					</div>
+				</div>
+
+				{% if pwic.env.emojis %}
+					<div id="edit_emojis" class="pwic_hidden">
+						{% set list = pwic.env.emojis.value.split(' ') %}
+						{% for e in list %}
+							{% if e|ishex %}
+								<span title="Insert" onclick="edit_decorate_end('&#x{{e|escape}};')">&#x{{e|escape}};</span>
+							{% endif %}
+						{% endfor %}
+					</div>
+				{% endif %}
+
+				<textarea id="edit_markdown">{{pwic.markdown|escape}}</textarea>
+
+				{% if pwic.env.mde %}
+					{% include 'js/page-edit-easymde.js' %}
+				{% endif %}
+
+				{% if (not pwic.env.document_size_max) or (pwic.env.document_size_max.value|int > 0) %}
+					<h2>Documents</h2>
+					<div id="edit_files_drop" ondrop="edit_drop(event)" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
+						<input type="button" value="{{pwic.emojis.refresh}}" title="{% trans %}Refresh{% endtrans %}" onclick="edit_refresh_documents()" style="margin-right: 15px" />
+						{% trans %}Drop the files here{% endtrans %}
+						{% if pwic.env.document_size_max_str %}
+							({% trans %}max:{% endtrans %} {{pwic.env.document_size_max_str.value}})
+						{% endif %}
+						{% trans %}and save immediately{% endtrans %}
+					</div>
+					<table id="edit_files_list" class="pwic_break">
+						<tr>
+							<th>{% trans %}Edit{% endtrans %}</th>
+							<th>{% trans %}File name{% endtrans %}</th>
+							<th class="pwic_desktop" title="{% trans %}For the latest saved revision only{% endtrans %}">{% trans %}Used{% endtrans %}</th>
+							<th>{% trans %}Size{% endtrans %}</th>
+							<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+							<th class="pwic_desktop">{% trans %}Author{% endtrans %}</th>
+							<th>{% trans %}Date{% endtrans %}</th>
+							<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
+							<th>{% trans %}File{% endtrans %}</th>
+						</tr>
+					</table>
+				{% endif %}
+
+				<h2>{% trans %}Attributes{% endtrans %}</h2>
+				<p><strong><span class="pwic_red">*</span> {% trans %}Reason for the modification:{% endtrans %}</strong> <input id="edit_comment" class="pwic_fill" type="text" placeholder="{{pwic.comment|escape}}" /></p>
+				<p><strong>{% trans %}Milestone:{% endtrans %}</strong> <input id="edit_milestone" class="pwic_fill" type="text" value="{{pwic.milestone|escape}}" title="{% trans %}Free text to report the expected readiness of the page{% endtrans %}" /></p>
+				<p>
+					<input id="edit_draft" type="checkbox" {% if pwic.draft %}checked="checked"{% endif %} onclick="$('#edit_final').prop('checked', false)" /> <label for="edit_draft">{% trans %}Save as draft{% endtrans %}</label>
+					<br/><input id="edit_final" type="checkbox" onclick="$('#edit_draft').prop('checked', false)" /> <label for="edit_final">{% trans %}Final version{% endtrans %}</label>
+					<br/><input id="edit_header" type="checkbox" {% if pwic.header %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_header">{% trans %}Header line *{% endtrans %}</label>
+					<br/><input id="edit_protection" type="checkbox" {% if pwic.protection %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_protection">{% trans %}Protected page *{% endtrans %}</label>
+				</p>
+				<p>
+					<input id="edit_submit" type="button" value="{{pwic.emojis.save}} {% trans %}Save the modifications{% endtrans %}" onclick="edit_submit_form()" />
+					<input id="edit_preview" type="button" value="{{pwic.emojis.glasses}} {% trans %}Preview{% endtrans %}" onclick="edit_preview_md('{{pwic.page|urlencode}}')" />
+				</p>
+			</form>
+
+			{% include 'js/page-edit.js' %}
+		{% endif %}
+	</article>
+{% endblock %}

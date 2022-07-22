@@ -1,0 +1,96 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Search{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.emojis.finger_left}} {{pwic.project_description|escape}}</a></div>
+	</header>
+
+	{% include 'js/search.js' %}
+
+	<article>
+		<h1>{{pwic.pages|count + pwic.documents|count}} {% trans %}results{% endtrans %}</h1>
+
+		<p>{% trans %}Search terms:{% endtrans %}
+			<input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" />
+			{% if not pwic.pure_reader or not pwic.env.no_history %}
+				<span style="pwic_nowrap pwic_js">
+					<input id="page_search_withrev" type="checkbox" {% if 'rev' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()" />
+					<label for="page_search_withrev">{% trans %}Include the old revisions{% endtrans %}</label>
+				</div>
+			{% endif %}
+		</p>
+
+		{% if pwic.pages|count > 0 %}
+			<h2>{% trans %}Pages{% endtrans %}</h2>
+			<table>
+				<tr>
+					<th>{% trans %}Page{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Revision{% endtrans %}</th>
+					<th>{% trans %}Title{% endtrans %}</th>
+					<th>{% trans %}Flags{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Author{% endtrans %}</th>
+					<th>{% trans %}Date{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Score{% endtrans %}</th>
+				</tr>
+
+				{% for page in pwic.pages %}
+					<tr>
+						<td>{{page.page|escape}}</td>
+						<td class="pwic_desktop">{{page.revision|escape}}</td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}/rev{{page.revision|urlencode}}">{{page.title|escape}}</a></td>
+						<td>
+							{% if pwic.with_rev and page.latest %}
+								<span title="Latest">{{pwic.emojis.watch}}</span>
+							{% endif %}
+							{% if page.draft %}
+								<span title="Draft">{{pwic.emojis.hourglass}}</span>
+							{% endif %}
+							{% if page.final %}
+								<span title="Marked as final">{{pwic.emojis.notes}}</span>
+							{% endif %}
+							{% if page.valuser != '' %}
+								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							{% endif %}
+						</td>
+						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
+						<td>{{page.date|escape}}</td>
+						<td class="pwic_desktop">{{page.time|escape}}</td>
+						<td class="pwic_desktop">{{page.score|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+		{% if pwic.documents|count > 0 %}
+			<h2>{% trans %}Documents{% endtrans %}</h2>
+			<table>
+				<tr>
+					<th>{% trans %}Page{% endtrans %}</th>
+					<th>{% trans %}File name{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+					<th>{% trans %}Size{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Author{% endtrans %}</th>
+					<th>{% trans %}Date{% endtrans %}</th>
+					<!-- <th class="pwic_desktop">{% trans %}Time{% endtrans %}</th> -->
+				</tr>
+
+				{% for doc in pwic.documents %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+						<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|escape}}">{{doc.filename|escape}}</a></td>
+						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td>{{doc.size|escape}}</td>
+						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
+						<td>{{doc.date|escape}}</td>
+						<!-- <td class="pwic_desktop">{{doc.time|escape}}</td> -->
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}

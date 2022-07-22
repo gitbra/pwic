@@ -43,6 +43,7 @@ PWIC_DB_SQLITE = PWIC_DB + '/pwic.sqlite'
 PWIC_DB_SQLITE_BACKUP = PWIC_DB + '/pwic_%s.sqlite'
 PWIC_DB_SQLITE_AUDIT = PWIC_DB + '/pwic_audit.sqlite'
 PWIC_DOCUMENTS_PATH = PWIC_DB + '/documents/%s/'
+PWIC_LOCALE_PATH = './locale/'
 PWIC_TEMPLATES_PATH = './templates/'
 
 # Security + HTTPS
@@ -176,7 +177,7 @@ class PwicError(Exception):
 
 
 # ===================================================
-#  MIMES
+#  Mimes
 #  https://www.iana.org/assignments/media-types/media-types.xhtml
 # ===================================================
 

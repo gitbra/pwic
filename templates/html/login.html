@@ -1,0 +1,52 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Connect to Pwic.wiki{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} {% trans %}Connect to Pwic.wiki{% endtrans %}</a></div>
+	</header>
+
+	<article>
+		{% if pwic.env.no_login %}
+			<p class="pwic_warning">{{pwic.emojis.pin}} {% trans %}This instance is accessible anonymously.{% endtrans %}</p>
+		{% endif %}
+		<p class="pwic_error" id="login_js">{{pwic.emojis.red_check}} {% trans %}Your browser is incompatible or enable JavaScript.{% endtrans %}</p>
+
+		<form id="login_form" action="/api/login?redirect" method="post">
+			<p><strong>{% trans %}User:{% endtrans %}</strong> <input class="pwic_fill" type="text" id="login_user" name="user" autofocus autocomplete="username" required="true" spellcheck="false" /></p>
+			<p><strong>{% trans %}Password:{% endtrans %}</strong> <input class="pwic_fill" type="password" id="login_password" name="password" autocomplete="current-password" /></p>
+			<p {% if pwic.constants.languages|count == 1 %} class="pwic_hidden" {% endif %}>
+				<strong>{% trans %}Language:{% endtrans %}</strong>
+				<br/><select id="login_language" name="language">
+						{% for lang in pwic.constants.languages %}
+							<option value="{{lang|escape}}"
+								{% if lang == pwic.constants.default_language %}
+									selected="selected"
+								{% endif %}
+							>{{lang|escape}}</option>
+						{% endfor %}
+					</select>
+			</p>
+			<p>
+				<input type="submit" value="{{pwic.emojis.plug}} {% trans %}Log in{% endtrans %}" />
+				<input type="button" value="{{pwic.emojis.alien}} {% trans %}Anonymous login{% endtrans %}" onclick="login_anonymous()" />
+				{% if pwic.env.oauth_provider %}
+					<input type="button" value="{{pwic.emojis.id}} {% trans %}Federated login{% endtrans %}" onclick="login_oauth()" />
+				{% endif %}
+				{% if pwic.env.registration_link %}
+					<input type="button" value="{{pwic.emojis.users}} {% trans %}Register{% endtrans %}" onclick="login_register()" />
+				{% endif %}
+			</p>
+		</form>
+	</article>
+
+	{% include 'js/login.js' %}
+	<script>
+		login_translate_langs({	'en': 'English',
+								'fr': 'Français'
+							});
+	</script>
+{% endblock %}

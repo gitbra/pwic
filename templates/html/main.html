@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.language|escape}}{% endif %}">
+<head>
+	<!-- General headers -->
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="generator" content="Pwic.wiki version {{pwic.constants.version|escape}}" />
+	{% if pwic.env.robots %}
+		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}" />
+	{% endif %}
+	<meta charset="utf-8" />
+	<title>{% block title %}{{pwic.title|escape}}{% endblock %}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
+	<link rel="icon" type="image/png" href="/static/favicon.png" />
+	{% if pwic.project and (pwic.project not in pwic.constants.not_project) %}
+		{% if not pwic.env.no_search %}
+			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{% trans %}Search in{% endtrans %} {{pwic.project|escape}}" />
+		{% endif  %}
+		{% if not pwic.env.no_rss %}
+			<link rel="alternate" type="application/rss+xml" href="/api/project/rss/get?project={{pwic.project|escape}}" title="{% trans %}Recent changes for{% endtrans %} {{pwic.project|escape}}" />
+		{% endif  %}
+	{% endif %}
+
+	<!-- Styles -->
+	<link rel="stylesheet" type="text/css" href="/static/styles.css" media="all" />
+	{% if pwic.env.css %}
+		{% set list = pwic.env.css.value.split(';') %}
+		{% for css in list %}
+			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="all" />
+		{% endfor %}
+	{% endif %}
+
+	{% if pwic.env.dark_theme %}
+		<link rel="stylesheet" type="text/css" href="/static/styles_dark.css" media="screen" />
+		{% if pwic.env.css_dark %}
+			{% set list = pwic.env.css_dark.value.split(';') %}
+			{% for css in list %}
+				<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="screen" />
+			{% endfor %}
+		{% endif %}
+	{% endif %}
+
+	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
+	{% if pwic.env.css_printing %}
+		{% set list = pwic.env.css_printing.value.split(';') %}
+		{% for css in list %}
+			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="print" />
+		{% endfor %}
+	{% endif %}
+
+	{% if pwic.env.no_printing %}
+		<style media="print">
+			BODY { display: none }
+		</style>
+	{% endif %}
+
+	<!-- Scripts -->
+	<script src="/static/cash.min.js"></script>
+
+	{% if (pwic.template == 'page-edit') and pwic.env.mde %}
+		<link rel="stylesheet" type="text/css" href="/static/easymde.min.css" />
+		<style>
+			/* Patch */
+			.CodeMirror { height: 75vh; }
+			{% if pwic.env.dark_theme %}
+				.CodeMirror { background-color: lightgray; }
+				.cm-url{ color: black !important; }
+				.editor-toolbar { background-color: gray; }
+			{% endif %}
+		</style>
+		<script src="/static/easymde.min.js"></script>
+	{% endif %}
+
+	{% if (pwic.template == 'page') and pwic.env.mathjax %}
+		<script>
+			window.MathJax = {
+				tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+				svg: { fontCache: 'global' }
+			};
+		</script>
+		<script src="/static/mathjax.min.js" async="true"></script>
+	{% endif %}
+
+	<script>
+		'use strict';
+
+		function pwic_entities(value) {
+			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quote');
+		}
+
+		function pwic_is_safe(name) {
+			var chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
+			for (var i=0 ; i<chars.length ; i++)
+				if (name.indexOf(chars[i]) !== -1)
+					return false;
+			return true;
+		}
+
+		function pwic_kick(value, chars) {
+			while (true)
+			{
+				var curlen = value.length;
+				for (var i=0 ; i<chars.length ; i++)
+					value = value.replace(chars[i], '');
+				if (value.length == curlen)
+					break;
+			}
+			return value;
+		}
+
+		function pwic_slash(value) {
+			{# stackoverflow.com/questions/18251399 #}
+			return value.split("'").join("\\'").split('"').join('\\"');
+		}
+
+		function pwic_url_status(success, failed) {
+			var url = window.location.toString();
+			if ((url.indexOf('?success') !== -1) || (url.indexOf('&success') !== -1))
+				alert(success);
+			else
+				if ((url.indexOf('?failed') !== -1) || (url.indexOf('&failed') !== -1))
+					alert(failed);
+		}
+	</script>
+</head>
+<body id="top">
+	{% block content %}{% endblock %}
+
+	{% include 'html/footer.html' %}
+
+	<script>
+		'use strict';
+
+		{% if not pwic.env.no_sort_table %}
+			function pwic_table_sort(that, column) {
+				function _sortkey(obj) {
+					var v, list = $(obj).find('INPUT[type=checkbox]');
+					if (list.length > 0)
+						return (!list.prop('checked')).toString();
+					else
+					{
+						v = obj.textContent;
+						if (v == '')
+							return '';
+						else
+							if (Number.isInteger(v))
+								return parseInt(v);
+							else
+								if (isNaN(v.replace(',', '.')))
+									return v.toLowerCase();
+								else
+									return parseFloat(v.replace(',', '.'));
+					}
+				}
+
+				var e = $(that),
+					table = e.parents('TABLE')[0],
+					i, finished, op, s1, s2;
+				op = parseInt(e.data('sort') || '0');
+				e.data('sort', 1 - op);
+				do {	
+					finished = true;
+					for (i=1 ; i<table.rows.length-1 ; i++)
+					{
+						s1 = _sortkey($(table.rows[i]).find('TD')[column]);
+						s2 = _sortkey($(table.rows[i+1]).find('TD')[column]);
+						if (((op == 0) && (s1 > s2)) || ((op == 1) && (s1 < s2)))
+						{
+							table.rows[i].parentNode.insertBefore(table.rows[i+1], table.rows[i]);
+							finished = false;
+							break;
+						}
+					}
+				} while (!finished);
+			}
+
+			$('TABLE').each(function(i, e) {
+				$(e).find('TR TH').each(function(i, e) {
+					e.innerHTML = '<span class="pwic_cursor" title="{% trans %}Sort{% endtrans %}" onclick="pwic_table_sort(this, '+i+')">' + (e.innerHTML||'...') + '<\/span>';
+				});
+			});
+		{% endif %}
+
+		{% if pwic.env.link_new_tab %}
+			$('a[href^="http"]').attr('target','_blank');
+		{% endif %}
+	</script>
+</body>
+</html>

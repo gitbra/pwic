@@ -1,0 +1,50 @@
+{% extends 'html/main.html' %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">{{pwic.emojis.finger_left}} {% trans %}History of the modifications{% endtrans %}</a></div>
+		<div class="pwic_ph2"><a href="/{{pwic.project|urlencode}}">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</a></div>
+	</header>
+
+	{% include 'js/page-history.js' %}
+
+	<article>
+		<h1>[{{pwic.page|escape}}] {{pwic.title|escape}}</h1>
+		<table>
+			<tr>
+				<th class="pwic_js"><span class="pwic_desktop">{% trans %}Compare{% endtrans %}</span></th>
+				<th>{% trans %}Rev<span class="pwic_desktop">ision</span>{% endtrans %}</th>
+				<th>{% trans %}Flags{% endtrans %}</th>
+				<th>{% trans %}Author{% endtrans %}</th>
+				<th>{% trans %}Date{% endtrans %}</th>
+				<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
+				<th>{% trans %}Comment{% endtrans %}</th>
+				<th class="pwic_desktop">{% trans %}Milestone{% endtrans %}</th>
+			</tr>
+
+			{% for rev in pwic.revisions %}
+				<tr>
+					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()" /></td>
+					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">{{rev.revision}}</a></td>
+					<td>
+						{% if rev.draft %}
+						<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
+						{% endif %}
+						{% if rev.final %}
+						<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
+						{% endif %}
+						{% if rev.valuser != '' %}
+						<span title="Validated by {{rev.valuser|escape}} on {{rev.valdate|escape}} at {{rev.valtime|escape}}">{{pwic.emojis.flag}}</span>
+						{% endif %}
+					</td>
+					<td><a class="pwic_break" href="/special/user/{{rev.author|urlencode}}" rel="nofollow">{{rev.author|escape}}</a></td>
+					<td>{{rev.date|escape}}</td>
+					<td class="pwic_desktop">{{rev.time|escape}}</td>
+					<td>{{rev.comment|escape}}</td>
+					<td class="pwic_desktop">{{rev.milestone|escape}}</td>
+				</tr>
+			{% endfor %}
+		</table>
+	</article>
+{% endblock %}

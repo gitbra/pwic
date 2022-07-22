@@ -1112,6 +1112,24 @@ paths:
           description: Forbidden operation
         503:
           description: Update temporarily unavailable
+  /api/user/language/set:
+    post:
+      summary: Change the language of the current session
+      tags:
+        - user
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - in: formData
+          name: language
+          type: string
+          description: Language ISO code on 2 characters
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
   /api/user/password/change:
     post:
       summary: Change the password of the logged user

@@ -1,0 +1,32 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Page not found{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}">{{pwic.project_description|escape}}</a></div>
+		{% if pwic.links|count > 0 %}
+			<div class="pwic_tagbox">
+				{% for link in pwic.links %}
+					<a href="/{{pwic.project|urlencode}}/{{link.page|urlencode}}">{{link.title|escape}}</a>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</header>
+
+	<article>
+		<p class="pwic_error">{{pwic.emojis.padlock}} {% trans %}The page does not exist.{% endtrans %}</p>
+		<p>{% trans %}Please verify your authorizations, the spelling of the link and the revision level of the page.{% endtrans %}</p>
+		<p>{% trans %}You can go back to:{% endtrans %}</p>
+			<ol>
+				<li class="pwic_js"><a href="#" onclick="history.back()">{% trans %}your last browsed page{% endtrans %}</a></li>
+				<li><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">{% trans %}the latest revision of the page{% endtrans %}</a></li>
+				<li><a href="/{{pwic.project|urlencode}}">{% trans %}the home page of the project{% endtrans %}</a></li>
+				<li class="pwic_js"><a href="/special/page/create?project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}">{% trans %}the creation of the missing page{% endtrans %}</a></li>
+				<li><a href="/{{pwic.project|urlencode}}/special">{% trans %}the special page of the project{% endtrans %}</a></li>
+				<li><a href="/">{% trans %}the selection of a new project{% endtrans %}</a></li>
+			</ol>
+	</article>
+{% endblock %}

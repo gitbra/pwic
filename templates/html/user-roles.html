@@ -1,0 +1,140 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Roles of the users{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} {% trans %}Roles of the users{% endtrans %}</a></div>
+		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
+	</header>
+
+	<article>
+		<div class="pwic_action_bar">
+			<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} {% trans %}Audit{% endtrans %}</a>
+			<a href="/special/user/create?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} {% trans %}Create a user{% endtrans %}</a>
+		</div>
+
+		<p class="pwic_italic">{% trans %}Reminder: the password of a user must be changed before his roles can be changed.{% endtrans %}</p>
+
+		<table id="roles_table" class="pwic_zebra">
+			<tr>
+				<th>{% trans %}User{% endtrans %}</th>
+				<th class="pwic_desktop" title="{% trans %}Password{% endtrans %}">{% trans %}Pwd{% endtrans %}</th>
+				<th class="pwic_desktop">{% trans %}Activity{% endtrans %}</th>
+				<th>{% trans %}A<span class="pwic_desktop">dmin</span>{% endtrans %}</th>
+				<th>{% trans %}M<span class="pwic_desktop">anager</span>{% endtrans %}</th>
+				<th>{% trans %}E<span class="pwic_desktop">ditor</span>{% endtrans %}</th>
+				<th>{% trans %}V<span class="pwic_desktop">alidator</span>{% endtrans %}</th>
+				<th>{% trans %}R<span class="pwic_desktop">eader</span>{% endtrans %}</th>
+				<th>{% trans %}Dis<span class="pwic_desktop">abled</span>{% endtrans %}</th>
+				<th>{% trans %}Del<span class="pwic_desktop">ete</span>{% endtrans %}</th>
+			</tr>
+
+			{% set u = namespace(value=0) %}
+			{% for role in pwic.roles %}
+				<tr id="roles_tag_{{u.value+7}}">
+					<td><a class="pwic_break" href="/special/user/{{role.user|urlencode}}" rel="nofollow">{{role.user|escape}}</a></td>
+					<td class="pwic_desktop">
+						{% if role.user[:4] == 'pwic' %}
+							<span title="{% trans %}Special account{% endtrans %}">{{pwic.emojis.star}}</span>
+						{% elif role.oauth %}
+							<span title="{% trans %}Federated authentication{% endtrans %}">{{pwic.emojis.id}}</span>
+						{% elif role.initial %}
+							<span title="{% trans %}The user must change his password{% endtrans %}">{{pwic.emojis.unlocked}}</span>
+						{% else %}
+							{{pwic.emojis.green_check}}
+						{% endif %}
+					</td>
+					<td class="pwic_desktop">{{role.activity|escape}}</td>
+					<td>
+						<input	id="roles_tag_{{u.value+1}}"
+								type="checkbox"
+							{% if (role.user == pwic.user) or (role.user[:4] == 'pwic') or role.initial %}
+								disabled="disabled"
+							{% else %}
+								onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')"
+							{% endif %}
+							{% if role.admin %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+2}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+2}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'manager')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.manager %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+3}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+3}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'editor')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.editor %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+4}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+4}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'validator')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.validator %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+5}}"
+								type="checkbox"
+								onclick="return roles_toggle({{u.value+5}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'reader')"
+							{% if role.initial %}
+								disabled="disabled"
+							{% endif %}
+							{% if role.reader %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						<input	id="roles_tag_{{u.value+6}}" type="checkbox"
+							{% if (role.user == pwic.user) or role.initial %}
+								disabled="disabled"
+							{% else %}
+								onclick="return roles_toggle({{u.value+6}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'disabled')"
+							{% endif %}
+							{% if role.disabled %}
+								checked="checked"
+							{% endif %}
+						/>
+					</td>
+					<td>
+						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
+							<input	type="button"
+									onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')"
+									value="{{pwic.emojis.red_check}}"
+									title="{% trans %}Delete{% endtrans %} {{role.user|escape}}"
+							/>
+						{% endif %}
+					</td>
+				</tr>
+				{% set u.value = u.value + 7 %}
+			{% endfor %}
+		</table>
+	</article>
+
+	{% include 'js/user-roles.js' %}
+{% endblock %}

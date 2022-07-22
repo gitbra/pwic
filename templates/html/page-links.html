@@ -1,0 +1,68 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Report of the links{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} {% trans %}Verification of the links{% endtrans %}</a></div>
+		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
+	</header>
+
+	<article>
+		<h1>{% trans %}Orphaned pages{% endtrans %}</h1>
+		{% if pwic.orphans|count == 0 %}
+			<p>{% trans %}You have no orphaned page.{% endtrans %}</p>
+		{% else %}
+			<p>{% trans %}These pages cannot be reached by simple clicks but are still referenced by the search engine.{% endtrans %}</p>
+			<ul>
+				{% for page in pwic.orphans %}
+				<li><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+
+
+		<h1>{% trans %}Broken links to a page{% endtrans %}</h1>
+		{% if pwic.broken|count == 0 %}
+			<p>{% trans %}You have no broken link to a page.{% endtrans %}</p>
+		{% else %}
+			<p>{% trans %}A broken link displays the error 404 because the targeted page does not exist.{% endtrans %}</p>
+			<table class="pwic_fit">
+				<tr>
+					<th>{% trans %}Page{% endtrans %}</th>
+					<th>{% trans %}Non-existent page{% endtrans %}</th>
+				</tr>
+				{% for page in pwic.broken %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{page[0]|urlencode}}">{{page[0]|escape}}</a></td>
+						<td>{{pwic.emojis.sheet}} <a href="/special/page/create?project={{pwic.project|urlencode}}&amp;page={{page[1]|urlencode}}" title="{% trans %}Create the page{% endtrans %}">{{page[1]|escape}}</a></td>
+					</tr>
+				{% endfor %}
+			</table>
+			<p class="pwic_italic">{% trans %}Note: the table does not check the links to the other projects.{% endtrans %}</p>
+		{% endif %}
+
+
+		<h1>{% trans %}Broken links to a document{% endtrans %}</h1>
+		{% if pwic.broken_docs|count == 0 %}
+			<p>{% trans %}You have no broken link to a document.{% endtrans %}</p>
+		{% else %}
+			<p>{% trans %}Managing the files without updating the pages may result in invalid links.{% endtrans %}</p>
+			<table class="pwic_fit">
+				<tr>
+					<th>{% trans %}Page{% endtrans %}</th>
+					<th>{% trans %}Non-existent document{% endtrans %}</th>
+				</tr>
+				{% for page in pwic.broken_docs %}
+					<tr>
+						<td><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}/edit">{{page|escape}}</a></td>
+						<td>{{pwic.broken_docs[page]|sort|join(', ')|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+	</article>
+{% endblock %}

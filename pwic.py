@@ -32,6 +32,7 @@ from io import BytesIO
 import os
 from os import listdir, urandom
 from os.path import getsize, isdir, isfile, join
+from gettext import translation
 import json
 import re
 import imagesize
@@ -44,9 +45,9 @@ from datetime import datetime
 
 from pwic_md import Markdown
 from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_EMOJIS,
-                      PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_MAGIC_OAUTH,
-                      PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_TEMPLATES_PATH, PWIC_USERS,
-                      PWIC_VERSION,
+                      PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_LOCALE_PATH,
+                      PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES,
+                      PWIC_TEMPLATES_PATH, PWIC_USERS, PWIC_VERSION,
                       pwic_attachment_name, pwic_audit, pwic_connect, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext,
                       pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime2icon,
                       pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name, pwic_safe_user_name,
@@ -315,11 +316,10 @@ class PwicServer():
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
         pwic['language'] = session.get('language', PWIC_DEFAULTS['language'])
+        if pwic['language'] not in app['langs']:
+            raise web.HTTPInternalServerError()
         PwicExtension.on_render_pre(app, sql, request, pwic)
-        template_name = '%s/%s.html' % (pwic['language'], name)
-        if (pwic['language'] != PWIC_DEFAULTS['language']) and not isfile(PWIC_TEMPLATES_PATH + template_name):
-            template_name = '%s/%s.html' % (PWIC_DEFAULTS['language'], name)
-        output = app['jinja'].get_template(template_name).render(pwic=pwic)
+        output = app['jinja'][pwic['language']].get_template('html/%s.html' % name).render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, request, pwic, output)
         headers: MultiDict = MultiDict({})
         PwicExtension.on_html_headers(sql, request, headers, project, name)
@@ -905,6 +905,7 @@ class PwicServer():
         user = await self._suser(request)
         if user == '':
             return await self._handle_login(request)
+        session = await get_session(request)
 
         # Fetch the information of the user
         sql = self.dbconn.cursor()
@@ -915,7 +916,8 @@ class PwicServer():
         pwic = {'user': user,
                 'userpage': userpage,
                 'password_oauth': row['password'] == PWIC_MAGIC_OAUTH,
-                'password_initial': pwic_xb(row['initial'])}
+                'password_initial': pwic_xb(row['initial']),
+                'language': session.get('language')}
 
         # Fetch the commonly-accessible projects assigned to the user
         sql.execute(''' SELECT a.project, c.description
@@ -3362,7 +3364,7 @@ class PwicServer():
         html = converter.md2corehtml(sql, row, export_odt=False)
         return web.Response(text=html, content_type=pwic_mime('txt'))
 
-    async def api_user_create(self, request: web.Request) -> Optional[web.Response]:
+    async def api_user_create(self, request: web.Request) -> None:
         ''' API to create a new user '''
         # Verify that the user is connected
         user = await self._suser(request)
@@ -3428,6 +3430,19 @@ class PwicServer():
                        request)
         self.dbconn.commit()
         raise web.HTTPOk()
+
+    async def api_user_language_set(self, request: web.Request) -> web.Response:
+        ''' API to change the language of the user interface '''
+        # Fetch the submitted data
+        post = await self._handle_post(request)
+        language = post.get('language', PWIC_DEFAULTS['language'])
+        if language not in app['langs']:
+            raise web.HTTPBadRequest()
+
+        # Change the language
+        session = await get_session(request)
+        session['language'] = language
+        return web.HTTPOk()
 
     async def api_user_password_change(self, request: web.Request) -> None:
         ''' Change the password of the current user '''
@@ -4094,17 +4109,22 @@ def main() -> bool:
     # ... SQLite
     app['sql'], sql = pwic_connect(trace=args.sql_trace, vacuum=True)
     # ... languages
-    app['langs'] = sorted([f for f in listdir(PWIC_TEMPLATES_PATH) if (len(f) == 2) and isdir(join(PWIC_TEMPLATES_PATH, f))])
-    if PWIC_DEFAULTS['language'] not in app['langs']:
-        print('Error: English template is missing')
-        return False
-    # ... templates
-    app['jinja'] = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH),
-                               autoescape=False,
-                               auto_reload=pwic_option(sql, '', 'fixed_templates') is None,
-                               lstrip_blocks=True,
-                               trim_blocks=True)
-    app['jinja'].filters['ishex'] = pwic_ishex
+    app['langs'] = sorted(['en'] + [f for f in listdir(PWIC_LOCALE_PATH) if (len(f) == 2) and isdir(join(PWIC_LOCALE_PATH, f))])
+    # ... i18n templates
+    app['jinja'] = {}
+    for lang in app['langs']:
+        entry = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH),
+                            autoescape=False,
+                            auto_reload=pwic_option(sql, '', 'fixed_templates') is None,
+                            lstrip_blocks=True,
+                            trim_blocks=True,
+                            extensions=['jinja2.ext.i18n'])
+        if lang == 'en':
+            entry.install_null_translations()
+        else:
+            entry.install_gettext_translations(translation('pwic', localedir='locale', languages=[lang]))
+        entry.filters['ishex'] = pwic_ishex
+        app['jinja'][lang] = entry
     # ... client size
     app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_size_max')))
     # ... PWIC
@@ -4161,6 +4181,7 @@ def main() -> bool:
                     web.post('/api/page/export', app['pwic'].api_page_export),
                     web.post('/api/markdown/convert', app['pwic'].api_markdown),
                     web.post('/api/user/create', app['pwic'].api_user_create),
+                    web.post('/api/user/language/set', app['pwic'].api_user_language_set),
                     web.post('/api/user/password/change', app['pwic'].api_user_password_change),
                     web.post('/api/user/roles/set', app['pwic'].api_user_roles_set),
                     web.post('/api/document/create', app['pwic'].api_document_create),

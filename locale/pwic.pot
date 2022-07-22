@@ -1,0 +1,849 @@
+#: ../templates/html/block-support.html
+msgid "By email:"
+msgstr ""
+
+msgid "By phone:"
+msgstr ""
+
+msgid "On a portal:"
+msgstr ""
+
+#: ../templates/html/footer.html
+msgid "Top of the page"
+msgstr ""
+
+msgid "Powered by"
+msgstr ""
+
+msgid "Help"
+msgstr ""
+
+msgid "Your profile"
+msgstr ""
+
+msgid "'Are you sure to disconnect from Pwic.wiki?'"
+msgstr ""
+
+msgid "Log out"
+msgstr ""
+
+msgid "Log in"
+msgstr ""
+
+msgid "'The operation is a success.'"
+msgstr ""
+
+msgid "'The operation failed.'"
+msgstr ""
+
+#: ../templates/html/help.html
+msgid "Help for Pwic.wiki"
+msgstr ""
+
+msgid "Help for Pwic.wiki (in English only)"
+msgstr ""
+
+#: ../templates/html/login.html
+msgid "Connect to Pwic.wiki"
+msgstr ""
+
+msgid "This instance is accessible anonymously."
+msgstr ""
+
+msgid "Your browser is incompatible or enable JavaScript."
+msgstr ""
+
+msgid "User:"
+msgstr ""
+
+msgid "Password:"
+msgstr ""
+
+msgid "Language:"
+msgstr ""
+
+msgid "Anonymous login"
+msgstr ""
+
+msgid "Federated login"
+msgstr ""
+
+msgid "Register"
+msgstr ""
+
+#: ../templates/html/logout.html
+msgid "Disconnected from Pwic.wiki"
+msgstr ""
+
+msgid "You are disconnected."
+msgstr ""
+
+msgid "You successfully logged out."
+msgstr ""
+
+#: ../templates/html/main.html
+msgid "Search in"
+msgstr ""
+
+msgid "Recent changes for"
+msgstr ""
+
+msgid "Sort"
+msgstr ""
+
+#: ../templates/html/page-404.html
+msgid "Page not found"
+msgstr ""
+
+msgid "The page does not exist."
+msgstr ""
+
+msgid "Please verify your authorizations, the spelling of the link and the revision level of the page."
+msgstr ""
+
+msgid "You can go back to:"
+msgstr ""
+
+msgid "your last browsed page"
+msgstr ""
+
+msgid "the latest revision of the page"
+msgstr ""
+
+msgid "the home page of the project"
+msgstr ""
+
+msgid "the creation of the missing page"
+msgstr ""
+
+msgid "the special page of the project"
+msgstr ""
+
+msgid "the selection of a new project"
+msgstr ""
+
+#: ../templates/html/page-audit.html
+msgid "Audit"
+msgstr ""
+
+msgid "Audit of the activities"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Reference time"
+msgstr ""
+
+msgid "Environment variables"
+msgstr ""
+
+msgid "Key"
+msgstr ""
+
+msgid "Scope"
+msgstr ""
+
+msgid "Value"
+msgstr ""
+
+msgid "Global"
+msgstr ""
+
+msgid "Project-dependent"
+msgstr ""
+
+msgid "Audit of the last"
+msgstr ""
+
+msgid "days"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "Time"
+msgstr ""
+
+msgid "Author"
+msgstr ""
+
+msgid "Event"
+msgstr ""
+
+msgid "Project"
+msgstr ""
+
+msgid "Page"
+msgstr ""
+
+msgid "Reference"
+msgstr ""
+
+msgid "String"
+msgstr ""
+
+#: ../templates/html/page-create.html
+msgid "Create a page"
+msgstr ""
+
+msgid "Create a new page"
+msgstr ""
+
+msgid "You have no authorization to create a new page. Please contact your manager."
+msgstr ""
+
+msgid "New page"
+msgstr ""
+
+msgid "Project:"
+msgstr ""
+
+msgid "Page identifier:"
+msgstr ""
+
+msgid "Generate a knowledge base article"
+msgstr ""
+
+msgid "Tags:"
+msgstr ""
+
+msgid "No hash and separated by a space"
+msgstr ""
+
+msgid "Milestone:"
+msgstr ""
+
+msgid "Copy in reference to another page"
+msgstr ""
+
+msgid "Copy and merge the tags"
+msgstr ""
+
+msgid "Create the page"
+msgstr ""
+
+#: ../templates/html/page-edit.html
+msgid "Edit the page"
+msgstr ""
+
+msgid "You are not authorized to edit the page."
+msgstr ""
+
+msgid "Title:"
+msgstr ""
+
+msgid "Preview"
+msgstr ""
+
+msgid "Bold"
+msgstr ""
+
+msgid "Italic"
+msgstr ""
+
+msgid "Underline"
+msgstr ""
+
+msgid "Strikethrough"
+msgstr ""
+
+msgid "Superscript"
+msgstr ""
+
+msgid "Subscript"
+msgstr ""
+
+msgid "Link"
+msgstr ""
+
+msgid "No double spaces"
+msgstr ""
+
+msgid "Shift to the right"
+msgstr ""
+
+msgid "Shift to the left"
+msgstr ""
+
+msgid "No blank line"
+msgstr ""
+
+msgid "As single line"
+msgstr ""
+
+msgid "Title"
+msgstr ""
+
+msgid "Footnote"
+msgstr ""
+
+msgid "Annotation"
+msgstr ""
+
+msgid "Table"
+msgstr ""
+
+msgid "AutoTable"
+msgstr ""
+
+msgid "List"
+msgstr ""
+
+msgid "Quote"
+msgstr ""
+
+msgid "Spoiler"
+msgstr ""
+
+msgid "Keyword"
+msgstr ""
+
+msgid "Monospace keyword"
+msgstr ""
+
+msgid "Code"
+msgstr ""
+
+msgid "Emojis"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Drop the files here"
+msgstr ""
+
+msgid "max:"
+msgstr ""
+
+msgid "and save immediately"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "File name"
+msgstr ""
+
+msgid "For the latest saved revision only"
+msgstr ""
+
+msgid "Used"
+msgstr ""
+
+msgid "Size"
+msgstr ""
+
+msgid "Mime"
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+msgid "Attributes"
+msgstr ""
+
+msgid "Reason for the modification:"
+msgstr ""
+
+msgid "Free text to report the expected readiness of the page"
+msgstr ""
+
+msgid "Save as draft"
+msgstr ""
+
+msgid "Final version"
+msgstr ""
+
+msgid "Header line *"
+msgstr ""
+
+msgid "Protected page *"
+msgstr ""
+
+msgid "Save the modifications"
+msgstr ""
+
+#: ../templates/html/page-env.html
+msgid "Project-dependent environment variables"
+msgstr ""
+
+msgid "Project-dependent settings"
+msgstr ""
+
+msgid "The following settings are changeable online and they are applicable to the current project only."
+msgstr ""
+
+msgid "Variable"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "'Are you sure to reset the current changes?'"
+msgstr ""
+
+msgid "Cancel the current modifications"
+msgstr ""
+
+#: ../templates/html/page-graph.html
+msgid "Graph of the project"
+msgstr ""
+
+msgid "Visual representation of the pages"
+msgstr ""
+
+msgid "Download as a file"
+msgstr ""
+
+#: ../templates/html/page-history.html
+msgid "History of the modifications"
+msgstr ""
+
+msgid "Compare"
+msgstr ""
+
+msgid "Rev<span class="pwic_desktop">ision</span>"
+msgstr ""
+
+msgid "Flags"
+msgstr ""
+
+msgid "Comment"
+msgstr ""
+
+msgid "Milestone"
+msgstr ""
+
+msgid "Draft"
+msgstr ""
+
+msgid "Marked as final"
+msgstr ""
+
+#: ../templates/html/page-links.html
+msgid "Report of the links"
+msgstr ""
+
+msgid "Verification of the links"
+msgstr ""
+
+msgid "Orphaned pages"
+msgstr ""
+
+msgid "You have no orphaned page."
+msgstr ""
+
+msgid "These pages cannot be reached by simple clicks but are still referenced by the search engine."
+msgstr ""
+
+msgid "Broken links to a page"
+msgstr ""
+
+msgid "You have no broken link to a page."
+msgstr ""
+
+msgid "A broken link displays the error 404 because the targeted page does not exist."
+msgstr ""
+
+msgid "Non-existent page"
+msgstr ""
+
+msgid "Note: the table does not check the links to the other projects."
+msgstr ""
+
+msgid "Broken links to a document"
+msgstr ""
+
+msgid "You have no broken link to a document."
+msgstr ""
+
+msgid "Managing the files without updating the pages may result in invalid links."
+msgstr ""
+
+msgid "Non-existent document"
+msgstr ""
+
+#: ../templates/html/page-move.html
+msgid "Move a page"
+msgstr ""
+
+msgid "Move the page and its attachments"
+msgstr ""
+
+msgid "Target project:"
+msgstr ""
+
+msgid "Target page identifier:"
+msgstr ""
+
+msgid "Move the page"
+msgstr ""
+
+msgid "This form can be used to rename an existing page. No link will be updated in mass."
+msgstr ""
+
+#: ../templates/html/page-special.html
+msgid "New user"
+msgstr ""
+
+msgid "Roles"
+msgstr ""
+
+msgid "RSS"
+msgstr ""
+
+msgid "Links"
+msgstr ""
+
+msgid "Graph"
+msgstr ""
+
+msgid "Export"
+msgstr ""
+
+msgid "API"
+msgstr ""
+
+msgid "Random page"
+msgstr ""
+
+msgid "Internal support"
+msgstr ""
+
+msgid "Expand/Collapse"
+msgstr ""
+
+msgid "Recent updates"
+msgstr ""
+
+msgid "Team members"
+msgstr ""
+
+msgid "Administrators:"
+msgstr ""
+
+msgid "Managers:"
+msgstr ""
+
+msgid "Editors:"
+msgstr ""
+
+msgid "Validators:"
+msgstr ""
+
+msgid "Readers:"
+msgstr ""
+
+msgid "All the pages of the project"
+msgstr ""
+
+msgid "Revision"
+msgstr ""
+
+msgid "Progress by tag"
+msgstr ""
+
+msgid "Tag"
+msgstr ""
+
+msgid "Step"
+msgstr ""
+
+msgid "Final"
+msgstr ""
+
+msgid "Validated"
+msgstr ""
+
+msgid "All the documents of the project"
+msgstr ""
+
+msgid "Disk space usage:"
+msgstr ""
+
+msgid "Hash"
+msgstr ""
+
+msgid "Download"
+msgstr ""
+
+#: ../templates/html/page.html
+msgid "The page is protected"
+msgstr ""
+
+msgid "Special"
+msgstr ""
+
+msgid "History"
+msgstr ""
+
+msgid "Move"
+msgstr ""
+
+msgid "Email"
+msgstr ""
+
+msgid "Print"
+msgstr ""
+
+msgid "Export to"
+msgstr ""
+
+msgid "'The validation cannot be undone.\\n\\nDo you want to continue?'"
+msgstr ""
+
+msgid "Validate"
+msgstr ""
+
+msgid "'Warning: deleting the revision cannot be undone.\\n\\nDo you want to continue?'"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Show/Hide the map of the article"
+msgstr ""
+
+msgid "Attached documents"
+msgstr ""
+
+msgid "Related pages:"
+msgstr ""
+
+msgid "Search for related classified pages"
+msgstr ""
+
+msgid "Download all"
+msgstr ""
+
+#: ../templates/html/project-access.html
+msgid "No access"
+msgstr ""
+
+msgid "Access denied"
+msgstr ""
+
+msgid "You don't have the authorizations to access this project."
+msgstr ""
+
+#: ../templates/html/project-select.html
+msgid "Select your project"
+msgstr ""
+
+msgid "Unfortunately, you have access to no project at all."
+msgstr ""
+
+msgid "Projects you joined already"
+msgstr ""
+
+msgid "Description"
+msgstr ""
+
+msgid "Last activity"
+msgstr ""
+
+msgid "Creation date"
+msgstr ""
+
+msgid "Available public projects"
+msgstr ""
+
+#: ../templates/html/search.html
+msgid "Search"
+msgstr ""
+
+msgid "results"
+msgstr ""
+
+msgid "Search terms:"
+msgstr ""
+
+msgid "Include the old revisions"
+msgstr ""
+
+msgid "Pages"
+msgstr ""
+
+msgid "Score"
+msgstr ""
+
+msgid "Documents"
+msgstr ""
+
+#: ../templates/html/user-create.html
+msgid "Create a user"
+msgstr ""
+
+msgid "Assign"
+msgstr ""
+
+msgid "Create"
+msgstr ""
+
+msgid "a new user"
+msgstr ""
+
+msgid "You have no authorization to create a new user. Please contact your administrator."
+msgstr ""
+
+msgid "Reminder: your password must be changed before you can add a new user to the selected project."
+msgstr ""
+
+msgid "User name:"
+msgstr ""
+
+msgid "Create the user"
+msgstr ""
+
+#: ../templates/html/user-roles.html
+msgid "Roles of the users"
+msgstr ""
+
+msgid "Reminder: the password of a user must be changed before his roles can be changed."
+msgstr ""
+
+msgid "User"
+msgstr ""
+
+msgid "Password"
+msgstr ""
+
+msgid "Pwd"
+msgstr ""
+
+msgid "Activity"
+msgstr ""
+
+msgid "A<span class="pwic_desktop">dmin</span>"
+msgstr ""
+
+msgid "M<span class="pwic_desktop">anager</span>"
+msgstr ""
+
+msgid "E<span class="pwic_desktop">ditor</span>"
+msgstr ""
+
+msgid "V<span class="pwic_desktop">alidator</span>"
+msgstr ""
+
+msgid "R<span class="pwic_desktop">eader</span>"
+msgstr ""
+
+msgid "Dis<span class="pwic_desktop">abled</span>"
+msgstr ""
+
+msgid "Del<span class="pwic_desktop">ete</span>"
+msgstr ""
+
+msgid "Special account"
+msgstr ""
+
+msgid "Federated authentication"
+msgstr ""
+
+msgid "The user must change his password"
+msgstr ""
+
+#: ../templates/html/user.html
+msgid "User's profile"
+msgstr ""
+
+msgid "Profile"
+msgstr ""
+
+msgid "Own password:"
+msgstr ""
+
+msgid "Federated identification only"
+msgstr ""
+
+msgid "change it"
+msgstr ""
+
+msgid "Projects:"
+msgstr ""
+
+msgid "Change your password"
+msgstr ""
+
+msgid "Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else."
+msgstr ""
+
+msgid "Current password:"
+msgstr ""
+
+msgid "New password:"
+msgstr ""
+
+msgid "Repeat password:"
+msgstr ""
+
+msgid "Contributions in the last 90 days"
+msgstr ""
+
+msgid "The user has no recent contribution."
+msgstr ""
+
+msgid "Uploaded documents"
+msgstr ""
+
+msgid "The user owns no document."
+msgstr ""
+
+#: ../templates/js/page-create.js
+msgid "'The parameters are not acceptable.'"
+msgstr ""
+
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr ""
+
+msgid "'Number of columns:'"
+msgstr ""
+
+msgid "'Number of rows:'"
+msgstr ""
+
+msgid "'You cannot use this feature.'"
+msgstr ""
+
+msgid "'The file is uploaded and usable in the list below.'"
+msgstr ""
+
+msgid "'Unsupported feature.'"
+msgstr ""
+
+msgid "'Some fields are mandatory.'"
+msgstr ""
+
+msgid "'Your session is not valid anymore. Please reconnect from another tab and retry.'"
+msgstr ""
+
+msgid "'Warning: the page has been modified in parallel of your current modifications.\\n\\nConsequently, your changes will be posted as a removable draft. You must merge the changes manually later.'"
+msgstr ""
+
+msgid "'The server or your Internet connection is down.'"
+msgstr ""
+
+msgid "'Preview of the page'"
+msgstr ""
+
+msgid "Close the preview"
+msgstr ""
+
+#: ../templates/js/page.js
+msgid "'Warning: the current page is a draft, so its content may disappear in the future without notice.'"
+msgstr ""
+
+#: ../templates/js/user.js
+msgid "'The form is inconsistent.'"
+msgstr ""
+
+msgid "'Failure to save your new password. Verify that it matches with the security rules.'"
+msgstr ""
+
+msgid "'Your password has been changed successfully.'"
+msgstr ""
+

@@ -1,0 +1,146 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}User's profile{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} {% trans %}User's profile{% endtrans %}</a></div>
+	</header>
+
+	{% include 'js/user.js' %}
+
+	<article>
+		<h1>{{pwic.userpage|escape}}</h1>
+
+		<h2>{% trans %}Profile{% endtrans %}</h2>
+		<ul>
+			<li>{% trans %}Own password:{% endtrans %} <span id="user_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
+				{% if pwic.password_oauth %}
+					<span title="{% trans %}Federated identification only{% endtrans %}">{{pwic.emojis.id}}</span>
+				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
+					<span class="pwic_js">(<a href="#" onclick="return user_password_popup()">{% trans %}change it{% endtrans %}</a>)</span>
+				{% endif %}
+			</li>
+			<li>{% trans %}Language:{% endtrans %} 
+				<select id="user_language" onchange="user_language_set()">
+					{% for lang in pwic.constants.languages %}
+						<option value="{{lang|escape}}" {% if lang == pwic.language %} selected="selected" {% endif %}>{{lang|escape}}</option>
+					{% endfor %}
+				</select>
+			</li>
+			{% if pwic.projects|count > 0 %}
+				<li>{% trans %}Projects:{% endtrans %}
+					<ul>
+						{% for project in pwic.projects %}
+							<li><a href="/{{project.project|urlencode}}">{{project.description|escape}}</a></li>
+						{% endfor %}
+					</ul>
+				</li>
+			{% endif %}
+		</ul>
+
+		{% if not pwic.password_oauth and (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
+			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
+				<div class="pwic_popup">
+					<form autocomplete="new-password">
+						<h3>{% trans %}Change your password{% endtrans %}</h3>
+						{% if not pwic.env.https %}
+							<p>{{pwic.emojis.warning}} {% trans %}Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.{% endtrans %}</p>
+						{% endif %}
+						<table class="pwic_noborder">
+							<tr><td>{% trans %}Current password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true" /></td></tr>
+							<tr><td>{% trans %}New password:{% endtrans %}</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" autocomplete="new-password" required="true" /></td></tr>
+							<tr><td>{% trans %}Repeat password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" onpaste="return false" /></td></tr>
+						</table>
+						<p>
+							<input type="button" value="{{pwic.emojis.locked}} Change" onclick="user_password_submit()"/>
+							<input type="button" value="Cancel" onclick="user_password_popup()"/>
+						</p>
+					</form>
+				</div>
+			</div>
+		{% endif %}
+
+
+		<h2>{% trans %}Contributions in the last 90 days{% endtrans %}</h2>
+		{% if pwic.pages|count == 0 %}
+			<p class="pwic_center pwic_italic">{% trans %}The user has no recent contribution.{% endtrans %}</p>
+		{% else%}
+			<table>
+				<tr>
+					<th class="pwic_desktop">{% trans %}Project{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Page{% endtrans %}</th>
+					<th>{% trans %}Title{% endtrans %}</th>
+					<th>{% trans %}Flags{% endtrans %}</th>
+					<th>{% trans %}Date{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Milestone{% endtrans %}</th>
+				</tr>
+
+				{% for page in pwic.pages %}
+					<tr>
+						<td class="pwic_desktop">{{page.project|escape}}</td>
+						<td class="pwic_desktop">{{page.page|escape}}</td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
+						<td>
+							{% if page.draft %}
+								<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
+							{% endif %}
+							{% if page.final %}
+								<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
+							{% endif %}
+							{% if page.valuser != '' %}
+								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							{% endif %}
+						</td>
+						<td>{{page.date|escape}}</td>
+						<td class="pwic_desktop">{{page.time|escape}}</td>
+						<td class="pwic_desktop">{{page.milestone|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+
+		<h2>{% trans %}Uploaded documents{% endtrans %}</h2>
+		{% if pwic.documents|count == 0 %}
+			<p class="pwic_center pwic_italic">{% trans %}The user owns no document.{% endtrans %}</p>
+		{% else %}
+			<table>
+				<tr>
+					<th class="pwic_desktop">{% trans %}Page{% endtrans %}</th>
+					<th>{% trans %}File name{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+					<th>{% trans %}Size{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Hash{% endtrans %}</th>
+					<th>{% trans %}Date{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
+					<th><span class="pwic_desktop">{% trans %}Download{% endtrans %}</span></th>
+				</tr>
+
+				{% for doc in pwic.documents %}
+					<tr>
+						<td class="pwic_desktop">{{doc.project|escape}} / <a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+						<td>
+							<a class="pwic_break" href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a>
+							{% if doc.exturl != ''%}
+								<span title="External storage">{{pwic.emojis.cloud}}</span>
+							{% endif%}
+						</td>
+						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td>{{doc.size|escape}}</td>
+						<td class="pwic_desktop">
+							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
+							{% if doc.occurrence > 1 %} <span title="Duplicate file">{{pwic.emojis.gemini}}</span> {% endif %}
+						</td>
+						<td>{{doc.date|escape}}</td>
+						<td class="pwic_desktop">{{doc.time|escape}}</td>
+						<td><a href="/special/document/{{doc.id|urlencode}}?attachment">{{pwic.emojis.inbox}}</a></td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}

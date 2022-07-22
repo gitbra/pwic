@@ -1,0 +1,24 @@
+
+<p id="page_topofpage" class="pwic_hidden">
+	<a href="#top">{{pwic.emojis.top}} {% trans %}Top of the page{% endtrans %} {{pwic.emojis.top}}</a>
+</p>
+
+<footer>
+	<div>
+		{% trans %}Powered by{% endtrans %} <a href="https://pwic.wiki">Pwic.wiki</a> v{{pwic.constants.version|escape}} &copy; 2020-2022
+		{% if not pwic.env.no_help %}
+			&mdash; {{pwic.emojis.help}}&nbsp;<a href="/special/help">{% trans %}Help{% endtrans %}</a>
+		{% endif %}
+		&mdash;
+		{% if (pwic.user != '') and (pwic.user[:4] != 'pwic') %}
+			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="{% trans %}Your profile{% endtrans %}" rel="nofollow">{{pwic.user|escape}}</a> (<a class="pwic_bold" href="/special/logout" onclick="return confirm({% trans %}'Are you sure to disconnect from Pwic.wiki?'{% endtrans %})">{% trans %}Log out{% endtrans %}</a>)
+		{% else %}
+			 <a class="pwic_bold" href="/special/login">{% trans %}Log in{% endtrans %}</a>
+		{% endif %}
+	</div>
+</footer>
+
+<script>
+	$('H1,H2,H3,H4,H5,H6,TH,TD,P,DIV,SPAN,A,LI').removeClass('pwic_js');
+	pwic_url_status({% trans %}'The operation is a success.'{% endtrans %}, {% trans %}'The operation failed.'{% endtrans %});
+</script>

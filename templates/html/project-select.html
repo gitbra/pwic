@@ -1,0 +1,62 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Select your project{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1">{{pwic.emojis.home}} {% trans %}Select your project{% endtrans %}</div>
+	</header>
+
+	<article>
+		<div class="pwic_action_bar">
+			<a class="pwic_js" href="/api">{{pwic.emojis.brick}} {% trans %}API{% endtrans %}</a>
+			{% if not pwic.env.no_help %}
+				<a href="/special/help">{{pwic.emojis.help}} {% trans %}Help{% endtrans %}</a>
+			{% endif %}
+		</div>
+
+		{% if (pwic.projects|count + pwic.joinable_projects|count) == 0 %}
+			<p>{% trans %}Unfortunately, you have access to no project at all.{% endtrans %}</p>
+		{% endif %}
+
+		{% if pwic.projects|count > 0 %}
+			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#projects_1').toggleClass('pwic_hidden')">{% trans %}Projects you joined already{% endtrans %}</h1>
+			<table id="projects_1">
+				<tr>
+					<th>{% trans %}Project{% endtrans %}</th>
+					<th>{% trans %}Description{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Last activity{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Creation date{% endtrans %}</th>
+				</tr>
+				{% for p in pwic.projects %}
+					<tr>
+						<td>{{p.project|escape}}</td>
+						<td><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a></td>
+						<td class="pwic_desktop">{{(p.last_activity or '-')|escape}}</td>
+						<td class="pwic_desktop">{{p.date|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+
+		{% if pwic.joinable_projects|count > 0 %}
+			<h1 class="pwic_cursor" title="{% trans %}Expand/Collapse{% endtrans %}" onclick="$('#projects_2').toggleClass('pwic_hidden')">{% trans %}Available public projects{% endtrans %}</h1>
+			<table id="projects_2">
+				<tr>
+					<th>{% trans %}Project{% endtrans %}</th>
+					<th>{% trans %}Description{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Date{% endtrans %}</th>
+				</tr>
+				{% for p in pwic.joinable_projects %}
+					<tr>
+						<td>{{p.project|escape}}</td>
+						<td><a href="/{{p.project|urlencode}}">{{p.description|escape}}</a></td>
+						<td class="pwic_desktop">{{p.date|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
+	</article>
+{% endblock %}

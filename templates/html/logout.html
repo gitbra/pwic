@@ -1,0 +1,15 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Disconnected from Pwic.wiki{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/">{% trans %}You are disconnected.{% endtrans %}</a></div>
+	</header>
+
+	<article>
+		<p class="pwic_information">{{pwic.emojis.globe}} {% trans %}You successfully logged out.{% endtrans %}</p>
+	</article>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'html/main.html' %}
+
+
+{% block title %}{% trans %}Graph of the project{% endtrans %}{% endblock %}
+
+
+{% block content %}
+	<header>
+		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.finger_left}} {% trans %}Visual representation of the pages{% endtrans %}</a></div>
+		<div class="pwic_ph2">[{{pwic.project|escape}}] {{pwic.project_description|escape}}</div>
+	</header>
+
+	<article>
+		<p><input type="button" value="{{pwic.emojis.inbox}} {% trans %}Download as a file{% endtrans %}" onclick="graph_get_data('download')"></p>
+		<div id="graph_viz"></div>
+
+		{% include 'js/page-graph.js' %}
+	</article>
+{% endblock %}
