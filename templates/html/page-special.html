@@ -164,7 +164,7 @@
 							<span title="Marked as final">{{pwic.emojis.notes}}</span>
 						{% endif %}
 						{% if page.valuser != '' %}
-							<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser, valdate=page.valdate, valtime=page.valtime)|escape }}">{{pwic.emojis.flag}}</span>
 						{% endif %}
 					</td>
 					<td><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
@@ -217,7 +217,7 @@
 				<tr>
 					<th class="pwic_desktop">{% trans %}Page{% endtrans %}</th>
 					<th>{% trans %}File name{% endtrans %}</th>
-					<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Format{% endtrans %}</th>
 					<th>{% trans %}Size{% endtrans %}</th>
 					<th class="pwic_desktop">{% trans %}Hash{% endtrans %}</th>
 					<th>{% trans %}Author{% endtrans %}</th>

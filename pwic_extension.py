@@ -397,6 +397,17 @@ class PwicExtension():
         return str(request.remote)
 
     @staticmethod
+    def on_language_detected(request: web.Request,          # HTTP request
+                             language: str,                 # Current language
+                             available_langs: List[str],    # All the available languages
+                             sso: bool,                     # True from the federated authentication
+                             ) -> str:
+        ''' Event when a default language is suggested.
+            The result gives the new default language that must belong to the authorized languages.
+        '''
+        return language
+
+    @staticmethod
     def on_login(sql: sqlite3.Cursor,                       # Cursor to query the database
                  request: web.Request,                      # HTTP request
                  user: str,                                 # Name of the user

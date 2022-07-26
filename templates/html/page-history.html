@@ -29,13 +29,13 @@
 					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">{{rev.revision}}</a></td>
 					<td>
 						{% if rev.draft %}
-						<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
+							<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
 						{% endif %}
 						{% if rev.final %}
-						<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
+							<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 						{% endif %}
 						{% if rev.valuser != '' %}
-						<span title="Validated by {{rev.valuser|escape}} on {{rev.valdate|escape}} at {{rev.valtime|escape}}">{{pwic.emojis.flag}}</span>
+							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=rev.valuser, valdate=rev.valdate, valtime=rev.valtime)|escape }}">{{pwic.emojis.flag}}</span>
 						{% endif %}
 					</td>
 					<td><a class="pwic_break" href="/special/user/{{rev.author|urlencode}}" rel="nofollow">{{rev.author|escape}}</a></td>

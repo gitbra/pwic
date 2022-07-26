@@ -834,6 +834,24 @@ def pwic_connect(dbfile: str = PWIC_DB_SQLITE,
     return db, sql
 
 
+def pwic_detect_language(request: web.Request, allowed_langs: List[str], sso: bool = False) -> str:
+    ''' Detect the default language of the user from the HTTP headers '''
+    # Detect from the HTTP headers
+    head = request.headers.get('Accept-Language', '')
+    langs = pwic_list(head.replace(',', ' ').replace(';', ' '))
+    result = PWIC_DEFAULTS['language']
+    for e in langs:
+        if '-' in e:
+            e = e[:2]
+        if e in allowed_langs:
+            result = e
+            break
+
+    # Custom detection
+    from pwic_extension import PwicExtension
+    return PwicExtension.on_language_detected(request, result, allowed_langs, sso)
+
+
 # ===================================================
 #  Search engine
 # ===================================================

@@ -23,7 +23,7 @@
 				<br/><select id="login_language" name="language">
 						{% for lang in pwic.constants.languages %}
 							<option value="{{lang|escape}}"
-								{% if lang == pwic.constants.default_language %}
+								{% if lang == pwic.language %}
 									selected="selected"
 								{% endif %}
 							>{{lang|escape}}</option>
@@ -45,7 +45,8 @@
 
 	{% include 'js/login.js' %}
 	<script>
-		login_translate_langs({	'en': 'English',
+		login_translate_langs({	'de': 'Deutsch',
+								'en': 'English',
 								'fr': 'Français'
 							});
 	</script>

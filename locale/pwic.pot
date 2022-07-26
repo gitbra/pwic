@@ -82,7 +82,7 @@ msgid "You successfully logged out."
 msgstr ""
 
 #: ../templates/html/main.html
-msgid "Search in"
+msgid "Search in project %(project)s"
 msgstr ""
 
 msgid "Recent changes for"
@@ -135,6 +135,12 @@ msgstr ""
 msgid "Reference time"
 msgstr ""
 
+msgid "The server has started on %(date)s at %(time)s."
+msgstr ""
+
+msgid "The current time on the server is %(date)s at %(time)s."
+msgstr ""
+
 msgid "Environment variables"
 msgstr ""
 
@@ -153,10 +159,7 @@ msgstr ""
 msgid "Project-dependent"
 msgstr ""
 
-msgid "Audit of the last"
-msgstr ""
-
-msgid "days"
+msgid "Audit of the last %(n)d days"
 msgstr ""
 
 msgid "Date"
@@ -184,9 +187,6 @@ msgid "String"
 msgstr ""
 
 #: ../templates/html/page-create.html
-msgid "Create a page"
-msgstr ""
-
 msgid "Create a new page"
 msgstr ""
 
@@ -299,7 +299,7 @@ msgstr ""
 msgid "Keyword"
 msgstr ""
 
-msgid "Monospace keyword"
+msgid "Monospaced keyword"
 msgstr ""
 
 msgid "Code"
@@ -320,7 +320,7 @@ msgstr ""
 msgid "and save immediately"
 msgstr ""
 
-msgid "Edit"
+msgid "Action"
 msgstr ""
 
 msgid "File name"
@@ -335,7 +335,7 @@ msgstr ""
 msgid "Size"
 msgstr ""
 
-msgid "Mime"
+msgid "Format"
 msgstr ""
 
 msgid "File"
@@ -350,7 +350,7 @@ msgstr ""
 msgid "Free text to report the expected readiness of the page"
 msgstr ""
 
-msgid "Save as draft"
+msgid "Draft"
 msgstr ""
 
 msgid "Final version"
@@ -416,10 +416,10 @@ msgstr ""
 msgid "Milestone"
 msgstr ""
 
-msgid "Draft"
+msgid "Marked as final"
 msgstr ""
 
-msgid "Marked as final"
+msgid "Validated by %(valuser)s on %(valdate)s at %(valtime)s."
 msgstr ""
 
 #: ../templates/html/page-links.html
@@ -576,6 +576,9 @@ msgstr ""
 msgid "Special"
 msgstr ""
 
+msgid "Edit"
+msgstr ""
+
 msgid "History"
 msgstr ""
 
@@ -603,7 +606,10 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-msgid "Show/Hide the map of the article"
+msgid "This page has been validated by <a href="/special/user/%(user1)s" rel="nofollow">%(user2)s</a> on %(sdate)s at %(stime)s."
+msgstr ""
+
+msgid "Show/Hide the map of the page"
 msgstr ""
 
 msgid "Attached documents"
@@ -673,16 +679,10 @@ msgid "Documents"
 msgstr ""
 
 #: ../templates/html/user-create.html
-msgid "Create a user"
+msgid "Create a new user"
 msgstr ""
 
-msgid "Assign"
-msgstr ""
-
-msgid "Create"
-msgstr ""
-
-msgid "a new user"
+msgid "Assign a new user"
 msgstr ""
 
 msgid "You have no authorization to create a new user. Please contact your administrator."
@@ -699,6 +699,9 @@ msgstr ""
 
 #: ../templates/html/user-roles.html
 msgid "Roles of the users"
+msgstr ""
+
+msgid "Create a user"
 msgstr ""
 
 msgid "Reminder: the password of a user must be changed before his roles can be changed."
@@ -747,7 +750,7 @@ msgid "The user must change his password"
 msgstr ""
 
 #: ../templates/html/user.html
-msgid "User's profile"
+msgid "User profile"
 msgstr ""
 
 msgid "Profile"
@@ -756,7 +759,7 @@ msgstr ""
 msgid "Own password:"
 msgstr ""
 
-msgid "Federated identification only"
+msgid "Federated authentification only"
 msgstr ""
 
 msgid "change it"
@@ -778,6 +781,12 @@ msgid "New password:"
 msgstr ""
 
 msgid "Repeat password:"
+msgstr ""
+
+msgid "Change"
+msgstr ""
+
+msgid "Cancel"
 msgstr ""
 
 msgid "Contributions in the last 90 days"
@@ -830,7 +839,7 @@ msgstr ""
 msgid "'Preview of the page'"
 msgstr ""
 
-msgid "Close the preview"
+msgid "'Close the preview'"
 msgstr ""
 
 #: ../templates/js/page.js

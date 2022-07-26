@@ -1,12 +1,12 @@
 {% extends 'html/main.html' %}
 
 
-{% block title %}{% trans %}Create a user{% endtrans %}{% endblock %}
+{% block title %}{% trans %}Create a new user{% endtrans %}{% endblock %}
 
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_left}} {% if pwic.env.no_new_user %} {% trans %}Assign{% endtrans %} {% else %} {% trans %}Create{% endtrans %} {% endif %} {% trans %}a new user{% endtrans %}</a></div>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_left}} {% if pwic.env.no_new_user %}{% trans %}Assign a new user{% endtrans %}{% else %}{% trans %}Create a new user{% endtrans %}{% endif %}</a></div>
 	</header>
 
 	{% include 'js/user-create.js' %}

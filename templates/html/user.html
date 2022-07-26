@@ -1,12 +1,12 @@
 {% extends 'html/main.html' %}
 
 
-{% block title %}{% trans %}User's profile{% endtrans %}{% endblock %}
+{% block title %}{% trans %}User profile{% endtrans %}{% endblock %}
 
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} {% trans %}User's profile{% endtrans %}</a></div>
+		<div class="pwic_ph1"><a href="/">{{pwic.emojis.finger_up}} {% trans %}User profile{% endtrans %}</a></div>
 	</header>
 
 	{% include 'js/user.js' %}
@@ -18,18 +18,20 @@
 		<ul>
 			<li>{% trans %}Own password:{% endtrans %} <span id="user_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
 				{% if pwic.password_oauth %}
-					<span title="{% trans %}Federated identification only{% endtrans %}">{{pwic.emojis.id}}</span>
+					<span title="{% trans %}Federated authentification only{% endtrans %}">{{pwic.emojis.id}}</span>
 				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
 					<span class="pwic_js">(<a href="#" onclick="return user_password_popup()">{% trans %}change it{% endtrans %}</a>)</span>
 				{% endif %}
 			</li>
-			<li>{% trans %}Language:{% endtrans %} 
-				<select id="user_language" onchange="user_language_set()">
-					{% for lang in pwic.constants.languages %}
-						<option value="{{lang|escape}}" {% if lang == pwic.language %} selected="selected" {% endif %}>{{lang|escape}}</option>
-					{% endfor %}
-				</select>
-			</li>
+			{% if pwic.user == pwic.userpage %}
+				<li>{% trans %}Language:{% endtrans %} 
+					<select id="user_language" onchange="user_language_set()">
+						{% for lang in pwic.constants.languages %}
+							<option value="{{lang|escape}}" {% if lang == pwic.language %} selected="selected" {% endif %}>{{lang|escape}}</option>
+						{% endfor %}
+					</select>
+				</li>
+			{% endif %}
 			{% if pwic.projects|count > 0 %}
 				<li>{% trans %}Projects:{% endtrans %}
 					<ul>
@@ -55,8 +57,8 @@
 							<tr><td>{% trans %}Repeat password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" onpaste="return false" /></td></tr>
 						</table>
 						<p>
-							<input type="button" value="{{pwic.emojis.locked}} Change" onclick="user_password_submit()"/>
-							<input type="button" value="Cancel" onclick="user_password_popup()"/>
+							<input type="button" value="{{pwic.emojis.locked}} {% trans %}Change{% endtrans %}" onclick="user_password_submit()"/>
+							<input type="button" value="{% trans %}Cancel{% endtrans %}" onclick="user_password_popup()"/>
 						</p>
 					</form>
 				</div>
@@ -92,7 +94,7 @@
 								<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 							{% endif %}
 							{% if page.valuser != '' %}
-								<span title="Validated by {{page.valuser|escape}} on {{page.valdate|escape}} at {{page.valtime|escape}}">{{pwic.emojis.flag}}</span>
+								<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser, valdate=page.valdate, valtime=page.valtime)|escape }}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
 						<td>{{page.date|escape}}</td>
@@ -112,7 +114,7 @@
 				<tr>
 					<th class="pwic_desktop">{% trans %}Page{% endtrans %}</th>
 					<th>{% trans %}File name{% endtrans %}</th>
-					<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+					<th class="pwic_desktop">{% trans %}Format{% endtrans %}</th>
 					<th>{% trans %}Size{% endtrans %}</th>
 					<th class="pwic_desktop">{% trans %}Hash{% endtrans %}</th>
 					<th>{% trans %}Date{% endtrans %}</th>
@@ -129,7 +131,7 @@
 								<span title="External storage">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
-						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td class="pwic_desktop pwic_break">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>

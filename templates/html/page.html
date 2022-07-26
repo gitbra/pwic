@@ -80,11 +80,11 @@
 		{% endif %}
 
 		{% if pwic.valuser != '' %}
-			<p class="pwic_information">{{pwic.emojis.flag}} This page has been validated by <a href="/special/user/{{pwic.valuser|urlencode}}" rel="nofollow">{{pwic.valuser|escape}}</a> on {{pwic.valdate|urlencode}} at {{pwic.valtime|escape}}.</p>
+			<p class="pwic_information">{{pwic.emojis.flag}} {{ gettext('This page has been validated by <a href="/special/user/%(user1)s" rel="nofollow">%(user2)s</a> on %(sdate)s at %(stime)s.')|format(user1=pwic.valuser|urlencode, user2=pwic.valuser|escape, sdate=pwic.valdate|escape, stime=pwic.valtime|escape) }}</p>
 		{% endif %}
 
 		{% if pwic.tmap|count > 0 %}
-			<div id="pwic_browser_access" class="pwic_js" title="{% trans %}Show/Hide the map of the article{% endtrans %}" onclick="page_tmap()">
+			<div id="pwic_browser_access" class="pwic_js" title="{% trans %}Show/Hide the map of the page{% endtrans %}" onclick="page_tmap()">
 				{{pwic.emojis.pin}}
 			</div>
 			<div id="pwic_browser" class="pwic_hidden">

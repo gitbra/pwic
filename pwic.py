@@ -48,10 +48,11 @@ from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, P
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_LOCALE_PATH,
                       PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES,
                       PWIC_TEMPLATES_PATH, PWIC_USERS, PWIC_VERSION,
-                      pwic_attachment_name, pwic_audit, pwic_connect, pwic_dt, pwic_dt_diff, pwic_extended_syntax, pwic_file_ext,
-                      pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed, pwic_mime2icon,
-                      pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name, pwic_safe_user_name,
-                      pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_str2bytearray, pwic_x, pwic_xb)
+                      pwic_attachment_name, pwic_audit, pwic_connect, pwic_detect_language, pwic_dt, pwic_dt_diff, pwic_extended_syntax,
+                      pwic_file_ext, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed,
+                      pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name,
+                      pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_str2bytearray,
+                      pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -250,7 +251,6 @@ class PwicServer():
         pwic['user'] = await self._suser(request)
         pwic['emojis'] = PWIC_EMOJIS
         pwic['constants'] = {'anonymous_user': PWIC_USERS['anonymous'],
-                             'default_language': PWIC_DEFAULTS['language'],
                              'default_home': PWIC_DEFAULTS['page'],
                              'languages': app['langs'],
                              'not_project': PWIC_NOT_PROJECT,
@@ -311,13 +311,18 @@ class PwicServer():
         # Session
         session = await get_session(request)
         pwic['oauth_user_secret'] = session.get('user_secret', None)
+        # ... language
+        session_lang = session.get('language', '')
+        new_lang = session_lang or pwic_detect_language(request, app['langs'])
+        if new_lang not in app['langs']:
+            new_lang = PWIC_DEFAULTS['language']
+        if new_lang != session_lang:
+            session['language'] = new_lang
+        pwic['language'] = new_lang
 
         # Render the template
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
-        pwic['language'] = session.get('language', PWIC_DEFAULTS['language'])
-        if pwic['language'] not in app['langs']:
-            raise web.HTTPInternalServerError()
         PwicExtension.on_render_pre(app, sql, request, pwic)
         output = app['jinja'][pwic['language']].get_template('html/%s.html' % name).render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, request, pwic, output)
@@ -905,7 +910,6 @@ class PwicServer():
         user = await self._suser(request)
         if user == '':
             return await self._handle_login(request)
-        session = await get_session(request)
 
         # Fetch the information of the user
         sql = self.dbconn.cursor()
@@ -916,8 +920,7 @@ class PwicServer():
         pwic = {'user': user,
                 'userpage': userpage,
                 'password_oauth': row['password'] == PWIC_MAGIC_OAUTH,
-                'password_initial': pwic_xb(row['initial']),
-                'language': session.get('language')}
+                'password_initial': pwic_xb(row['initial'])}
 
         # Fetch the commonly-accessible projects assigned to the user
         sql.execute(''' SELECT a.project, c.description
@@ -1564,10 +1567,11 @@ class PwicServer():
         self._check_ip(ip)
 
         # Fetch the submitted data
+        session = await get_session(request)
         post = await self._handle_post(request)
         user = pwic_safe_user_name(post.get('user', ''))
         pwd = '' if user == PWIC_USERS['anonymous'] else pwic_sha256(post.get('password', ''))
-        lang = post.get('language', PWIC_DEFAULTS['language'])
+        lang = post.get('language', session.get('language', ''))
         if lang not in app['langs']:
             lang = PWIC_DEFAULTS['language']
 
@@ -1753,7 +1757,7 @@ class PwicServer():
         # Register the session
         session = await new_session(request)
         session['user'] = user
-        session['language'] = PWIC_DEFAULTS['language']     # TODO The language is not selectable
+        session['language'] = pwic_detect_language(request, app['langs'], sso=True)
         session['user_secret'] = pwic_random_hash()
         pwic_audit(sql, {'author': user,
                          'event': 'login',
@@ -3435,7 +3439,7 @@ class PwicServer():
         ''' API to change the language of the user interface '''
         # Fetch the submitted data
         post = await self._handle_post(request)
-        language = post.get('language', PWIC_DEFAULTS['language'])
+        language = post.get('language', '')
         if language not in app['langs']:
             raise web.HTTPBadRequest()
 

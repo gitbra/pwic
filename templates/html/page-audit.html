@@ -13,13 +13,15 @@
 	<article>
 		<div class="pwic_action_bar">
 			<a href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} {% trans %}Settings{% endtrans %}</a>
-			<a href="/special/help#help_setup">{{pwic.emojis.help}} {% trans %}Help{% endtrans %}</a>
+			{% if not pwic.env.no_help %}
+				<a href="/special/help#help_setup">{{pwic.emojis.help}} {% trans %}Help{% endtrans %}</a>
+			{% endif %}
 		</div>
 
 
 		<h1>{% trans %}Reference time{% endtrans %}</h1>
-		<p>The server has started on {{pwic.up.date|escape}} at {{pwic.up.time|escape}}.</p>
-		<p>The current time on the server is {{pwic.systime.date|escape}} at {{pwic.systime.time|escape}}.</p>
+		<p>{{ gettext('The server has started on %(date)s at %(time)s.')|format(date=pwic.up.date, time=pwic.up.time)|escape }}</p>
+		<p>{{ gettext('The current time on the server is %(date)s at %(time)s.')|format(date=pwic.systime.date, time=pwic.systime.time)|escape }}</p>
 
 
 		{% if pwic.env|count > 0 %}
@@ -49,7 +51,7 @@
 
 
 		{% if pwic.audits|count > 0 %}
-			<h1>{% trans %}Audit of the last{% endtrans %} {{pwic.range|escape}} {% trans %}days{% endtrans %}</h1>
+			<h1>{{ gettext('Audit of the last %(n)d days')|format(n=pwic.range) }}</h1>
 			<table>
 				<tr>
 					<th>{% trans %}Date{% endtrans %}</th>

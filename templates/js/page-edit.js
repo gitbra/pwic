@@ -634,7 +634,7 @@
 						edit_preview_hwnd.document.body.innerHTML = '\
 	<article>\
 		<p style="position:fixed; top:0px; right:0px; padding:15px">\
-			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} {% trans %}Close the preview{% endtrans %}" />\
+			<input type="button" onclick="window.close()" value="{{pwic.emojis.door}} '+{% trans %}'Close the preview'{% endtrans %}+'" />\
 		<\/p>\
 		'+text+'\
 	<\/article>';

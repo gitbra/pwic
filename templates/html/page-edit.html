@@ -53,7 +53,7 @@
 						<input type="button" value="- {% trans %}List{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L" />
 						<input type="button" value="> {% trans %}Quote{% endtrans %}" onclick="edit_prepend('> ')" />
 						<input type="button" value=">! {% trans %}Spoiler{% endtrans %}" onclick="edit_prepend('>! ')" />
-						<input type="button" value="`{% trans %}Keyword{% endtrans %}`" title="`{% trans %}Monospace keyword{% endtrans %}`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl+'" />
+						<input type="button" value="`{% trans %}Keyword{% endtrans %}`" title="`{% trans %}Monospaced keyword{% endtrans %}`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl+'" />
 						<input type="button" value="{% trans %}Code{% endtrans %}" title="```{% trans %}Code{% endtrans %}```" onclick="edit_decorate('```\n', '\n```')" />
 						{% if pwic.env.emojis %}
 							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden')" />
@@ -90,11 +90,11 @@
 					</div>
 					<table id="edit_files_list" class="pwic_break">
 						<tr>
-							<th>{% trans %}Edit{% endtrans %}</th>
+							<th>{% trans %}Action{% endtrans %}</th>
 							<th>{% trans %}File name{% endtrans %}</th>
 							<th class="pwic_desktop" title="{% trans %}For the latest saved revision only{% endtrans %}">{% trans %}Used{% endtrans %}</th>
 							<th>{% trans %}Size{% endtrans %}</th>
-							<th class="pwic_desktop">{% trans %}Mime{% endtrans %}</th>
+							<th class="pwic_desktop">{% trans %}Format{% endtrans %}</th>
 							<th class="pwic_desktop">{% trans %}Author{% endtrans %}</th>
 							<th>{% trans %}Date{% endtrans %}</th>
 							<th class="pwic_desktop">{% trans %}Time{% endtrans %}</th>
@@ -107,7 +107,7 @@
 				<p><strong><span class="pwic_red">*</span> {% trans %}Reason for the modification:{% endtrans %}</strong> <input id="edit_comment" class="pwic_fill" type="text" placeholder="{{pwic.comment|escape}}" /></p>
 				<p><strong>{% trans %}Milestone:{% endtrans %}</strong> <input id="edit_milestone" class="pwic_fill" type="text" value="{{pwic.milestone|escape}}" title="{% trans %}Free text to report the expected readiness of the page{% endtrans %}" /></p>
 				<p>
-					<input id="edit_draft" type="checkbox" {% if pwic.draft %}checked="checked"{% endif %} onclick="$('#edit_final').prop('checked', false)" /> <label for="edit_draft">{% trans %}Save as draft{% endtrans %}</label>
+					<input id="edit_draft" type="checkbox" {% if pwic.draft %}checked="checked"{% endif %} onclick="$('#edit_final').prop('checked', false)" /> <label for="edit_draft">{% trans %}Draft{% endtrans %}</label>
 					<br/><input id="edit_final" type="checkbox" onclick="$('#edit_draft').prop('checked', false)" /> <label for="edit_final">{% trans %}Final version{% endtrans %}</label>
 					<br/><input id="edit_header" type="checkbox" {% if pwic.header %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_header">{% trans %}Header line *{% endtrans %}</label>
 					<br/><input id="edit_protection" type="checkbox" {% if pwic.protection %}checked="checked"{% endif %} {% if not pwic.manager %}disabled="disabled"{% endif %} /> <label for="edit_protection">{% trans %}Protected page *{% endtrans %}</label>

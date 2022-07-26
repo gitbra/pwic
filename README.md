@@ -27,7 +27,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - RSS feed
 - Share by link
 - Share by email
-- Internationalization (English only for now)
+- Internationalization: English, French, German, extendable to your language from a template
 
 ### For the validators
 
