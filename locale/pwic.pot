@@ -404,7 +404,7 @@ msgstr ""
 msgid "Compare"
 msgstr ""
 
-msgid "Rev<span class="pwic_desktop">ision</span>"
+msgid "Rev<span class=\"pwic_desktop\">ision</span>"
 msgstr ""
 
 msgid "Flags"
@@ -606,7 +606,7 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-msgid "This page has been validated by <a href="/special/user/%(user1)s" rel="nofollow">%(user2)s</a> on %(sdate)s at %(stime)s."
+msgid "This page has been validated by <a href=\"/special/user/%(user1)s\" rel=\"nofollow\">%(user2)s</a> on %(sdate)s at %(stime)s."
 msgstr ""
 
 msgid "Show/Hide the map of the page"
@@ -719,25 +719,25 @@ msgstr ""
 msgid "Activity"
 msgstr ""
 
-msgid "A<span class="pwic_desktop">dmin</span>"
+msgid "A<span class=\"pwic_desktop\">dmin</span>"
 msgstr ""
 
-msgid "M<span class="pwic_desktop">anager</span>"
+msgid "M<span class=\"pwic_desktop\">anager</span>"
 msgstr ""
 
-msgid "E<span class="pwic_desktop">ditor</span>"
+msgid "E<span class=\"pwic_desktop\">ditor</span>"
 msgstr ""
 
-msgid "V<span class="pwic_desktop">alidator</span>"
+msgid "V<span class=\"pwic_desktop\">alidator</span>"
 msgstr ""
 
-msgid "R<span class="pwic_desktop">eader</span>"
+msgid "R<span class=\"pwic_desktop\">eader</span>"
 msgstr ""
 
-msgid "Dis<span class="pwic_desktop">abled</span>"
+msgid "Dis<span class=\"pwic_desktop\">abled</span>"
 msgstr ""
 
-msgid "Del<span class="pwic_desktop">ete</span>"
+msgid "Del<span class=\"pwic_desktop\">ete</span>"
 msgstr ""
 
 msgid "Special account"

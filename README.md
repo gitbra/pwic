@@ -27,7 +27,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - RSS feed
 - Share by link
 - Share by email
-- Internationalization: English, French, German, extendable to your language from a template
+- Internationalization: English, French, German, extendable to your language from a template or [online](https://explore.transifex.com/pwicwiki/pwicwiki/)
 
 ### For the validators
 
@@ -121,7 +121,9 @@ Once you have well tested Pwic.wiki and defined the global and project-dependent
 
 ## Support
 
-Please use the issue tracker on Github to ask questions, report bugs and request new features.
+Please use the [issue tracker](https://github.com/gitbra/pwic/issues) on Github to ask questions, report bugs and request new features.
+
+To enhance the existing translations, you may edit selected languages by [joining the online workspace](https://explore.transifex.com/pwicwiki/pwicwiki/). Native speakers can achieve one translation precisely in few hours.
 
 
 ## Licenses

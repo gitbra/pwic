@@ -434,7 +434,6 @@ msgstr "Etappenziel"
 msgid "Marked as final"
 msgstr "Als fertig anzeigen"
 
-#| msgid "The server has started on %(date)s at %(time)s."
 msgid "Validated by %(valuser)s on %(valdate)s at %(valtime)s."
 msgstr "Validiert von %(valuser)s am %(valdate)s um %(valtime)s."
 
