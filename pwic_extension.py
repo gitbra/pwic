@@ -453,6 +453,15 @@ class PwicExtension():
         '''
 
     @staticmethod
+    def on_project_split(sql: sqlite3.Cursor,               # Cursor for the source database
+                         newsql: sqlite3.Cursor,            # Cursor for the target database
+                         projects: List[str],               # List of the impacted projects
+                         ) -> None:
+        ''' Event when a database is split.
+            You can execute additional operations for your custom tables.
+        '''
+
+    @staticmethod
     def on_related_pages(sql: sqlite3.Cursor,               # Cursor to query the database
                          request: web.Request,              # HTTP request
                          project: str,                      # Name of the project

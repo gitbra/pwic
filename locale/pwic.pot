@@ -634,6 +634,12 @@ msgstr ""
 msgid "You don't have the authorizations to access this project."
 msgstr ""
 
+msgid "To request your access, get in touch with the support team:"
+msgstr ""
+
+msgid "Unfortunately, there is no defined support information to request your access."
+msgstr ""
+
 #: ../templates/html/project-select.html
 msgid "Select your project"
 msgstr ""

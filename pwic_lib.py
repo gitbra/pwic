@@ -80,6 +80,7 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
                 'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                     # Find the HTML tags
                 }
 PWIC_DPI = 120.                                     # Pixels per inch
+PWIC_RTL = ['ar', 'fa', 'he']                       # RTL languages
 
 # Options
 PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'db_async', 'fixed_templates', 'keep_sessions', 'http_log_file',

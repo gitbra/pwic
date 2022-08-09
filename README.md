@@ -28,6 +28,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Share by link
 - Share by email
 - Internationalization: English, French, German, extendable to your language from a template or [online](https://explore.transifex.com/pwicwiki/pwicwiki/)
+- LTR/RTL
 
 ### For the validators
 

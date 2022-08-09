@@ -13,10 +13,10 @@
 		<p class="pwic_error">{{pwic.emojis.red_check}} {% trans %}You don't have the authorizations to access this project.{% endtrans %}</p>
 
 		{% if pwic.env.support_email or pwic.env.support_phone or pwic.env.support_url or pwic.env.support_text %}
-			<p>{% trans %}To request your access, get in touch with the support team:{% trans %}</p>
+			<p>{% trans %}To request your access, get in touch with the support team:{% endtrans %}</p>
 			{% include 'html/block-support.html' %}
 		{% else %}
-			<p>{% endtrans %}Unfortunately, there is no defined support information to request your access.{% trans %}</p>
+			<p>{% trans %}Unfortunately, there is no defined support information to request your access.{% endtrans %}</p>
 		{% endif %}
 	</article>
 {% endblock %}

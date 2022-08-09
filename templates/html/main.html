@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.language|escape}}{% endif %}">
+<html lang="{% if pwic.env.language %}{{pwic.env.language.value|escape}}{% else %}{{pwic.language|escape}}{% endif %}"
+	dir="{% if pwic.env.language and (pwic.env.language.value in pwic.constants.rtl) %}rtl{% else %}ltr{% endif %}">
 <head>
 	<!-- General headers -->
 	<meta name="viewport" content="width=device-width, initial-scale=1" />

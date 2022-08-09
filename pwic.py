@@ -46,7 +46,7 @@ from datetime import datetime
 from pwic_md import Markdown
 from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_EMOJIS,
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_LOCALE_PATH,
-                      PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES,
+                      PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_RTL,
                       PWIC_TEMPLATES_PATH, PWIC_USERS, PWIC_VERSION,
                       pwic_attachment_name, pwic_audit, pwic_connect, pwic_detect_language, pwic_dt, pwic_dt_diff, pwic_extended_syntax,
                       pwic_file_ext, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed,
@@ -254,6 +254,7 @@ class PwicServer():
                              'default_home': PWIC_DEFAULTS['page'],
                              'languages': app['langs'],
                              'not_project': PWIC_NOT_PROJECT,
+                             'rtl': PWIC_RTL,
                              'unsafe_chars': PWIC_CHARS_UNSAFE,
                              'version': PWIC_VERSION}
 

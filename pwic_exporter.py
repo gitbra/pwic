@@ -108,7 +108,7 @@ class PwicExporter():
                                   pwic_option(sql, row['project'], 'link_nofollow') is not None)
         cleaner.feed(html)
         html = cleaner.get_html()
-        return PwicExtension.on_html(sql, row['project'], row['page'], row['revision'], html)
+        return PwicExtension.on_html(sql, row['project'], row['page'], row['revision'], html).replace('\r', '')
 
     def _corehtml2html(self, sql: sqlite3.Cursor, row: Dict, html: str, base_url: str, legal_notice: str):
         # Convert HTML without headers to full HTML

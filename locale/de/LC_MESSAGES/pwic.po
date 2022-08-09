@@ -649,6 +649,12 @@ msgstr "Zugriff gesperrt"
 msgid "You don't have the authorizations to access this project."
 msgstr "Sie sind nicht berechtigt, auf dieses Projekt zuzugreifen."
 
+msgid "To request your access, get in touch with the support team:"
+msgstr "Nehmen Sie mit dem Support-Team Kontakt auf, um Zugang zu bitten:"
+
+msgid "Unfortunately, there is no defined support information to request your access."
+msgstr "Leider gibt es keine Support-Informationen, um Ihren Zugang zu bitten."
+
 #: ../templates/html/project-select.html
 msgid "Select your project"
 msgstr "Wählen Sie Ihr Projekt"

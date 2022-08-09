@@ -986,6 +986,8 @@ class PwicAdmin():
                         (p, ))
             for row in sql.fetchall():
                 _transfer_record(newsql, 'documents', row)
+        # ... custom copy
+        PwicExtension.on_project_split(sql, newsql, projects)
 
         # Result
         newsql.execute(''' COMMIT''')
@@ -2137,7 +2139,7 @@ class PwicAdmin():
         call(['git', 'describe', '--tags'])                     # nosec B603
         return True
 
-    def create_backup(self, ) -> bool:
+    def create_backup(self) -> bool:
         # Check the database
         if not isfile(PWIC_DB_SQLITE):
             print('Error: the database is not created yet')
