@@ -2,21 +2,21 @@
 	var easyMDE_buttons = [
 			{	name: 'custom',
 				action: function(editor) {
-					edit_table('Number of columns', 'Number of rows')
+					edit_table({% trans %}'Number of columns:'{% endtrans %}, {% trans %}'Number of rows:'{% endtrans %})
 				},
 				className: 'fa fa-table',
-				title: 'Insert a table',
+				title: {% trans %}'Insert a table'{% endtrans %},
 			},
 			{	name: 'custom',
 				action: function(editor) {
-					alert('From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.');
+					alert({% trans %}'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'{% endtrans %});
 				},
 				className: 'fa fa-paperclip',
-				title: 'Attach an uploaded document',
+				title: {% trans %}'Attach an uploaded document'{% endtrans %},
 			},
 			{	name: 'custom',
 				action: function(editor) {
-					if (confirm('Are you sure to switch back to the basic editor ?'))
+					if (confirm({% trans %}'Are you sure to switch back to the basic editor?'{% endtrans %}))
 					{
 						$('#edit_toolbar').removeClass('pwic_hidden');
 						easyMDE.toTextArea();
@@ -24,7 +24,7 @@
 					}
 				},
 				className: 'fa fa-edit',
-				title: 'Switch to the classical editor',
+				title: {% trans %}'Switch to the classical editor'{% endtrans %},
 			}
 		];
 	var easyMDE = new EasyMDE({	element: $('#edit_markdown')[0],

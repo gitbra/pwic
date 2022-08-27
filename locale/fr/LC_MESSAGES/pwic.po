@@ -272,6 +272,9 @@ msgstr "Indice"
 msgid "Link"
 msgstr "Lien"
 
+msgid "Upper/Lower case"
+msgstr "Majuscule / Minuscule"
+
 msgid "No double spaces"
 msgstr "Pas de double espace"
 
@@ -302,6 +305,9 @@ msgstr "Table"
 msgid "AutoTable"
 msgstr "AutoTable"
 
+msgid "Paste as target table"
+msgstr "Coller comme table cible"
+
 msgid "List"
 msgstr "Liste"
 
@@ -322,6 +328,9 @@ msgstr "Code"
 
 msgid "Emojis"
 msgstr "Emojis"
+
+msgid "Insert"
+msgstr "Insérer"
 
 msgid "Refresh"
 msgstr "Rafraîchir"
@@ -389,6 +398,9 @@ msgstr "Paramètres dépendants du projet"
 
 msgid "The following settings are changeable online and they are applicable to the current project only."
 msgstr "Les paramètres suivants sont modifiables en ligne et ne s'appliquent qu'au projet en cours."
+
+msgid "Refer to your administrator to configure the <a href=\"/%(project)s/special/audit\">other environment variables</a> (whose details are available in the <a href=\"/special/help#help_setup\">help page</a>), or if you want a setting to apply once for all the projects hosted on the server."
+msgstr "Contactez votre administrateur pour configurer les <a href=\"/%(project)s/special/audit\">autres variables d'environnement</a> (dont les détails sont dans la <a href=\"/special/help#help_setup\">page d'aide</a>), ou si vous voulez appliquer un paramètre pour l'ensemble des projets hébergés sur le serveur."
 
 msgid "Variable"
 msgstr "Variable"
@@ -560,6 +572,12 @@ msgstr "Révision"
 msgid "Progress by tag"
 msgstr "Progression par étiquette"
 
+msgid "Reset"
+msgstr "Remettre à zéro"
+
+msgid "Un/Select this tag"
+msgstr "(Dé)sélectionner l'étiquette"
+
 msgid "Tag"
 msgstr "Étiquette"
 
@@ -583,6 +601,12 @@ msgstr "Hash"
 
 msgid "Download"
 msgstr "Télécharger"
+
+msgid "External storage"
+msgstr "Stockage externe"
+
+msgid "Duplicate file"
+msgstr "Fichier doublon"
 
 #: ../templates/html/page.html
 msgid "The page is protected"
@@ -621,6 +645,12 @@ msgstr "'Attention : supprimer une révision ne peut pas être annulé.\\n\\nVou
 msgid "Delete"
 msgstr "Supprimer"
 
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">non-validated revisions</a> are pending."
+msgstr "Vous consultez la <span class=\"pwic_bold\">révision %(revision)d</span> et des <a href=\"/%(project)s/%(page)s/history\">révisions non validées</a> sont en attente."
+
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span>, but the <a href=\"/%(project)s/%(page)s\">latest version</a> is available."
+msgstr "Vous consultez la <span class=\"pwic_bold\">révision %(revision)d</span>, mais la <a href=\"/%(project)s/%(page)s\">dernière version</a> est disponible."
+
 msgid "This page has been validated by <a href=\"/special/user/%(user1)s\" rel=\"nofollow\">%(user2)s</a> on %(sdate)s at %(stime)s."
 msgstr "Cette page a été validée par <a href=\"/special/user/%(user1)s\" rel=\"nofollow\">%(user2)s</a> le %(sdate)s à %(stime)s."
 
@@ -638,6 +668,12 @@ msgstr "Rechercher des pages classifiées apparentées"
 
 msgid "Download all"
 msgstr "Tout télécharger"
+
+msgid "Uploaded by %(author)s on %(date)s at %(time)s."
+msgstr "Téléversé par %(author)s le %(date)s à %(time)s."
+
+msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
+msgstr "Révision <span class=\"pwic_bold\">#%(revision)d</span> dernièrement modifiée par <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br/>le %(date)s à %(time)s &mdash; <span title=\"Hash : %(hash)s\">%(shash)s</span>"
 
 #: ../templates/html/project-access.html
 msgid "No access"
@@ -695,6 +731,9 @@ msgstr "Pages"
 
 msgid "Score"
 msgstr "Score"
+
+msgid "Latest"
+msgstr "Le plus récent"
 
 msgid "Documents"
 msgstr "Documents"
@@ -826,24 +865,61 @@ msgstr "L'utilisateur n'a chargé aucun document."
 msgid "'The parameters are not acceptable.'"
 msgstr "'Les paramètres ne sont pas acceptables.'"
 
-#: ../templates/js/page-edit.js
-msgid "'Paste the link:'"
-msgstr "'Collez le lien :'"
-
+#: ../templates/js/page-edit-easymde.js
 msgid "'Number of columns:'"
 msgstr "'Nombre de colonnes :'"
 
 msgid "'Number of rows:'"
 msgstr "'Nombre de lignes :'"
 
+msgid "'Insert a table'"
+msgstr "'Insérer une table'"
+
+msgid "'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'"
+msgstr "'Depuis la liste des documents, utilisez plutôt le signe + devant le fichier à attacher comme une image ou un lien.'"
+
+msgid "'Attach an uploaded document'"
+msgstr "'Attacher un document déposé'"
+
+msgid "'Are you sure to switch back to the basic editor?'"
+msgstr "'Êtes-vous sûr de basculer vers l\\'éditeur basique ?'"
+
+msgid "'Switch to the classical editor'"
+msgstr "'Basculer vers l\\'éditeur classique'"
+
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr "'Collez le lien :'"
+
 msgid "'You cannot use this feature.'"
 msgstr "'Vous ne pouvez pas utiliser cette fonctionnalité.'"
+
+msgid "'Do you want to replace the current content by the one of the selected document?'"
+msgstr "'Voulez-vous remplacer le contenu actuel par celui du document sélectionné ?'"
+
+msgid "Add a link"
+msgstr "Ajouter un lien"
+
+msgid "Import the content of the document"
+msgstr "Importer le contenu du document"
+
+msgid "Hash:"
+msgstr "Hash :"
+
+msgid "Rename the document"
+msgstr "Renommer le document"
+
+msgid "Delete the document"
+msgstr "Supprimer le document"
 
 msgid "'The file is uploaded and usable in the list below.'"
 msgstr "'Le fichier a été chargé et est disponible dans la liste ci-dessous.'"
 
 msgid "'Unsupported feature.'"
 msgstr "'Fonctionnalité non supportée.'"
+
+msgid "'Are sure to delete \"%s\"?'"
+msgstr "'Êtes-vous sûr de vouloir supprimer \"%s\" ?'"
 
 msgid "'Some fields are mandatory.'"
 msgstr "'Quelques champs sont obligatoires.'"
@@ -863,9 +939,18 @@ msgstr "'Aperçu de la page'"
 msgid "'Close the preview'"
 msgstr "'Fermer l\\'aperçu'"
 
+msgid "'The current changes may be lost.'"
+msgstr "'Les modifications en cours peuvent être perdues.'"
+
 #: ../templates/js/page.js
 msgid "'Warning: the current page is a draft, so its content may disappear in the future without notice.'"
 msgstr "'Attention : la page courante est un brouillon, donc son contenu pourra disparaître à tout moment sans prévenir.'"
+
+msgid "'The code has been copied successfully to the clipboard.'"
+msgstr "'Le code a été copié avec succès dans le presse-papier.'"
+
+msgid "'The code cannot be copied to the clipboard.'"
+msgstr "'Le code ne peut pas être copié dans le presse-papier.'"
 
 #: ../templates/js/user.js
 msgid "'The form is inconsistent.'"

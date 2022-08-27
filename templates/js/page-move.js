@@ -1,6 +1,11 @@
 <script>
 	'use strict';
 
+	$('#move_dst_page').on('dblclick', function() {
+		if ($(this).val() == '')
+			$(this).val($(this).prop('placeholder'));
+	});
+
 	function move_submit() {
 		// Fetch the parameters
 		var srcproj = $('#move_src_project').val(),
@@ -39,7 +44,7 @@
 				else
 					window.location = response.url;
 			})
-			.catch(function(error) {
+			.catch(error => {
 				alert(error);
 				$('INPUT[type=button]').removeAttr('disabled');
 			});

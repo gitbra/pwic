@@ -28,9 +28,7 @@
 							graph_download();
 				});
 		})
-		.catch(function(error) {
-			alert(error);
-		});
+		.catch(error => alert(error));
 	}
 	graph_get_data('render');
 
@@ -41,7 +39,7 @@
 		var dl = $(document.createElement('a'))
 					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
 					.attr('download', '{{pwic.project|escape}}.gv')
-					.appendTo('body')	// Firefox
+					.appendTo('body')
 					.trigger('click');
 		$('body').remove(dl);
 		return true;

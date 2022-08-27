@@ -12,7 +12,7 @@
 
 	<article>
 		<p>{% trans %}The following settings are changeable online and they are applicable to the current project only.{% endtrans %}</p>
-		<p>Refer to your administrator to configure the <a href="/{{pwic.project|urlencode}}/special/audit">other environment variables</a> whose details are available in the <a href="/special/help#help_setup">help page</a>, or if you want a setting to apply once for all the projects hosted on the server.</p>
+		<p>{{ gettext('Refer to your administrator to configure the <a href="/%(project)s/special/audit">other environment variables</a> (whose details are available in the <a href="/special/help#help_setup">help page</a>), or if you want a setting to apply once for all the projects hosted on the server.')|format(project=pwic.project|urlencode) }}</p>
 
 		<table>
 			<tr>

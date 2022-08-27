@@ -47,9 +47,9 @@
 			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
 				<div class="pwic_popup">
 					<form autocomplete="new-password">
-						<h3>{% trans %}Change your password{% endtrans %}</h3>
+						<p class="pwic_bold">{% trans %}Change your password{% endtrans %}</p>
 						{% if not pwic.env.https %}
-							<p>{{pwic.emojis.warning}} {% trans %}Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.{% endtrans %}</p>
+							<p class="pwic_italic">{{pwic.emojis.warning}} {% trans %}Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.{% endtrans %}</p>
 						{% endif %}
 						<table class="pwic_noborder">
 							<tr><td>{% trans %}Current password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true" /></td></tr>
@@ -94,7 +94,7 @@
 								<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 							{% endif %}
 							{% if page.valuser != '' %}
-								<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser, valdate=page.valdate, valtime=page.valtime)|escape }}">{{pwic.emojis.flag}}</span>
+								<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser|escape, valdate=page.valdate|escape, valtime=page.valtime|escape) }}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
 						<td>{{page.date|escape}}</td>
@@ -128,14 +128,14 @@
 						<td>
 							<a class="pwic_break" href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a>
 							{% if doc.exturl != ''%}
-								<span title="External storage">{{pwic.emojis.cloud}}</span>
+								<span title="{% trans %}External storage{% endtrans %}">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
 						<td class="pwic_desktop pwic_break">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
-							{% if doc.occurrence > 1 %} <span title="Duplicate file">{{pwic.emojis.gemini}}</span> {% endif %}
+							{% if doc.occurrence > 1 %} <span title="{% trans %}Duplicate file{% endtrans %}">{{pwic.emojis.gemini}}</span> {% endif %}
 						</td>
 						<td>{{doc.date|escape}}</td>
 						<td class="pwic_desktop">{{doc.time|escape}}</td>

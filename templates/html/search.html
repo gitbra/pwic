@@ -42,19 +42,19 @@
 					<tr>
 						<td>{{page.page|escape}}</td>
 						<td class="pwic_desktop">{{page.revision|escape}}</td>
-						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}/rev{{page.revision|urlencode}}">{{page.title|escape}}</a></td>
+						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}{% if not page.latest %}/rev{{page.revision|urlencode}}{% endif %}">{{page.title|escape}}</a></td>
 						<td>
 							{% if pwic.with_rev and page.latest %}
-								<span title="Latest">{{pwic.emojis.watch}}</span>
+								<span title="{% trans %}Latest{% endtrans %}">{{pwic.emojis.watch}}</span>
 							{% endif %}
 							{% if page.draft %}
-								<span title="Draft">{{pwic.emojis.hourglass}}</span>
+								<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
 							{% endif %}
 							{% if page.final %}
-								<span title="Marked as final">{{pwic.emojis.notes}}</span>
+								<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 							{% endif %}
 							{% if page.valuser != '' %}
-								<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser, valdate=page.valdate, valtime=page.valtime)|escape }}">{{pwic.emojis.flag}}</span>
+								<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser|escape, valdate=page.valdate|escape, valtime=page.valtime|escape) }}">{{pwic.emojis.flag}}</span>
 							{% endif %}
 						</td>
 						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>

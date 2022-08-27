@@ -93,7 +93,7 @@
 
 
 		{% if pwic.admins|count + pwic.managers|count + pwic.editors|count + pwic.validators|count + pwic.readers|count > 0 %}
-			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#page_members_list').toggleClass('pwic_hidden')">{% trans %}Team members{% endtrans %}</h1>
+			<h1 class="pwic_cursor" title="{% trans %}Expand/Collapse{% endtrans %}" onclick="$('#page_members_list').toggleClass('pwic_hidden')">{% trans %}Team members{% endtrans %}</h1>
 			<ul id="page_members_list">
 				{% if pwic.admins|count > 0 %}
 					<li><strong>{% trans %}Administrators:{% endtrans %}</strong>
@@ -158,13 +158,13 @@
 					<td class="pwic_desktop">{{page.revision|escape}}</td>
 					<td>
 						{% if page.draft %}
-							<span title="Draft">{{pwic.emojis.hourglass}}</span>
+							<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
 						{% endif %}
 						{% if page.final %}
-							<span title="Marked as final">{{pwic.emojis.notes}}</span>
+							<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 						{% endif %}
 						{% if page.valuser != '' %}
-							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser, valdate=page.valdate, valtime=page.valtime)|escape }}">{{pwic.emojis.flag}}</span>
+							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=page.valuser|escape, valdate=page.valdate|escape, valtime=page.valtime|escape) }}">{{pwic.emojis.flag}}</span>
 						{% endif %}
 					</td>
 					<td><a class="pwic_break" href="/special/user/{{page.author|urlencode}}" rel="nofollow">{{page.author|escape}}</a></td>
@@ -180,9 +180,9 @@
 		{% if pwic.tags|count > 0 %}
 			<h1 class="pwic_js">{% trans %}Progress by tag{% endtrans %}</h1>
 			<div id="page_progress_tags" class="pwic_tagbox pwic_js">
-				<a href="#" title="Reset">{{pwic.emojis.red_check}}</a>
+				<a href="#" title="{% trans %}Reset{% endtrans %}">{{pwic.emojis.red_check}}</a>
 				{% for tag in pwic.tags %}
-					<a href="#" title="Un/Select this tag">#{{tag|escape}}</a>
+					<a href="#" title="{% trans %}Un/Select this tag{% endtrans %}">#{{tag|escape}}</a>
 				{% endfor %}
 			</div>
 
@@ -231,7 +231,7 @@
 						<td>
 							<a class="pwic_break" href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a>
 							{% if doc.exturl != ''%}
-								<span title="External storage">{{pwic.emojis.cloud}}</span>
+								<span title="{% trans %}External storage{% endtrans %}">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
 						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
@@ -239,7 +239,7 @@
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %}
-								<span title="Duplicate file">{{pwic.emojis.gemini}}</span>
+								<span title="{% trans %}Duplicate file{% endtrans %}">{{pwic.emojis.gemini}}</span>
 							{% endif %}
 						</td>
 						<td><a class="pwic_break" href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>

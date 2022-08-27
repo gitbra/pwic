@@ -70,11 +70,11 @@
 		</div>
 
 		{% if not pwic.latest %}
-			<p class="pwic_warning">{{pwic.emojis.eye}} You are viewing the <span class="pwic_bold">revision {{pwic.revision}}</span>
+			<p class="pwic_warning">{{pwic.emojis.eye}}
 				{% if pwic.env.validated_only %}
-					and <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">non-validated revisions</a> are pending.
+					{{ gettext('You are viewing the <span class="pwic_bold">revision %(revision)d</span> and <a href="/%(project)s/%(page)s/history">non-validated revisions</a> are pending.')|format(revision=pwic.revision, project=pwic.project|urlencode, page=pwic.page|urlencode) }}
 				{% else %}
-					, unless you prefer the <a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">latest version</a>.
+					{{ gettext('You are viewing the <span class="pwic_bold">revision %(revision)d</span>, but the <a href="/%(project)s/%(page)s">latest version</a> is available.')|format(revision=pwic.revision, project=pwic.project|urlencode, page=pwic.page|urlencode) }}
 				{% endif %}
 			</p>
 		{% endif %}
@@ -135,7 +135,7 @@
 							</a>
 						{% endif %}
 						{% for doc in pwic.documents %}
-							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
 								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
@@ -152,7 +152,7 @@
 							</a>
 						{% endif %}
 						{% for doc in pwic.images %}
-							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="Uploaded by {{doc.author|escape}} on {{doc.date|escape}} at {{doc.time|escape}}">
+							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
 								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
@@ -163,8 +163,7 @@
 		{% endif %}
 
 		<p id="page_lastmod">
-			Revision <span class="pwic_bold">#{{pwic.revision|escape}}</span> was last modified by <a href="/special/user/{{pwic.author|urlencode}}" rel="nofollow">{{pwic.author|escape}}</a>
-			<br/>on {{pwic.date}} at {{pwic.time}} &mdash; <span title="Hash: {{pwic.hash|escape}}">{{pwic.hash[:16]}}</span>
+			{{ gettext('Revision <span class="pwic_bold">#%(revision)d</span> was last modified by <a href="/special/user/%(author1)s" rel="nofollow">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title="Hash: %(hash)s">%(shash)s</span>')|format(revision=pwic.revision, author1=pwic.author|urlencode, author2=pwic.author|escape, date=pwic.date|escape, time=pwic.time|escape, hash=pwic.hash|escape, shash=pwic.hash[:16]|escape) }}
 		</p>
 
 		{% if pwic.env.legal_notice %}

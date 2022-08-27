@@ -20,8 +20,8 @@
 
 
 		<h1>{% trans %}Reference time{% endtrans %}</h1>
-		<p>{{ gettext('The server has started on %(date)s at %(time)s.')|format(date=pwic.up.date, time=pwic.up.time)|escape }}</p>
-		<p>{{ gettext('The current time on the server is %(date)s at %(time)s.')|format(date=pwic.systime.date, time=pwic.systime.time)|escape }}</p>
+		<p>{{ gettext('The server has started on %(date)s at %(time)s.')|format(date=pwic.up.date|escape, time=pwic.up.time|escape) }}</p>
+		<p>{{ gettext('The current time on the server is %(date)s at %(time)s.')|format(date=pwic.systime.date|escape, time=pwic.systime.time|escape) }}</p>
 
 
 		{% if pwic.env|count > 0 %}

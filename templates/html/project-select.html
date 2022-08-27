@@ -22,7 +22,7 @@
 		{% endif %}
 
 		{% if pwic.projects|count > 0 %}
-			<h1 class="pwic_cursor" title="Expand/Collapse" onclick="$('#projects_1').toggleClass('pwic_hidden')">{% trans %}Projects you joined already{% endtrans %}</h1>
+			<h1 class="pwic_cursor" title="{% trans %}Expand/Collapse{% endtrans %}" onclick="$('#projects_1').toggleClass('pwic_hidden')">{% trans %}Projects you joined already{% endtrans %}</h1>
 			<table id="projects_1">
 				<tr>
 					<th>{% trans %}Project{% endtrans %}</th>

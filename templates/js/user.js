@@ -10,6 +10,11 @@
 		return false;
 	}
 
+	$('body').on('keydown', function(event) {
+		if ((event.key == 'Escape') && (!$('#user_password_popup').hasClass('pwic_hidden')))
+			user_password_popup();
+	});
+
 	function user_password_submit() {
 		var	cur  = $('#user_password_current').val(),
 			new1 = $('#user_password_new1').val(),
@@ -33,9 +38,7 @@
 						alert({% trans %}'Your password has been changed successfully.'{% endtrans %});
 					}
 				})
-				.catch(function(error) {
-					alert(error);
-				});
+				.catch(error => alert(error));
 		}
 	}
 

@@ -559,6 +559,7 @@ class PwicServer():
                              or ((pwic['author'] == user)
                                  and pwic['draft']))
         pwic['file_formats'] = PwicExporter.get_allowed_extensions()
+        pwic['canonical'] = ('%s/%s/%s' % (app['base_url'], project, page)) + ('' if pwic['latest'] else '/rev%d' % revision)
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -4250,6 +4251,8 @@ def main() -> bool:
 
     # General options of the server
     app['base_url'] = str(pwic_option(sql, '', 'base_url', ''))
+    if app['base_url'] == '':
+        print('Warning: defining the option "base_url" is highly recommended')
     app['http_referer'] = (app['base_url'] != '') and (pwic_option(sql, '', 'http_referer') is not None)
     app['no_login'] = pwic_option(sql, '', 'no_login') is not None
     app['oauth'] = {'provider': pwic_option(sql, '', 'oauth_provider', None),

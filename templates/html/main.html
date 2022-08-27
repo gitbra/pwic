@@ -10,10 +10,13 @@
 	{% endif %}
 	<meta charset="utf-8" />
 	<title>{% block title %}{{pwic.title|escape}}{% endblock %}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
+	{% if pwic.canonical %}
+		<link rel="canonical" href="{{pwic.canonical|escape}}" />
+	{% endif %}
 	<link rel="icon" type="image/png" href="/static/favicon.png" />
 	{% if pwic.project and (pwic.project not in pwic.constants.not_project) %}
 		{% if not pwic.env.no_search %}
-			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{{ gettext('Search in project %(project)s')|format(project=pwic.project)|escape }}" />
+			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{{ gettext('Search in project %(project)s')|format(project=pwic.project|escape) }}" />
 		{% endif  %}
 		{% if not pwic.env.no_rss %}
 			<link rel="alternate" type="application/rss+xml" href="/api/project/rss/get?project={{pwic.project|escape}}" title="{% trans %}Recent changes for{% endtrans %} {{pwic.project|escape}}" />

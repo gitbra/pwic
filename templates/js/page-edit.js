@@ -67,7 +67,7 @@
 		var appended = 0;
 		for (var i=se ; i>=0 ; i--)
 		{
-			if ((i == 0) || (ta.value[i] == "\n"))
+			if ((i == 0) || (ta.value[i] == '\n'))
 			{
 				var j = (i != 0 ? 1 : 0);
 				ta.value = ta.value.substring(0, i+j) + tag + ta.value.substring(i+j);
@@ -97,20 +97,24 @@
 		ta.focus();
 	}
 
+	function edit_switch_case() {
+		_edit_block_transform(s => (s == s.toUpperCase() ? s.toLowerCase() : s.toUpperCase()));
+	}
+
 	function edit_double_spaces() {
-		_edit_block_transform((s) => s.replace(/  +/g, ' '));
+		_edit_block_transform(s => s.replace(/  +/g, ' '));
 	}
 
 	function edit_left_line() {
-		_edit_block_transform((s) => s.replaceAll('\r', '').replace(/\n\s+/g, '\n'));
+		_edit_block_transform(s => s.replaceAll('\r', '').replace(/\n\s+/g, '\n'));
 	}
 
 	function edit_no_blank_line() {
-		_edit_block_transform((s) => s.replaceAll('\r', '').replaceAll(/\n\s*\n/g, '\n'));
+		_edit_block_transform(s => s.replaceAll('\r', '').replaceAll(/\n\s*\n/g, '\n'));
 	}
 
 	function edit_single_line() {
-		_edit_block_transform((s) => s.replaceAll('\r', '').replace(/[\s\t]*\n[\s\t]*/, '\n').replaceAll('\n', ' '));
+		_edit_block_transform(s => s.replaceAll('\r', '').replace(/[\s\t]*\n[\s\t]*/, '\n').replaceAll('\n', ' '));
 	}
 
 	function edit_table() {
@@ -286,7 +290,7 @@
 					throw Error(response.status + ' ' + response.statusText);
 				else
 					response.text().then(function(text) {
-						if ((text != '') && confirm('Do you want to replace the current content by the one of the selected document?'))
+						if ((text != '') && confirm({% trans %}'Do you want to replace the current content by the one of the selected document?'{% endtrans %}))
 						{
 							if (typeof easyMDE !== 'undefined')
 							{
@@ -304,9 +308,7 @@
 						}
 					});
 			})
-			.catch(function(error) {
-				alert(error);
-			});
+			.catch(error => alert(error));
 	}
 
 
@@ -380,28 +382,26 @@
 							doc = data[i];
 							buffer += '<tr>\
 											<td>\
-												<input type="button" value="{{pwic.emojis.plus}}" title="Add a link" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>' +
-												(doc['convertible'] ? ' <input class="pwic_desktop" type="button" value="{{pwic.emojis.hammer}}" title="Import the content of the document" onclick="edit_convert_document('+doc['id']+')" \/>' : '') +
+												<input type="button" value="{{pwic.emojis.plus}}" title="{% trans %}Add a link{% endtrans %}" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>' +
+												(doc['convertible'] ? ' <input class="pwic_desktop" type="button" value="{{pwic.emojis.hammer}}" title="{% trans %}Import the content of the document{% endtrans %}" onclick="edit_convert_document('+doc['id']+')" \/>' : '') +
 											'<\/td>\
 											<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
 											<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
-											<td title="Hash: '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
+											<td title="{% trans %}Hash:{% endtrans %} '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
 											<td class="pwic_desktop">'+doc['mime_icon']+' '+pwic_entities(doc['mime'])+'<\/td>\
 											<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 											<td>'+pwic_entities(doc['date'])+'<\/td>\
 											<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
 											<td>\
-												<input type="button" value="{{pwic.emojis.sparkles}}" title="Rename the document" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
-												<input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="Delete the document" />\
+												<input type="button" value="{{pwic.emojis.sparkles}}" title="{% trans %}Rename the document{% endtrans %}" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
+												<input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="{% trans %}Delete the document{% endtrans %}" />\
 											<\/td>\
 										<\/tr>';
 						}
 						$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);
 					});
 			})
-			.catch(function(error) {
-				alert(error);
-			});
+			.catch(error => alert(error));
 	}
 
 	var edit_files_list_initial = $('#edit_files_list').html();
@@ -442,9 +442,7 @@
 											}, 2000);
 						}
 					})
-					.catch(function(error) {
-						alert(error);
-					});
+					.catch(error => alert(error));
 			}
 		}
 		else
@@ -465,7 +463,7 @@
 
 	function edit_rename_document(id, filename) {
 		var newfn = prompt('Type the new file name:', filename);
-		if (newfn != filename)
+		if ((newfn != null) && (newfn != filename))
 		{
 			fetch('/api/document/rename', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -481,15 +479,13 @@
 							edit_refresh_documents();
 						}, 1000);
 				})
-				.catch(function(error) {
-					alert(error);
-				});
+				.catch(error => alert(error));
 		}
 		return false;
 	}
 
 	function edit_delete_document(id, filename) {
-		if (confirm('Are sure to delete "'+filename+'"?'))
+		if (confirm({% trans %}'Are sure to delete "%s"?'{% endtrans %}.replace('%s', filename)))
 		{
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -504,9 +500,7 @@
 							edit_refresh_documents();
 						}, 1000);
 				})
-				.catch(function(error) {
-					alert(error);
-				});
+				.catch(error => alert(error));
 		}
 		return false;
 	}
@@ -596,14 +590,10 @@
 													throw Error(response.status + ' ' + response.statusText);
 												window.location = '/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}?success';
 											})
-											.catch(function(error) {
-												alert(error);
-											});
+											.catch(error => alert(error));
 									});
 								})
-								.catch(function(error){
-									alert(error);
-								});
+								.catch(error => alert(error));
 						}
 					});
 			})
@@ -647,16 +637,14 @@
 							};
 					});
 			})
-			.catch(function(error) {
-				alert(error);
-			});
+			.catch(error => alert(error));
 	}
 
 
 	// -------------------------------- Leave without saving
 
 	window.onbeforeunload = function(e) {
-		var	msg = 'The current changes may be lost.',
+		var	msg = {% trans %}'The current changes may be lost.'{% endtrans %},
 			e = e || window.event;
 		if (!edit_submittable)
 		{

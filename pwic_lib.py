@@ -52,7 +52,7 @@ PWIC_PRIVATE_KEY = 'db/pwic_https.key'
 PWIC_PUBLIC_KEY = 'db/pwic_https.crt'
 PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
-PWIC_NOT_PROJECT = ['', 'api', 'special']
+PWIC_NOT_PROJECT = ['', 'api', 'special', 'static']
 
 # Thematic constants
 PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors

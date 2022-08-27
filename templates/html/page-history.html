@@ -35,7 +35,7 @@
 							<span title="{% trans %}Marked as final{% endtrans %}">{{pwic.emojis.notes}}</span>
 						{% endif %}
 						{% if rev.valuser != '' %}
-							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=rev.valuser, valdate=rev.valdate, valtime=rev.valtime)|escape }}">{{pwic.emojis.flag}}</span>
+							<span title="{{ gettext('Validated by %(valuser)s on %(valdate)s at %(valtime)s.')|format(valuser=rev.valuser|escape, valdate=rev.valdate|escape, valtime=rev.valtime|escape) }}">{{pwic.emojis.flag}}</span>
 						{% endif %}
 					</td>
 					<td><a class="pwic_break" href="/special/user/{{rev.author|urlencode}}" rel="nofollow">{{rev.author|escape}}</a></td>

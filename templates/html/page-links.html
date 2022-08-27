@@ -18,7 +18,7 @@
 			<p>{% trans %}These pages cannot be reached by simple clicks but are still referenced by the search engine.{% endtrans %}</p>
 			<ul>
 				{% for page in pwic.orphans %}
-				<li><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></li>
+					<li><a href="/{{pwic.project|urlencode}}/{{page|urlencode}}">{{page|escape}}</a></li>
 				{% endfor %}
 			</ul>
 		{% endif %}

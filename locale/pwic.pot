@@ -257,6 +257,9 @@ msgstr ""
 msgid "Link"
 msgstr ""
 
+msgid "Upper/Lower case"
+msgstr ""
+
 msgid "No double spaces"
 msgstr ""
 
@@ -287,6 +290,9 @@ msgstr ""
 msgid "AutoTable"
 msgstr ""
 
+msgid "Paste as target table"
+msgstr ""
+
 msgid "List"
 msgstr ""
 
@@ -306,6 +312,9 @@ msgid "Code"
 msgstr ""
 
 msgid "Emojis"
+msgstr ""
+
+msgid "Insert"
 msgstr ""
 
 msgid "Refresh"
@@ -373,6 +382,9 @@ msgid "Project-dependent settings"
 msgstr ""
 
 msgid "The following settings are changeable online and they are applicable to the current project only."
+msgstr ""
+
+msgid "Refer to your administrator to configure the <a href=\"/%(project)s/special/audit\">other environment variables</a> (whose details are available in the <a href=\"/special/help#help_setup\">help page</a>), or if you want a setting to apply once for all the projects hosted on the server."
 msgstr ""
 
 msgid "Variable"
@@ -545,6 +557,12 @@ msgstr ""
 msgid "Progress by tag"
 msgstr ""
 
+msgid "Reset"
+msgstr ""
+
+msgid "Un/Select this tag"
+msgstr ""
+
 msgid "Tag"
 msgstr ""
 
@@ -567,6 +585,12 @@ msgid "Hash"
 msgstr ""
 
 msgid "Download"
+msgstr ""
+
+msgid "External storage"
+msgstr ""
+
+msgid "Duplicate file"
 msgstr ""
 
 #: ../templates/html/page.html
@@ -606,6 +630,12 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">non-validated revisions</a> are pending."
+msgstr ""
+
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span>, but the <a href=\"/%(project)s/%(page)s\">latest version</a> is available."
+msgstr ""
+
 msgid "This page has been validated by <a href=\"/special/user/%(user1)s\" rel=\"nofollow\">%(user2)s</a> on %(sdate)s at %(stime)s."
 msgstr ""
 
@@ -622,6 +652,12 @@ msgid "Search for related classified pages"
 msgstr ""
 
 msgid "Download all"
+msgstr ""
+
+msgid "Uploaded by %(author)s on %(date)s at %(time)s."
+msgstr ""
+
+msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
 msgstr ""
 
 #: ../templates/html/project-access.html
@@ -679,6 +715,9 @@ msgid "Pages"
 msgstr ""
 
 msgid "Score"
+msgstr ""
+
+msgid "Latest"
 msgstr ""
 
 msgid "Documents"
@@ -811,23 +850,60 @@ msgstr ""
 msgid "'The parameters are not acceptable.'"
 msgstr ""
 
-#: ../templates/js/page-edit.js
-msgid "'Paste the link:'"
-msgstr ""
-
+#: ../templates/js/page-edit-easymde.js
 msgid "'Number of columns:'"
 msgstr ""
 
 msgid "'Number of rows:'"
 msgstr ""
 
+msgid "'Insert a table'"
+msgstr ""
+
+msgid "'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'"
+msgstr ""
+
+msgid "'Attach an uploaded document'"
+msgstr ""
+
+msgid "'Are you sure to switch back to the basic editor?'"
+msgstr ""
+
+msgid "'Switch to the classical editor'"
+msgstr ""
+
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr ""
+
 msgid "'You cannot use this feature.'"
+msgstr ""
+
+msgid "'Do you want to replace the current content by the one of the selected document?'"
+msgstr ""
+
+msgid "Add a link"
+msgstr ""
+
+msgid "Import the content of the document"
+msgstr ""
+
+msgid "Hash:"
+msgstr ""
+
+msgid "Rename the document"
+msgstr ""
+
+msgid "Delete the document"
 msgstr ""
 
 msgid "'The file is uploaded and usable in the list below.'"
 msgstr ""
 
 msgid "'Unsupported feature.'"
+msgstr ""
+
+msgid "'Are sure to delete \"%s\"?'"
 msgstr ""
 
 msgid "'Some fields are mandatory.'"
@@ -848,8 +924,17 @@ msgstr ""
 msgid "'Close the preview'"
 msgstr ""
 
+msgid "'The current changes may be lost.'"
+msgstr ""
+
 #: ../templates/js/page.js
 msgid "'Warning: the current page is a draft, so its content may disappear in the future without notice.'"
+msgstr ""
+
+msgid "'The code has been copied successfully to the clipboard.'"
+msgstr ""
+
+msgid "'The code cannot be copied to the clipboard.'"
 msgstr ""
 
 #: ../templates/js/user.js

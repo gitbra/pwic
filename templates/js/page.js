@@ -2,7 +2,7 @@
 	'use strict';
 
 	{% if pwic.env.no_text_selection %}
-		$(document).on('keydown', (event) => { return !((event.key == 'F12') || (event.ctrlKey && event.shiftKey && (event.key == 'I')) || (event.ctrlKey && (event.key == 'u'))); });
+		$(document).on('keydown', event => { return !((event.key == 'F12') || (event.ctrlKey && event.shiftKey && (event.key == 'I')) || (event.ctrlKey && (event.key == 'u'))); });
 		$(document).on('selectstart', () => { return false; });
 		$(document).on('contextmenu', () => { return false; });
 	{% endif %}
@@ -12,7 +12,7 @@
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
 		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
 		$('#page_topofpage').toggleClass('pwic_hidden', scroll == 0);
-	}
+	};
 
 	$(document).on('keyup', (event) => {
 		if (!$('#pwic_browser').hasClass('pwic_hidden'))
@@ -63,9 +63,7 @@
 											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
 											(action == 'delete' ? '?success' : '');
 				})
-				.catch(function(error) {
-					alert(error);
-				});
+				.catch(error => alert(error));
 		}
 		return false;
 	}
@@ -90,7 +88,7 @@
 						var dl = $(document.createElement('a'))
 									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
 									.attr('download', filename)
-									.appendTo('body')  // Firefox
+									.appendTo('body')
 									.trigger('click');
 						$('body').remove(dl);
 						window.URL.revokeObjectURL(dl.href);
@@ -98,16 +96,17 @@
 					});
 				}
 			})
-			.catch(function(error) {
-				alert(error);
-			});
+			.catch(error => alert(error));
 		return false;
 	}
 
 	{% if not pwic.env.no_copy_code %}
 		function page_copy_code() {
 			var code = $(this).parent().text().substring($(this).text().length);
-			navigator.clipboard.writeText(code);
+			navigator.clipboard.writeText(code).then(
+				() => alert({% trans %}'The code has been copied successfully to the clipboard.'{% endtrans %}),
+				() => alert({% trans %}'The code cannot be copied to the clipboard.'{% endtrans %})
+			);
 		}
 
 		$('CODE').each(function(i, e) {

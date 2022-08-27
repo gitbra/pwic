@@ -51,9 +51,7 @@
 					$('INPUT[type=text]').removeAttr('readonly').removeClass('pwic_disabled_bg');
 				});
 		})
-		.catch(function(error) {
-			alert(error);
-		});
+		.catch(error => alert(error));
 
 	// Action when the save button is pressed
 	function env_set(key, value) {
@@ -63,14 +61,12 @@
 												'&key='+encodeURIComponent(key) +
 												'&value='+encodeURIComponent(value),
 										credentials: 'same-origin' })
-			.then(function(response) {
+			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
 				$('INPUT[type=text][data-key='+key+']').data('saved', value);
 				$('INPUT[type=button][data-key='+key+']').addClass('pwic_hidden');
 			})
-			.catch(function(error) {
-				alert(error);
-			});
+			.catch(error => alert(error));
 	}
 </script>
