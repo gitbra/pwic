@@ -78,6 +78,8 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
                 'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),    # Find a page in Markdown
                 'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                         # Valid protocols for the links
                 'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                     # Find the HTML tags
+                'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                     # Tag in HTML
+                'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                         # Comment in HTML
                 }
 PWIC_DPI = 120.                                     # Pixels per inch
 PWIC_RTL = ['ar', 'fa', 'he']                       # RTL languages
@@ -488,6 +490,17 @@ def pwic_list_tags(tags: str) -> str:
 def pwic_nns(value: Optional[str]) -> str:
     ''' Return a non-null string '''
     return str('' if value is None else value)
+
+
+def pwic_notag(value: str) -> str:
+    ''' Remove the HTML tags from a string '''
+    while True:
+        i = len(value)
+        value = PWIC_REGEXES['tag_all'].sub('', value)
+        value = PWIC_REGEXES['tag_comment'].sub('', value)
+        if len(value) == i:
+            break
+    return value
 
 
 def pwic_option(sql: Optional[sqlite3.Cursor],

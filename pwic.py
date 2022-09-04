@@ -51,8 +51,8 @@ from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, P
                       pwic_attachment_name, pwic_audit, pwic_connect, pwic_detect_language, pwic_dt, pwic_dt_diff, pwic_extended_syntax,
                       pwic_file_ext, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed,
                       pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name,
-                      pwic_safe_user_name, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str, pwic_str2bytearray,
-                      pwic_x, pwic_xb)
+                      pwic_safe_user_name, pwic_notag, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str,
+                      pwic_str2bytearray, pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -4130,6 +4130,7 @@ def main() -> bool:
         else:
             entry.install_gettext_translations(translation('pwic', localedir='locale', languages=[lang]))
         entry.filters['ishex'] = pwic_ishex
+        entry.filters['notag'] = pwic_notag
         app['jinja'][lang] = entry
     # ... client size
     app._client_max_size = max(app._client_max_size, pwic_int(pwic_option(sql, '', 'client_size_max')))
