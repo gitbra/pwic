@@ -26,10 +26,10 @@ from os import urandom
 from os.path import splitext
 from hashlib import sha256
 from base64 import b64encode
+from string import ascii_lowercase, ascii_uppercase
 from aiohttp import web
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
-from string import ascii_lowercase, ascii_uppercase
 
 
 # ===================================================
@@ -116,15 +116,17 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'calendar': '&#x1F4C5;',
                'camera': '&#x1F3A5;',               # 1F4F9
                'chains': '&#x1F517;',
-               'check': '&#x2714;',
-               'clamp': '&#x1F5DC;',
-               'cloud': '&#x2601;',
+               'check': '&#x2714;&#xFE0F;',
+               'clamp': '&#x1F5DC;&#xFE0F;',
+               'clock': '&#x23F0;',
+               'cloud': '&#x2601;&#xFE0F;',
+               'curved_left_arrow': '&#x21A9;&#xFE0F;',
                'dice': '&#x1F3B2;',
                'door': '&#x1F6AA;',
                'double': '&#x268B;',
-               'eye': '&#x1F441;',
+               'eye': '&#x1F441;&#xFE0F;',
                'finger_left': '&#x1F448;',
-               'finger_up': '&#x261D;',
+               'finger_up': '&#x261D;&#xFE0F;',
                'flag': '&#x1F3C1;',
                'gemini': '&#x264A;',
                'glasses': '&#x1F453;',
@@ -151,8 +153,8 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'pin': '&#x1F4CC;',
                'plug': '&#x1F50C;',
                'plus': '&#x2795;',
-               'printer': '&#x1F5A8;',
-               'recycle': '&#x267B;',
+               'printer': '&#x1F5A8;&#xFE0F;',
+               'recycle': '&#x267B;&#xFE0F;',
                'red_check': '&#x274C;',
                'refresh': '&#x1F504;',
                'right': '&#x226B;',
@@ -160,17 +162,18 @@ PWIC_EMOJIS = {'alien': '&#x1F47D;',
                'save': '&#x1F4BE;',
                'scroll': '&#x1F4DC;',
                'search': '&#x1F50D;',
-               'server': '&#x1F5A5;',
+               'server': '&#x1F5A5;&#xFE0F;',
                'set_square': '&#x1F4D0;',
                'sheet': '&#x1F4C4;',
                'sparkles': '&#x2728;',
                'star': '&#x2B50;',
                'top': '&#x1F51D;',
+               'trashcan': '&#x1F5D1;&#xFE0F;',
                'truck': '&#x1F69A;',
                'unlocked': '&#x1F513;',
                'users': '&#x1F465;',
                'validate': '&#x1F44C;',
-               'warning': '&#x26A0;',
+               'warning': '&#x26A0;&#xFE0F;',
                'watch': '&#x231A;'}
 
 
@@ -187,11 +190,11 @@ class PwicError(Exception):
 ZIP = ['PK']
 MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
-tyMime = List[Tuple[List[str],                  # Extensions in lower case
+TyMime = List[Tuple[List[str],                  # Extensions in lower case
                     List[str],                  # Mimes
                     Optional[List[str]],        # Magic bytes
                     bool]]                      # Compressed format
-PWIC_MIMES: tyMime = [([''], ['application/octet-stream'], None, False),
+PWIC_MIMES: TyMime = [([''], ['application/octet-stream'], None, False),
                       (['7z'], ['application/x-7z-compressed'], ['7z'], True),
                       (['aac'], ['audio/vnd.dlna.adts'], None, True),
                       (['abw'], ['application/x-abiword'], None, False),
@@ -451,6 +454,7 @@ def pwic_int(value: Any, base=10) -> int:
 
 
 def pwic_ishex(value: str) -> bool:
+    ''' Check if the value is a non-zero hexadecimal value '''
     return pwic_int(str(value), base=16) > 0
 
 
@@ -539,6 +543,7 @@ def pwic_random_hash() -> str:
 
 
 def pwic_read_attr(attrs: List[Tuple[str, Optional[str]]], key: str, default: str = '') -> str:
+    ''' Read a list of tuples by the first field '''
     for (k, v) in attrs:
         if k == key:
             return pwic_nns(v)
@@ -590,7 +595,7 @@ def pwic_safe_user_name(name: str) -> str:
 
 def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
     ''' Calculate the SHA256 as string for the given value '''
-    if type(value) == bytearray:
+    if isinstance(value, bytearray):
         if salt:
             raise PwicError
         return sha256(value).hexdigest()
@@ -754,7 +759,7 @@ def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bo
                 m2n = mask[2 * n]
                 if m2n not in tmask:
                     m2n = '1'
-                snum = tmask[m2n](numbering[n])
+                snum = tmask[m2n](c)
                 ssep = mask[2 * n + 1]
                 sdisp += '%s%s' % (snum, ssep)
                 stag += '_%s' % snum.lower()
@@ -902,7 +907,7 @@ class PwicSearchVisitor(NodeVisitor):
 
 
 def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
-    # Parse the query
+    ''' Build a search object from a string '''
     if query in ['', None]:
         return None
     try:
@@ -929,6 +934,7 @@ def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
 
 
 def pwic_search2string(query: Dict[str, List[str]]) -> str:
+    ''' Convert a search object back to string '''
     if query is None:
         return ''
     result = ''

@@ -19,29 +19,30 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
-from aiohttp import web, MultipartReader, hdrs
-from aiohttp_session import setup, get_session, new_session
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
-from urllib.parse import parse_qs, quote, urlencode
-from urllib.request import Request, urlopen
-from jinja2 import Environment, FileSystemLoader
-import sqlite3
+from bisect import insort, bisect_left
+from datetime import datetime
 from difflib import HtmlDiff
-from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
+from html import escape
 from io import BytesIO
+import json
 import os
 from os import listdir, urandom
 from os.path import getsize, isdir, isfile, join
-from gettext import translation
-import json
-import re
-import imagesize
-from ipaddress import ip_network, ip_address
-from bisect import insort, bisect_left
-from multidict import MultiDict
-from html import escape
 from random import randint
-from datetime import datetime
+import re
+import sqlite3
+import sys
+from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
+from ipaddress import ip_network, ip_address
+from urllib.parse import parse_qs, quote, urlencode
+from urllib.request import Request, urlopen
+from gettext import translation
+import imagesize
+from jinja2 import Environment, FileSystemLoader
+from multidict import MultiDict
+from aiohttp import web, MultipartReader, hdrs
+from aiohttp_session import setup, get_session, new_session
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from pwic_md import Markdown
 from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_EMOJIS,
@@ -65,7 +66,10 @@ IPR_EQ, IPR_NET, IPR_REG = range(3)
 # ===================================================
 
 class PwicServer():
+    ''' Main server for Pwic.wiki '''
+
     def __init__(self, dbconn: sqlite3.Connection):
+        ''' Constructor '''
         self.dbconn = dbconn
 
     def _lock(self, sql):
@@ -292,7 +296,7 @@ class PwicServer():
             values = pwic_list(pwic_option(sql, project, 'robots', ''))
             robots: Dict[str, Optional[bool]] = {}
             for k in ['archive', 'follow', 'index', 'snippet']:
-                if ('no' + k) in values:
+                if 'no' + k in values:
                     robots[k] = False
                 elif k in values:
                     robots[k] = True
@@ -379,12 +383,12 @@ class PwicServer():
         PwicExtension.on_api_page_requested(sql, request, action, project, page, revision)
         if action == 'view':
             if page_special:
-                return await self._page_view_special(sql, request, project, user, page, revision, pwic)
+                return await self._page_view_special(sql, request, project, user, pwic)
             return await self._page_view(sql, request, project, user, page, revision, pwic)
         if action == 'edit':
             return await self._page_edit(sql, request, project, page, revision, pwic)
         if action == 'history':
-            return await self._page_history(sql, request, project, user, page, pwic)
+            return await self._page_history(sql, request, project, page, pwic)
         if action == 'move':
             return await self._page_move(sql, request, project, user, page, pwic)
         raise web.HTTPNotFound()
@@ -585,8 +589,6 @@ class PwicServer():
                                  request: web.Request,
                                  project: str,
                                  user: str,
-                                 page: str,
-                                 revision: int,
                                  pwic: Dict[str, Any],
                                  ) -> web.Response:
         # Fetch the recently updated pages
@@ -688,6 +690,7 @@ class PwicServer():
                          revision: int,
                          pwic: Dict[str, Any],
                          ) -> web.Response:
+        # Load the page
         sql.execute(''' SELECT revision, draft, final, header, protection,
                                title, markdown, tags, comment, milestone
                         FROM pages
@@ -702,13 +705,19 @@ class PwicServer():
         for k in ['draft', 'final', 'header', 'protection']:
             row[k] = pwic_xb(row[k])
         pwic.update(row)
+
+        # Detects the emojis
+        emojis = str(pwic_option(sql, project, 'emojis', ''))
+        if emojis == '*':
+            emojis = ' '.join([item[1].replace('&#x', '').replace(';', '') for item in PWIC_EMOJIS.items()])
+        pwic['emojis_toolbar'] = pwic_list_tags(emojis)
+
         return await self._handle_output(request, 'page-edit', pwic)
 
     async def _page_history(self,
                             sql: sqlite3.Cursor,
                             request: web.Request,
                             project: str,
-                            user: str,
                             page: str,
                             pwic: Dict[str, Any],
                             ) -> web.Response:
@@ -847,7 +856,7 @@ class PwicServer():
                     (project, dt['date-nd']))
         pwic['audits'] = sql.fetchall()
         for row in pwic['audits']:
-            del(row['id'])
+            del row['id']
         return await self._handle_output(request, 'page-audit', pwic)
 
     async def page_help(self, request: web.Request) -> web.Response:
@@ -1106,8 +1115,7 @@ class PwicServer():
                         if count == 0:
                             ok = False
                             break
-                        else:
-                            score += count
+                        score += count
                 if not ok:
                     continue
 
@@ -1510,21 +1518,20 @@ class PwicServer():
         # Compress the documents
         counter = 0
         inmemory = BytesIO()
-        archive = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
-        for row in sql.fetchall():
-            if PwicExtension.on_document_get(sql, request, project, user, row['filename'], row['mime'], row['size']):
-                fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
-                if isfile(fn):
-                    content = b''
-                    with open(fn, 'rb') as f:
-                        content = f.read()
-                    if pwic_mime_compressed(pwic_file_ext(row['filename'])):
-                        archive.writestr(row['filename'], content, compress_type=ZIP_STORED, compresslevel=0)
-                    else:
-                        archive.writestr(row['filename'], content)
-                    del content
-                    counter += 1
-        archive.close()
+        with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as archive:
+            for row in sql.fetchall():
+                if PwicExtension.on_document_get(sql, request, project, user, row['filename'], row['mime'], row['size']):
+                    fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+                    if isfile(fn):
+                        content = b''
+                        with open(fn, 'rb') as f:
+                            content = f.read()
+                        if pwic_mime_compressed(pwic_file_ext(row['filename'])):
+                            archive.writestr(row['filename'], content, compress_type=ZIP_STORED, compresslevel=0)
+                        else:
+                            archive.writestr(row['filename'], content)
+                        del content
+                        counter += 1
 
         # Return the file
         buffer = inmemory.getvalue()
@@ -1612,12 +1619,12 @@ class PwicServer():
 
         def _fetch_token(url, query):
             try:
-                response = urlopen(Request(url,
-                                           urlencode(query).encode(),
-                                           method='POST',
-                                           headers={'Accept': 'application/json'}))
-                data = response.read()
-                data = data.decode(response.info().get_content_charset())
+                with urlopen(Request(url,
+                                     urlencode(query).encode(),
+                                     method='POST',
+                                     headers={'Accept': 'application/json'})) as response:
+                    data = response.read()
+                    data = data.decode(response.info().get_content_charset())
                 data = json.loads(data)
                 token = data.get('access_token', None)
                 if token is None:
@@ -1628,9 +1635,9 @@ class PwicServer():
 
         def _call_api(url, token_type, token):
             try:
-                response = urlopen(Request(url, headers={'Authorization': '%s %s' % (token_type, token)}))
-                data = response.read()
-                data = data.decode(response.info().get_content_charset())
+                with urlopen(Request(url, headers={'Authorization': '%s %s' % (token_type, token)})) as response:
+                    data = response.read()
+                    data = data.decode(response.info().get_content_charset())
                 data = json.loads(data)
                 if data is None:
                     raise Exception()
@@ -1844,6 +1851,7 @@ class PwicServer():
         return web.Response(text='OK', content_type=pwic_mime('txt'))
 
     async def api_server_shutdown(self, request: web.Request) -> None:
+        ''' Stop the server from localhost '''
         # Check the remote IP address
         ip = PwicExtension.on_ip_header(request)
         if not ip_address(ip).is_loopback:
@@ -1857,9 +1865,10 @@ class PwicServer():
                          'event': 'shutdown-server'},
                    request)
         self.dbconn.commit()
-        exit(0)
+        sys.exit(0)
 
     async def api_server_unlock(self, request: web.Request) -> None:
+        ''' Release the lock in the database from localhost '''
         # Check the remote IP address
         ip = PwicExtension.on_ip_header(request)
         if not ip_address(ip).is_loopback:
@@ -2383,77 +2392,73 @@ class PwicServer():
         converter.set_option('relative_html', True)
         try:
             inmemory = BytesIO()
-            ziparch = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
+            with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as ziparch:
+                # Fetch the relevant pages
+                sql_sub = self.dbconn.cursor()
+                sql.execute(''' SELECT page, revision, latest, author, date, time, title, markdown
+                                FROM pages
+                                WHERE   project = ?
+                                  AND ( latest  = 'X'
+                                     OR draft   = '' )''',
+                            (project, ))
+                while True:
+                    page = sql.fetchone()
+                    if page is None:
+                        break
+                    if not with_revisions and not pwic_xb(page['latest']):
+                        continue
 
-            # Fetch the relevant pages
-            sql_sub = self.dbconn.cursor()
-            sql.execute(''' SELECT page, revision, latest, author, date, time, title, markdown
-                            FROM pages
-                            WHERE   project = ?
-                              AND ( latest  = 'X'
-                                 OR draft   = '' )''',
-                        (project, ))
-            while True:
-                page = sql.fetchone()
-                if page is None:
-                    break
-                if not with_revisions and not pwic_xb(page['latest']):
-                    continue
+                    # Raw markdown
+                    if with_revisions:
+                        ziparch.writestr('%s%s.rev%d.md' % (folder_rev, page['page'], page['revision']), page['markdown'])
+                    if pwic_xb(page['latest']):
+                        ziparch.writestr('%s.md' % page['page'], page['markdown'])
 
-                # Raw markdown
+                    # Regenerate HTML
+                    html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
+                    if html is None:
+                        continue
+
+                    # Fix the relative links
+                    for doc in documents:
+                        if doc['exturl'] == '':
+                            if doc['image']:
+                                html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
+                            html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
+                            html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
+                        else:
+                            if doc['image']:
+                                html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="%s"' % doc['exturl'])
+                            html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="%s"' % doc['exturl'])
+                            html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="%s' % doc['exturl'])
+                    if with_revisions:
+                        ziparch.writestr('%s%s.rev%d.html' % (folder_rev, page['page'], page['revision']), html)
+                    if pwic_xb(page['latest']):
+                        ziparch.writestr('%s.html' % page['page'], html)
+
+                # Dependent files for the pages
+                cssfn = PwicStylerHtml().css
+                content = b''
+                with open(cssfn, 'rb') as f:
+                    content = f.read()
+                ziparch.writestr(cssfn, content)
                 if with_revisions:
-                    ziparch.writestr('%s%s.rev%d.md' % (folder_rev, page['page'], page['revision']), page['markdown'])
-                if pwic_xb(page['latest']):
-                    ziparch.writestr('%s.md' % page['page'], page['markdown'])
+                    ziparch.writestr(folder_rev + cssfn, content)
+                del content
 
-                # Regenerate HTML
-                html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
-                if html is None:
-                    continue
-
-                # Fix the relative links
+                # Attached documents
+                PwicExtension.on_project_export_documents(sql, request, project, user, documents)
                 for doc in documents:
                     if doc['exturl'] == '':
-                        if doc['image']:
-                            html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
-                        html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
-                        html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
-                    else:
-                        if doc['image']:
-                            html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="%s"' % doc['exturl'])
-                        html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="%s"' % doc['exturl'])
-                        html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="%s' % doc['exturl'])
-                if with_revisions:
-                    ziparch.writestr('%s%s.rev%d.html' % (folder_rev, page['page'], page['revision']), html)
-                if pwic_xb(page['latest']):
-                    ziparch.writestr('%s.html' % page['page'], html)
-
-            # Dependent files for the pages
-            cssfn = PwicStylerHtml().css
-            content = b''
-            with open(cssfn, 'rb') as f:
-                content = f.read()
-            ziparch.writestr(cssfn, content)
-            if with_revisions:
-                ziparch.writestr(folder_rev + cssfn, content)
-            del content
-
-            # Attached documents
-            PwicExtension.on_project_export_documents(sql, request, project, user, documents)
-            for doc in documents:
-                if doc['exturl'] == '':
-                    fn = join(PWIC_DOCUMENTS_PATH % project, doc['filename'])
-                    if isfile(fn):
-                        content = b''
-                        with open(fn, 'rb') as f:
-                            content = f.read()
-                        ziparch.writestr('documents/%s' % doc['filename'], content)
-                        del content
-
-            # Close the archive
-            ziparch.close()
-        except Exception:
-            raise web.HTTPInternalServerError()
+                        fn = join(PWIC_DOCUMENTS_PATH % project, doc['filename'])
+                        if isfile(fn):
+                            content = b''
+                            with open(fn, 'rb') as f:
+                                content = f.read()
+                            ziparch.writestr('documents/%s' % doc['filename'], content)
+                            del content
+        except Exception as e:
+            raise web.HTTPInternalServerError() from e
 
         # Audit the action
         pwic_audit(sql, {'author': user,
@@ -3472,8 +3477,8 @@ class PwicServer():
             try:
                 if re.compile(password_regex).match(new1) is None:
                     raise web.HTTPBadRequest()
-            except Exception:
-                raise web.HTTPInternalServerError()
+            except Exception as e:
+                raise web.HTTPInternalServerError() from e
         if not PwicExtension.on_api_user_password_change(sql, request, user, new1):
             raise web.HTTPUnauthorized()
 
@@ -3520,8 +3525,8 @@ class PwicServer():
         try:
             roleid = roles.index(post.get('role', ''))
             delete = (roles[roleid] == 'delete')
-        except ValueError:
-            raise web.HTTPBadRequest()
+        except ValueError as e:
+            raise web.HTTPBadRequest() from e
         if '' in [project, userpost] or (userpost[:4] == 'pwic' and roles in ['admin', 'delete']):
             raise web.HTTPBadRequest()
 
@@ -3586,9 +3591,9 @@ class PwicServer():
                           AND user    = ?'''
             sql.execute(query % roles[roleid],
                         (newvalue, project, userpost))
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
             self.dbconn.rollback()
-            raise web.HTTPUnauthorized()
+            raise web.HTTPUnauthorized() from e
         if sql.rowcount == 0:
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
@@ -3651,8 +3656,8 @@ class PwicServer():
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '').strip().lower()
                     doc[name] = await part.read(decode=False)
-        except Exception:
-            raise web.HTTPBadRequest()
+        except Exception as e:
+            raise web.HTTPBadRequest() from e
         doc['project'] = pwic_safe_name(doc['project'])
         doc['page'] = pwic_safe_name(doc['page'])
         doc['filename'] = pwic_safe_file_name(doc['filename'])
@@ -3696,9 +3701,9 @@ class PwicServer():
         if document_name_regex is not None:
             try:
                 regex_doc = re.compile(document_name_regex, re.VERBOSE)
-            except Exception:
+            except Exception as e:
                 self.dbconn.rollback()
-                raise web.HTTPInternalServerError()
+                raise web.HTTPInternalServerError() from e
             if regex_doc.search(doc['filename']) is None:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
@@ -3714,7 +3719,7 @@ class PwicServer():
 
         # Verify the maximal document size
         document_size_max = pwic_int(pwic_option(sql, doc['project'], 'document_size_max', '-1'))
-        if (document_size_max >= 0) and (len(doc['content']) > document_size_max):
+        if 0 <= document_size_max < len(doc['content']):
             self.dbconn.rollback()
             raise web.HTTPRequestEntityTooLarge(document_size_max, len(doc['content']))
 
@@ -3755,10 +3760,10 @@ class PwicServer():
                 try:
                     fn = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
                     os.remove(fn)
-                except OSError:
+                except OSError as e:
                     if isfile(fn):
                         self.dbconn.rollback()
-                        raise web.HTTPInternalServerError()
+                        raise web.HTTPInternalServerError() from e
             else:
                 # External file
                 if not PwicExtension.on_api_document_delete(sql, request, doc['project'], user, doc['page'], row['id'], doc['filename']):
@@ -3776,13 +3781,12 @@ class PwicServer():
                 # Read the file names
                 try:
                     inmemory = BytesIO(doc['content'])
-                    archive = ZipFile(inmemory, mode='r')
-                    zipfiles = archive.infolist()
-                    archive.close()
+                    with ZipFile(inmemory, mode='r') as archive:
+                        zipfiles = archive.infolist()
                     inmemory.close()
-                except BadZipFile:
+                except BadZipFile as e:
                     self.dbconn.rollback()
-                    raise web.HTTPUnsupportedMediaType()
+                    raise web.HTTPUnsupportedMediaType() from e
 
                 # Check the file names
                 for zf in zipfiles:
@@ -3794,12 +3798,11 @@ class PwicServer():
         # Upload the file on the server
         try:
             filename = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
-            f = open(filename, 'wb')            # Rewrite any existing file
-            f.write(doc['content'])
-            f.close()
-        except OSError:
+            with open(filename, 'wb') as f:     # Rewrite any existing file
+                f.write(doc['content'])
+        except OSError as e:
             self.dbconn.rollback()
-            raise web.HTTPInternalServerError()
+            raise web.HTTPInternalServerError() from e
 
         # Find the dimensions of the loaded picture
         width, height = 0, 0
@@ -3956,9 +3959,9 @@ class PwicServer():
         try:
             os.rename(join(PWIC_DOCUMENTS_PATH % project, row['filename']),
                       join(PWIC_DOCUMENTS_PATH % project, filename))
-        except OSError:
+        except OSError as e:
             self.dbconn.rollback()
-            raise web.HTTPInternalServerError()
+            raise web.HTTPInternalServerError() from e
 
         # Update the database
         sql.execute(''' UPDATE documents
@@ -4019,10 +4022,10 @@ class PwicServer():
             fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
             try:
                 os.remove(fn)
-            except OSError:
+            except OSError as e:
                 if isfile(fn):
                     self.dbconn.rollback()
-                    raise web.HTTPInternalServerError()
+                    raise web.HTTPInternalServerError() from e
 
         # Delete the index
         sql.execute(''' DELETE FROM documents WHERE id = ?''', (docid, ))
@@ -4089,6 +4092,8 @@ app = web.Application()
 
 
 def main() -> bool:
+    ''' Program entry point '''
+
     # Check root
     try:
         if os.geteuid() == 0:

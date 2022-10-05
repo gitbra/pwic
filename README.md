@@ -85,6 +85,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - API and command line to automate the operations
 - Extensible code base for the following possibilities:
 	- Enhanced authorizations
+	- Password control
 	- Named emojis
 	- Content checks
 	- Content includes

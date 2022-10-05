@@ -17,27 +17,27 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-'''
-    The behavior of Pwic.wiki is changeable in this file through a logic of events
-    positioned at critical positions in the code base. It is easier to implement
-    some changes here but it remains sensible from a technical perspective.
-
-    Each method is always active and generally returns from 0 to 2 results.
-    The first one usually tells if something happened. The second one provides
-    the new result. With no result, the parameters of the method are changeable
-    if they are passed as a reference, else raise an exception.
-'''
-
 from typing import Any, Dict, List, Optional, Tuple
-from aiohttp import web
 import sqlite3
-from multidict import MultiDict
 from datetime import tzinfo
+from multidict import MultiDict
+from aiohttp import web
 
 from pwic_lib import PWIC_VERSION
 
 
 class PwicExtension():
+    ''' Extensions for Pwic.wiki
+
+        The behavior of Pwic.wiki is changeable in this file through a logic of events
+        positioned at critical positions in the code base. It is easier and safer to
+        implement some changes here but it remains technically sensible.
+
+        Each method is always active and generally returns from 0 to 2 results.
+        The first one usually tells if something happened. The second one provides
+        the new result. With no result, the parameters of the method are changeable
+        if they are passed as a reference, else raise an exception.
+    '''
 
     # ==============================
     #   User exits

@@ -36,6 +36,8 @@ from pwic_extension import PwicExtension
 
 
 class PwicExporter():
+    ''' Export documents from Pwic.wiki '''
+
     def __init__(self, app_markdown: Markdown, user: str):
         self.app_markdown = app_markdown
         self.user = user
@@ -100,8 +102,8 @@ class PwicExporter():
         except MarkdownError:
             html = ''
         (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
-        html = html.replace('<div class="codehilite"><pre><span></span><code>', otag)       # With pygments
-        html = html.replace('\n</code></pre></div>', ctag)
+        html = html.replace('<div class="codehilite">\n<pre><span></span><code>', otag)     # With pygments
+        html = html.replace('\n</code></pre>\n</div>', ctag)
         html = html.replace('<pre><code', otag[:-1])                                        # Without pygments
         html = html.replace('\n</code></pre>', ctag)
         cleaner = PwicCleanerHtml(str(pwic_option(sql, row['project'], 'skipped_tags', '')),
@@ -195,66 +197,65 @@ class PwicExporter():
 
         # Prepare the ODT file in the memory
         inmemory = BytesIO()
-        odt = ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED)
-        odt.writestr('mimetype', str(pwic_mime('odt')), compress_type=ZIP_STORED, compresslevel=0)   # Must be the first file of the ZIP and not compressed
+        with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as odt:
+            odt.writestr('mimetype', str(pwic_mime('odt')), compress_type=ZIP_STORED, compresslevel=0)   # Must be the first file of the ZIP and not compressed
 
-        # Manifest
-        buffer = ''
-        for id in pict:
-            meta = pict[id]
-            if not meta['remote'] and isfile(meta['filename']):
-                content = b''
-                with open(meta['filename'], 'rb') as f:
-                    content = f.read()
-                if meta['compressed']:
-                    odt.writestr(str(meta['link_odt_img']), content, compress_type=ZIP_STORED, compresslevel=0)
-                else:
-                    odt.writestr(str(meta['link_odt_img']), content)
-                del content
-                buffer += '%s\n' % meta['manifest']
-        odtStyles = PwicStylerOdt()
-        odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', buffer))
+            # Manifest
+            buffer = ''
+            for i in pict:
+                meta = pict[i]
+                if not meta['remote'] and isfile(meta['filename']):
+                    content = b''
+                    with open(meta['filename'], 'rb') as f:
+                        content = f.read()
+                    if meta['compressed']:
+                        odt.writestr(str(meta['link_odt_img']), content, compress_type=ZIP_STORED, compresslevel=0)
+                    else:
+                        odt.writestr(str(meta['link_odt_img']), content)
+                    del content
+                    buffer += '%s\n' % meta['manifest']
+            odtStyles = PwicStylerOdt()
+            odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', buffer))
 
-        # Properties of the file
-        dt = pwic_dt()
-        buffer = odtStyles.meta % (PWIC_VERSION,
-                                   escape(row['title']),
-                                   escape(row['project']), escape(row['page']),
-                                   ('<meta:keyword>%s</meta:keyword>' % escape(row['tags'])) if row['tags'] != '' else '',
-                                   escape(row['author']),
-                                   escape(row['date']), escape(row['time']),
-                                   escape(self.user),
-                                   escape(dt['date']), escape(dt['time']),
-                                   row['revision'])
-        odt.writestr('meta.xml', buffer)
+            # Properties of the file
+            dt = pwic_dt()
+            buffer = odtStyles.meta % (PWIC_VERSION,
+                                       escape(row['title']),
+                                       escape(row['project']), escape(row['page']),
+                                       ('<meta:keyword>%s</meta:keyword>' % escape(row['tags'])) if row['tags'] != '' else '',
+                                       escape(row['author']),
+                                       escape(row['date']), escape(row['time']),
+                                       escape(self.user),
+                                       escape(dt['date']), escape(dt['time']),
+                                       row['revision'])
+            odt.writestr('meta.xml', buffer)
 
-        # Styles
-        xml = odtStyles.styles
-        xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
-        xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(pwic_option(sql, row['project'], 'heading_mask')))
-        if legal_notice != '':
-            legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
-        xml = xml.replace('<!-- styles-footer -->', legal_notice)
-        pw = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_width', '21cm'), 'cm', 1)
-        ph = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_height', '29.7cm'), 'cm', 1)
-        if pwic_option(sql, row['project'], 'odt_page_landscape') is not None:
-            po = 'landscape'
-            pw, ph = ph, pw
-        else:
-            po = 'portrait'
-        xml = xml.replace('{$pw}', pw)
-        xml = xml.replace('{$ph}', ph)
-        xml = xml.replace('{$po}', po)
-        xml = xml.replace('{$pm}', pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_margin', '2.5cm'), 'cm', 2))
-        odt.writestr('styles.xml', xml)
+            # Styles
+            xml = odtStyles.styles
+            xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
+            xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(pwic_option(sql, row['project'], 'heading_mask')))
+            if legal_notice != '':
+                legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
+            xml = xml.replace('<!-- styles-footer -->', legal_notice)
+            pw = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_width', '21cm'), 'cm', 1)
+            ph = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_height', '29.7cm'), 'cm', 1)
+            if pwic_option(sql, row['project'], 'odt_page_landscape') is not None:
+                po = 'landscape'
+                pw, ph = ph, pw
+            else:
+                po = 'portrait'
+            xml = xml.replace('{$pw}', pw)
+            xml = xml.replace('{$ph}', ph)
+            xml = xml.replace('{$po}', po)
+            xml = xml.replace('{$pm}', pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_margin', '2.5cm'), 'cm', 2))
+            odt.writestr('styles.xml', xml)
 
-        # Content of the page
-        page_url = '%s/%s/%s/rev%d' % (base_url, row['project'], row['page'], row['revision'])
-        xml = odtStyles.content
-        xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
-        xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
-        odt.writestr('content.xml', xml)
-        odt.close()
+            # Content of the page
+            page_url = '%s/%s/%s/rev%d' % (base_url, row['project'], row['page'], row['revision'])
+            xml = odtStyles.content
+            xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
+            xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
+            odt.writestr('content.xml', xml)
 
         # Result
         stream = inmemory.getvalue()
@@ -374,7 +375,7 @@ class PwicStylerHtml:
         if rel:
             return '<link rel="stylesheet" type="text/css" href="%s" />' % self.css
         content = ''
-        with open(self.css, 'r') as f:
+        with open(self.css, 'r', encoding='utf-8') as f:
             content = f.read()
         return '<style>%s</style>' % content
 
@@ -1311,7 +1312,7 @@ class PwicStylerOdt:
     def getOptimizedCodeStyles(self, code: str) -> str:
         output = ''
         for k in self.styles_code:
-            if ('<span class="%s">' % k) in code:
+            if '<span class="%s">' % k in code:
                 output += self.styles_code[k] + '\n'
         return output
 

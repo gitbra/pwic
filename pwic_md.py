@@ -64,8 +64,8 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
   highlighting when using fenced-code-blocks and highlightjs.
 * html-classes: Takes a dict mapping html tag names (lowercase) to a
   string to use for a "class" tag attribute. Currently only supports "img",
-  "table", "pre" and "code" tags. Add an issue if you require this for other
-  tags.
+  "table", "pre", "code", "ul" and "ol" tags. Add an issue if you require
+  this for other tags.
 * link-patterns: Auto-link given regex patterns in text (e.g. bug number
   references, revision number references).
 * markdown-in-html: Allow the use of `markdown="1"` in a block HTML tag to
@@ -106,7 +106,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 #   not yet sure if there implications with this. Compare 'pydoc sre'
 #   and 'perldoc perlre'.
 
-__version_info__ = (2, 4, 3)
+__version_info__ = (2, 4, 5)
 __version__ = '.'.join(map(str, __version_info__))
 __author__ = "Trent Mick"
 
@@ -119,22 +119,6 @@ from random import random, randint
 import codecs
 from collections import defaultdict
 from typing import Any                      # ++ PWIC
-
-
-# ---- Python version compat
-
-# Use `bytes` for byte strings and `unicode` for unicode strings (str in Py3).
-if sys.version_info[0] <= 2:
-    py3 = False
-    try:
-        bytes
-    except NameError:
-        bytes = str
-    base_string_type = basestring
-elif sys.version_info[0] >= 3:
-    py3 = True
-    unicode = str
-    base_string_type = str
 
 # ---- globals
 
@@ -284,6 +268,10 @@ class Markdown(object):
         self.html_spans = {}
         self.list_level = 0
         self.extras = self._instance_extras.copy()
+        self._setup_extras()
+        self._toc = None
+
+    def _setup_extras(self):
         if "footnotes" in self.extras:
             self.footnotes = {}
             self.footnote_ids = []
@@ -291,7 +279,6 @@ class Markdown(object):
             self._count_from_header_id = defaultdict(int)
         if "metadata" in self.extras:
             self.metadata = {}
-        self._toc = None
 
     # Per <https://developer.mozilla.org/en-US/docs/HTML/Element/a> "rel"
     # should only be used in <a> tags with an "href" attribute.
@@ -324,12 +311,13 @@ class Markdown(object):
         # articles):
         self.reset()
 
-        if not isinstance(text, unicode):
+        if not isinstance(text, str):
             # TODO: perhaps shouldn't presume UTF-8 for string input?
-            text = unicode(text, 'utf-8')
+            text = str(text, 'utf-8')
 
         if self.use_file_vars:
             # Look for emacs-style file variable hints.
+            text = self._emacs_oneliner_vars_pat.sub(self._emacs_vars_oneliner_sub, text)
             emacs_vars = self._get_emacs_vars(text)
             if "markdown-extras" in emacs_vars:
                 splitter = re.compile("[ ,]+")
@@ -343,6 +331,8 @@ class Markdown(object):
                     else:
                         ename, earg = e, None
                     self.extras[ename] = earg
+
+            self._setup_extras()
 
         # Standardize line endings:
         text = text.replace("\r\n", "\n")
@@ -558,7 +548,7 @@ class Markdown(object):
 
         return tail
 
-    _emacs_oneliner_vars_pat = re.compile(r"-\*-\s*(?:(\S[^\r\n]*?)([\r\n]\s*)?)?-\*-", re.UNICODE)
+    _emacs_oneliner_vars_pat = re.compile(r"((?:<!--)?\s*-\*-)\s*(?:(\S[^\r\n]*?)([\r\n]\s*)?)?(-\*-\s*(?:-->)?)", re.UNICODE)
     # This regular expression is intended to match blocks like this:
     #    PREFIX Local Variables: SUFFIX
     #    PREFIX mode: Tcl SUFFIX
@@ -573,6 +563,15 @@ class Markdown(object):
         (?P<suffix>.*?)(?:\r\n|\n|\r)
         (?P<content>.*?\1End:)
         """, re.IGNORECASE | re.MULTILINE | re.DOTALL | re.VERBOSE)
+
+    def _emacs_vars_oneliner_sub(self, match):
+        if match.group(1).strip() == '-*-' and match.group(4).strip() == '-*-':
+            lead_ws = re.findall(r'^\s*', match.group(1))[0]
+            tail_ws = re.findall(r'\s*$', match.group(4))[0]
+            return '%s<!-- %s %s %s -->%s' % (lead_ws, '-*-', match.group(2).strip(), '-*-', tail_ws)
+
+        start, end = match.span()
+        return match.string[start: end]
 
     def _get_emacs_vars(self, text):
         """Return a dictionary of emacs-style local variables.
@@ -589,7 +588,7 @@ class Markdown(object):
         if "-*-" in head:
             match = self._emacs_oneliner_vars_pat.search(head)
             if match:
-                emacs_vars_str = match.group(1)
+                emacs_vars_str = match.group(2)
                 assert '\n' not in emacs_vars_str
                 emacs_var_strs = [s.strip() for s in emacs_vars_str.split(';')
                                   if s.strip()]
@@ -1066,7 +1065,7 @@ class Markdown(object):
         indent = ' ' * self.tab_width
         s = ('\n'  # separate from possible cuddled paragraph
              + indent + ('\n'+indent).join(lines)
-             + '\n\n')
+             + '\n')
         return s
 
     def _prepare_pyshell_blocks(self, text):
@@ -1080,7 +1079,7 @@ class Markdown(object):
         _pyshell_block_re = re.compile(r"""
             ^([ ]{0,%d})>>>[ ].*\n  # first line
             ^(\1[^\S\n]*\S.*\n)*    # any number of subsequent lines with at least one character
-            ^\n                     # ends with a blank line
+            (?=^\1?\n|\Z)           # ends with a blank line or end of document
             """ % less_than_tab, re.M | re.X)
 
         return _pyshell_block_re.sub(self._pyshell_block_sub, text)
@@ -1306,10 +1305,24 @@ class Markdown(object):
                 return True
             return False
 
+        def _is_code_span(index, token):
+            try:
+                if token == '<code>':
+                    peek_tokens = split_tokens[index: index + 3]
+                elif token == '</code>':
+                    peek_tokens = split_tokens[index - 2: index + 1]
+                else:
+                    return False
+            except IndexError:
+                return False
+
+            return re.match(r'<code>md5-[A-Fa-f0-9]{32}</code>', ''.join(peek_tokens))
+
         tokens = []
+        split_tokens = self._sorta_html_tokenize_re.split(text)
         is_html_markup = False
-        for token in self._sorta_html_tokenize_re.split(text):
-            if is_html_markup and not _is_auto_link(token):
+        for index, token in enumerate(split_tokens):
+            if is_html_markup and not _is_auto_link(token) and not _is_code_span(index, token):
                 sanitized = self._sanitize_html(token)
                 key = _hash_text(sanitized)
                 self.html_spans[key] = sanitized
@@ -1618,7 +1631,7 @@ class Markdown(object):
             the TOC (if the "toc" extra is specified).
         """
         header_id = _slugify(text)
-        if prefix and isinstance(prefix, base_string_type):
+        if prefix and isinstance(prefix, str):
             header_id = prefix + '-' + header_id
 
         self._count_from_header_id[header_id] += 1
@@ -1703,11 +1716,20 @@ class Markdown(object):
     def _list_sub(self, match):
         lst = match.group(1)
         lst_type = match.group(3) in self._marker_ul_chars and "ul" or "ol"
+
+        if lst_type == 'ol' and match.group(3) != '1.':
+            # if list doesn't start at 1 then set the ol start attribute
+            lst_opts = ' start="%s"' % match.group(3)[:-1]
+        else:
+            lst_opts = ''
+
+        lst_opts = lst_opts + self._html_class_str_from_tag(lst_type)
+
         result = self._process_list_items(lst)
         if self.list_level:
-            return "<%s>\n%s</%s>\n" % (lst_type, result, lst_type)
+            return "<%s%s>\n%s</%s>\n" % (lst_type, lst_opts, result, lst_type)
         else:
-            return "<%s>\n%s</%s>\n\n" % (lst_type, result, lst_type)
+            return "<%s%s>\n%s</%s>\n\n" % (lst_type, lst_opts, result, lst_type)
 
     def _do_lists(self, text):
         # Form HTML ordered (numbered) and unordered (bulleted) lists.
@@ -1794,7 +1816,7 @@ class Markdown(object):
             item = self._run_block_gamut(self._outdent(item))
         else:
             # Recursion for sub-lists:
-            item = self._do_lists(self._outdent(item))
+            item = self._do_lists(self._uniform_outdent(item, min_outdent=' ')[1])
             if item.endswith('\n'):
                 item = item[:-1]
             item = self._run_span_gamut(item)
@@ -1860,14 +1882,20 @@ class Markdown(object):
                     yield tup
                 yield 0, "</code>"
 
+            def _add_newline(self, inner):
+                # Add newlines around the inner contents so that _strict_tag_block_re matches the outer div.
+                yield 0, "\n"
+                yield from inner
+                yield 0, "\n"
+
             def wrap(self, source, outfile=None):
                 """Return the source with a code, pre, and div."""
                 if outfile is None:
                     # pygments >= 2.12
-                    return self._wrap_pre(self._wrap_code(source))
+                    return self._add_newline(self._wrap_pre(self._wrap_code(source)))
                 else:
                     # pygments < 2.12
-                    return self._wrap_div(self._wrap_pre(self._wrap_code(source)))
+                    return self._wrap_div(self._add_newline(self._wrap_pre(self._wrap_code(source))))
 
         formatter_opts.setdefault("cssclass", "codehilite")
         formatter = HtmlCodeFormatter(**formatter_opts)
@@ -1877,8 +1905,6 @@ class Markdown(object):
         lexer_name = None
         if is_fenced_code_block:
             lexer_name = match.group(2)
-            if lexer_name:
-                formatter_opts = self.extras['fenced-code-blocks'] or {}
             codeblock = match.group(3)
             codeblock = codeblock[:-1]  # drop one trailing newline
         else:
@@ -1893,34 +1919,14 @@ class Markdown(object):
                 lexer_name, rest = codeblock.split('\n', 1)
                 lexer_name = lexer_name[3:].strip()
                 codeblock = rest.lstrip("\n")   # Remove lexer declaration line.
-                formatter_opts = self.extras['code-color'] or {}
 
         # Use pygments only if not using the highlightjs-lang extra
         if lexer_name and "highlightjs-lang" not in self.extras:
-            def unhash_code(codeblock):
-                for key, sanitized in list(self.html_spans.items()):
-                    codeblock = codeblock.replace(key, sanitized)
-                replacements = [
-                    ("&amp;", "&"),
-                    ("&lt;", "<"),
-                    ("&gt;", ">")
-                ]
-                for old, new in replacements:
-                    codeblock = codeblock.replace(old, new)
-                return codeblock
             lexer = self._get_pygments_lexer(lexer_name)
             if lexer:
-                # remove leading indent from code block
-                leading_indent, codeblock = self._uniform_outdent(codeblock)
+                leading_indent = ' '*(len(match.group(1)) - len(match.group(1).lstrip()))
+                return self._code_block_with_lexer_sub(codeblock, leading_indent, lexer, is_fenced_code_block)
 
-                codeblock = unhash_code( codeblock )
-                colored = self._color_with_pygments(codeblock, lexer,
-                                                    **formatter_opts)
-
-                # add back the indent to all lines
-                return "\n%s\n" % self._uniform_indent(colored, leading_indent, True)
-
-        codeblock = self._encode_code(codeblock)
         pre_class_str = self._html_class_str_from_tag("pre")
 
         if "highlightjs-lang" in self.extras and lexer_name:
@@ -1928,8 +1934,49 @@ class Markdown(object):
         else:
             code_class_str = self._html_class_str_from_tag("code")
 
-        return "\n<pre%s><code%s>%s\n</code></pre>\n" % (
-            pre_class_str, code_class_str, codeblock)
+        if is_fenced_code_block:
+            # Fenced code blocks need to be outdented before encoding, and then reapplied
+            leading_indent = ' '*(len(match.group(1)) - len(match.group(1).lstrip()))
+            if codeblock:
+                # only run the codeblock through the outdenter if not empty
+                leading_indent, codeblock = self._uniform_outdent(codeblock, max_outdent=leading_indent)
+
+            codeblock = self._encode_code(codeblock)
+
+            return "\n%s<pre%s><code%s>%s\n</code></pre>\n" % (
+                leading_indent, pre_class_str, code_class_str, codeblock)
+        else:
+            codeblock = self._encode_code(codeblock)
+
+            return "\n<pre%s><code%s>%s\n</code></pre>\n" % (
+                pre_class_str, code_class_str, codeblock)
+
+    def _code_block_with_lexer_sub(self, codeblock, leading_indent, lexer, is_fenced_code_block):
+        if is_fenced_code_block:
+            formatter_opts = self.extras['fenced-code-blocks'] or {}
+        else:
+            formatter_opts = self.extras['code-color'] or {}
+
+        def unhash_code(codeblock):
+            for key, sanitized in list(self.html_spans.items()):
+                codeblock = codeblock.replace(key, sanitized)
+            replacements = [
+                ("&amp;", "&"),
+                ("&lt;", "<"),
+                ("&gt;", ">")
+            ]
+            for old, new in replacements:
+                codeblock = codeblock.replace(old, new)
+            return codeblock
+        # remove leading indent from code block
+        leading_indent, codeblock = self._uniform_outdent(codeblock)
+
+        codeblock = unhash_code( codeblock )
+        colored = self._color_with_pygments(codeblock, lexer,
+                                            **formatter_opts)
+
+        # add back the indent to all lines
+        return "\n%s\n" % self._uniform_indent(colored, leading_indent, True)
 
     def _html_class_str_from_tag(self, tag):
         """Get the appropriate ' class="..."' string (note the leading
@@ -1942,8 +1989,9 @@ class Markdown(object):
         except TypeError:
             return ""
         else:
-            if tag in html_classes_from_tag:
-                return ' class="%s"' % html_classes_from_tag[tag]
+            if isinstance(html_classes_from_tag, dict):
+                if tag in html_classes_from_tag:
+                    return ' class="%s"' % html_classes_from_tag[tag]
         return ""
 
     def _do_code_blocks(self, text):
@@ -1999,7 +2047,7 @@ class Markdown(object):
     def _code_span_sub(self, match):
         c = match.group(2).strip(" \t")
         c = self._encode_code(c)
-        return "<code>%s</code>" % c
+        return "<code%s>%s</code>" % (self._html_class_str_from_tag("code"), c)
 
     def _do_code_spans(self, text):
         #   *   Backtick quotes are used for <code></code> spans.
@@ -2237,7 +2285,7 @@ class Markdown(object):
                     ):
                         start = li.start()
                         cuddled_list = self._do_lists(graf[start:]).rstrip("\n")
-                        assert cuddled_list.startswith("<ul>") or cuddled_list.startswith("<ol>")
+                        assert re.match(r'^<(?:ul|ol).*?>', cuddled_list)
                         graf = graf[:start]
 
                 # Wrap <p> tags.
@@ -2310,7 +2358,7 @@ class Markdown(object):
         text = self._naked_gt_re.sub('&gt;', text)
         return text
 
-    _incomplete_tags_re = re.compile(r"<(/?\w+?(?!\w).+?[\s/]+?)")
+    _incomplete_tags_re = re.compile(r"<(/?\w+?(?!\w)\s*?.+?[\s/]+?)")
 
     def _encode_incomplete_tags(self, text):
         if self.safe_mode not in ("replace", "escape"):
@@ -2319,7 +2367,10 @@ class Markdown(object):
         if text.endswith(">"):
             return text  # this is not an incomplete tag, this is a link in the form <http://x.y.z>
 
-        return self._incomplete_tags_re.sub("&lt;\\1", text)
+        def incomplete_tags_sub(match):
+            return match.group().replace('<', '&lt;')
+
+        return self._incomplete_tags_re.sub(incomplete_tags_sub, text)
 
     def _encode_backslash_escapes(self, text):
         for ch, escape in list(self._escape_table.items()):
@@ -2370,6 +2421,7 @@ class Markdown(object):
                % (''.join(chars), ''.join(chars[7:]))
         return addr
 
+    _basic_link_re = re.compile(r'!?\[.*?\]\(.*?\)')
     def _do_link_patterns(self, text):
         link_from_hash = {}
         for regex, repl in self.link_patterns:
@@ -2395,6 +2447,22 @@ class Markdown(object):
                     text = text[:start - 3] + text[start:end] + text[end + 3:]
                     continue
 
+                # search the text for anything that looks like a link
+                is_inside_link = False
+                for link_re in (self._auto_link_re, self._basic_link_re):
+                    for match in link_re.finditer(text):
+                        if any((r[0] <= start and end <= r[1]) for r in match.regs):
+                            # if the link pattern start and end pos is within the bounds of
+                            # something that looks like a link, then don't process it
+                            is_inside_link = True
+                            break
+                    else:
+                        continue
+                    break
+
+                if is_inside_link:
+                    continue
+
                 escaped_href = (
                     href.replace('"', '&quot;')  # b/c of attr quote
                         # To avoid markdown <em> and <strong>:
@@ -2418,19 +2486,40 @@ class Markdown(object):
         # Remove one level of line-leading tabs or spaces
         return self._outdent_re.sub('', text)
 
-    def _uniform_outdent(self, text):
-        # Removes the smallest common leading indentation from each line
-        # of `text` and returns said indent along with the outdented text.
+    def _uniform_outdent(self, text, min_outdent=None, max_outdent=None):
+        # Removes the smallest common leading indentation from each (non empty)
+        # line of `text` and returns said indent along with the outdented text.
+        # The `min_outdent` kwarg makes sure the smallest common whitespace
+        # must be at least this size
+        # The `max_outdent` sets the maximum amount a line can be
+        # outdented by
 
-        # Find leading indentation of each line
-        ws = re.findall(r'(^[ \t]*)(?:[^ \t\n])', text, re.MULTILINE)
-        # Get smallest common leading indent
-        ws = sorted(ws)[0]
-        # Dedent every line by smallest common indent
-        return ws, ''.join(
-            (line.replace(ws, '', 1) if line.startswith(ws) else line)
-            for line in text.splitlines(True)
-        )
+        # find the leading whitespace for every line
+        whitespace = [
+            re.findall(r'^[ \t]*', line)[0] if line else None
+            for line in text.splitlines()
+        ]
+
+        # get minimum common whitespace
+        outdent = min(i for i in whitespace if i is not None)
+        # adjust min common ws to be within bounds
+        if min_outdent is not None:
+            outdent = min([i for i in whitespace if i is not None and i >= min_outdent] or [min_outdent])
+        if max_outdent is not None:
+            outdent = min(outdent, max_outdent)
+
+        outdented = []
+        for line_ws, line in zip(whitespace, text.splitlines(True)):
+            if line.startswith(outdent):
+                # if line starts with smallest common ws, dedent it
+                outdented.append(line.replace(outdent, '', 1))
+            elif line_ws is not None and line_ws < outdent:
+                # if less indented than min common whitespace then outdent as much as possible
+                outdented.append(line.replace(line_ws, '', 1))
+            else:
+                outdented.append(line)
+
+        return outdent, ''.join(outdented)
 
     def _uniform_indent(self, text, indent, include_empty_lines=False):
         return ''.join(
@@ -2491,7 +2580,7 @@ def calculate_toc_html(toc):
     return '\n'.join(lines) + '\n'
 
 
-class UnicodeWithAttrs(unicode):
+class UnicodeWithAttrs(str):
     """A subclass of unicode used for the return value of conversion to
     possibly attach some attributes. E.g. the "toc_html" attribute when
     the "toc" extra is used.

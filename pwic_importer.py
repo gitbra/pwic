@@ -31,18 +31,20 @@ from pwic_exporter import PwicCleanerHtml
 
 
 class PwicImporter():
+    ''' Import external documents into Pwic.wiki '''
+
     def __init__(self, user: str):
         self.user = user
 
-    def convert(self, sql: Optional[sqlite3.Cursor], id: int) -> Optional[str]:
+    def convert(self, sql: Optional[sqlite3.Cursor], identifier: int) -> Optional[str]:
         # Read the document
-        if (sql is None) or (id == 0):
+        if (sql is None) or (identifier == 0):
             return None
         sql.execute(''' SELECT project, page, filename
                         FROM documents
                         WHERE id     = ?
                           AND exturl = '' ''',
-                    (id, ))
+                    (identifier, ))
         row = sql.fetchone()
         if row is None:
             return None
@@ -59,7 +61,7 @@ class PwicImporter():
                 result = PwicImporterOdt(base_url).get_md(filename)
         except Exception:
             return None
-        return PwicExtension.on_api_document_convert(sql, row['project'], self.user, row['page'], id, result)
+        return PwicExtension.on_api_document_convert(sql, row['project'], self.user, row['page'], identifier, result)
 
     @staticmethod
     def get_allowed_extensions() -> List[str]:

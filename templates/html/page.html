@@ -35,13 +35,13 @@
 			{% endif %}
 			<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} {% trans %}Special{% endtrans %}</a>
 			{% if pwic.manager %}
-				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} {% trans %}New page{% endtrans %}</a>
+				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} {% trans %}Edit{% endtrans %}</a>
 			{% endif %}
 			{% if not pwic.pure_reader or not pwic.env.no_history %}
-				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.scroll}} {% trans %}History{% endtrans %}</a>
+				<a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/history">{{pwic.emojis.clock}} {% trans %}History{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.manager %}
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/move">{{pwic.emojis.truck}} {% trans %}Move{% endtrans %}</a>
@@ -65,7 +65,7 @@
 				<a class="pwic_js" href="#" onclick="return page_post_action('validate', {% trans %}'The validation cannot be undone.\n\nDo you want to continue?'{% endtrans %})">{{pwic.emojis.validate}} {% trans %}Validate{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.removable %}
-				<a class="pwic_js" href="#" onclick="return page_post_action('delete', {% trans %}'Warning: deleting the revision cannot be undone.\n\nDo you want to continue?'{% endtrans %})">{{pwic.emojis.recycle}} {% trans %}Delete{% endtrans %}</a>
+				<a class="pwic_js" href="#" onclick="return page_post_action('delete', {% trans %}'Warning: deleting the revision cannot be undone.\n\nDo you want to continue?'{% endtrans %})">{{pwic.emojis.trashcan}} {% trans %}Delete{% endtrans %}</a>
 			{% endif %}
 		</div>
 

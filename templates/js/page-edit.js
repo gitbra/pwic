@@ -393,7 +393,7 @@
 											<td>'+pwic_entities(doc['date'])+'<\/td>\
 											<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
 											<td>\
-												<input type="button" value="{{pwic.emojis.sparkles}}" title="{% trans %}Rename the document{% endtrans %}" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
+												<input type="button" value="{{pwic.emojis.curved_left_arrow}}{{pwic.emojis.zwj}}" title="{% trans %}Rename the document{% endtrans %}" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
 												<input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="{% trans %}Delete the document{% endtrans %}" />\
 											<\/td>\
 										<\/tr>';

@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>API specification for Pwic.wiki</title>
 	<link rel="stylesheet" type="text/css" href="/static/api/swagger-ui.css" >
 	<style>
@@ -22,12 +23,12 @@
 <body>
 	<div id="swagger-ui"></div>
 
-	<script src="/static/api/swagger-ui-bundle.js" charset="UTF-8"> </script>
-	<script src="/static/api/swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
+	<script src="/static/api/swagger-ui-bundle.js"></script>
+	<script src="/static/api/swagger-ui-standalone-preset.js"></script>
 	<script>
 		window.onload = function() {
 			const ui = SwaggerUIBundle({
-				url: "/static/api/swagger.txt",
+				url: '/static/api/swagger.txt',
 				dom_id: '#swagger-ui',
 				deepLinking: true,
 				presets: [
@@ -37,7 +38,7 @@
 				plugins: [
 					SwaggerUIBundle.plugins.DownloadUrl
 				],
-				layout: "StandaloneLayout"
+				layout: 'StandaloneLayout'
 			});
 			window.ui = ui;
 		};

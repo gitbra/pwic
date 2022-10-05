@@ -20,8 +20,6 @@
 from typing import Optional, Dict, List, Tuple, Any
 import argparse
 import sqlite3
-from prettytable import PrettyTable
-import imagesize
 import gzip
 import datetime
 import sys
@@ -36,6 +34,8 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode
 from http.client import RemoteDisconnected
+import imagesize
+from prettytable import PrettyTable
 
 from pwic_lib import (PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT, PWIC_DOCUMENTS_PATH,
                       PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLY,
@@ -45,6 +45,8 @@ from pwic_extension import PwicExtension
 
 
 class PwicAdmin():
+    ''' Administration tools for Pwic.wiki '''
+
     def __init__(self):
         self.db = None
 
@@ -877,7 +879,7 @@ class PwicAdmin():
                         (%s) VALUES (%s)''' % (table,
                                                ', '.join(row.keys()),
                                                ', '.join('?' * len(row)))
-            sql.execute(query, [e for e in row.values()])
+            sql.execute(query, list(row.values()))
 
         # Connect to the database
         sql = self.db_connect()             # Don't lock this connection
@@ -1935,10 +1937,11 @@ class PwicAdmin():
         if user[:4] != 'pwic':
             print('Password of the account "%s": ' % user, end='')
             try:
-                response = urlopen(Request('%s://127.0.0.1:%d/api/login' % (protocol, port),
-                                           urlencode({'user': user,
-                                                      'password': input()}).encode(),
-                                           method='POST'))
+                with urlopen(Request('%s://127.0.0.1:%d/api/login' % (protocol, port),
+                                     urlencode({'user': user,
+                                                'password': input()}).encode(),
+                                     method='POST')) as response:
+                    headers['Cookie'] = response.headers.get('Set-Cookie', '')
             except Exception as e:
                 if isinstance(e, HTTPError):
                     print('Error: %d %s' % (pwic_int(e.getcode()), e.reason))
@@ -1947,7 +1950,6 @@ class PwicAdmin():
                 else:
                     print(str(e))
                 return False
-            headers['Cookie'] = response.headers.get('Set-Cookie', '')
 
         # Prepare the query
         query = ''' SELECT a.project, a.page, a.revision
@@ -2240,7 +2242,7 @@ class PwicAdmin():
             projects = [project]
 
         # Each project should have a folder
-        for p in projects:
+        for p in projects.copy():
             path = PWIC_DOCUMENTS_PATH % p
             if not isdir(path):
                 try:
@@ -2442,7 +2444,7 @@ class PwicAdmin():
                 for row in sql.fetchall():
                     tab.add_row([str(row[k]).replace('\r', '').replace('\n', ' ')[:255] for k in row])
                     if (fields is None) and (row is not None) and (len(row) > 0):
-                        fields = [k for k in row]
+                        fields = list(row)
 
                 # Trace
                 pwic_audit(sql, {'author': PWIC_USERS['system'],
@@ -2500,7 +2502,7 @@ class PwicAdmin():
 # Entry point
 app = PwicAdmin()
 if app.main():
-    exit(0)
+    sys.exit(0)
 else:
     print('\nThe operation failed')
-    exit(1)
+    sys.exit(1)

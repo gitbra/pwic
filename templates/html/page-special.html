@@ -39,7 +39,7 @@
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} {% trans %}Settings{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sheet}} {% trans %}New page{% endtrans %}</a>
+				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
 			{% endif %}
 			{% if not pwic.env.no_rss %}
 				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} {% trans %}RSS{% endtrans %}</a>
