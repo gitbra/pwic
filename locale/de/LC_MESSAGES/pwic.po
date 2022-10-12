@@ -100,8 +100,8 @@ msgstr "Sie haben sich erfolgreich abgemeldet."
 msgid "Search in project %(project)s"
 msgstr "Im Projekt %(project)s durchsuchen"
 
-msgid "Recent changes for"
-msgstr "Änderungen in letzter Zeit für"
+msgid "Recent changes for %(project)s (%(format)s)"
+msgstr "Änderungen in letzter Zeit für %(project)s (%(format)s)"
 
 msgid "Sort"
 msgstr "Ordnen"
@@ -517,6 +517,9 @@ msgstr "Neuer Benutzer"
 
 msgid "Roles"
 msgstr "Rolle"
+
+msgid "ATOM"
+msgstr "ATOM"
 
 msgid "RSS"
 msgstr "RSS"

@@ -645,6 +645,28 @@ paths:
           description: Unsufficient authorizations, or not found
         503:
           description: Update temporarily unavailable
+  /api/project/atom/get:
+    get:
+      summary: Get the ATOM feed of the recent changes
+      tags:
+        - project
+      produces:
+        - application/atom+xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters or not found
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
   /api/project/changes/get:
     post:
       summary: Get the recent changes
@@ -868,7 +890,7 @@ paths:
           description: Unsufficient authorizations
   /api/project/rss/get:
     get:
-      summary: Get the RSS feed of the project
+      summary: Get the RSS feed of the recent changes
       tags:
         - project
       produces:

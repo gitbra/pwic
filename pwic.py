@@ -22,6 +22,7 @@ import argparse
 from bisect import insort, bisect_left
 from datetime import datetime
 from difflib import HtmlDiff
+import gzip
 from html import escape
 from io import BytesIO
 import json
@@ -49,11 +50,11 @@ from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, P
                       PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_LOCALE_PATH,
                       PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_RTL,
                       PWIC_TEMPLATES_PATH, PWIC_USERS, PWIC_VERSION,
-                      pwic_attachment_name, pwic_audit, pwic_connect, pwic_detect_language, pwic_dt, pwic_dt_diff, pwic_extended_syntax,
-                      pwic_file_ext, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes, pwic_mime, pwic_mime_compressed,
-                      pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace, pwic_safe_file_name, pwic_safe_name,
-                      pwic_safe_user_name, pwic_notag, pwic_search_parse, pwic_search2string, pwic_sha256, pwic_size2str,
-                      pwic_str2bytearray, pwic_x, pwic_xb)
+                      pwic_attachment_name, pwic_audit, pwic_connect, pwic_detect_language, pwic_dt, pwic_dt_diff, pwic_dt2rfc822,
+                      pwic_extended_syntax, pwic_file_ext, pwic_int, pwic_ishex, pwic_list, pwic_list_tags, pwic_magic_bytes,
+                      pwic_mime, pwic_mime_compressed, pwic_mime2icon, pwic_option, pwic_random_hash, pwic_recursive_replace,
+                      pwic_safe_file_name, pwic_safe_name, pwic_safe_user_name, pwic_notag, pwic_search_parse, pwic_search2string,
+                      pwic_sha256, pwic_size2str, pwic_str2bytearray, pwic_x, pwic_xb)
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -110,7 +111,7 @@ class PwicServer():
         koExcl = False
 
         # Apply the rules
-        for mask in app['ip_filter']:
+        for mask in app['options']['ip_filter']:
             if mask[0] == IPR_NET:
                 condition = ip_address(ip) in mask[2]
             elif mask[0] == IPR_REG:
@@ -206,11 +207,11 @@ class PwicServer():
 
         # Check the HTTP referer in POST method and the user
         user = pwic_safe_user_name(session.get('user', ''))
-        if (request.method == 'POST') and app['http_referer']:
+        if (request.method == 'POST') and app['options']['http_referer']:
             referer = request.headers.get('Referer', '')
-            if referer[:len(app['base_url'])] != app['base_url']:
+            if referer[:len(app['options']['base_url'])] != app['options']['base_url']:
                 user = ''
-        return PWIC_USERS['anonymous'] if (user == '') and app['no_login'] else user
+        return PWIC_USERS['anonymous'] if (user == '') and app['options']['no_login'] else user
 
     async def _handle_post(self, request: web.Request) -> Dict[str, Any]:
         ''' Return the POST as a readable object.get() '''
@@ -537,7 +538,10 @@ class PwicServer():
 
         # Update the HTML cache if needed
         if row is not None:
-            html = row['html']
+            if isinstance(row['html'], bytes):
+                html = str(gzip.decompress(row['html']).decode())
+            else:
+                html = row['html']
         else:
             row = {'project': project,
                    'page': page,
@@ -549,7 +553,8 @@ class PwicServer():
             if cache:
                 sql.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html)
                                 VALUES (?, ?, ?, ?)''',
-                            (project, page, revision, html))
+                            (project, page, revision,
+                             gzip.compress(html.encode(), compresslevel=9) if app['options']['compressed_cache'] else html))
                 self.dbconn.commit()
 
         # Enhance the page
@@ -563,7 +568,7 @@ class PwicServer():
                              or ((pwic['author'] == user)
                                  and pwic['draft']))
         pwic['file_formats'] = PwicExporter.get_allowed_extensions()
-        pwic['canonical'] = ('%s/%s/%s' % (app['base_url'], project, page)) + ('' if pwic['latest'] else '/rev%d' % revision)
+        pwic['canonical'] = ('%s/%s/%s' % (app['options']['base_url'], project, page)) + ('' if pwic['latest'] else '/rev%d' % revision)
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -1692,7 +1697,7 @@ class PwicServer():
             query = {'client_id': oauth['identifier'],
                      'grant_type': 'authorization_code',
                      'code': code,
-                     'redirect_uri': app['base_url'] + '/api/oauth',
+                     'redirect_uri': app['options']['base_url'] + '/api/oauth',
                      'client_secret': oauth['server_secret']}
             token_type, token = _fetch_token('https://oauth2.googleapis.com/token', query)
 
@@ -1709,7 +1714,7 @@ class PwicServer():
                      'grant_type': 'authorization_code',
                      'scope': 'https://graph.microsoft.com/user.read',
                      'code': code,
-                     'redirect_uri': app['base_url'] + '/api/oauth',
+                     'redirect_uri': app['options']['base_url'] + '/api/oauth',
                      'client_secret': oauth['server_secret']}
             token_type, token = _fetch_token('https://login.microsoftonline.com/%s/oauth2/v2.0/token' % oauth['tenant'], query)
 
@@ -1984,7 +1989,7 @@ class PwicServer():
                 elif k != 'page':
                     if (not isinstance(row[k], str)) or (row[k] != ''):
                         item[k] = row[k]
-            item['url'] = '%s/%s/%s/rev%d' % (app['base_url'], project, row['page'], row['revision'])
+            item['url'] = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
             data[row['page']]['revisions'].append(item)
 
         # Fetch the documents
@@ -2000,7 +2005,7 @@ class PwicServer():
                 if row is None:
                     break
 
-                row['url'] = '%s/special/document/%d/%s' % (app['base_url'], row['id'], row['filename'])
+                row['url'] = '%s/special/document/%d/%s' % (app['options']['base_url'], row['id'], row['filename'])
                 k = row['page']
                 del row['page']
                 if k in data:
@@ -2475,20 +2480,133 @@ class PwicServer():
                    'Content-Disposition': 'attachment; filename="%s"' % pwic_attachment_name(project + '.zip')}
         return web.Response(body=buffer, headers=MultiDict(headers))
 
-    async def api_project_rss_get(self, request: web.Request) -> web.Response:
-        ''' RSS feed for the project '''
+    def _feed_atom(self, sql: sqlite3.Cursor, project: str, project_description: str, feed_size: int) -> web.Response:
+        dt = pwic_dt()
+        url = '%s/api/project/atom/get?project=%s' % (app['options']['base_url'], project)
+        legnot = str(pwic_option(sql, project, 'legal_notice', ''))
+        atom = '''<?xml version="1.0" encoding="utf-8"?>
+                    <feed xmlns="http://www.w3.org/2005/Atom" xml:base="%s" xml:lang="%s">
+                        <id>%s</id>
+                        <title type="text">Project %s (ATOM)</title>
+                        <subtitle type="text">%s</subtitle>
+                        <link href="/api/project/atom/get?project=%s" rel="self" type="%s" />
+                        <updated>%sT%sZ</updated>%s
+                        <generator uri="https://pwic.wiki" version="%s">Pwic.wiki v%s</generator>
+                ''' % (escape(app['options']['base_url']),
+                       escape(str(pwic_option(sql, project, 'language', PWIC_DEFAULTS['language']))),
+                       escape(url),
+                       escape(project),
+                       escape(project_description),
+                       escape(project),
+                       escape(str(pwic_mime('atom'))),
+                       escape(dt['date']),
+                       escape(dt['time']),
+                       '' if legnot == '' else ('\n<rights>%s</rights>' % escape(legnot)),
+                       escape(PWIC_VERSION),
+                       escape(PWIC_VERSION),
+                       )
+        sql.execute(''' SELECT page, revision, author, date, time, title, tags, comment
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                          AND date   >= ?
+                        ORDER BY date DESC,
+                                 time DESC
+                        LIMIT ?''',
+                    (project, dt['date-90d'], feed_size))
+        for row in sql.fetchall():
+            url = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
+            atom += '''<entry>
+                         <title>[%s] %s</title>
+                         <summary>%s</summary>
+                         <updated>%sT%sZ</updated>
+                         <link href="%s" />
+                         <id>%s</id>
+                        <author>
+                            <name>%s</name>
+                            <uri>%s/special/user/%s</uri>
+                        </author>
+                     </entry>''' % (escape(row['page']),
+                                    escape(row['title']),
+                                    escape(row['comment']),
+                                    escape(row['date']),
+                                    escape(row['time']),
+                                    escape(url),
+                                    escape(url),
+                                    escape(row['author']),
+                                    escape(app['options']['base_url']),
+                                    escape(row['author']))
+        atom += '</feed>'
+        return web.Response(text=pwic_recursive_replace(atom.strip(), ' <', '<'), content_type=pwic_mime('atom'))
+
+    def _feed_rss(self, sql: sqlite3.Cursor, project: str, project_description: str, feed_size: int) -> web.Response:
+        def _author2rss(author: str) -> str:
+            p = author.find('@')
+            if p == -1:
+                return '%s@no.reply (%s)' % (author, author)
+            return '%s (%s)' % (author, author[:p])
+
+        dt = pwic_dt()
+        url = '%s/api/project/rss/get?project=%s' % (app['options']['base_url'], project)
+        rss = '''<?xml version="1.0" encoding="utf8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+                <channel>
+                    <title>Project %s (RSS)</title>
+                    <description>%s</description>
+                    <lastBuildDate>%s</lastBuildDate>
+                    <link>%s</link>
+                    <atom:link href="%s" rel="self" type="%s" />
+                ''' % (escape(project),
+                       escape(project_description),
+                       escape(pwic_dt2rfc822(dt['date'], dt['time'])),
+                       escape(url),
+                       escape(url),
+                       escape(str(pwic_mime('rss'))))
+        sql.execute(''' SELECT page, revision, author, date, time, title, tags, comment
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                          AND date   >= ?
+                        ORDER BY date DESC,
+                                 time DESC
+                        LIMIT ?''',
+                    (project, dt['date-90d'], feed_size))
+        for row in sql.fetchall():
+            url = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
+            rss += '''<item>
+                        <title>[%s] %s</title>
+                        <description>%s</description>
+                        <pubDate>%s</pubDate>
+                        <author>%s</author>%s
+                        <link>%s</link>
+                        <guid isPermaLink="false">%s</guid>
+                    </item>''' % (escape(row['page']),
+                                  escape(row['title']),
+                                  escape(row['comment']),
+                                  escape(pwic_dt2rfc822(row['date'], row['time'])),
+                                  escape(_author2rss(row['author'])),
+                                  '' if row['tags'] == '' else ('\n<category>%s</category>' % escape(row['tags'])),
+                                  escape(url),
+                                  escape('%s-%s-%d' % (project, row['page'], row['revision'])))
+        rss += '</channel></rss>'
+        return web.Response(text=pwic_recursive_replace(rss.strip(), ' <', '<'), content_type=pwic_mime('rss'))
+
+    async def api_project_feed_get(self, request: web.Request) -> web.Response:
+        ''' ATOM/RSS feeds for the project '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
             raise web.HTTPUnauthorized()
 
         # Get the parameters
+        feed = request.match_info.get('feed', 'atom')
         project = pwic_safe_name(request.rel_url.query.get('project', ''))
-        if project == '':
+        if (feed not in ['atom', 'rss']) or (project == ''):
             raise web.HTTPBadRequest()
 
-        # Verify that the user has access to the project
+        # Verify that the user has access to the feed
         sql = self.dbconn.cursor()
+        if pwic_option(sql, project, 'no_feed') is not None:
+            raise web.HTTPForbidden()
         sql.execute(''' SELECT b.description
                         FROM roles AS a
                             INNER JOIN projects AS b
@@ -2500,60 +2618,12 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPUnauthorized()
-
-        # Additional parameters
-        if pwic_option(sql, project, 'no_rss') is not None:
+        if self._is_pure_reader(sql, project, user) and (pwic_option(sql, project, 'no_history') is not None):
             raise web.HTTPForbidden()
-        rss_size = max(1, pwic_int(pwic_option(sql, project, 'rss_size', '25')))
 
         # Result
-        dt = pwic_dt()
-        rss = '''<?xml version="1.0" encoding="utf8"?><rss version="2.0">
-                <channel>
-                    <title>Project %s</title>
-                    <description>%s</description>
-                    <lastBuildDate>%s %s</lastBuildDate>
-                    <link>%s/api/project/rss/get?project=%s</link>
-                </channel>''' % (escape(project),
-                                 escape(row['description']),
-                                 escape(dt['date']),
-                                 escape(dt['time']),
-                                 escape(app['base_url']),
-                                 escape(project))
-        sql.execute(''' SELECT page, revision, author, date, time, title, tags, comment
-                        FROM pages
-                        WHERE project = ?
-                          AND latest  = 'X'
-                          AND date   >= ?
-                        ORDER BY date DESC,
-                                 time DESC
-                        LIMIT ?''',
-                    (project, dt['date-30d'], rss_size))
-        for row in sql.fetchall():
-            rss += '''<item>
-                        <title>[%s] %s</title>
-                        <description>%s</description>
-                        <pubDate>%s %s</pubDate>
-                        <author>%s</author>
-                        <category>%s</category>
-                        <link>%s/%s/%s/rev%d</link>
-                        <guid>%s-%s-%d</guid>
-                    </item>''' % (escape(row['page']),
-                                  escape(row['title']),
-                                  escape(row['comment']),
-                                  escape(row['date']),
-                                  escape(row['time']),
-                                  escape(row['author']),
-                                  escape(row['tags']),
-                                  escape(app['base_url']),
-                                  escape(project),
-                                  escape(row['page']),
-                                  row['revision'],
-                                  escape(project),
-                                  escape(row['page']),
-                                  row['revision'])
-        rss += '</rss>'
-        return web.Response(text=pwic_recursive_replace(rss.strip(), ' <', '<'), content_type=pwic_mime('rss'))
+        feed_size = max(1, pwic_int(pwic_option(sql, project, 'feed_size', '25')))
+        return (self._feed_atom if feed == 'atom' else self._feed_rss)(sql, project, row['description'], feed_size)
 
     async def api_project_searchlink_get(self, request: web.Request) -> web.Response:
         ''' Search link to be added to the browser '''
@@ -2582,7 +2652,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Additional parameters
-        if (app['base_url'] == '') or (pwic_option(sql, project, 'no_search') is not None):
+        if (app['options']['base_url'] == '') or (pwic_option(sql, project, 'no_search') is not None):
             raise web.HTTPForbidden()
 
         # Result
@@ -2595,7 +2665,7 @@ class PwicServer():
                     <Url rel="results" type="text/html" method="get" template="%s/%s/special/search?q={searchTerms}"></Url>
                 </OpenSearchDescription>''' % (escape(row['description']),
                                                escape(project),
-                                               escape(app['base_url']),
+                                               escape(app['options']['base_url']),
                                                escape(project))
         return web.Response(text=pwic_recursive_replace(xml.strip(), ' <', '<'), content_type=pwic_mime('xml'))
 
@@ -2647,7 +2717,7 @@ class PwicServer():
             else:
                 priority = 0.3
             buffer += ('\n<url>'
-                       + ('<loc>%s/%s/%s</loc>' % (escape(app['base_url']), quote(project), quote(row['page'])))
+                       + ('<loc>%s/%s/%s</loc>' % (escape(app['options']['base_url']), quote(project), quote(row['page'])))
                        + ('<changefreq>%s</changefreq>' % ('monthly' if days >= 35 else 'weekly'))
                        + ('<lastmod>%s</lastmod>' % escape(row['date']))
                        + ('<priority>%.1f</priority>' % priority)
@@ -3903,7 +3973,7 @@ class PwicServer():
             row['size'] = pwic_size2str(row['size'])
             row['used'] = (('(/special/document/%d)' % row['id']) in markdown
                            or ('(/special/document/%d "' % row['id']) in markdown)
-            row['url'] = '%s/special/document/%d/%s' % (app['base_url'], row['id'], row['filename'])
+            row['url'] = '%s/special/document/%d/%s' % (app['options']['base_url'], row['id'], row['filename'])
             row['convertible'] = conversion_allowed and (pwic_file_ext(row['filename']) in PwicImporter.get_allowed_extensions())
         PwicExtension.on_api_document_list(sql, request, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=pwic_mime('json'))
@@ -4182,7 +4252,7 @@ def main() -> bool:
                     web.post('/api/project/progress/get', app['pwic'].api_project_progress_get),
                     web.post('/api/project/graph/get', app['pwic'].api_project_graph_get),
                     web.get('/api/project/export', app['pwic'].api_project_export),
-                    web.get('/api/project/rss/get', app['pwic'].api_project_rss_get),
+                    web.get('/api/project/{feed:atom|rss}/get', app['pwic'].api_project_feed_get),
                     web.get('/api/project/searchlink/get', app['pwic'].api_project_searchlink_get),
                     web.get('/api/project/sitemap/get', app['pwic'].api_project_sitemap_get),
                     web.post('/api/page/create', app['pwic'].api_page_create),
@@ -4256,11 +4326,14 @@ def main() -> bool:
             return False
 
     # General options of the server
-    app['base_url'] = str(pwic_option(sql, '', 'base_url', ''))
-    if app['base_url'] == '':
+    base_url = str(pwic_option(sql, '', 'base_url', ''))
+    app['options'] = {'base_url': base_url,
+                      'compressed_cache': pwic_option(sql, '', 'compressed_cache') is not None,
+                      'http_referer': (base_url != '') and (pwic_option(sql, '', 'http_referer') is not None),
+                      'ip_filter': [],
+                      'no_login': pwic_option(sql, '', 'no_login') is not None}
+    if app['options']['base_url'] == '':
         print('Warning: defining the option "base_url" is highly recommended')
-    app['http_referer'] = (app['base_url'] != '') and (pwic_option(sql, '', 'http_referer') is not None)
-    app['no_login'] = pwic_option(sql, '', 'no_login') is not None
     app['oauth'] = {'provider': pwic_option(sql, '', 'oauth_provider', None),
                     'tenant': pwic_option(sql, '', 'oauth_tenant', ''),
                     'identifier': pwic_option(sql, '', 'oauth_identifier', ''),
@@ -4268,7 +4341,6 @@ def main() -> bool:
                     'domains': pwic_list(str(pwic_option(sql, '', 'oauth_domains', '')))}
 
     # Compile the IP filters
-    app['ip_filter'] = []
     for mask in pwic_list(pwic_option(sql, '', 'ip_filter')):
         item: List[Any] = [IPR_EQ, None, None]    # Type, Negated, Mask object
 
@@ -4293,7 +4365,7 @@ def main() -> bool:
         # ... raw IP
         else:
             item[2] = mask
-        app['ip_filter'].append(item)
+        app['options']['ip_filter'].append(item)
 
     # Logging
     http_log_file = pwic_option(sql, '', 'http_log_file', '')

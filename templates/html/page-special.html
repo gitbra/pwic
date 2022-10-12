@@ -41,7 +41,8 @@
 			{% if pwic.manager %}
 				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
 			{% endif %}
-			{% if not pwic.env.no_rss %}
+			{% if not pwic.env.no_feed and (not pwic.pure_reader or not pwic.env.no_history) %}
+				<a href="/api/project/atom/get?project={{pwic.project|urlencode}}">{{pwic.emojis.atom}} {% trans %}ATOM{% endtrans %}</a>
 				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} {% trans %}RSS{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.manager %}

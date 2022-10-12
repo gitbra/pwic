@@ -85,7 +85,7 @@ msgstr ""
 msgid "Search in project %(project)s"
 msgstr ""
 
-msgid "Recent changes for"
+msgid "Recent changes for %(project)s (%(format)s)"
 msgstr ""
 
 msgid "Sort"
@@ -501,6 +501,9 @@ msgid "New user"
 msgstr ""
 
 msgid "Roles"
+msgstr ""
+
+msgid "ATOM"
 msgstr ""
 
 msgid "RSS"

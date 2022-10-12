@@ -100,8 +100,8 @@ msgstr "Vous êtes déconnecté avec succès."
 msgid "Search in project %(project)s"
 msgstr "Rechercher dans le projet %(project)s"
 
-msgid "Recent changes for"
-msgstr "Changements récents pour"
+msgid "Recent changes for %(project)s (%(format)s)"
+msgstr "Changements récents pour %(project)s (%(format)s)"
 
 msgid "Sort"
 msgstr "Trier"
@@ -517,6 +517,9 @@ msgstr "Nouvel utilisateur"
 
 msgid "Roles"
 msgstr "Rôles"
+
+msgid "ATOM"
+msgstr "ATOM"
 
 msgid "RSS"
 msgstr "RSS"

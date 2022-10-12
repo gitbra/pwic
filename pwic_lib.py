@@ -47,17 +47,17 @@ PWIC_LOCALE_PATH = './locale/'
 PWIC_TEMPLATES_PATH = './templates/'
 
 # Security + HTTPS
-PWIC_SALT = ''                                      # Random string to secure the generated hashes for the passwords
+PWIC_SALT = ''                                              # Random string to secure the generated hashes for the passwords
 PWIC_PRIVATE_KEY = 'db/pwic_https.key'
 PWIC_PUBLIC_KEY = 'db/pwic_https.crt'
-PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'      # Various signs incompatible with filesystem, HTML, SQL, etc...
+PWIC_CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'              # Various signs incompatible with filesystem, HTML, SQL, etc...
 PWIC_MAGIC_OAUTH = 'OAuth'
 PWIC_NOT_PROJECT = ['', 'api', 'special', 'static']
 
 # Thematic constants
-PWIC_USERS = {'anonymous': 'pwic_anonymous',        # Account for the random visitors
-              'ghost': 'pwic_ghost',                # Account for the deleted users (not implemented)
-              'system': 'pwic_system'}              # Account for the technical operations
+PWIC_USERS = {'anonymous': 'pwic_anonymous',                # Account for the random visitors
+              'ghost': 'pwic_ghost',                        # Account for the deleted users (not implemented)
+              'system': 'pwic_system'}                      # Account for the technical operations
 PWIC_DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',            # Fixed format of the datetime
                  'heading': '1.1.1.1.1.1.',                 # Default format of the paragraphs
                  'kb_mask': 'kb%06d',                       # Format for the KB pages
@@ -81,36 +81,38 @@ PWIC_REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/
                 'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                     # Tag in HTML
                 'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                         # Comment in HTML
                 }
-PWIC_DPI = 120.                                     # Pixels per inch
-PWIC_RTL = ['ar', 'fa', 'he']                       # RTL languages
+PWIC_DPI = 120.                                             # Pixels per inch
+PWIC_RTL = ['ar', 'fa', 'he']                               # RTL languages
+PWIC_RFC822 = '%a, %d %b %Y %H:%M:%S %Z'                    # Date format according to RFC 822
 
 # Options
-PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'client_size_max', 'db_async', 'fixed_templates', 'keep_sessions', 'http_log_file',
-                                'http_log_format', 'http_referer', 'https', 'ip_filter', 'magic_bytes', 'maintenance', 'no_highlight',
-                                'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret', 'oauth_tenant',
-                                'password_regex', 'registration_link', 'strict_cookies']
+PWIC_ENV_PROJECT_INDEPENDENT = ['api_cors', 'base_url', 'compressed_cache', 'client_size_max', 'db_async', 'fixed_templates', 'keep_sessions',
+                                'http_log_file', 'http_log_format', 'http_referer', 'https', 'ip_filter', 'magic_bytes', 'maintenance',
+                                'no_highlight', 'no_login', 'oauth_domains', 'oauth_identifier', 'oauth_provider', 'oauth_secret',
+                                'oauth_tenant', 'password_regex', 'registration_link', 'strict_cookies']
 PWIC_ENV_PROJECT_DEPENDENT = ['api_expose_markdown', 'audit_range', 'auto_join', 'css', 'css_dark', 'css_printing', 'dark_theme',
                               'document_name_regex', 'document_size_max', 'edit_time_min', 'emojis', 'export_project_revisions',
-                              'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice', 'link_new_tab',
-                              'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_document_conversion',
-                              'no_export_project', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review', 'no_new_user',
-                              'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection',
+                              'feed_size', 'file_formats_disabled', 'heading_mask', 'kbid', 'keep_drafts', 'language', 'legal_notice',
+                              'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_cache', 'no_copy_code', 'no_document_conversion',
+                              'no_export_project', 'no_feed', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review',
+                              'no_new_user', 'no_printing', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection',
                               'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_margin',
                               'odt_page_width', 'page_count_max', 'project_size_max', 'quick_fix', 'revision_count_max', 'revision_size_max',
-                              'robots', 'rss_size', 'rstrip', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
+                              'robots', 'rstrip', 'seo_hide_revs', 'show_members_max', 'skipped_tags', 'support_email',
                               'support_phone', 'support_text', 'support_url', 'title', 'validated_only', 'zip_no_exec']
-PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'file_formats_disabled', 'heading_mask',
+PWIC_ENV_PROJECT_DEPENDENT_ONLINE = ['audit_range', 'auto_join', 'dark_theme', 'emojis', 'feed_size', 'file_formats_disabled', 'heading_mask',
                                      'keep_drafts', 'language', 'link_new_tab', 'link_nofollow', 'mathjax', 'mde', 'message', 'no_copy_code',
-                                     'no_document_conversion', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review',
-                                     'no_printing', 'no_rss', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection',
-                                     'odt_image_height_max', 'odt_image_width_max', 'odt_page_height', 'odt_page_landscape',
-                                     'odt_page_margin', 'odt_page_width', 'quick_fix', 'rss_size', 'rstrip', 'show_members_max',
-                                     'support_email', 'support_phone', 'support_text', 'support_url', 'title', 'validated_only']
+                                     'no_document_conversion', 'no_feed', 'no_graph', 'no_heading', 'no_help', 'no_history', 'no_link_review',
+                                     'no_printing', 'no_search', 'no_sort_table', 'no_space_page', 'no_text_selection', 'odt_image_height_max',
+                                     'odt_image_width_max', 'odt_page_height', 'odt_page_landscape', 'odt_page_margin', 'odt_page_width',
+                                     'quick_fix', 'rstrip', 'show_members_max', 'support_email', 'support_phone', 'support_text',
+                                     'support_url', 'title', 'validated_only']
 PWIC_ENV_PROJECT_DEPENDENT_ONLY = ['auto_join']
 PWIC_ENV_PRIVATE = ['oauth_secret']
 
 # Emojis
 PWIC_EMOJIS = {'alien': '&#x1F47D;',
+               'atom': '&#x269B;&#xFE0F;',
                'bang': '&#x1F4A5;',
                'brick': '&#x1F9F1;',
                'calendar': '&#x1F4C5;',
@@ -187,9 +189,10 @@ class PwicError(Exception):
 #  https://www.iana.org/assignments/media-types/media-types.xhtml
 # ===================================================
 
-ZIP = ['PK']
-MATROSKA = ['\x1A\x45\xDF\xA3']
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
+MATROSKA = ['\x1A\x45\xDF\xA3']
+XML = ['<']
+ZIP = ['PK']
 TyMime = List[Tuple[List[str],                  # Extensions in lower case
                     List[str],                  # Mimes
                     Optional[List[str]],        # Magic bytes
@@ -201,6 +204,7 @@ PWIC_MIMES: TyMime = [([''], ['application/octet-stream'], None, False),
                       (['accdb'], ['application/msaccess'], ['\x00\x01\x00\x00Standard ACE DB'], False),  # NUL SOH NUL NUL
                       (['aif', 'aifc', 'aiff'], ['audio/aiff'], ['AIFF', 'FORM'], True),
                       (['apk'], ['application/vnd.android.package-archive'], ZIP, True),
+                      (['atom'], ['application/atom+xml'], XML, True),
                       (['avi'], ['video/avi'], ['AVI', 'RIFF'], True),
                       (['avif'], ['image/avif'], None, True),
                       (['bin'], ['application/octet-stream'], None, True),
@@ -280,11 +284,11 @@ PWIC_MIMES: TyMime = [([''], ['application/octet-stream'], None, False),
                       (['psd'], ['image/vnd.adobe.photoshop'], None, False),
                       (['pub'], ['application/vnd.ms-publisher'], CFBF, False),
                       (['rar'], ['application/x-rar-compressed'], ['Rar!\x1A\x07\x00', 'Rar!\x1A\x07\x01'], True),
-                      (['rss'], ['application/rss+xml'], None, False),
+                      (['rss'], ['application/rss+xml'], XML, False),
                       (['rtf'], ['application/rtf'], ['{\rtf1'], False),
                       (['sqlite'], ['application/vnd.sqlite3'], ['SQLite format 3\x00'], False),
                       (['sti'], ['application/vnd.sun.xml.impress.template'], None, False),
-                      (['svg'], ['image/svg+xml'], None, False),
+                      (['svg'], ['image/svg+xml'], XML, False),
                       (['swf'], ['application/x-shockwave-flash'], ['CWS', 'FWS'], False),
                       (['sxc'], ['application/vnd.sun.xml.calc'], None, False),
                       (['sxd'], ['application/vnd.sun.xml.draw'], None, False),
@@ -314,8 +318,8 @@ PWIC_MIMES: TyMime = [([''], ['application/octet-stream'], None, False),
                       (['xls'], ['application/vnd.ms-excel'], CFBF, False),
                       (['xlsm'], ['application/vnd.ms-excel.sheet.macroEnabled.12'], ZIP, True),
                       (['xlsx'], ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], ZIP, True),
-                      (['xml'], ['text/xml'], None, False),
-                      (['xsl'], ['text/xml'], None, False),
+                      (['xml'], ['text/xml'], XML, False),
+                      (['xsl'], ['text/xml'], XML, False),
                       (['yaml'], ['text/yaml'], None, False),
                       (['z'], ['application/x-compress'], ['\x1F\xA0'], True),
                       (['zip'], ['application/x-zip-compressed'], ZIP, True)]
@@ -441,6 +445,16 @@ def pwic_dt_diff(date1: str, date2: str) -> int:
     d1 = datetime.strptime(date1 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
     d2 = datetime.strptime(date2 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
     return (d2 - d1).days
+
+
+def pwic_dt2rfc822(sdate: str, stime: str) -> str:
+    ''' Convert a local date&time or a complete date/time to RFC 822
+        The time zone may be provided by PwicExtension.on_timezone()
+    '''
+    from pwic_extension import PwicExtension
+    curtime = datetime.strptime('%s %s' % (sdate, stime), '%Y-%m-%d %H:%M:%S')
+    curtime = curtime.replace(tzinfo=PwicExtension.on_timezone())
+    return datetime.strftime(curtime, PWIC_RFC822).replace('UTC', 'UT').strip()
 
 
 def pwic_int(value: Any, base=10) -> int:
