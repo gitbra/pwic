@@ -25,7 +25,7 @@ from zipfile import ZipFile
 from html import unescape
 from html.parser import HTMLParser
 
-from pwic_lib import PWIC_DOCUMENTS_PATH, pwic_file_ext, pwic_int, pwic_option, pwic_read_attr, pwic_recursive_replace
+from pwic_lib import PWIC_DOCUMENTS_PATH, PwicLib
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicCleanerHtml
 
@@ -50,9 +50,9 @@ class PwicImporter():
             return None
 
         # Convert the document
-        base_url = str(pwic_option(sql, '', 'base_url', ''))
+        base_url = str(PwicLib.option(sql, '', 'base_url', ''))
         filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
-        extension = pwic_file_ext(row['filename'])
+        extension = PwicLib.file_ext(row['filename'])
         try:
             result = ''
             if extension in PwicImporterHtml.get_extensions():
@@ -151,9 +151,9 @@ class PwicImporterHtml(HTMLParser):       # html2md
             self.pre = True
         if not self.pre:
             if tag == 'a':
-                self.last_href = pwic_read_attr(attrs, 'href')
+                self.last_href = PwicLib.read_attr(attrs, 'href')
             if tag == 'img':
-                self.last_src = pwic_read_attr(attrs, 'src')
+                self.last_src = PwicLib.read_attr(attrs, 'src')
             if (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
                 self.md = self.md.rstrip()
             if tag == 'table':
@@ -194,7 +194,7 @@ class PwicImporterHtml(HTMLParser):       # html2md
 
     def handle_data(self, data: str) -> None:
         if not self.pre:
-            data = pwic_recursive_replace(data.replace('\t', ' '), '  ', ' ', strip=False)
+            data = PwicLib.recursive_replace(data.replace('\t', ' '), '  ', ' ', strip=False)
         self.md += data
 
     @staticmethod
@@ -222,7 +222,7 @@ class PwicImporterHtml(HTMLParser):       # html2md
         # Convert
         self.feed(html)
         lines = [e.rstrip() for e in self.md.split('\n')]
-        return pwic_recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
+        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
 
 
 # ===================================================
@@ -247,22 +247,22 @@ class PwicStylerOdt(HTMLParser):
         # Block
         if tag == 'style:style':
             self.reset_marks()
-            if pwic_read_attr(attrs, 'style:family') == 'text':
-                self.name = pwic_read_attr(attrs, 'style:name')
+            if PwicLib.read_attr(attrs, 'style:family') == 'text':
+                self.name = PwicLib.read_attr(attrs, 'style:name')
             else:
                 self.name = ''
         # Attributes
         elif tag == 'style:text-properties':
-            value = pwic_read_attr(attrs, 'fo:font-weight')
+            value = PwicLib.read_attr(attrs, 'fo:font-weight')
             if value != '':
                 self.bold = (value != 'normal')
-            value = pwic_read_attr(attrs, 'fo:font-style')
+            value = PwicLib.read_attr(attrs, 'fo:font-style')
             if value != '':
                 self.italic = value in ['italic', 'oblique']
-            value = pwic_read_attr(attrs, 'style:text-underline-type')
+            value = PwicLib.read_attr(attrs, 'style:text-underline-type')
             if value != '':
                 self.underline = (value != 'none')
-            value = pwic_read_attr(attrs, 'style:text-line-through-style')
+            value = PwicLib.read_attr(attrs, 'style:text-line-through-style')
             if value != '':
                 self.strike = (value != 'none')
 
@@ -335,6 +335,12 @@ class PwicImporterOdt(HTMLParser):
 
         # Read the styles
         self.styler.reset()
+        # ... from content
+        p1 = content.find('<office:automatic-styles>')
+        p2 = content.find('</office:automatic-styles>', p1)
+        if (-1 not in [p1, p2]) and (p1 < p2):
+            self.styler.feed(content[p1 + 25:p2])
+        # ... from styles
         self.styler.feed(styles)
         return True
 
@@ -345,14 +351,14 @@ class PwicImporterOdt(HTMLParser):
         tag = tag.strip().lower()
         # Element
         if tag == 'text:span':
-            deco = self.styler.get_decorator(pwic_read_attr(attrs, 'text:style-name'))
+            deco = self.styler.get_decorator(PwicLib.read_attr(attrs, 'text:style-name'))
             if self.link != '':
                 deco = deco.replace('--', '')
             self.md += deco
             self.spanstack.append(deco[::-1])
         elif tag == 'text:a':
             self.md += '['
-            self.link = pwic_read_attr(attrs, 'xlink:href')
+            self.link = PwicLib.read_attr(attrs, 'xlink:href')
             if (self.link[:len(self.base_url)] == self.base_url) and (len(self.link) > len(self.base_url)):
                 self.link = self.link[len(self.base_url):]
         elif tag == 'draw:frame':
@@ -363,7 +369,7 @@ class PwicImporterOdt(HTMLParser):
             if (self.listlevel == 0) and not self.table:
                 self.md += '\n\n'
         elif tag == 'text:h':
-            self.md += '\n\n%s ' % ('#' * pwic_int(pwic_read_attr(attrs, 'text:outline-level')))
+            self.md += '\n\n%s ' % ('#' * PwicLib.intval(PwicLib.read_attr(attrs, 'text:outline-level')))
         # List
         elif tag == 'text:list':
             self.listlevel += 1
@@ -429,4 +435,4 @@ class PwicImporterOdt(HTMLParser):
             return ''
         self.feed(self.content)
         lines = [e.rstrip() for e in self.md.split('\n')]
-        return pwic_recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
+        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')

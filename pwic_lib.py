@@ -326,563 +326,614 @@ PWIC_MIMES: TyMime = [([''], ['application/octet-stream'], None, False),
 PWIC_EXECS = ['bat', 'cat', 'cmd', 'com', 'dll', 'docm', 'drv', 'exe', 'potm', 'ppsm', 'pptm', 'ps1', 'scr', 'sh', 'sys', 'vbs', 'xlsm']
 
 
-def pwic_file_ext(filename: str) -> str:
-    ''' Return the file extension of the file '''
-    return splitext(filename)[1][1:].strip().lower()
+class PwicLib:
+    # ===================================================
+    #  System
+    # ===================================================
 
+    @staticmethod
+    def audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
+        ''' Save an event into the audit log '''
+        from pwic_extension import PwicExtension
 
-def pwic_mime(ext: str) -> Optional[str]:
-    ''' Return the default mime that corresponds to the file extension '''
-    values = pwic_mime_list(ext)
-    return None if len(values) == 0 else values[0]
+        # Check
+        if PwicExtension.on_audit_skip(sql, request, obj):
+            return
 
-
-def pwic_mime_list(ext: str) -> List[str]:
-    ''' Return the possible mimes that correspond to the file extension '''
-    ext = ext.strip().lower()
-    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
-        if ext in mext:
-            return mtyp
-    return []
-
-
-def pwic_mime_compressed(ext: str) -> bool:
-    ''' Return the possible state of compression based on the file extension '''
-    ext = ext.strip().lower()
-    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
-        if ext in mext:
-            return mzip
-    return False
-
-
-def pwic_magic_bytes(ext: str) -> Optional[List[str]]:
-    ''' Return the magic bytes that corresponds to the file extension '''
-    ext = ext.strip().lower()
-    for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
-        if ext in mext:
-            return mhdr
-    return None
-
-
-def pwic_mime2icon(mime: str) -> str:
-    ''' Return the emoji that corresponds to the MIME '''
-    if mime[:6] == 'image/':
-        return PWIC_EMOJIS['image']
-    if mime[:6] == 'video/':
-        return PWIC_EMOJIS['camera']
-    if mime[:6] == 'audio/':
-        return PWIC_EMOJIS['headphone']
-    if mime[:12] == 'application/':
-        return PWIC_EMOJIS['server']
-    return PWIC_EMOJIS['sheet']
-
-
-# ===================================================
-#  Reusable functions
-# ===================================================
-
-def pwic_attachment_name(name: str) -> str:
-    ''' Return the file name for a proper download '''
-    return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
-
-
-def pwic_convert_length(value: Optional[Union[str, int, float]], target_unit: str, precision: int, dpi: float = PWIC_DPI) -> str:
-    ''' Convert a length from a unit to another one '''
-    # Conversion factors
-    factors = {'cm': (dpi / 2.54, 'px'),
-               'mm': (0.1, 'cm'),
-               'in': (2.54, 'cm'),
-               'pt': (1. / 72., 'in'),
-               'pc': (12., 'pt'),
-               'px': (1., 'px'),
-               'em': (0., 'px'),                # Relative length
-               '': (1., '')}
-
-    # Read the input value
-    if (value is None) or (target_unit not in factors):
-        return '0'
-    if not isinstance(value, str):
-        length = float(value)
-        unit = 'px'
-    else:
-        value = value.strip().replace(' ', '').replace(',', '.').lower()
-        m = PWIC_REGEXES['length'].match(value)
-        if m is None:
-            return '0'
-        try:
-            length = float(m.group(1))
-        except ValueError:
-            return '0'
-        unit = m.group(3) or 'px'
-
-    # Convert to pixels
-    while True:
-        (k, unit) = factors[unit]
-        length *= k
-        if unit == 'px':
-            break
-
-    # Convert to the target unit
-    length /= factors[target_unit][0]
-    return str(round(length, precision)) + target_unit
-
-
-def pwic_dt(days: int = 0) -> Dict[str, str]:
-    ''' Return some key dates and time '''
-    from pwic_extension import PwicExtension
-    curtime = datetime.now(tz=PwicExtension.on_timezone())
-    return {'date': str(curtime)[:10],
-            'date-30d': str(curtime - timedelta(days=30))[:10],
-            'date-90d': str(curtime - timedelta(days=90))[:10],
-            'date-nd': str(curtime - timedelta(days=days))[:10],
-            'time': str(curtime)[11:19]}
-
-
-def pwic_dt_diff(date1: str, date2: str) -> int:
-    ''' Calculate the number of days between 2 dates '''
-    if date1 > date2:
-        date1, date2 = date2, date1
-    d1 = datetime.strptime(date1 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
-    d2 = datetime.strptime(date2 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
-    return (d2 - d1).days
-
-
-def pwic_dt2rfc822(sdate: str, stime: str) -> str:
-    ''' Convert a local date&time or a complete date/time to RFC 822
-        The time zone may be provided by PwicExtension.on_timezone()
-    '''
-    from pwic_extension import PwicExtension
-    curtime = datetime.strptime('%s %s' % (sdate, stime), '%Y-%m-%d %H:%M:%S')
-    curtime = curtime.replace(tzinfo=PwicExtension.on_timezone())
-    return datetime.strftime(curtime, PWIC_RFC822).replace('UTC', 'UT').strip()
-
-
-def pwic_int(value: Any, base=10) -> int:
-    ''' Safe conversion to integer in the chosen base '''
-    try:
-        if base != 10:
-            return int(value, base)
-        return int(float(value) if '.' in str(value) else value)
-    except (ValueError, TypeError):
-        return 0
-
-
-def pwic_ishex(value: str) -> bool:
-    ''' Check if the value is a non-zero hexadecimal value '''
-    return pwic_int(str(value), base=16) > 0
-
-
-def pwic_flag(flag: str) -> str:
-    ''' Convert a country in ISO format to emoji '''
-    # Check the parameter
-    flag = flag.strip().lower()
-    if len(flag) != 2:
-        return ''
-
-    # Build the unicode flag
-    emoji = ''
-    for i in range(2):
-        if flag[i] in ascii_lowercase:
-            emoji += chr(ascii_lowercase.find(flag[i]) + 0x1F1E6)
-        else:
-            return ''
-    return emoji
-
-
-def pwic_list(inputstr: Optional[str], do_sort: bool = False) -> List[str]:
-    ''' Build a list of unique values from a string and keep the initial order (by default) '''
-    if inputstr is None:
-        inputstr = ''
-    inputstr = pwic_recursive_replace(inputstr.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
-    values = [] if inputstr == '' else list(OrderedDict((e, None) for e in inputstr.split(' ')))
-    if do_sort:
-        values.sort()
-    return values
-
-
-def pwic_list_tags(tags: str) -> str:
-    ''' Reorder a list of tags written as a string '''
-    return ' '.join(pwic_list(tags.replace('#', '').lower(), do_sort=True))
-
-
-def pwic_nns(value: Optional[str]) -> str:
-    ''' Return a non-null string '''
-    return str('' if value is None else value)
-
-
-def pwic_notag(value: str) -> str:
-    ''' Remove the HTML tags from a string '''
-    while True:
-        i = len(value)
-        value = PWIC_REGEXES['tag_all'].sub('', value)
-        value = PWIC_REGEXES['tag_comment'].sub('', value)
-        if len(value) == i:
-            break
-    return value
-
-
-def pwic_option(sql: Optional[sqlite3.Cursor],
-                project: Optional[str],
-                name: str,
-                default: Optional[str] = None,
-                globale: bool = True,
-                ) -> Optional[str]:
-    ''' Read a variable from the table ENV that can be project-dependent or not '''
-    if sql is None:
-        return default
-    try:
-        query = ''' SELECT value
-                    FROM env
-                    WHERE project = ?
-                      AND key     = ?
-                      AND value  <> '' '''
-        row = None
-        if name in PWIC_ENV_PROJECT_INDEPENDENT:
-            project = ''
-        if project not in ['', None]:
-            row = sql.execute(query, (project, name)).fetchone()
-        if (row is None) and globale:
-            row = sql.execute(query, ('', name)).fetchone()
-        result = default if row is None else row['value']
-        if isinstance(result, str):
-            result = result.replace('\r', '')
-        return result
-    except sqlite3.OperationalError:    # During init-db
-        return default
-
-
-def pwic_random_hash() -> str:
-    ''' Generate a random 64-char-long string '''
-    return pwic_sha256(str(urandom(64)))[:32] + pwic_sha256(str(urandom(64)))[32:]
-
-
-def pwic_read_attr(attrs: List[Tuple[str, Optional[str]]], key: str, default: str = '') -> str:
-    ''' Read a list of tuples by the first field '''
-    for (k, v) in attrs:
-        if k == key:
-            return pwic_nns(v)
-    return default
-
-
-def pwic_recursive_replace(text: str, search: str, replace: str, strip: bool = True) -> str:
-    ''' Replace a string recursively '''
-    while True:
-        curlen = len(text)
-        text = text.replace(search, replace)
-        if len(text) == curlen:
-            break
-    if strip:
-        text = text.strip()
-    return text
-
-
-def pwic_row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
-    ''' Assign names to the SQL output '''
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
-
-
-def pwic_safe_file_name(name: str) -> str:
-    ''' Ensure that a file name is acceptable '''
-    name = pwic_safe_name(name, extra='').replace(' ', '_').replace('\t', '_')
-    name = pwic_recursive_replace(name, '..', '.')
-    name = pwic_recursive_replace(name, '__', '_')
-    return '' if name[:1] == '.' else name
-
-
-def pwic_safe_name(name: Optional[str], extra: str = '.@') -> str:
-    ''' Ensure that a string will not collide with the reserved characters of the operating system '''
-    chars = PWIC_CHARS_UNSAFE + extra
-    if name is None:
-        name = ''
-    for c in chars:
-        name = name.replace(c, '')
-    return name.strip().lower()[:pwic_int(PWIC_DEFAULTS['limit_filename'])]
-
-
-def pwic_safe_user_name(name: str) -> str:
-    ''' Ensure that a user name is acceptable '''
-    return pwic_safe_name(name, extra='')
-
-
-def pwic_sha256(value: Union[str, bytearray], salt: bool = True) -> str:
-    ''' Calculate the SHA256 as string for the given value '''
-    if isinstance(value, bytearray):
-        if salt:
+        # Forced properties of the event
+        dt = PwicLib.dt()
+        obj['date'] = dt['date']
+        obj['time'] = dt['time']
+        if request is not None:
+            obj['ip'] = PwicExtension.on_ip_header(request)
+        if obj.get('event', '') == '':
             raise PwicError
-        return sha256(value).hexdigest()
-    text = (PWIC_SALT if salt else '') + str(value)
-    return sha256(text.encode()).hexdigest()
 
+        # Log the event
+        fields = ''
+        tupstr = ''
+        tup: Tuple[Union[str, int], ...] = ()
+        for key in obj:
+            fields += '%s, ' % PwicLib.safe_name(key)
+            tupstr += '?, '
+            tup += (obj[key], )
+        query = 'INSERT INTO audit.audit (%s) VALUES (%s)'
+        sql.execute(query % (fields[:-2], tupstr[:-2]), tup)
+        if sql.rowcount != 1:
+            raise PwicError
 
-def pwic_sha256_file(filename: str) -> str:
-    ''' Calculate the SHA256 as string for the given file '''
-    try:
-        hashval = sha256()
-        with open(filename, 'rb') as f:
-            for block in iter(lambda: f.read(4096), b''):
-                hashval.update(block)
-        return hashval.hexdigest()
-    except FileNotFoundError:
-        return ''
+        # Specific event
+        try:
+            PwicExtension.on_audit(sql, request, obj)
+        except Exception:       # nosec B110
+            pass
 
+    @staticmethod
+    def connect(dbfile: str = PWIC_DB_SQLITE,
+                dbaudit: Optional[str] = PWIC_DB_SQLITE_AUDIT,
+                trace: bool = False,
+                in_memory: bool = True,
+                asynchronous: bool = False,
+                vacuum: bool = False,
+                ) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+        ''' Connect to the database with the relevant options '''
+        # Connection
+        db = sqlite3.connect(dbfile)
+        db.row_factory = PwicLib.row_factory
+        if trace:
+            db.set_trace_callback(PwicLib.sql_print)
 
-def pwic_shrink(value: Optional[str]) -> str:
-    ''' Convert a string into its shortest value in lower case '''
-    if value is None:
-        value = ''
-    return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
+        # Cursor and options
+        sql = db.cursor()
+        attached = dbaudit is not None
+        if attached:
+            sql.execute(''' ATTACH DATABASE ? AS audit''', (dbaudit, ))
+        if in_memory:
+            sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
+            if attached:
+                sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
+        if asynchronous or (PwicLib.option(sql, '', 'db_async') is not None):
+            sql.execute(''' PRAGMA main.synchronous = OFF''')
+            if attached:
+                sql.execute(''' PRAGMA audit.synchronous = OFF''')
+        if vacuum:
+            sql.execute(''' VACUUM main''')
+            if attached:
+                sql.execute(''' VACUUM audit''')
+        return db, sql
 
+    @staticmethod
+    def detect_language(request: web.Request, allowed_langs: List[str], sso: bool = False) -> str:
+        ''' Detect the default language of the user from the HTTP headers '''
+        # Detect from the HTTP headers
+        head = request.headers.get('Accept-Language', '')
+        langs = PwicLib.list(head.replace(',', ' ').replace(';', ' '))
+        result = PWIC_DEFAULTS['language']
+        for e in langs:
+            if '-' in e:
+                e = e[:2]
+            if e in allowed_langs:
+                result = e
+                break
 
-def pwic_size2str(size: Union[int, float]) -> str:
-    ''' Convert a size to a readable format '''
-    units = ' kMGTPEZ'
-    for i in range(len(units)):
-        if size < 1024:
-            break
-        size /= 1024
-    return ('%.1f %sB' % (size, units[i].strip())).replace('.0 ', ' ')
+        # Custom detection
+        from pwic_extension import PwicExtension
+        return PwicExtension.on_language_detected(request, result, allowed_langs, sso)
 
+    # ====================
+    #  Reusable functions
+    # ====================
 
-def pwic_sql_print(query: Optional[str]) -> None:
-    ''' Quick and dirty callback to print the SQL queries on a single line for debugging purposes '''
-    if query is not None:
-        dt = pwic_dt()
-        print('[%s %s] %s' % (dt['date'],
-                              dt['time'],
-                              ' '.join([pwic_recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
+    @staticmethod
+    def attachment_name(name: str) -> str:
+        ''' Return the file name for a proper download '''
+        return "=?utf-8?B?%s?=" % (b64encode(name.encode()).decode())
 
+    @staticmethod
+    def convert_length(value: Optional[Union[str, int, float]], target_unit: str, precision: int, dpi: float = PWIC_DPI) -> str:
+        ''' Convert a length from a unit to another one '''
+        # Conversion factors
+        factors = {'cm': (dpi / 2.54, 'px'),
+                   'mm': (0.1, 'cm'),
+                   'in': (2.54, 'cm'),
+                   'pt': (1. / 72., 'in'),
+                   'pc': (12., 'pt'),
+                   'px': (1., 'px'),
+                   'em': (0., 'px'),                # Relative length
+                   '': (1., '')}
 
-def pwic_str2bytearray(inputstr: str) -> bytearray:
-    ''' Convert string to bytearray '''
-    barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
-    for c in inputstr:
-        barr.append(ord(c))
-    return barr
-
-
-def pwic_x(value: Any) -> str:
-    ''' Reduce an input value to a boolean string '''
-    return '' if value in [None, '', 0, '0', False, 'false', 'False', '-', '~', 'no', 'No', 'off', 'Off'] else 'X'
-
-
-def pwic_xb(value: str) -> bool:
-    ''' Convert 'X' to a boolean '''
-    return value == 'X'
-
-
-# ===================================================
-#  Editor
-# ===================================================
-
-def pwic_extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bool = True) -> Tuple[str, List[Dict]]:
-    ''' Automatic numbering of the MD headers '''
-    # Local functions
-    def _numeric(value: int) -> str:
-        return str(value)
-
-    def _roman(value: int) -> str:
-        if value < 1 or value > 4999:
+        # Read the input value
+        if (value is None) or (target_unit not in factors):
             return '0'
-        buffer = ''
-        for letter, threshold in (('M', 1000),
-                                  ('CM', 900),
-                                  ('D', 500),
-                                  ('CD', 400),
-                                  ('C', 100),
-                                  ('XC', 90),
-                                  ('L', 50),
-                                  ('XL', 40),
-                                  ('X', 10),
-                                  ('IX', 9),
-                                  ('V', 5),
-                                  ('IV', 4),
-                                  ('I', 1)):
-            while value >= threshold:
-                buffer += letter
-                value -= threshold
-        return buffer
+        if not isinstance(value, str):
+            length = float(value)
+            unit = 'px'
+        else:
+            value = value.strip().replace(' ', '').replace(',', '.').lower()
+            m = PWIC_REGEXES['length'].match(value)
+            if m is None:
+                return '0'
+            try:
+                length = float(m.group(1))
+            except ValueError:
+                return '0'
+            unit = m.group(3) or 'px'
 
-    def _romanMin(value: int) -> str:
-        return _roman(value).lower()
+        # Convert to pixels
+        while True:
+            (k, unit) = factors[unit]
+            length *= k
+            if unit == 'px':
+                break
 
-    def _letter(value: int, mask: str) -> str:
-        # stackoverflow.com/questions/48983939
-        def _divmod(n, base):
-            a, b = divmod(n, base)
-            if b == 0:
-                return a - 1, b + base
-            return a, b
+        # Convert to the target unit
+        length /= factors[target_unit][0]
+        return str(round(length, precision)) + target_unit
 
-        if value <= 0:
-            return '0'
-        buffer = []
-        while value > 0:
-            value, d = _divmod(value, len(mask))
-            buffer.append(mask[d - 1])
-        return ''.join(reversed(buffer))
+    @staticmethod
+    def dt(days: int = 0) -> Dict[str, str]:
+        ''' Return some key dates and time '''
+        from pwic_extension import PwicExtension
+        curtime = datetime.now(tz=PwicExtension.on_timezone())
+        return {'date': str(curtime)[:10],
+                'date-30d': str(curtime - timedelta(days=30))[:10],
+                'date-90d': str(curtime - timedelta(days=90))[:10],
+                'date-nd': str(curtime - timedelta(days=days))[:10],
+                'time': str(curtime)[11:19]}
 
-    def _letterMin(value: int) -> str:
-        return _letter(value, ascii_lowercase)
+    @staticmethod
+    def dt_diff(date1: str, date2: str) -> int:
+        ''' Calculate the number of days between 2 dates '''
+        if date1 > date2:
+            date1, date2 = date2, date1
+        d1 = datetime.strptime(date1 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
+        d2 = datetime.strptime(date2 + ' 00:00:00', PWIC_DEFAULTS['dt_mask'])
+        return (d2 - d1).days
 
-    def _letterMaj(value: int) -> str:
-        return _letter(value, ascii_uppercase)
+    @staticmethod
+    def dt2rfc822(sdate: str, stime: str) -> str:
+        ''' Convert a local date&time or a complete date/time to RFC 822
+            The time zone may be provided by PwicExtension.on_timezone()
+        '''
+        from pwic_extension import PwicExtension
+        curtime = datetime.strptime('%s %s' % (sdate, stime), '%Y-%m-%d %H:%M:%S')
+        curtime = curtime.replace(tzinfo=PwicExtension.on_timezone())
+        return datetime.strftime(curtime, PWIC_RFC822).replace('UTC', 'UT').strip()
 
-    # Initialisation
-    reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)
-    lines = markdown.split('\n')
-    numbering: List[int] = []
-    last_depth = 0
-    tmap = []
-    tmask = {'1': _numeric,
-             'I': _roman,
-             'i': _romanMin,
-             'A': _letterMaj,
-             'a': _letterMin}
+    @staticmethod
+    def intval(value: Any, base=10) -> int:
+        ''' Safe conversion to integer in the chosen base '''
+        try:
+            if base != 10:
+                return int(value, base)
+            return int(float(value) if '.' in str(value) else value)
+        except (ValueError, TypeError):
+            return 0
 
-    # Complete the mask
-    if mask is None:
-        mask = ''
-    a = len(mask)
-    b = len(PWIC_DEFAULTS['heading'])
-    if a < b:
-        mask += PWIC_DEFAULTS['heading'][a - b:]
+    @staticmethod
+    def ishex(value: str) -> bool:
+        ''' Check if the value is a non-zero hexadecimal value '''
+        return PwicLib.intval(str(value), base=16) > 0
 
-    # For each line
-    for i, line in enumerate(lines):
-        match = reg_header.match(line)
-        if match is not None:
-            depth = int(match.group(1))
+    @staticmethod
+    def flag(flag: str) -> str:
+        ''' Convert a country in ISO format to emoji '''
+        # Check the parameter
+        flag = flag.strip().lower()
+        if len(flag) != 2:
+            return ''
 
-            # Align the found header to the right depth
-            if depth > last_depth:
-                while len(numbering) < depth:
-                    numbering.append(0)
-            elif depth < last_depth:
-                while len(numbering) > depth:
-                    numbering.pop(-1)
-            last_depth = depth
-            numbering[depth - 1] += 1
-
-            # Build the readable identifier of the paragraph
-            sdisp = ''
-            stag = ''
-            for n, c in enumerate(numbering):
-                m2n = mask[2 * n]
-                if m2n not in tmask:
-                    m2n = '1'
-                snum = tmask[m2n](c)
-                ssep = mask[2 * n + 1]
-                sdisp += '%s%s' % (snum, ssep)
-                stag += '_%s' % snum.lower()
-
-            # Adapt the line
-            if headerNumbering:
-                lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+        # Build the unicode flag
+        emoji = ''
+        for i in range(2):
+            if flag[i] in ascii_lowercase:
+                emoji += chr(ascii_lowercase.find(flag[i]) + 0x1F1E6)
             else:
-                lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
-            tmap.append({'header': sdisp,
-                         'tag': 'p%s' % stag,
-                         'level': stag.count('_'),
-                         'title': line.strip()[4:-5]})
+                return ''
+        return emoji
 
-    # Final formatting
-    return '\n'.join(lines), tmap
+    @staticmethod
+    def list(inputstr: Optional[str], do_sort: bool = False) -> List[str]:
+        ''' Build a list of unique values from a string and keep the initial order (by default) '''
+        if inputstr is None:
+            inputstr = ''
+        inputstr = PwicLib.recursive_replace(inputstr.replace('\r', ' ').replace('\n', ' ').replace('\t', ' '), '  ', ' ').strip()
+        values = [] if inputstr == '' else list(OrderedDict((e, None) for e in inputstr.split(' ')))
+        if do_sort:
+            values.sort()
+        return values
 
+    @staticmethod
+    def list_tags(tags: str) -> str:
+        ''' Reorder a list of tags written as a string '''
+        return ' '.join(PwicLib.list(tags.replace('#', '').lower(), do_sort=True))
 
-# ===================================================
-#  System
-# ===================================================
+    @staticmethod
+    def nns(value: Optional[str]) -> str:
+        ''' Return a non-null string '''
+        return str('' if value is None else value)
 
-def pwic_audit(sql: sqlite3.Cursor, obj: Dict[str, Union[str, int]], request: Optional[web.Request] = None) -> None:
-    ''' Save an event into the audit log '''
-    from pwic_extension import PwicExtension
+    @staticmethod
+    def notag(value: str) -> str:
+        ''' Remove the HTML tags from a string '''
+        while True:
+            i = len(value)
+            value = PWIC_REGEXES['tag_all'].sub('', value)
+            value = PWIC_REGEXES['tag_comment'].sub('', value)
+            if len(value) == i:
+                break
+        return value
 
-    # Check
-    if PwicExtension.on_audit_skip(sql, request, obj):
-        return
+    @staticmethod
+    def option(sql: Optional[sqlite3.Cursor],
+               project: Optional[str],
+               name: str,
+               default: Optional[str] = None,
+               globale: bool = True,
+               ) -> Optional[str]:
+        ''' Read a variable from the table ENV that can be project-dependent or not '''
+        if sql is None:
+            return default
+        try:
+            query = ''' SELECT value
+                        FROM env
+                        WHERE project = ?
+                          AND key     = ?
+                          AND value  <> '' '''
+            row = None
+            if name in PWIC_ENV_PROJECT_INDEPENDENT:
+                project = ''
+            if project not in ['', None]:
+                row = sql.execute(query, (project, name)).fetchone()
+            if (row is None) and globale:
+                row = sql.execute(query, ('', name)).fetchone()
+            result = default if row is None else row['value']
+            if isinstance(result, str):
+                result = result.replace('\r', '')
+            return result
+        except sqlite3.OperationalError:    # During init-db
+            return default
 
-    # Forced properties of the event
-    dt = pwic_dt()
-    obj['date'] = dt['date']
-    obj['time'] = dt['time']
-    if request is not None:
-        obj['ip'] = PwicExtension.on_ip_header(request)
-    if obj.get('event', '') == '':
-        raise PwicError
+    @staticmethod
+    def random_hash() -> str:
+        ''' Generate a random 64-char-long string '''
+        return PwicLib.sha256(str(urandom(64)))[:32] + PwicLib.sha256(str(urandom(64)))[32:]
 
-    # Log the event
-    fields = ''
-    tupstr = ''
-    tup: Tuple[Union[str, int], ...] = ()
-    for key in obj:
-        fields += '%s, ' % pwic_safe_name(key)
-        tupstr += '?, '
-        tup += (obj[key], )
-    query = 'INSERT INTO audit.audit (%s) VALUES (%s)'
-    sql.execute(query % (fields[:-2], tupstr[:-2]), tup)
-    if sql.rowcount != 1:
-        raise PwicError
+    @staticmethod
+    def read_attr(attrs: List[Tuple[str, Optional[str]]], key: str, default: str = '') -> str:
+        ''' Read a list of tuples by the first field '''
+        for (k, v) in attrs:
+            if k == key:
+                return PwicLib.nns(v)
+        return default
 
-    # Specific event
-    try:
-        PwicExtension.on_audit(sql, request, obj)
-    except Exception:       # nosec B110
-        pass
+    @staticmethod
+    def recursive_replace(text: str, search: str, replace: str, strip: bool = True) -> str:
+        ''' Replace a string recursively '''
+        while True:
+            curlen = len(text)
+            text = text.replace(search, replace)
+            if len(text) == curlen:
+                break
+        if strip:
+            text = text.strip()
+        return text
 
+    @staticmethod
+    def row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
+        ''' Assign names to the SQL output '''
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        return d
 
-def pwic_connect(dbfile: str = PWIC_DB_SQLITE,
-                 dbaudit: Optional[str] = PWIC_DB_SQLITE_AUDIT,
-                 trace: bool = False,
-                 in_memory: bool = True,
-                 asynchronous: bool = False,
-                 vacuum: bool = False,
-                 ) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
-    ''' Connect to the database with the relevant options '''
-    # Connection
-    db = sqlite3.connect(dbfile)
-    db.row_factory = pwic_row_factory
-    if trace:
-        db.set_trace_callback(pwic_sql_print)
+    @staticmethod
+    def safe_file_name(name: str) -> str:
+        ''' Ensure that a file name is acceptable '''
+        name = PwicLib.safe_name(name, extra='').replace(' ', '_').replace('\t', '_')
+        name = PwicLib.recursive_replace(name, '..', '.')
+        name = PwicLib.recursive_replace(name, '__', '_')
+        return '' if name[:1] == '.' else name
 
-    # Cursor and options
-    sql = db.cursor()
-    attached = dbaudit is not None
-    if attached:
-        sql.execute(''' ATTACH DATABASE ? AS audit''', (dbaudit, ))
-    if in_memory:
-        sql.execute(''' PRAGMA main.journal_mode = MEMORY''')
-        if attached:
-            sql.execute(''' PRAGMA audit.journal_mode = MEMORY''')
-    if asynchronous or (pwic_option(sql, '', 'db_async') is not None):
-        sql.execute(''' PRAGMA main.synchronous = OFF''')
-        if attached:
-            sql.execute(''' PRAGMA audit.synchronous = OFF''')
-    if vacuum:
-        sql.execute(''' VACUUM main''')
-        if attached:
-            sql.execute(''' VACUUM audit''')
-    return db, sql
+    @staticmethod
+    def safe_name(name: Optional[str], extra: str = '.@') -> str:
+        ''' Ensure that a string will not collide with the reserved characters of the operating system '''
+        chars = PWIC_CHARS_UNSAFE + extra
+        if name is None:
+            name = ''
+        for c in chars:
+            name = name.replace(c, '')
+        return name.strip().lower()[:PwicLib.intval(PWIC_DEFAULTS['limit_filename'])]
 
+    @staticmethod
+    def safe_user_name(name: str) -> str:
+        ''' Ensure that a user name is acceptable '''
+        return PwicLib.safe_name(name, extra='')
 
-def pwic_detect_language(request: web.Request, allowed_langs: List[str], sso: bool = False) -> str:
-    ''' Detect the default language of the user from the HTTP headers '''
-    # Detect from the HTTP headers
-    head = request.headers.get('Accept-Language', '')
-    langs = pwic_list(head.replace(',', ' ').replace(';', ' '))
-    result = PWIC_DEFAULTS['language']
-    for e in langs:
-        if '-' in e:
-            e = e[:2]
-        if e in allowed_langs:
-            result = e
-            break
+    @staticmethod
+    def sha256(value: Union[str, bytearray], salt: bool = True) -> str:
+        ''' Calculate the SHA256 as string for the given value '''
+        if isinstance(value, bytearray):
+            if salt:
+                raise PwicError
+            return sha256(value).hexdigest()
+        text = (PWIC_SALT if salt else '') + str(value)
+        return sha256(text.encode()).hexdigest()
 
-    # Custom detection
-    from pwic_extension import PwicExtension
-    return PwicExtension.on_language_detected(request, result, allowed_langs, sso)
+    @staticmethod
+    def sha256_file(filename: str) -> str:
+        ''' Calculate the SHA256 as string for the given file '''
+        try:
+            hashval = sha256()
+            with open(filename, 'rb') as f:
+                for block in iter(lambda: f.read(4096), b''):
+                    hashval.update(block)
+            return hashval.hexdigest()
+        except FileNotFoundError:
+            return ''
+
+    @staticmethod
+    def shrink(value: Optional[str]) -> str:
+        ''' Convert a string into its shortest value in lower case '''
+        if value is None:
+            value = ''
+        return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
+
+    @staticmethod
+    def size2str(size: Union[int, float]) -> str:
+        ''' Convert a size to a readable format '''
+        units = ' kMGTPEZ'
+        for i in range(len(units)):
+            if size < 1024:
+                break
+            size /= 1024
+        return ('%.1f %sB' % (size, units[i].strip())).replace('.0 ', ' ')
+
+    @staticmethod
+    def sql_print(query: Optional[str]) -> None:
+        ''' Quick and dirty callback to print the SQL queries on a single line for debugging purposes '''
+        if query is not None:
+            dt = PwicLib.dt()
+            print('[%s %s] %s' % (dt['date'],
+                                  dt['time'],
+                                  ' '.join([PwicLib.recursive_replace(q.strip().replace('\r', '').replace('\t', ' '), '  ', ' ') for q in query.split('\n')])))
+
+    @staticmethod
+    def str2bytearray(inputstr: str) -> bytearray:
+        ''' Convert string to bytearray '''
+        barr = bytearray()      # =bytearray(bytes.encode()) breaks the bytes sequence due to the encoding
+        for c in inputstr:
+            barr.append(ord(c))
+        return barr
+
+    @staticmethod
+    def x(value: Any) -> str:
+        ''' Reduce an input value to a boolean string '''
+        return '' if value in [None, '', 0, '0', False, 'false', 'False', '-', '~', 'no', 'No', 'off', 'Off'] else 'X'
+
+    @staticmethod
+    def xb(value: str) -> bool:
+        ''' Convert 'X' to a boolean '''
+        return value == 'X'
+
+    # =======
+    #  Mimes
+    # =======
+
+    @staticmethod
+    def file_ext(filename: str) -> str:
+        ''' Return the file extension of the file '''
+        return splitext(filename)[1][1:].strip().lower()
+
+    @staticmethod
+    def magic_bytes(ext: str) -> Optional[List[str]]:
+        ''' Return the magic bytes that corresponds to the file extension '''
+        ext = ext.strip().lower()
+        for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+            if ext in mext:
+                return mhdr
+        return None
+
+    @staticmethod
+    def mime(ext: str) -> Optional[str]:
+        ''' Return the default mime that corresponds to the file extension '''
+        values = PwicLib.mime_list(ext)
+        return None if len(values) == 0 else values[0]
+
+    @staticmethod
+    def mime_list(ext: str) -> List[str]:
+        ''' Return the possible mimes that correspond to the file extension '''
+        ext = ext.strip().lower()
+        for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+            if ext in mext:
+                return mtyp
+        return []
+
+    @staticmethod
+    def mime_compressed(ext: str) -> bool:
+        ''' Return the possible state of compression based on the file extension '''
+        ext = ext.strip().lower()
+        for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+            if ext in mext:
+                return mzip
+        return False
+
+    @staticmethod
+    def mime2icon(mime: str) -> str:
+        ''' Return the emoji that corresponds to the MIME '''
+        if mime[:6] == 'image/':
+            return PWIC_EMOJIS['image']
+        if mime[:6] == 'video/':
+            return PWIC_EMOJIS['camera']
+        if mime[:6] == 'audio/':
+            return PWIC_EMOJIS['headphone']
+        if mime[:12] == 'application/':
+            return PWIC_EMOJIS['server']
+        return PWIC_EMOJIS['sheet']
+
+    # ===============
+    #  Search engine
+    # ===============
+
+    @staticmethod
+    def search_parse(query: str) -> Optional[Dict[str, List[str]]]:
+        ''' Build a search object from a string '''
+        if query in ['', None]:
+            return None
+        try:
+            ast = Grammar(
+                r'''
+                decl        = term*
+                term        = space negate space comb
+                comb        = individual / quoted
+
+                space       = ~r"[\s\t]*"
+                negate      = ~r"-?"
+                individual  = ~r'[^\"|^\s]+'
+                quoted      = ~r'\"[^\"]+\"'
+                '''
+            ).parse(query.strip())
+
+            # Extract the keywords
+            psv = PwicSearchVisitor()
+            psv.visit(ast)
+            return {'included': psv.included,
+                    'excluded': psv.excluded}
+        except Exception:
+            return None
+
+    @staticmethod
+    def search2string(query: Dict[str, List[str]]) -> str:
+        ''' Convert a search object back to string '''
+        if query is None:
+            return ''
+        result = ''
+        for q in query['included']:
+            quote = '"' if ' ' in q else ''
+            result += ' %s%s%s' % (quote, q, quote)
+        for q in query['excluded']:
+            quote = '"' if ' ' in q else ''
+            result += ' -%s%s%s' % (quote, q, quote)
+        return result.strip()
+
+    # ========
+    #  Editor
+    # ========
+
+    @staticmethod
+    def extended_syntax(markdown: str, mask: Optional[str], headerNumbering: bool = True) -> Tuple[str, List[Dict]]:
+        ''' Automatic numbering of the MD headers '''
+        # Local functions
+        def _numeric(value: int) -> str:
+            return str(value)
+
+        def _roman(value: int) -> str:
+            if value < 1 or value > 4999:
+                return '0'
+            buffer = ''
+            for letter, threshold in (('M', 1000),
+                                      ('CM', 900),
+                                      ('D', 500),
+                                      ('CD', 400),
+                                      ('C', 100),
+                                      ('XC', 90),
+                                      ('L', 50),
+                                      ('XL', 40),
+                                      ('X', 10),
+                                      ('IX', 9),
+                                      ('V', 5),
+                                      ('IV', 4),
+                                      ('I', 1)):
+                while value >= threshold:
+                    buffer += letter
+                    value -= threshold
+            return buffer
+
+        def _romanMin(value: int) -> str:
+            return _roman(value).lower()
+
+        def _letter(value: int, mask: str) -> str:
+            # stackoverflow.com/questions/48983939
+            def _divmod(n, base):
+                a, b = divmod(n, base)
+                if b == 0:
+                    return a - 1, b + base
+                return a, b
+
+            if value <= 0:
+                return '0'
+            buffer = []
+            while value > 0:
+                value, d = _divmod(value, len(mask))
+                buffer.append(mask[d - 1])
+            return ''.join(reversed(buffer))
+
+        def _letterMin(value: int) -> str:
+            return _letter(value, ascii_lowercase)
+
+        def _letterMaj(value: int) -> str:
+            return _letter(value, ascii_uppercase)
+
+        # Initialisation
+        reg_header = re.compile(r'^<h([1-6])>', re.IGNORECASE)
+        lines = markdown.split('\n')
+        numbering: List[int] = []
+        last_depth = 0
+        tmap = []
+        tmask = {'1': _numeric,
+                 'I': _roman,
+                 'i': _romanMin,
+                 'A': _letterMaj,
+                 'a': _letterMin}
+
+        # Complete the mask
+        if mask is None:
+            mask = ''
+        a = len(mask)
+        b = len(PWIC_DEFAULTS['heading'])
+        if a < b:
+            mask += PWIC_DEFAULTS['heading'][a - b:]
+
+        # For each line
+        for i, line in enumerate(lines):
+            match = reg_header.match(line)
+            if match is not None:
+                depth = int(match.group(1))
+
+                # Align the found header to the right depth
+                if depth > last_depth:
+                    while len(numbering) < depth:
+                        numbering.append(0)
+                elif depth < last_depth:
+                    while len(numbering) > depth:
+                        numbering.pop(-1)
+                last_depth = depth
+                numbering[depth - 1] += 1
+
+                # Build the readable identifier of the paragraph
+                sdisp = ''
+                stag = ''
+                for n, c in enumerate(numbering):
+                    m2n = mask[2 * n]
+                    if m2n not in tmask:
+                        m2n = '1'
+                    snum = tmask[m2n](c)
+                    ssep = mask[2 * n + 1]
+                    sdisp += '%s%s' % (snum, ssep)
+                    stag += '_%s' % snum.lower()
+
+                # Adapt the line
+                if headerNumbering:
+                    lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+                else:
+                    lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
+                tmap.append({'header': sdisp,
+                             'tag': 'p%s' % stag,
+                             'level': stag.count('_'),
+                             'title': line.strip()[4:-5]})
+
+        # Final formatting
+        return '\n'.join(lines), tmap
 
 
 # ===================================================
@@ -918,44 +969,3 @@ class PwicSearchVisitor(NodeVisitor):
     def visit_quoted(self, node, visited_children) -> None:
         (self.excluded if self.negate else self.included).append(node.match.group(0)[1:-1].strip().lower())
         self.negate = False
-
-
-def pwic_search_parse(query: str) -> Optional[Dict[str, List[str]]]:
-    ''' Build a search object from a string '''
-    if query in ['', None]:
-        return None
-    try:
-        ast = Grammar(
-            r'''
-            decl        = term*
-            term        = space negate space comb
-            comb        = individual / quoted
-
-            space       = ~r"[\s\t]*"
-            negate      = ~r"-?"
-            individual  = ~r'[^\"|^\s]+'
-            quoted      = ~r'\"[^\"]+\"'
-            '''
-        ).parse(query.strip())
-
-        # Extract the keywords
-        psv = PwicSearchVisitor()
-        psv.visit(ast)
-        return {'included': psv.included,
-                'excluded': psv.excluded}
-    except Exception:
-        return None
-
-
-def pwic_search2string(query: Dict[str, List[str]]) -> str:
-    ''' Convert a search object back to string '''
-    if query is None:
-        return ''
-    result = ''
-    for q in query['included']:
-        quote = '"' if ' ' in q else ''
-        result += ' %s%s%s' % (quote, q, quote)
-    for q in query['excluded']:
-        quote = '"' if ' ' in q else ''
-        result += ' -%s%s%s' % (quote, q, quote)
-    return result.strip()

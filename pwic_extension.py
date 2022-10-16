@@ -569,5 +569,5 @@ class PwicExtension():
 
     # @staticmethod
     # async def on_special_sample(request: web.Request) -> web.Response:
-    #     # from pwic_lib import pwic_mime
-    #     return web.Response(text='Hello world!', content_type=pwic_mime('html'))
+    #     # from pwic_lib import PwicLib
+    #     return web.Response(text='Hello world!', content_type=PwicLib.mime('html'))

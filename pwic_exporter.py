@@ -28,10 +28,7 @@ from html import escape
 from html.parser import HTMLParser
 
 from pwic_md import Markdown, MarkdownError
-from pwic_lib import (PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_REGEXES, PWIC_VERSION,
-                      PwicError, pwic_convert_length, pwic_dt, pwic_extended_syntax,
-                      pwic_file_ext, pwic_int, pwic_list, pwic_mime, pwic_mime_compressed,
-                      pwic_nns, pwic_option, pwic_shrink)
+from pwic_lib import PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_REGEXES, PWIC_VERSION, PwicError, PwicLib
 from pwic_extension import PwicExtension
 
 
@@ -69,8 +66,8 @@ class PwicExporter():
             return None
 
         # Dynamic constants
-        base_url = str(pwic_option(sql, '', 'base_url', ''))
-        legal_notice = str(pwic_option(sql, project, 'legal_notice', '')).strip()
+        base_url = str(PwicLib.option(sql, '', 'base_url', ''))
+        legal_notice = str(PwicLib.option(sql, project, 'legal_notice', '')).strip()
         legal_notice = re.sub(r'\<[^\>]+\>', '', legal_notice)
 
         # Convert the revision
@@ -106,8 +103,8 @@ class PwicExporter():
         html = html.replace('\n</code></pre>\n</div>', ctag)
         html = html.replace('<pre><code', otag[:-1])                                        # Without pygments
         html = html.replace('\n</code></pre>', ctag)
-        cleaner = PwicCleanerHtml(str(pwic_option(sql, row['project'], 'skipped_tags', '')),
-                                  pwic_option(sql, row['project'], 'link_nofollow') is not None)
+        cleaner = PwicCleanerHtml(str(PwicLib.option(sql, row['project'], 'skipped_tags', '')),
+                                  PwicLib.option(sql, row['project'], 'link_nofollow') is not None)
         cleaner.feed(html)
         html = cleaner.get_html()
         return PwicExtension.on_html(sql, row['project'], row['page'], row['revision'], html).replace('\r', '')
@@ -115,9 +112,9 @@ class PwicExporter():
     def _corehtml2html(self, sql: sqlite3.Cursor, row: Dict, html: str, base_url: str, legal_notice: str):
         # Convert HTML without headers to full HTML
         htmlStyles = PwicStylerHtml()
-        html = pwic_extended_syntax(html,
-                                    pwic_option(sql, row['project'], 'heading_mask'),
-                                    pwic_option(sql, row['project'], 'no_heading') is None)[0]
+        html = PwicLib.extended_syntax(html,
+                                       PwicLib.option(sql, row['project'], 'heading_mask'),
+                                       PwicLib.option(sql, row['project'], 'no_heading') is None)[0]
         html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
                                   row['date'],
                                   row['time'],
@@ -137,13 +134,13 @@ class PwicExporter():
 
     def _odt_get_pict(self, sql: sqlite3.Cursor, row: Dict) -> Dict[int, Dict[str, Union[str, int, bool]]]:
         # Extract the meta-informations of the embedded pictures
-        MAX_H = max(0, pwic_int(pwic_convert_length(pwic_option(sql, row['project'], 'odt_image_height_max', '900px'), '', 0)))
-        MAX_W = max(0, pwic_int(pwic_convert_length(pwic_option(sql, row['project'], 'odt_image_width_max', '600px'), '', 0)))
+        MAX_H = max(0, PwicLib.intval(PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_image_height_max', '900px'), '', 0)))
+        MAX_W = max(0, PwicLib.intval(PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_image_width_max', '600px'), '', 0)))
         docids = ['0']
         subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
         if subdocs is not None:
             for sd in subdocs:
-                sd = str(pwic_int(sd[0]))
+                sd = str(PwicLib.intval(sd[0]))
                 if sd not in docids:
                     docids.append(sd)
         query = ''' SELECT a.id, a.project, a.page, a.filename, a.mime, a.width, a.height, a.exturl
@@ -177,10 +174,10 @@ class PwicExporter():
             entry['filename'] = join(PWIC_DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename'])
             entry['link'] = 'special/document/%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])
             entry['link_odt_img'] = 'special/document_%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])     # LibreOffice does not support the paths with multiple folders
-            entry['compressed'] = pwic_mime_compressed(pwic_file_ext(rowdoc['filename']))
+            entry['compressed'] = PwicLib.mime_compressed(PwicLib.file_ext(rowdoc['filename']))
             entry['manifest'] = ('<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime'])) if rowdoc['exturl'] == '' else ''
-            entry['width'] = pwic_int(rowdoc['width'])
-            entry['height'] = pwic_int(rowdoc['height'])
+            entry['width'] = PwicLib.intval(rowdoc['width'])
+            entry['height'] = PwicLib.intval(rowdoc['height'])
             entry['remote'] = (rowdoc['exturl'] != '')
             pict[rowdoc['id']] = entry
         return pict
@@ -198,7 +195,7 @@ class PwicExporter():
         # Prepare the ODT file in the memory
         inmemory = BytesIO()
         with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as odt:
-            odt.writestr('mimetype', str(pwic_mime('odt')), compress_type=ZIP_STORED, compresslevel=0)   # Must be the first file of the ZIP and not compressed
+            odt.writestr('mimetype', str(PwicLib.mime('odt')), compress_type=ZIP_STORED, compresslevel=0)   # Must be the first file of the ZIP and not compressed
 
             # Manifest
             buffer = ''
@@ -218,7 +215,7 @@ class PwicExporter():
             odt.writestr('META-INF/manifest.xml', odtStyles.manifest.replace('<!-- attachments -->', buffer))
 
             # Properties of the file
-            dt = pwic_dt()
+            dt = PwicLib.dt()
             buffer = odtStyles.meta % (PWIC_VERSION,
                                        escape(row['title']),
                                        escape(row['project']), escape(row['page']),
@@ -233,13 +230,13 @@ class PwicExporter():
             # Styles
             xml = odtStyles.styles
             xml = xml.replace('<!-- styles-code -->', odtStyles.getOptimizedCodeStyles(html) if odtGenerator.has_code else '')
-            xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(pwic_option(sql, row['project'], 'heading_mask')))
+            xml = xml.replace('<!-- styles-heading-format -->', odtStyles.getHeadingStyles(PwicLib.option(sql, row['project'], 'heading_mask')))
             if legal_notice != '':
                 legal_notice = ''.join(['<text:p text:style-name="Footer">%s</text:p>' % line for line in legal_notice.split('\n')])
             xml = xml.replace('<!-- styles-footer -->', legal_notice)
-            pw = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_width', '21cm'), 'cm', 1)
-            ph = pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_height', '29.7cm'), 'cm', 1)
-            if pwic_option(sql, row['project'], 'odt_page_landscape') is not None:
+            pw = PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_page_width', '21cm'), 'cm', 1)
+            ph = PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_page_height', '29.7cm'), 'cm', 1)
+            if PwicLib.option(sql, row['project'], 'odt_page_landscape') is not None:
                 po = 'landscape'
                 pw, ph = ph, pw
             else:
@@ -247,7 +244,7 @@ class PwicExporter():
             xml = xml.replace('{$pw}', pw)
             xml = xml.replace('{$ph}', ph)
             xml = xml.replace('{$po}', po)
-            xml = xml.replace('{$pm}', pwic_convert_length(pwic_option(sql, row['project'], 'odt_page_margin', '2.5cm'), 'cm', 2))
+            xml = xml.replace('{$pm}', PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_page_margin', '2.5cm'), 'cm', 2))
             odt.writestr('styles.xml', xml)
 
             # Content of the page
@@ -270,7 +267,7 @@ class PwicExporter():
 class PwicCleanerHtml(HTMLParser):      # html2html
     def __init__(self, skipped_tags: str, nofollow: bool):
         HTMLParser.__init__(self)
-        self.skipped_tags = pwic_list('applet embed iframe link meta object script style ' + skipped_tags.lower())
+        self.skipped_tags = PwicLib.list('applet embed iframe link meta object script style ' + skipped_tags.lower())
         self.nofollow = nofollow
 
     def reset(self) -> None:
@@ -289,7 +286,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         def _list2obj(attrs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
             result = {}
             for (k, v) in attrs:
-                k = pwic_shrink(k)
+                k = PwicLib.shrink(k)
                 if k not in result:
                     result[k] = v or ''
                 else:
@@ -314,7 +311,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         for (k, v) in props.items():
             if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
                ((self.code == 'svg') and (k[:2] != 'on')):
-                v2 = pwic_shrink(v)
+                v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
                     buffer += ' %s="%s"' % (k, v)
         self.html += '<%s%s>' % (tag, buffer)
@@ -561,7 +558,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                 break
                         else:
                             for key, value_ns in attrs:
-                                value = pwic_nns(value_ns)
+                                value = PwicLib.nns(value_ns)
                                 if key == property_value:
                                     # Fix the base URL for the links
                                     if (tag == 'a') and (key == 'href'):
@@ -585,16 +582,16 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                                 docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
                                                 if docid_re is not None:
                                                     width = height = 0
-                                                    docid = pwic_int(docid_re.group(1))
+                                                    docid = PwicLib.intval(docid_re.group(1))
                                                     if docid in self.pict:
                                                         if self.pict[docid]['remote'] or (self.pict[docid]['link'] == value):
                                                             value = self.pict[docid]['link_odt_img']
                                                         width = self.pict[docid]['width']
                                                         height = self.pict[docid]['height']
                                                     if 0 in [width, height]:
-                                                        width = height = pwic_int(PWIC_DEFAULTS['odt_img_defpix'])
-                                                    self._replace_marker('{$w}', pwic_convert_length(width, 'cm', 2))
-                                                    self._replace_marker('{$h}', pwic_convert_length(height, 'cm', 2))
+                                                        width = height = PwicLib.intval(PWIC_DEFAULTS['odt_img_defpix'])
+                                                    self._replace_marker('{$w}', PwicLib.convert_length(width, 'cm', 2))
+                                                    self._replace_marker('{$h}', PwicLib.convert_length(height, 'cm', 2))
 
                                     # Fix the class name for the syntax highlight
                                     if (tag == 'span') and self.blockcode_on and (key == 'class'):
