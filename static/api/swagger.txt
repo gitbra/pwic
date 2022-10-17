@@ -1037,6 +1037,8 @@ paths:
                     type: string
                   global:
                     type: boolean
+                  project_independent:
+                    type: boolean
                   project_dependent:
                     type: boolean
                   changeable:

@@ -1,6 +1,14 @@
 <script>
 	'use strict';
 
+	// Easy copy of the global value
+	$('INPUT[type=text]').on('dblclick', function() {
+		if ($(this).val() == '') {
+			$(this).val($(this).prop('placeholder'));
+			$(this).trigger('keyup');
+		}
+	});
+
 	// Manage the visibility of the save button
 	$('INPUT[type=button]').addClass('pwic_hidden');
 	$('INPUT[type=text]').on('keyup', function() {

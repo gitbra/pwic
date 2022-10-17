@@ -107,7 +107,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Clone the repository `git clone https://github.com/gitbra/pwic.git` or uncompress the [latest modifications](https://github.com/gitbra/pwic/archive/refs/heads/master.zip) in the folder of your choice
 - Install the dependencies: `python3 -m pip install --upgrade -r requirements.txt`
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
-	- Change the default password in `PWIC_DEFAULTS['password']`
+	- Change the default password in `PwicConst.DEFAULTS['password']`
 	- Write random characters in the secret salt `PWIC_SALT` forever
 - Initialize the database: `python3 pwic_admin.py init-db`
 	- A sub-folder `db/` is created for all your data

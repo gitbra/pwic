@@ -46,10 +46,7 @@ from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from pwic_md import Markdown
-from pwic_lib import (PWIC_CHARS_UNSAFE, PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT, PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_EMOJIS,
-                      PWIC_ENV_PRIVATE, PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLINE, PWIC_EXECS, PWIC_LOCALE_PATH,
-                      PWIC_MAGIC_OAUTH, PWIC_MIMES, PWIC_NOT_PROJECT, PWIC_PRIVATE_KEY, PWIC_PUBLIC_KEY, PWIC_REGEXES, PWIC_RTL,
-                      PWIC_TEMPLATES_PATH, PWIC_USERS, PWIC_VERSION, PwicLib)
+from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -57,9 +54,9 @@ from pwic_importer import PwicImporter
 IPR_EQ, IPR_NET, IPR_REG = range(3)
 
 
-# ===================================================
-#  This class handles the rendering of the web pages
-# ===================================================
+# ==================
+#  Pwic.wiki server
+# ==================
 
 class PwicServer():
     ''' Main server for Pwic.wiki '''
@@ -81,7 +78,7 @@ class PwicServer():
     def _check_mime(self, obj: Dict[str, Any]) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
         extension = PwicLib.file_ext(obj['filename'])
-        for (mext, mtyp, mhdr, mzip) in PWIC_MIMES:
+        for (mext, mtyp, mhdr, mzip) in PwicConst.MIMES:
             if extension in mext:
                 # Expected mime
                 if obj['mime'] in ['', 'application/octet-stream']:
@@ -206,7 +203,7 @@ class PwicServer():
             referer = request.headers.get('Referer', '')
             if referer[:len(app['options']['base_url'])] != app['options']['base_url']:
                 user = ''
-        return PWIC_USERS['anonymous'] if (user == '') and app['options']['no_login'] else user
+        return PwicConst.USERS['anonymous'] if (user == '') and app['options']['no_login'] else user
 
     async def _handle_post(self, request: web.Request) -> Dict[str, Any]:
         ''' Return the POST as a readable object.get() '''
@@ -217,7 +214,7 @@ class PwicServer():
             for res in result:
                 result[res] = result[res][0].replace('\r', '')
                 if res not in ['markdown']:
-                    result[res] = result[res][:PwicLib.intval(PWIC_DEFAULTS['limit_field'])]
+                    result[res] = result[res][:PwicLib.intval(PwicConst.DEFAULTS['limit_field'])]
         return result
 
     async def _handle_login(self, request: web.Request) -> web.Response:
@@ -233,7 +230,7 @@ class PwicServer():
         # it is effectively destroyed by the user (his web browser generally does it). The session
         # is fully lost upon server restart if the option 'keep_sessions' is not used.
         user = await self._suser(request)
-        if user not in ['', PWIC_USERS['anonymous']]:
+        if user not in ['', PwicConst.USERS['anonymous']]:
             sql = self.dbconn.cursor()
             PwicLib.audit(sql, {'author': user,
                                 'event': 'logout'},
@@ -249,14 +246,14 @@ class PwicServer():
         ''' Serve the right template, in the right language, with the right structure and additional data '''
         # Constants
         pwic['user'] = await self._suser(request)
-        pwic['emojis'] = PWIC_EMOJIS
-        pwic['constants'] = {'anonymous_user': PWIC_USERS['anonymous'],
-                             'default_home': PWIC_DEFAULTS['page'],
+        pwic['emojis'] = PwicConst.EMOJIS
+        pwic['constants'] = {'anonymous_user': PwicConst.USERS['anonymous'],
+                             'default_home': PwicConst.DEFAULTS['page'],
                              'languages': app['langs'],
-                             'not_project': PWIC_NOT_PROJECT,
-                             'rtl': PWIC_RTL,
-                             'unsafe_chars': PWIC_CHARS_UNSAFE,
-                             'version': PWIC_VERSION}
+                             'not_project': PwicConst.NOT_PROJECT,
+                             'rtl': PwicConst.RTL,
+                             'unsafe_chars': PwicConst.CHARS_UNSAFE,
+                             'version': PwicConst.VERSION}
 
         # The project-dependent variables have the priority
         project = pwic.get('project', '')
@@ -272,8 +269,10 @@ class PwicServer():
                     (project, ))
         pwic['env'] = {}
         for row in sql.fetchall():
+            if row['key'] not in PwicConst.ENV:
+                continue
             (global_, key, value) = (row['project'] == '', row['key'], row['value'])
-            if key in PWIC_ENV_PRIVATE:
+            if PwicConst.ENV[key].private:
                 value = None
             if key not in pwic['env']:
                 pwic['env'][key] = {'value': value,
@@ -316,7 +315,7 @@ class PwicServer():
         session_lang = session.get('language', '')
         new_lang = session_lang or PwicLib.detect_language(request, app['langs'])
         if new_lang not in app['langs']:
-            new_lang = PWIC_DEFAULTS['language']
+            new_lang = PwicConst.DEFAULTS['language']
         if new_lang != session_lang:
             session['language'] = new_lang
         pwic['language'] = new_lang
@@ -340,7 +339,7 @@ class PwicServer():
 
         # Show the requested page
         project = PwicLib.safe_name(request.match_info.get('project', ''))
-        page = PwicLib.safe_name(request.match_info.get('page', PWIC_DEFAULTS['page']))
+        page = PwicLib.safe_name(request.match_info.get('page', PwicConst.DEFAULTS['page']))
         page_special = (page == 'special')
         revision = PwicLib.intval(request.match_info.get('revision', '0'))
         action = request.match_info.get('action', 'view')
@@ -365,7 +364,7 @@ class PwicServer():
                     (project, ))
         pwic['links'] = sql.fetchall()
         for i, row in enumerate(pwic['links']):
-            if row['page'] == PWIC_DEFAULTS['page']:
+            if row['page'] == PwicConst.DEFAULTS['page']:
                 pwic['links'].insert(0, pwic['links'].pop(i))   # Move to the top because it is the home page
                 break
 
@@ -417,7 +416,7 @@ class PwicServer():
                 sql.execute(''' INSERT INTO roles (project, user, reader)
                                 VALUES (?, ?, 'X')''', (project, user))
                 if sql.rowcount > 0:
-                    PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                    PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                         'event': 'grant-reader',
                                         'project': project,
                                         'user': user,
@@ -706,7 +705,7 @@ class PwicServer():
         # Detects the emojis
         emojis = str(PwicLib.option(sql, project, 'emojis', ''))
         if emojis == '*':
-            emojis = ' '.join([item[1].replace('&#x', '').replace(';', '') for item in PWIC_EMOJIS.items()])
+            emojis = ' '.join([item[1].replace('&#x', '').replace(';', '') for item in PwicConst.EMOJIS.items()])
         pwic['emojis_toolbar'] = PwicLib.list_tags(emojis)
 
         return await self._handle_output(request, 'page-edit', pwic)
@@ -927,7 +926,7 @@ class PwicServer():
             raise web.HTTPNotFound()
         pwic = {'user': user,
                 'userpage': userpage,
-                'password_oauth': row['password'] == PWIC_MAGIC_OAUTH,
+                'password_oauth': row['password'] == PwicConst.MAGIC_OAUTH,
                 'password_initial': PwicLib.xb(row['initial'])}
 
         # Fetch the commonly-accessible projects assigned to the user
@@ -1193,7 +1192,7 @@ class PwicServer():
                     (project, ))
         pwic = {'project': project,
                 'project_description': sql.fetchone()['description'],
-                'changeable_vars': sorted(PWIC_ENV_PROJECT_DEPENDENT_ONLINE)}
+                'changeable_vars': sorted([k for k in PwicConst.ENV if PwicConst.ENV[k].pdep and PwicConst.ENV[k].online])}
         return await self._handle_output(request, 'page-env', pwic=pwic)
 
     async def page_roles(self, request: web.Request) -> web.Response:
@@ -1240,7 +1239,7 @@ class PwicServer():
                     (user, project, dt['date-90d'], project))
         pwic['roles'] = sql.fetchall()
         for row in pwic['roles']:
-            row['oauth'] = (row['oauth'] == PWIC_MAGIC_OAUTH)
+            row['oauth'] = (row['oauth'] == PwicConst.MAGIC_OAUTH)
             for k in ['initial', 'admin', 'manager', 'editor', 'validator', 'reader', 'disabled']:
                 row[k] = PwicLib.xb(row[k])
             if row['activity'] is None:
@@ -1290,7 +1289,7 @@ class PwicServer():
 
         # Extract the links between the pages
         ok = False
-        linkmap: Dict[str, List[str]] = {PWIC_DEFAULTS['page']: []}
+        linkmap: Dict[str, List[str]] = {PwicConst.DEFAULTS['page']: []}
         broken_docs: Dict[str, List[int]] = {}
         while True:
             row = sql.fetchone()
@@ -1303,18 +1302,18 @@ class PwicServer():
                 linkmap[page] = []
 
             # Generate a fake link at the home page for all the bookmarked pages
-            if PwicLib.xb(row['header']) and page not in linkmap[PWIC_DEFAULTS['page']]:
-                linkmap[PWIC_DEFAULTS['page']].append(page)
+            if PwicLib.xb(row['header']) and page not in linkmap[PwicConst.DEFAULTS['page']]:
+                linkmap[PwicConst.DEFAULTS['page']].append(page)
 
             # Find the links to the other pages
-            subpages = PWIC_REGEXES['page'].findall(row['markdown'])
+            subpages = PwicConst.REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
                     if (sp[0] == project) and (sp[1] not in linkmap[page]):
                         linkmap[page].append(sp[1])
 
             # Looks for the linked documents
-            subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
+            subdocs = PwicConst.REGEXES['document'].findall(row['markdown'])
             if subdocs is not None:
                 for sd in subdocs:
                     if sd[0] not in docids:
@@ -1327,7 +1326,7 @@ class PwicServer():
         # Find the orphaned and broken links
         allpages = list(linkmap)                    # Keys
         orphans = allpages.copy()
-        orphans.remove(PWIC_DEFAULTS['page'])
+        orphans.remove(PwicConst.DEFAULTS['page'])
         broken = []
         for link in linkmap:
             for page in linkmap[link]:
@@ -1463,14 +1462,14 @@ class PwicServer():
             return web.HTTPNotFound()
 
         # Checks
-        filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
+        filename = join(PwicConst.DOCUMENTS_PATH % row['project'], row['filename'])
         if row['exturl'] == '':
             if not isfile(filename):
                 raise web.HTTPNotFound()
             if getsize(filename) != row['size']:
                 raise web.HTTPConflict()            # Size mismatch causes an infinite download time
         else:
-            if PWIC_REGEXES['protocol'].match(row['exturl']) is None:
+            if PwicConst.REGEXES['protocol'].match(row['exturl']) is None:
                 raise web.HTTPNotFound()
         if not PwicExtension.on_document_get(sql, request, row['project'], user, row['filename'], row['mime'], row['size']):
             raise web.HTTPUnauthorized()
@@ -1518,7 +1517,7 @@ class PwicServer():
         with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as archive:
             for row in sql.fetchall():
                 if PwicExtension.on_document_get(sql, request, project, user, row['filename'], row['mime'], row['size']):
-                    fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+                    fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
                     if isfile(fn):
                         content = b''
                         with open(fn, 'rb') as f:
@@ -1558,7 +1557,7 @@ class PwicServer():
                                 VALUES (?, ?, 'X')''', (row['project'], user))
                 if sql.rowcount > 0:
                     ok = True
-                    PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                    PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                         'event': 'grant-reader',
                                         'project': row['project'],
                                         'user': user,
@@ -1576,10 +1575,10 @@ class PwicServer():
         session = await get_session(request)
         post = await self._handle_post(request)
         user = PwicLib.safe_user_name(post.get('user', ''))
-        pwd = '' if user == PWIC_USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
+        pwd = '' if user == PwicConst.USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
         lang = post.get('language', session.get('language', ''))
         if lang not in app['langs']:
-            lang = PWIC_DEFAULTS['language']
+            lang = PwicConst.DEFAULTS['language']
 
         # Login with the credentials
         ok = False
@@ -1597,7 +1596,7 @@ class PwicServer():
                 session['user'] = user
                 session['language'] = lang
                 session['ip'] = ip
-                if user != PWIC_USERS['anonymous']:
+                if user != PwicConst.USERS['anonymous']:
                     PwicLib.audit(sql, {'author': user,
                                         'event': 'login'},
                                   request)
@@ -1747,16 +1746,16 @@ class PwicServer():
         dt = PwicLib.dt()
         sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
                         VALUES (?, ?, '', ?, ?)''',
-                    (user, PWIC_MAGIC_OAUTH, dt['date'], dt['time']))
+                    (user, PwicConst.MAGIC_OAUTH, dt['date'], dt['time']))
         if sql.rowcount > 0:
-            # - PWIC_DEFAULTS['password'] is not set because the user will forget to change it
+            # - PwicConst.DEFAULTS['password'] is not set because the user will forget to change it
             # - The user cannot change the internal password because the current password will not be hashed correctly
             # - The password can be reset from the administration console only
             # - Then the two authentications methods can coexist
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'create-user',
                                 'user': user,
-                                'string': PWIC_MAGIC_OAUTH},
+                                'string': PwicConst.MAGIC_OAUTH},
                           request)
         self._auto_join(sql, request, user, ['active', 'sso'])
 
@@ -1767,7 +1766,7 @@ class PwicServer():
         session['user_secret'] = PwicLib.random_hash()
         PwicLib.audit(sql, {'author': user,
                             'event': 'login',
-                            'string': PWIC_MAGIC_OAUTH},
+                            'string': PwicConst.MAGIC_OAUTH},
                       request)
         self.dbconn.commit()
 
@@ -1778,7 +1777,7 @@ class PwicServer():
         ''' API to return the defined environment variables '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user in ['', PWIC_USERS['anonymous']]:
+        if user in ['', PwicConst.USERS['anonymous']]:
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -1803,21 +1802,23 @@ class PwicServer():
                         FROM env
                         WHERE ( project = ?
                              OR project = '' )
-                          AND   key     NOT LIKE 'pwic%'
                           AND   value   <> ''
                         ORDER BY key ASC,
                                  project DESC''',
                     (project, ))
         data = {}
         for row in sql.fetchall():
+            if row['key'] not in PwicConst.ENV:
+                continue
             (global_, key, value) = (row['project'] == '', row['key'], row['value'])
-            if key in PWIC_ENV_PRIVATE:
+            if PwicConst.ENV[key].private:
                 value = None
             if key not in data:
                 data[key] = {'value': value,
                              'global': global_,
-                             'project_dependent': key in PWIC_ENV_PROJECT_DEPENDENT,
-                             'changeable': (project != '') and (key in PWIC_ENV_PROJECT_DEPENDENT_ONLINE)}
+                             'project_independent': PwicConst.ENV[key].pindep,
+                             'project_dependent': PwicConst.ENV[key].pdep,
+                             'changeable': not global_ and PwicConst.ENV[key].pdep and PwicConst.ENV[key].online}
 
         # Final result
         return web.Response(text=json.dumps(data), content_type=PwicLib.mime('json'))
@@ -1858,7 +1859,7 @@ class PwicServer():
         if self.dbconn.in_transaction:
             raise web.HTTPServiceUnavailable()
         sql = self.dbconn.cursor()
-        PwicLib.audit(sql, {'author': PWIC_USERS['anonymous'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['anonymous'],
                             'event': 'shutdown-server'},
                       request)
         self.dbconn.commit()
@@ -1879,7 +1880,7 @@ class PwicServer():
 
         # Event
         sql = self.dbconn.cursor()
-        PwicLib.audit(sql, {'author': PWIC_USERS['anonymous'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['anonymous'],
                             'event': 'unlock-db'},
                       request)
         self.dbconn.commit()
@@ -2018,8 +2019,11 @@ class PwicServer():
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project', ''))
         key = PwicLib.safe_name(post.get('key', ''))
-        value = post.get('value', '').strip()
-        if (project == '') or (key not in PWIC_ENV_PROJECT_DEPENDENT_ONLINE) or (key[:4] == 'pwic'):
+        value = post.get('value', '').replace('\r', '').strip()
+        if (((project == '')
+             or (key not in PwicConst.ENV)
+             or not PwicConst.ENV[key].pdep
+             or not PwicConst.ENV[key].online)):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
@@ -2277,13 +2281,13 @@ class PwicServer():
 
             # Assign the bookmarks to the home page
             if PwicLib.xb(row['header']):
-                _make_link(row['project'], PWIC_DEFAULTS['page'], row['project'], row['page'])
+                _make_link(row['project'], PwicConst.DEFAULTS['page'], row['project'], row['page'])
 
             # Find the links to the other pages
-            subpages = PWIC_REGEXES['page'].findall(row['markdown'])
+            subpages = PwicConst.REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
-                    if sp[0] in PWIC_NOT_PROJECT:
+                    if sp[0] in PwicConst.NOT_PROJECT:
                         continue
                     _get_node_id(sp[0], sp[1])
                     _make_link(row['project'], row['page'], sp[0], sp[1])
@@ -2447,7 +2451,7 @@ class PwicServer():
                 PwicExtension.on_project_export_documents(sql, request, project, user, documents)
                 for doc in documents:
                     if doc['exturl'] == '':
-                        fn = join(PWIC_DOCUMENTS_PATH % project, doc['filename'])
+                        fn = join(PwicConst.DOCUMENTS_PATH % project, doc['filename'])
                         if isfile(fn):
                             content = b''
                             with open(fn, 'rb') as f:
@@ -2485,7 +2489,7 @@ class PwicServer():
                         <updated>%sT%sZ</updated>%s
                         <generator uri="https://pwic.wiki" version="%s">Pwic.wiki v%s</generator>
                 ''' % (escape(app['options']['base_url']),
-                       escape(str(PwicLib.option(sql, project, 'language', PWIC_DEFAULTS['language']))),
+                       escape(str(PwicLib.option(sql, project, 'language', PwicConst.DEFAULTS['language']))),
                        escape(url),
                        escape(project),
                        escape(project_description),
@@ -2494,8 +2498,8 @@ class PwicServer():
                        escape(dt['date']),
                        escape(dt['time']),
                        '' if legnot == '' else ('\n<rights>%s</rights>' % escape(legnot)),
-                       escape(PWIC_VERSION),
-                       escape(PWIC_VERSION),
+                       escape(PwicConst.VERSION),
+                       escape(PwicConst.VERSION),
                        )
         sql.execute(''' SELECT page, revision, author, date, time, title, tags, comment
                         FROM pages
@@ -2700,7 +2704,7 @@ class PwicServer():
 
             # Mapping
             days = PwicLib.dt_diff(row['date'], dt['date'])
-            if row['page'] == PWIC_DEFAULTS['page']:
+            if row['page'] == PwicConst.DEFAULTS['page']:
                 priority = 1.0
             elif PwicLib.xb(row['header']):
                 priority = 0.7
@@ -2734,7 +2738,7 @@ class PwicServer():
         ref_project = PwicLib.safe_name(post.get('ref_project', ''))
         ref_page = PwicLib.safe_name(post.get('ref_page', ''))
         ref_tags = PwicLib.xb(PwicLib.x(post.get('ref_tags', '')))
-        if (((project in PWIC_NOT_PROJECT)
+        if (((project in PwicConst.NOT_PROJECT)
              or (not kb and (page in ['', 'special']))
              or ((ref_page != '') and (ref_project == '')))):
             raise web.HTTPBadRequest()
@@ -2747,12 +2751,12 @@ class PwicServer():
             kbid = PwicLib.intval(PwicLib.option(sql, project, 'kbid', '0')) + 1
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''',
                         (project, 'kbid', kbid))
-            page = PWIC_DEFAULTS['kb_mask'] % kbid
+            page = PwicConst.DEFAULTS['kb_mask'] % kbid
             # No commit because the creation of the page can fail below
         else:
             if PwicLib.option(sql, project, 'no_space_page') is not None:
                 page = page.replace(' ', '_')
-            if PWIC_REGEXES['kb_mask'].match(page) is not None:
+            if PwicConst.REGEXES['kb_mask'].match(page) is not None:
                 self.dbconn.rollback()
                 raise web.HTTPBadRequest()
 
@@ -2926,8 +2930,8 @@ class PwicServer():
                             (project, user))
                 last_dt = sql.fetchone()['last_dt']
                 if last_dt is not None:
-                    d1 = datetime.strptime(last_dt, PWIC_DEFAULTS['dt_mask'])
-                    d2 = datetime.strptime('%s %s' % (dt['date'], dt['time']), PWIC_DEFAULTS['dt_mask'])
+                    d1 = datetime.strptime(last_dt, PwicConst.DEFAULTS['dt_mask'])
+                    d2 = datetime.strptime('%s %s' % (dt['date'], dt['time']), PwicConst.DEFAULTS['dt_mask'])
                     if (d2 - d1).total_seconds() < edit_time_min:
                         self.dbconn.rollback()
                         raise web.HTTPServiceUnavailable()
@@ -3145,7 +3149,7 @@ class PwicServer():
         if dstproj != srcproj:
             # Verify the folders
             for p in [srcproj, dstproj]:
-                if not isdir(PWIC_DOCUMENTS_PATH % p):
+                if not isdir(PwicConst.DOCUMENTS_PATH % p):
                     self.dbconn.rollback()
                     raise web.HTTPInternalServerError()
 
@@ -3157,7 +3161,7 @@ class PwicServer():
                               AND exturl  = '' ''',
                         (srcproj, srcpage))
             for row in sql.fetchall():
-                if isfile(join(PWIC_DOCUMENTS_PATH % dstproj, row['filename'])):
+                if isfile(join(PwicConst.DOCUMENTS_PATH % dstproj, row['filename'])):
                     self.dbconn.rollback()
                     raise web.HTTPConflict()
                 files.append(row['filename'])
@@ -3173,8 +3177,8 @@ class PwicServer():
             if dstproj != srcproj:
                 for f in files:
                     try:
-                        os.rename(join(PWIC_DOCUMENTS_PATH % srcproj, f),
-                                  join(PWIC_DOCUMENTS_PATH % dstproj, f))
+                        os.rename(join(PwicConst.DOCUMENTS_PATH % srcproj, f),
+                                  join(PwicConst.DOCUMENTS_PATH % dstproj, f))
                     except OSError:
                         ok = False
                 if not ok and not ignore_file_errors:
@@ -3330,7 +3334,7 @@ class PwicServer():
                     ko = True
                 else:
                     if row['exturl'] == '':
-                        fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+                        fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
                         try:
                             os.remove(fn)
                         except OSError:
@@ -3483,7 +3487,7 @@ class PwicServer():
             dt = PwicLib.dt()
             sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
                             VALUES (?, ?, '', ?, ?)''',
-                        (newuser, PwicLib.sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
+                        (newuser, PwicLib.sha256(PwicConst.DEFAULTS['password']), dt['date'], dt['time']))
             if sql.rowcount > 0:
                 PwicLib.audit(sql, {'author': user,
                                     'event': 'create-user',
@@ -3529,7 +3533,7 @@ class PwicServer():
         current = post.get('password_current', '')
         new1 = post.get('password_new1', '')
         new2 = post.get('password_new2', '')
-        if ('' in [current, new1, new2]) or (new1 != new2) or (new1 in [current, PWIC_DEFAULTS['password']]):
+        if ('' in [current, new1, new2]) or (new1 != new2) or (new1 in [current, PwicConst.DEFAULTS['password']]):
             raise web.HTTPBadRequest()
 
         # Verify the format of the new password
@@ -3713,7 +3717,7 @@ class PwicServer():
                     if fn_re is None:
                         continue
                     fn = PwicLib.safe_file_name(fn_re.group(1))
-                    if (fn == '') or (len(fn) > PwicLib.intval(PWIC_DEFAULTS['limit_filename'])):
+                    if (fn == '') or (len(fn) > PwicLib.intval(PwicConst.DEFAULTS['limit_filename'])):
                         continue
                     doc['filename'] = fn
                     doc['mime'] = part.headers.get(hdrs.CONTENT_TYPE, '').strip().lower()
@@ -3737,7 +3741,7 @@ class PwicServer():
         if sql.fetchone() is None:
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
-        if not isdir(PWIC_DOCUMENTS_PATH % doc['project']):
+        if not isdir(PwicConst.DOCUMENTS_PATH % doc['project']):
             self.dbconn.rollback()
             raise web.HTTPInternalServerError()
 
@@ -3775,7 +3779,7 @@ class PwicServer():
             if not self._check_mime(doc):
                 self.dbconn.rollback()
                 raise web.HTTPUnsupportedMediaType()
-        if PWIC_REGEXES['mime'].match(doc['mime']) is None:
+        if PwicConst.REGEXES['mime'].match(doc['mime']) is None:
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
 
@@ -3820,7 +3824,7 @@ class PwicServer():
             if row['exturl'] == '':
                 # Local file
                 try:
-                    fn = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
+                    fn = join(PwicConst.DOCUMENTS_PATH % doc['project'], doc['filename'])
                     os.remove(fn)
                 except OSError as e:
                     if isfile(fn):
@@ -3853,13 +3857,13 @@ class PwicServer():
                 # Check the file names
                 for zf in zipfiles:
                     if not zf.is_dir():
-                        if (PwicLib.file_ext(zf.filename) in PWIC_EXECS) or ((zf.external_attr >> 16) & 0o111 != 0):    # +x flags
+                        if (PwicLib.file_ext(zf.filename) in PwicConst.EXECS) or ((zf.external_attr >> 16) & 0o111 != 0):    # +x flags
                             self.dbconn.rollback()
                             raise web.HTTPForbidden()
 
         # Upload the file on the server
         try:
-            filename = join(PWIC_DOCUMENTS_PATH % doc['project'], doc['filename'])
+            filename = join(PwicConst.DOCUMENTS_PATH % doc['project'], doc['filename'])
             with open(filename, 'wb') as f:     # Rewrite any existing file
                 f.write(doc['content'])
         except OSError as e:
@@ -3902,7 +3906,7 @@ class PwicServer():
                     (forcedId, ))
         row = sql.fetchone()
         if row is not None:
-            row['path'] = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
+            row['path'] = join(PwicConst.DOCUMENTS_PATH % row['project'], row['filename'])
             PwicExtension.on_api_document_create_end(sql, request, row)
         raise web.HTTPOk()
 
@@ -4019,8 +4023,8 @@ class PwicServer():
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()
         try:
-            os.rename(join(PWIC_DOCUMENTS_PATH % project, row['filename']),
-                      join(PWIC_DOCUMENTS_PATH % project, filename))
+            os.rename(join(PwicConst.DOCUMENTS_PATH % project, row['filename']),
+                      join(PwicConst.DOCUMENTS_PATH % project, filename))
         except OSError as e:
             self.dbconn.rollback()
             raise web.HTTPInternalServerError() from e
@@ -4081,7 +4085,7 @@ class PwicServer():
 
         # Delete the local file
         if row['exturl'] == '':
-            fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
+            fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
             try:
                 os.remove(fn)
             except OSError as e:
@@ -4146,9 +4150,9 @@ class PwicServer():
         return await self._handle_output(request, 'page-swagger', {})
 
 
-# ====================
-#  Server entry point
-# ====================
+# =====================
+#  Program entry point
+# =====================
 
 app = web.Application()
 
@@ -4165,14 +4169,14 @@ def main() -> bool:
         pass    # No check on Windows
 
     # Check the databases
-    if not isfile(PWIC_DB_SQLITE) or not isfile(PWIC_DB_SQLITE_AUDIT):
+    if not isfile(PwicConst.DB_SQLITE) or not isfile(PwicConst.DB_SQLITE_AUDIT):
         print('Error: the databases are not initialized')
         return False
 
     # Command-line
-    parser = argparse.ArgumentParser(description='Pwic.wiki Server version %s' % PWIC_VERSION)
+    parser = argparse.ArgumentParser(description='Pwic.wiki Server version %s' % PwicConst.VERSION)
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
-    parser.add_argument('--port', type=int, default=PwicLib.intval(PWIC_DEFAULTS['port']), help='Listening port')
+    parser.add_argument('--port', type=int, default=PwicLib.intval(PwicConst.DEFAULTS['port']), help='Listening port')
     parser.add_argument('--sql-trace', action='store_true', help='Display the SQL queries in the console for debugging purposes')
     args = parser.parse_args()
 
@@ -4182,11 +4186,11 @@ def main() -> bool:
     # ... SQLite
     app['sql'], sql = PwicLib.connect(trace=args.sql_trace, vacuum=True)
     # ... languages
-    app['langs'] = sorted(['en'] + [f for f in listdir(PWIC_LOCALE_PATH) if (len(f) == 2) and isdir(join(PWIC_LOCALE_PATH, f))])
+    app['langs'] = sorted(['en'] + [f for f in listdir(PwicConst.LOCALE_PATH) if (len(f) == 2) and isdir(join(PwicConst.LOCALE_PATH, f))])
     # ... i18n templates
     app['jinja'] = {}
     for lang in app['langs']:
-        entry = Environment(loader=FileSystemLoader(PWIC_TEMPLATES_PATH),
+        entry = Environment(loader=FileSystemLoader(PwicConst.TEMPLATES_PATH),
                             autoescape=False,
                             auto_reload=PwicLib.option(sql, '', 'fixed_templates') is None,
                             lstrip_blocks=True,
@@ -4309,7 +4313,7 @@ def main() -> bool:
         try:
             import ssl
             https = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            https.load_cert_chain(PWIC_PUBLIC_KEY, PWIC_PRIVATE_KEY)
+            https.load_cert_chain(PwicConst.PUBLIC_KEY, PwicConst.PRIVATE_KEY)
         except FileNotFoundError:
             print('Error: SSL certificates not found')
             return False
@@ -4361,7 +4365,7 @@ def main() -> bool:
 
     # Logging
     http_log_file = PwicLib.option(sql, '', 'http_log_file', '')
-    http_log_format = str(PwicLib.option(sql, '', 'http_log_format', PWIC_DEFAULTS['logging_format']))
+    http_log_format = str(PwicLib.option(sql, '', 'http_log_format', PwicConst.DEFAULTS['logging_format']))
     if http_log_file != '':
         import logging
         logging.basicConfig(filename=http_log_file, datefmt='%d/%m/%Y %H:%M:%S', level=logging.INFO)
@@ -4378,7 +4382,7 @@ def main() -> bool:
                               WHERE id = ?''',
                           (row['id'], )).fetchone()
         print('Last started on %s %s.' % (row['date'], row['time']))
-    PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+    PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                         'event': 'start-server',
                         'string': '%s:%s' % (args.host, args.port)})
     app['sql'].commit()

@@ -23,7 +23,7 @@ from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
 
-from pwic_lib import PWIC_VERSION
+from pwic_lib import PwicConst
 
 
 class PwicExtension():
@@ -39,9 +39,9 @@ class PwicExtension():
         if they are passed as a reference, else raise an exception.
     '''
 
-    # ==============================
-    #   User exits
-    # ==============================
+    # ============
+    #  User exits
+    # ============
 
     @staticmethod
     def on_api_document_convert(sql: sqlite3.Cursor,                    # Cursor to query the database
@@ -91,7 +91,7 @@ class PwicExtension():
             For the external files, you must delete the file with your custom logic, so the result tells if the operation is successful.
             The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
         '''
-        # local_path = os.path.join(PWIC_DOCUMENTS_PATH % project, filename)
+        # local_path = os.path.join(PwicConst.DOCUMENTS_PATH % project, filename)
         return True
 
     @staticmethod
@@ -118,7 +118,7 @@ class PwicExtension():
         ''' Event when a local file is renamed.
             The result tells if the renaming of the document is possible.
         '''
-        # local_path = os.path.join(PWIC_DOCUMENTS_PATH % project, filename)
+        # local_path = os.path.join(PwicConst.DOCUMENTS_PATH % project, filename)
         return True
 
     @staticmethod
@@ -371,7 +371,7 @@ class PwicExtension():
         ''' Event when a page or a document is delivered, excluding the API and the static files.
             To change the HTTP headers, modify the parameter 'headers' without reallocating it.
         '''
-        headers['Server'] = 'Pwic.wiki v%s' % PWIC_VERSION
+        headers['Server'] = 'Pwic.wiki v%s' % PwicConst.VERSION
         if template == 'login':
             headers['X-Frame-Options'] = 'deny'
 
@@ -557,9 +557,9 @@ class PwicExtension():
         # return utc
         return None                                         # Local time
 
-    # ==============================
-    #   Custom routes
-    # ==============================
+    # ===============
+    #  Custom routes
+    # ===============
 
     @staticmethod
     def load_custom_routes() -> List[web.RouteDef]:

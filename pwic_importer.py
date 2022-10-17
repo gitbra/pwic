@@ -25,10 +25,14 @@ from zipfile import ZipFile
 from html import unescape
 from html.parser import HTMLParser
 
-from pwic_lib import PWIC_DOCUMENTS_PATH, PwicLib
+from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicCleanerHtml
 
+
+# =========
+#  file2md
+# =========
 
 class PwicImporter():
     ''' Import external documents into Pwic.wiki '''
@@ -51,7 +55,7 @@ class PwicImporter():
 
         # Convert the document
         base_url = str(PwicLib.option(sql, '', 'base_url', ''))
-        filename = join(PWIC_DOCUMENTS_PATH % row['project'], row['filename'])
+        filename = join(PwicConst.DOCUMENTS_PATH % row['project'], row['filename'])
         extension = PwicLib.file_ext(row['filename'])
         try:
             result = ''
@@ -68,11 +72,11 @@ class PwicImporter():
         return ['odt', 'htm', 'html']
 
 
-# ===================================================
+# =========
 #  html2md
-# ===================================================
+# =========
 
-class PwicImporterHtml(HTMLParser):       # html2md
+class PwicImporterHtml(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.map_open = {'a': '[',
@@ -225,9 +229,9 @@ class PwicImporterHtml(HTMLParser):       # html2md
         return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
 
 
-# ===================================================
+# ========
 #  odt2md
-# ===================================================
+# ========
 
 class PwicStylerOdt(HTMLParser):
     def reset(self) -> None:

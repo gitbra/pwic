@@ -37,15 +37,16 @@ from http.client import RemoteDisconnected
 import imagesize
 from prettytable import PrettyTable
 
-from pwic_lib import (PWIC_VERSION, PWIC_DB, PWIC_DB_SQLITE, PWIC_DB_SQLITE_BACKUP, PWIC_DB_SQLITE_AUDIT,
-                      PWIC_DOCUMENTS_PATH, PWIC_USERS, PWIC_DEFAULTS, PWIC_ENV_PROJECT_INDEPENDENT,
-                      PWIC_ENV_PROJECT_DEPENDENT, PWIC_ENV_PROJECT_DEPENDENT_ONLY, PWIC_ENV_PRIVATE,
-                      PWIC_MAGIC_OAUTH, PWIC_NOT_PROJECT, PwicLib)
+from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
 
 
 class PwicAdmin():
     ''' Administration tools for Pwic.wiki '''
+
+    # ======
+    #  Main
+    # ======
 
     def __init__(self):
         self.db = None
@@ -66,7 +67,7 @@ class PwicAdmin():
             pass    # No check on Windows
 
         # Prepare the command line (subparsers cannot be grouped)
-        parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic.wiki Management Console v%s' % PWIC_VERSION)
+        parser = argparse.ArgumentParser(prog='python3 pwic_admin.py', description='Pwic.wiki Management Console v%s' % PwicConst.VERSION)
 
         subparsers = parser.add_subparsers(dest='command')
 
@@ -152,7 +153,7 @@ class PwicAdmin():
         spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
         spb.add_argument('--user', default='', help='User account to access some private projects')
         spb.add_argument('--full', action='store_true', help='Include the revisions (not recommended)')
-        spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+        spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
 
         spb = subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
         spb.add_argument('--count', type=int, default=9, help='Number of log files', metavar='9')
@@ -176,13 +177,13 @@ class PwicAdmin():
         subparsers.add_parser('execute-optimize', help='Run the optimizer')
 
         spb = subparsers.add_parser('unlock-db', help='Unlock the database after an internal Python error')
-        spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+        spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
         spb.add_argument('--force', action='store_true', help='No confirmation')
 
         subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
 
         spb = subparsers.add_parser('shutdown-server', help='Terminate the server')
-        spb.add_argument('--port', type=int, default=PWIC_DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PWIC_DEFAULTS['port'])
+        spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
         spb.add_argument('--force', action='store_true', help='No confirmation')
 
         # Parse the command line
@@ -252,15 +253,17 @@ class PwicAdmin():
         parser.print_help()
         return False
 
-    # ===== Database =====
+    # ==========
+    #  Database
+    # ==========
 
-    def db_connect(self, init: bool = False, dbfile: str = PWIC_DB_SQLITE) -> Optional[sqlite3.Cursor]:
+    def db_connect(self, init: bool = False, dbfile: str = PwicConst.DB_SQLITE) -> Optional[sqlite3.Cursor]:
         if not init and not isfile(dbfile):
             print('Error: the database is not created yet')
             return None
         try:
             self.db, sql = PwicLib.connect(dbfile=dbfile,
-                                           dbaudit=PWIC_DB_SQLITE_AUDIT if dbfile == PWIC_DB_SQLITE else None)
+                                           dbaudit=PwicConst.DB_SQLITE_AUDIT if dbfile == PwicConst.DB_SQLITE else None)
             return sql
         except sqlite3.OperationalError:
             print('Error: the database cannot be opened')
@@ -276,7 +279,7 @@ class PwicAdmin():
             return False
 
     def db_create_tables_audit(self) -> bool:
-        sql = self.db_connect(init=True, dbfile=PWIC_DB_SQLITE_AUDIT)
+        sql = self.db_connect(init=True, dbfile=PwicConst.DB_SQLITE_AUDIT)
         if sql is None:
             return False
 
@@ -331,7 +334,7 @@ class PwicAdmin():
         self.db_commit()
         return True
 
-    def db_create_tables_main(self, dbfile: str = PWIC_DB_SQLITE) -> bool:
+    def db_create_tables_main(self, dbfile: str = PwicConst.DB_SQLITE) -> bool:
         sql = self.db_connect(init=True, dbfile=dbfile)
         if sql is None:
             return False
@@ -364,7 +367,7 @@ class PwicAdmin():
                             "password_time" TEXT NOT NULL,
                             PRIMARY KEY("user")
                         )''')
-        for e in ['', PWIC_USERS['anonymous'], PWIC_USERS['ghost']]:
+        for e in ['', PwicConst.USERS['anonymous'], PwicConst.USERS['ghost']]:
             sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
                             VALUES (?, '', '', ?, ?)''',
                         (e, dt['date'], dt['time']))
@@ -457,13 +460,15 @@ class PwicAdmin():
         if self.db is not None:
             self.db.rollback()
 
-    # ===== Methods =====
+    # =========
+    #  Methods
+    # =========
 
     def init_db(self) -> bool:
         # Check that the database does not exist already
-        if not isdir(PWIC_DB):
-            mkdir(PWIC_DB)
-        if isfile(PWIC_DB_SQLITE) or isfile(PWIC_DB_SQLITE_AUDIT):
+        if not isdir(PwicConst.DB):
+            mkdir(PwicConst.DB)
+        if isfile(PwicConst.DB_SQLITE) or isfile(PwicConst.DB_SQLITE_AUDIT):
             print('Error: the databases are already created')
             return False
 
@@ -480,19 +485,19 @@ class PwicAdmin():
             return False
 
         # Add the default, safe or mandatory configuration
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'init-db'})
-        for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PWIC_DEFAULTS['port'])]:
+        for (key, value) in [('base_url', 'http://127.0.0.1:%s' % PwicConst.DEFAULTS['port'])]:
             sql.execute(''' INSERT INTO env (project, key, value)
                             VALUES ('', ?, ?)''',
                         (key, value))
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'set-%s' % key,
-                                'string': '' if key in PWIC_ENV_PRIVATE else value})
+                                'string': '' if PwicConst.ENV[key].private else value})
 
         # Confirmation
         self.db_commit()
-        print('The databases are created in "%s" and "%s"' % (PWIC_DB_SQLITE, PWIC_DB_SQLITE_AUDIT))
+        print('The databases are created in "%s" and "%s"' % (PwicConst.DB_SQLITE, PwicConst.DB_SQLITE_AUDIT))
         return True
 
     def show_env(self, project: str, var: str, dolist: bool) -> bool:
@@ -539,8 +544,10 @@ class PwicAdmin():
         for row in sql.fetchall():
             if (project != '') and (row['project'] not in ['', project]):
                 continue
-            value = '(Secret value not displayed)' if (row['key'] in PWIC_ENV_PRIVATE) or (row['key'][:4] == 'pwic') else row['value']
-            value = value.replace('\n', '\\n')
+            value = row['value']
+            if (row['key'] in PwicConst.ENV) and PwicConst.ENV[row['key']].private:
+                value = '(Secret value not displayed)'
+            value = value.replace('\r', '').replace('\n', '\\n')
             if dolist:
                 print('%s.%s = %s' % ('*' if row['project'] == '' else row['project'], row['key'], value))
             else:
@@ -560,18 +567,18 @@ class PwicAdmin():
         if override and (project != ''):
             print('Error: useless parameter --override if a project is indicated')
             return False
-        if append and remove and True:
+        if append and remove:
             print('Error: the options append and remove cannot be used together')
             return False
-        allkeys = sorted(PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT)
+        allkeys = list(PwicConst.ENV)
         if key not in allkeys:
             print('Error: the name of the variable must be one of "%s"' % ', '.join(allkeys))
             return False
-        if (project != '') and (key in PWIC_ENV_PROJECT_INDEPENDENT):
-            print('Error: the parameter is project-independent')
+        if (project != '') and not PwicConst.ENV[key].pdep:
+            print('Error: the parameter is not project-dependent')
             return False
-        if (project == '') and (key in PWIC_ENV_PROJECT_DEPENDENT_ONLY):
-            print('Error: the parameter is project-dependent only')
+        if (project == '') and not PwicConst.ENV[key].pindep:
+            print('Error: the parameter is not project-independent')
             return False
         value = value.replace('\r', '').strip()
 
@@ -595,7 +602,7 @@ class PwicAdmin():
                               AND key      = ?''',
                         (key, ))
             for row in sql.fetchall():
-                PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'unset-%s' % key,
                                     'project': row['project']})
             sql.execute(''' DELETE FROM env WHERE key = ?''', (key, ))
@@ -612,10 +619,10 @@ class PwicAdmin():
                             VALUES (?, ?, ?)''',
                         (project, key, value))
             verb = 'updated'
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': '%sset-%s' % ('un' if value == '' else '', key),
                             'project': project,
-                            'string': '' if key in PWIC_ENV_PRIVATE else value})
+                            'string': '' if PwicConst.ENV[key].private else value})
         self.db_commit()
         if project != '':
             print('Variable %s for the project "%s"' % (verb, project))
@@ -630,24 +637,24 @@ class PwicAdmin():
             return False
 
         # Analyze each variables
-        all_keys = PWIC_ENV_PROJECT_INDEPENDENT + PWIC_ENV_PROJECT_DEPENDENT
+        all_keys = list(PwicConst.ENV)
         buffer = []
         sql.execute(''' SELECT project, key, value
                         FROM env
                         WHERE key NOT LIKE 'pwic%'
                         ORDER BY project, key''')
         for row in sql.fetchall():
-            if (row['key'] not in all_keys) or \
-               ((row['project'] != '') and (row['key'] in PWIC_ENV_PROJECT_INDEPENDENT)) or \
-               ((row['project'] == '') and (row['key'] in PWIC_ENV_PROJECT_DEPENDENT_ONLY)) or \
-               (row['value'] == ''):
+            if (((row['key'] not in all_keys)
+                 or ((row['project'] != '') and not PwicConst.ENV[row['key']].pdep)
+                 or ((row['project'] == '') and not PwicConst.ENV[row['key']].pindep)
+                 or (row['value'] in [None, '']))):
                 buffer.append((row['project'], row['key']))
         if not test:
             for e in buffer:
                 sql.execute(''' DELETE FROM env
                                 WHERE project = ?
                                   AND key     = ?''', e)
-                PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'unset-%s' % e[1],
                                     'project': e[0]})
             self.db_commit()
@@ -750,10 +757,10 @@ class PwicAdmin():
         project = PwicLib.safe_name(project)
         description = description.strip()
         admin = PwicLib.safe_user_name(admin)
-        if (project in ['api', 'special', 'static']) or \
-           ('' in [project, description, admin]) or     \
-           (project[:4] == 'pwic') or                   \
-           (admin[:4] == 'pwic'):
+        if (((project in PwicConst.NOT_PROJECT)
+             or ('' in [description, admin])
+             or (project[:4] == 'pwic')
+             or (admin[:4] == 'pwic'))):
             print('Error: invalid arguments')
             return False
 
@@ -771,7 +778,7 @@ class PwicAdmin():
 
         # Create the workspace for the documents of the project
         try:
-            path = PWIC_DOCUMENTS_PATH % project
+            path = PwicConst.DOCUMENTS_PATH % project
             if not isdir(path):
                 makedirs(path)
         except OSError:
@@ -781,36 +788,36 @@ class PwicAdmin():
         # Add the user account
         sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
                         VALUES (?, ?, 'X', ?, ?)''',
-                    (admin, PwicLib.sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
+                    (admin, PwicLib.sha256(PwicConst.DEFAULTS['password']), dt['date'], dt['time']))
         if sql.rowcount > 0:
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'create-user',
                                 'user': admin})
 
         # Add the project
         sql.execute(''' INSERT INTO projects (project, description, date) VALUES (?, ?, ?)''',
                     (project, description, dt['date']))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'create-project',
                             'project': project})
 
         # Add the role
         sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'grant-admin',
                             'project': project,
                             'user': admin})
-        sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USERS['anonymous']))
-        sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PWIC_USERS['ghost']))
+        sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PwicConst.USERS['anonymous']))
+        sql.execute(''' INSERT INTO roles (project, user, reader, disabled) VALUES (?, ?, 'X', 'X')''', (project, PwicConst.USERS['ghost']))
 
         # Add a default homepage
         sql.execute(''' INSERT INTO pages (project, page, revision, latest, header, author, date, time, title, markdown, comment)
                         VALUES (?, ?, 1, 'X', 'X', ?, ?, ?, 'Home', 'Thanks for using **Pwic.wiki**. This is the homepage.', 'Initial commit')''',
-                    (project, PWIC_DEFAULTS['page'], admin, dt['date'], dt['time']))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                    (project, PwicConst.DEFAULTS['page'], admin, dt['date'], dt['time']))
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'create-revision',
                             'project': project,
-                            'page': PWIC_DEFAULTS['page'],
+                            'page': PwicConst.DEFAULTS['page'],
                             'reference': 1})
 
         # Finalization
@@ -818,7 +825,7 @@ class PwicAdmin():
         print('The project is created:')
         print('- Project       : %s' % project)
         print('- Administrator : %s' % admin)
-        print('- Password      : "%s" or the existing password' % PWIC_DEFAULTS['password'])
+        print('- Password      : "%s" or the existing password' % PwicConst.DEFAULTS['password'])
         print('')
         print('WARNING:')
         print("To create new pages in the project, you must change your password and grant the role 'manager' or 'editor' to the suitable user account.")
@@ -864,7 +871,7 @@ class PwicAdmin():
                     (project, admin))
         if sql.rowcount == 0:
             sql.execute(''' INSERT INTO roles (project, user, admin) VALUES (?, ?, 'X')''', (project, admin))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'grant-admin',
                             'project': project,
                             'user': admin})
@@ -900,7 +907,7 @@ class PwicAdmin():
                 return False
 
         # Create the new database
-        fn = PWIC_DB_SQLITE_BACKUP % 'split'
+        fn = PwicConst.DB_SQLITE_BACKUP % 'split'
         if isfile(fn):
             print('Error: the split database "%s" already exists' % fn)
             return False
@@ -994,7 +1001,7 @@ class PwicAdmin():
         # Result
         newsql.execute(''' COMMIT''')
         for p in projects:
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'split-project',
                                 'project': p})
         self.db_commit()
@@ -1027,8 +1034,8 @@ class PwicAdmin():
                         WHERE project = ?''',
                     (project, ))
         for row in sql.fetchall():
-            fn = join(PWIC_DOCUMENTS_PATH % project, row['filename'])
-            if not PwicExtension.on_api_document_delete(sql, None, project, PWIC_USERS['system'], row['page'], row['id'], row['filename']):
+            fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
+            if not PwicExtension.on_api_document_delete(sql, None, project, PwicConst.USERS['system'], row['page'], row['id'], row['filename']):
                 print('Error: unable to delete "%s"' % fn)
                 self.db_rollback()
                 return False
@@ -1043,7 +1050,7 @@ class PwicAdmin():
 
         # Remove the folder of the project used to upload files
         try:
-            fn = PWIC_DOCUMENTS_PATH % project
+            fn = PwicConst.DOCUMENTS_PATH % project
             rmdir(fn)
         except OSError:
             print('Error: unable to remove "%s". The folder may be not empty' % fn)
@@ -1057,7 +1064,7 @@ class PwicAdmin():
         sql.execute(''' DELETE FROM pages     WHERE project = ?''', (project, ))
         sql.execute(''' DELETE FROM roles     WHERE project = ?''', (project, ))
         sql.execute(''' DELETE FROM projects  WHERE project = ?''', (project, ))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'delete-project',
                             'project': project})
         self.db_commit()
@@ -1085,12 +1092,12 @@ class PwicAdmin():
         dt = PwicLib.dt()
         sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
                         VALUES (?, ?, 'X', ?, ?)''',
-                    (user, PwicLib.sha256(PWIC_DEFAULTS['password']), dt['date'], dt['time']))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                    (user, PwicLib.sha256(PwicConst.DEFAULTS['password']), dt['date'], dt['time']))
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'create-user',
                             'user': user})
         self.db_commit()
-        print('The user "%s" is created with the default password "%s".' % (user, PWIC_DEFAULTS['password']))
+        print('The user "%s" is created with the default password "%s".' % (user, PwicConst.DEFAULTS['password']))
         return True
 
     def reset_password(self, user: str, create: bool, oauth: bool) -> bool:
@@ -1119,7 +1126,7 @@ class PwicAdmin():
                 print('Error: the user account is not an email')
                 return False
             print('The user must use the federated authentication to log in')
-            pwd = PWIC_MAGIC_OAUTH
+            pwd = PwicConst.MAGIC_OAUTH
             initial = ''
         else:
             print('Type the new temporary password with 8 characters at least: ', end='')
@@ -1136,7 +1143,7 @@ class PwicAdmin():
             sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
                             VALUES (?, ?, ?, ?, ?)''',
                         (user, pwd, initial, dt['date'], dt['time']))
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'create-user',
                                 'user': user})
             print('\nThe password has been defined for the new user "%s"' % user)
@@ -1148,10 +1155,10 @@ class PwicAdmin():
                                 password_time = ?
                             WHERE user = ?''',
                         (pwd, initial, dt['date'], dt['time'], user))
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'reset-password',
                                 'user': user,
-                                'string': PWIC_MAGIC_OAUTH if pwd == PWIC_MAGIC_OAUTH else ''})
+                                'string': PwicConst.MAGIC_OAUTH if pwd == PwicConst.MAGIC_OAUTH else ''})
             print('\nThe password has been changed for the user "%s"' % user)
         self.db_commit()
         return True
@@ -1160,7 +1167,7 @@ class PwicAdmin():
         # Verify the parameters
         project = PwicLib.safe_name(project)
         user = PwicLib.safe_user_name(user)
-        if (project in PWIC_NOT_PROJECT) or (user == ''):
+        if (project in PwicConst.NOT_PROJECT) or (user == ''):
             print('Error: invalid parameters')
             return False
 
@@ -1206,7 +1213,7 @@ class PwicAdmin():
         sql.execute(''' INSERT INTO roles (project, user, reader, disabled)
                         VALUES (?, ?, 'X', '')''',
                     (project, user))
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'grant-reader',
                             'project': project,
                             'user': user})
@@ -1286,7 +1293,7 @@ class PwicAdmin():
                         WHERE user = ?''',
                     (user, ))
         for row in sql.fetchall():
-            PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'delete-user',
                                 'project': row['project'],
                                 'user': user})
@@ -1421,7 +1428,7 @@ class PwicAdmin():
         _totals(sql, 'Number of users with OAuth',
                 ''' SELECT COUNT(user) AS kpi
                     FROM users
-                    WHERE password = ?''', (PWIC_MAGIC_OAUTH, ))
+                    WHERE password = ?''', (PwicConst.MAGIC_OAUTH, ))
         _totals(sql, 'Number of users with an initial password',
                 ''' SELECT COUNT(user) AS kpi
                     FROM users
@@ -1450,7 +1457,7 @@ class PwicAdmin():
                           AND password <> ?
                         GROUP BY password
                     )
-                    WHERE total > 1''', (PWIC_MAGIC_OAUTH, ))
+                    WHERE total > 1''', (PwicConst.MAGIC_OAUTH, ))
         _totals(sql, 'Number of active users per period',
                 ''' SELECT date AS period, COUNT(author) AS kpi
                     FROM (
@@ -1890,7 +1897,7 @@ class PwicAdmin():
 
         # Clear the cache
         sql.execute(q, (project, ) if '?' in q else ())
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'clear-cache',
                             'project': project})
         self.db_commit()
@@ -1907,7 +1914,7 @@ class PwicAdmin():
             return False
 
         # Fetch the projects
-        user = PwicLib.safe_user_name(user or PWIC_USERS['anonymous'])
+        user = PwicLib.safe_user_name(user or PwicConst.USERS['anonymous'])
         project = PwicLib.safe_name(project)
         sql.execute(''' SELECT project
                         FROM roles
@@ -2115,7 +2122,7 @@ class PwicAdmin():
                         (dt['date-nd'], ))
 
         # Result
-        PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'archive-audit'})
         self.db_commit()
         print('%d entries moved to the table "audit_arch". Do what you want with them.' % counter)
@@ -2143,16 +2150,16 @@ class PwicAdmin():
 
     def create_backup(self) -> bool:
         # Check the database
-        if not isfile(PWIC_DB_SQLITE):
+        if not isfile(PwicConst.DB_SQLITE):
             print('Error: the database is not created yet')
             return False
 
         # Prepare the new file name
         dt = PwicLib.dt()
         stamp = '%s_%s' % (dt['date'].replace('-', ''), dt['time'].replace(':', ''))
-        new = PWIC_DB_SQLITE_BACKUP % stamp
+        new = PwicConst.DB_SQLITE_BACKUP % stamp
         try:
-            copyfile(PWIC_DB_SQLITE, new)
+            copyfile(PwicConst.DB_SQLITE, new)
             if not isfile(new):
                 raise FileNotFoundError('Error: file "%s" not created' % new)
 
@@ -2163,7 +2170,7 @@ class PwicAdmin():
                 sql.execute(''' SELECT MAX(id) AS id
                                 FROM audit''')
                 audit_id = PwicLib.intval(sql.fetchone()['id'])
-                PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'create-backup',
                                     'string': stamp})
                 self.db_commit()
@@ -2243,7 +2250,7 @@ class PwicAdmin():
 
         # Each project should have a folder
         for p in projects.copy():
-            path = PWIC_DOCUMENTS_PATH % p
+            path = PwicConst.DOCUMENTS_PATH % p
             if not isdir(path):
                 try:
                     if not test:
@@ -2253,12 +2260,12 @@ class PwicAdmin():
                     print('Failed to create the folder "%s"' % path)
                     projects.remove(p)
         if multi and not keep_orphans:
-            dirs = sorted([f for f in listdir(PWIC_DOCUMENTS_PATH % '') if isdir(PWIC_DOCUMENTS_PATH % f)])
+            dirs = sorted([f for f in listdir(PwicConst.DOCUMENTS_PATH % '') if isdir(PwicConst.DOCUMENTS_PATH % f)])
             for p in dirs:
                 if p not in projects:
-                    path = PWIC_DOCUMENTS_PATH % p
+                    path = PwicConst.DOCUMENTS_PATH % p
                     try:
-                        for f in listdir(PWIC_DOCUMENTS_PATH % p):
+                        for f in listdir(PwicConst.DOCUMENTS_PATH % p):
                             if not test:
                                 os.remove(join(path, f))    # No call to PwicExtension.on_api_document_delete because the project does not exist
                             tab.add_row(['Delete', 'File', p, join(path, f), 'Orphaned'])
@@ -2270,9 +2277,9 @@ class PwicAdmin():
 
         # Check the files per project
         for p in projects:
-            if not isdir(PWIC_DOCUMENTS_PATH % p):
+            if not isdir(PwicConst.DOCUMENTS_PATH % p):
                 continue
-            files = sorted([f for f in listdir(PWIC_DOCUMENTS_PATH % p) if isfile(join(PWIC_DOCUMENTS_PATH % p, f))])
+            files = sorted([f for f in listdir(PwicConst.DOCUMENTS_PATH % p) if isfile(join(PwicConst.DOCUMENTS_PATH % p, f))])
             sql.execute(''' SELECT id, filename, exturl
                             FROM documents
                             WHERE project = ?
@@ -2284,7 +2291,7 @@ class PwicAdmin():
                 if row['filename'] in files:
                     files.remove(row['filename'])
                 else:
-                    if PwicExtension.on_api_document_delete(sql, None, p, PWIC_USERS['system'], None, None, row['filename']):
+                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, row['filename']):
                         if not test:
                             sql.execute(''' DELETE FROM documents
                                             WHERE ID = ?''',
@@ -2293,8 +2300,8 @@ class PwicAdmin():
             # Delete the left files that can't be reassigned to the right objects
             if not keep_orphans:
                 for f in files:
-                    if PwicExtension.on_api_document_delete(sql, None, p, PWIC_USERS['system'], None, None, f):
-                        path = join(PWIC_DOCUMENTS_PATH % p, f)
+                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, f):
+                        path = join(PwicConst.DOCUMENTS_PATH % p, f)
                         try:
                             if not test:
                                 os.remove(path)
@@ -2310,7 +2317,7 @@ class PwicAdmin():
                               AND exturl  = '' ''',
                         (p, ))
             for row in sql.fetchall():
-                path = join(PWIC_DOCUMENTS_PATH % p, row['filename'])
+                path = join(PwicConst.DOCUMENTS_PATH % p, row['filename'])
                 try:
                     # Magic bytes
                     if magic_bytes:
@@ -2364,7 +2371,7 @@ class PwicAdmin():
             print('\nList of the %d changes:' % tab.rowcount)
             print(tab.get_string())
             if not test:
-                PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'repair-documents',
                                     'project': project,
                                     'string': str(tab.rowcount)})
@@ -2446,7 +2453,7 @@ class PwicAdmin():
                         fields = list(row)
 
                 # Trace
-                PwicLib.audit(sql, {'author': PWIC_USERS['system'],
+                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'execute-sql',
                                     'string': query})
                 self.db_commit()
@@ -2498,7 +2505,10 @@ class PwicAdmin():
         return False
 
 
-# Entry point
+# =====================
+#  Program entry point
+# =====================
+
 app = PwicAdmin()
 if app.main():
     sys.exit(0)

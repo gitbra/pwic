@@ -28,7 +28,7 @@ from html import escape
 from html.parser import HTMLParser
 
 from pwic_md import Markdown, MarkdownError
-from pwic_lib import PWIC_DEFAULTS, PWIC_DOCUMENTS_PATH, PWIC_REGEXES, PWIC_VERSION, PwicError, PwicLib
+from pwic_lib import PwicConst, PwicLib, PwicError
 from pwic_extension import PwicExtension
 
 
@@ -137,7 +137,7 @@ class PwicExporter():
         MAX_H = max(0, PwicLib.intval(PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_image_height_max', '900px'), '', 0)))
         MAX_W = max(0, PwicLib.intval(PwicLib.convert_length(PwicLib.option(sql, row['project'], 'odt_image_width_max', '600px'), '', 0)))
         docids = ['0']
-        subdocs = PWIC_REGEXES['document'].findall(row['markdown'])
+        subdocs = PwicConst.REGEXES['document'].findall(row['markdown'])
         if subdocs is not None:
             for sd in subdocs:
                 sd = str(PwicLib.intval(sd[0]))
@@ -171,7 +171,7 @@ class PwicExporter():
 
             # Store the meta data
             entry = {}
-            entry['filename'] = join(PWIC_DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename'])
+            entry['filename'] = join(PwicConst.DOCUMENTS_PATH % rowdoc['project'], rowdoc['filename'])
             entry['link'] = 'special/document/%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])
             entry['link_odt_img'] = 'special/document_%d' % (rowdoc['id'] if rowdoc['exturl'] == '' else rowdoc['exturl'])     # LibreOffice does not support the paths with multiple folders
             entry['compressed'] = PwicLib.mime_compressed(PwicLib.file_ext(rowdoc['filename']))
@@ -216,7 +216,7 @@ class PwicExporter():
 
             # Properties of the file
             dt = PwicLib.dt()
-            buffer = odtStyles.meta % (PWIC_VERSION,
+            buffer = odtStyles.meta % (PwicConst.VERSION,
                                        escape(row['title']),
                                        escape(row['project']), escape(row['page']),
                                        ('<meta:keyword>%s</meta:keyword>' % escape(row['tags'])) if row['tags'] != '' else '',
@@ -309,8 +309,8 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         # Process the attributes
         buffer = ''
         for (k, v) in props.items():
-            if (k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width']) or \
-               ((self.code == 'svg') and (k[:2] != 'on')):
+            if (((k in ['alt', 'class', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width'])
+                 or ((self.code == 'svg') and (k[:2] != 'on')))):
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
                     buffer += ' %s="%s"' % (k, v)
@@ -498,7 +498,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
     def feed(self, data: str):
         # Find the unsupported tags
         unsupported = []
-        for t in PWIC_REGEXES['tag_name'].findall(data):
+        for t in PwicConst.REGEXES['tag_name'].findall(data):
             t = t.lower()
             if (t not in self.maps) and (t not in unsupported):
                 unsupported.append(t)
@@ -579,7 +579,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                             if value[:1] == '/':
                                                 value = value[1:]
                                             if self.pict is not None:
-                                                docid_re = PWIC_REGEXES['document_imgsrc'].match(value)
+                                                docid_re = PwicConst.REGEXES['document_imgsrc'].match(value)
                                                 if docid_re is not None:
                                                     width = height = 0
                                                     docid = PwicLib.intval(docid_re.group(1))
@@ -589,7 +589,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                                         width = self.pict[docid]['width']
                                                         height = self.pict[docid]['height']
                                                     if 0 in [width, height]:
-                                                        width = height = PwicLib.intval(PWIC_DEFAULTS['odt_img_defpix'])
+                                                        width = height = PwicLib.intval(PwicConst.DEFAULTS['odt_img_defpix'])
                                                     self._replace_marker('{$w}', PwicLib.convert_length(width, 'cm', 2))
                                                     self._replace_marker('{$h}', PwicLib.convert_length(height, 'cm', 2))
 
@@ -1318,9 +1318,9 @@ class PwicStylerOdt:
         if mask is None:
             mask = ''
         a = len(mask)
-        b = len(PWIC_DEFAULTS['heading'])
+        b = len(PwicConst.DEFAULTS['heading'])
         if a < b:
-            mask += PWIC_DEFAULTS['heading'][a - b:]
+            mask += PwicConst.DEFAULTS['heading'][a - b:]
 
         # Build the XML section
         template = '''<text:outline-level-style text:level="%d"
