@@ -534,6 +534,12 @@
 						<td>The old revisions of a page are automatically marked as non-indexable for the public search engines. This dynamic rule overrides some values defined in the option <code>robots</code>. The option is incompatible with <code>validated_only</code>.</td>
 					</tr>
 					<tr>
+						<td><code>session_expiry</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Number of seconds after which a user is automatically disconnected. Don't use a too small value. When a user edits a page, <em>Pwic.wiki</em> warns if the session is lost to not waste the work in progress. The option is effective upon the restart of the server.</td>
+					</tr>
+					<tr>
 						<td><code>show_members_max</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -935,7 +941,7 @@
 			</tr>
 			<tr>
 				<td><a href="https://github.com/aio-libs/aiohttp">aiohttp</a></td>
-				<td>3.8.1 (>=3.8)</td>
+				<td>3.8.3 (>=3.8)</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/aio-libs/aiohttp/master/LICENSE.txt">Apache 2.0 License</a></td>
 			</tr>

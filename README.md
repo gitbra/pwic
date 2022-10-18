@@ -71,6 +71,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Unicode content and URL
 - HTTP logging
 - IP filtering
+- Expirable sessions
 
 **Pwic.wiki**
 
@@ -108,7 +109,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Install the dependencies: `python3 -m pip install --upgrade -r requirements.txt`
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
 	- Change the default password in `PwicConst.DEFAULTS['password']`
-	- Write random characters in the secret salt `PWIC_SALT` forever
+	- Write random characters in the secret salt `PwicConst.SALT` forever
 - Initialize the database: `python3 pwic_admin.py init-db`
 	- A sub-folder `db/` is created for all your data
 

@@ -33,6 +33,7 @@ from random import randint
 import re
 import sqlite3
 import sys
+from time import time
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from ipaddress import ip_network, ip_address
 from urllib.parse import parse_qs, quote, urlencode
@@ -78,17 +79,17 @@ class PwicServer():
     def _check_mime(self, obj: Dict[str, Any]) -> bool:
         ''' Check the consistency of the MIME with the file signature'''
         extension = PwicLib.file_ext(obj['filename'])
-        for (mext, mtyp, mhdr, mzip) in PwicConst.MIMES:
-            if extension in mext:
+        for item in PwicConst.MIMES:
+            if extension in item.exts:
                 # Expected mime
                 if obj['mime'] in ['', 'application/octet-stream']:
-                    obj['mime'] = mtyp[0]
-                elif obj['mime'] not in mtyp:
+                    obj['mime'] = item.mimes[0]
+                elif obj['mime'] not in item.mimes:
                     return False
 
                 # Magic bytes
-                if mhdr is not None:
-                    for mb in mhdr:
+                if item.magic is not None:
+                    for mb in item.magic:
                         if obj['content'][:len(mb)] == PwicLib.str2bytearray(mb):
                             return True
                     return False
@@ -196,6 +197,15 @@ class PwicServer():
         session = await get_session(request)
         if ip != session.get('ip', ip):
             return ''
+
+        # Check the expiration of the session
+        expiry = app['options']['session_expiry']
+        if expiry > 0:
+            cur_time = PwicLib.intval(time())
+            if PwicLib.intval(session.get('timestamp', cur_time)) < cur_time - expiry:
+                session.invalidate()
+                return ''
+            session['timestamp'] = PwicLib.intval(time())
 
         # Check the HTTP referer in POST method and the user
         user = PwicLib.safe_user_name(session.get('user', ''))
@@ -1595,7 +1605,9 @@ class PwicServer():
                 session = await new_session(request)
                 session['user'] = user
                 session['language'] = lang
+                session['user_secret'] = PwicLib.random_hash()
                 session['ip'] = ip
+                session['timestamp'] = PwicLib.intval(time())
                 if user != PwicConst.USERS['anonymous']:
                     PwicLib.audit(sql, {'author': user,
                                         'event': 'login'},
@@ -1642,7 +1654,8 @@ class PwicServer():
                 _oauth_failed()
 
         # Checks
-        self._check_ip(PwicExtension.on_ip_header(request))
+        ip = PwicExtension.on_ip_header(request)
+        self._check_ip(ip)
 
         # Get the callback parameters
         error = request.rel_url.query.get('error', '')
@@ -1764,6 +1777,8 @@ class PwicServer():
         session['user'] = user
         session['language'] = PwicLib.detect_language(request, app['langs'], sso=True)
         session['user_secret'] = PwicLib.random_hash()
+        session['ip'] = ip
+        session['timestamp'] = PwicLib.intval(time())
         PwicLib.audit(sql, {'author': user,
                             'event': 'login',
                             'string': PwicConst.MAGIC_OAUTH},
@@ -4327,7 +4342,9 @@ def main() -> bool:
                       'compressed_cache': PwicLib.option(sql, '', 'compressed_cache') is not None,
                       'http_referer': (base_url != '') and (PwicLib.option(sql, '', 'http_referer') is not None),
                       'ip_filter': [],
-                      'no_login': PwicLib.option(sql, '', 'no_login') is not None}
+                      'no_login': PwicLib.option(sql, '', 'no_login') is not None,
+                      'session_expiry': PwicLib.intval(PwicLib.option(sql, '', 'session_expiry', '0')),
+                      }
     if app['options']['base_url'] == '':
         print('Warning: defining the option "base_url" is highly recommended')
     app['oauth'] = {'provider': PwicLib.option(sql, '', 'oauth_provider', None),
