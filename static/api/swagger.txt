@@ -645,61 +645,6 @@ paths:
           description: Unsufficient authorizations, or not found
         503:
           description: Update temporarily unavailable
-  /api/project/atom/get:
-    get:
-      summary: Get the ATOM feed of the recent changes
-      tags:
-        - project
-      produces:
-        - application/atom+xml
-      parameters:
-        - in: query
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters or not found
-        401:
-          description: Unsufficient authorizations
-        403:
-          description: Disabled feature
-  /api/project/changes/get:
-    post:
-      summary: Get the recent changes
-      tags:
-        - project
-      consumes:
-        - application/x-www-form-urlencoded
-      parameters:
-        - in: formData
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-        - in: formData
-          name: days
-          type: string
-          description: Number of days in the past between 0 and 90
-          required: false
-          default: 7
-      responses:
-        200:
-          description: Successful operation
-          schema:
-            type: array
-            items:
-              type: object
-              properties:
-                project:
-                  type: string
-                date:
-                  type: string
-        400:
-          description: Invalid parameters
   /api/project/env/set:
     post:
       summary: Change a project-dependent setting
@@ -756,9 +701,80 @@ paths:
           description: No relevant data found
         503:
           description: Technical error during the generation of the ZIP file
+  /api/project/feed/atom/get:
+    get:
+      summary: Get the ATOM feed of the recent changes
+      tags:
+        - project
+      produces:
+        - application/atom+xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters or not found
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
+  /api/project/feed/json/get:
+    get:
+      summary: Get the technical JSON feed of the recent changes
+      tags:
+        - project
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+        - in: query
+          name: days
+          type: int
+          description: Number of days in the past [0-90]
+          required: false
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters or not found
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
+  /api/project/feed/rss/get:
+    get:
+      summary: Get the RSS feed of the recent changes
+      tags:
+        - project
+      produces:
+        - application/rss+xml
+      parameters:
+        - in: query
+          name: project
+          type: string
+          description: Name of the project
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters or not found
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
   /api/project/get:
     post:
-      summary: Get details about the project or a page
+      summary: Get the details about the project or a page
       tags:
         - project
       consumes:
@@ -888,28 +904,6 @@ paths:
           description: Invalid parameters
         401:
           description: Unsufficient authorizations
-  /api/project/rss/get:
-    get:
-      summary: Get the RSS feed of the recent changes
-      tags:
-        - project
-      produces:
-        - application/rss+xml
-      parameters:
-        - in: query
-          name: project
-          type: string
-          description: Name of the project
-          required: true
-      responses:
-        200:
-          description: Successful operation
-        400:
-          description: Invalid parameters or not found
-        401:
-          description: Unsufficient authorizations
-        403:
-          description: Disabled feature
   /api/project/searchlink/get:
     get:
       summary: Install a shortcut in the user's browser
@@ -1087,7 +1081,7 @@ paths:
           description: Session not active
   /api/server/shutdown:
     post:
-      summary: Shut down the server if this is allowed in the administration console
+      summary: Shut down the server
       tags:
         - server
       responses:

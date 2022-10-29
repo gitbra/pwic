@@ -362,7 +362,21 @@ class PwicExtension():
         return html
 
     @staticmethod
-    def on_html_headers(sql: sqlite3.Cursor,                # Cursor to query the database
+    def on_html_robots(sql: sqlite3.Cursor,                 # Cursor to query the database
+                       request: web.Request,                # HTTP request
+                       project: str,                        # Name of the project
+                       user: str,                           # Name of the user
+                       template: str,                       # Name of the template
+                       data: Dict[str, Any],                # Data elements of the page
+                       robots: Dict[str, Optional[bool]],   # Status of the robots (assign None to remove the value)
+                       ) -> bool:
+        ''' Event to calculate the meta HTML header 'robots' when a page is rendered.
+            The result tells if the parameter 'robots' (that contains the result) has been changed.
+        '''
+        return False
+
+    @staticmethod
+    def on_http_headers(sql: sqlite3.Cursor,                # Cursor to query the database
                         request: web.Request,               # HTTP request
                         headers: MultiDict,                 # Output HTTP headers
                         project: str,                       # Name of the project

@@ -641,7 +641,6 @@ class PwicAdmin():
         buffer = []
         sql.execute(''' SELECT project, key, value
                         FROM env
-                        WHERE key NOT LIKE 'pwic%'
                         ORDER BY project, key''')
         for row in sql.fetchall():
             if (((row['key'] not in all_keys)

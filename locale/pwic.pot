@@ -75,7 +75,7 @@ msgstr ""
 msgid "Disconnected from Pwic.wiki"
 msgstr ""
 
-msgid "You are disconnected."
+msgid "You are disconnected"
 msgstr ""
 
 msgid "You successfully logged out."

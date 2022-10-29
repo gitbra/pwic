@@ -19,8 +19,8 @@
 			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{{ gettext('Search in project %(project)s')|format(project=pwic.project|escape) }}" />
 		{% endif  %}
 		{% if not pwic.env.no_feed and (not pwic.pure_reader or not pwic.env.no_history) %}
-			<link rel="alternate" type="application/atom+xml" href="/api/project/atom/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='ATOM') }}" />
-			<link rel="alternate" type="application/rss+xml" href="/api/project/rss/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='RSS') }}" />
+			<link rel="alternate" type="application/atom+xml" href="/api/project/feed/atom/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='ATOM') }}" />
+			<link rel="alternate" type="application/rss+xml" href="/api/project/feed/rss/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='RSS') }}" />
 		{% endif  %}
 	{% endif %}
 

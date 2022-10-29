@@ -47,7 +47,6 @@
 						element = $('INPUT[type=text][data-key='+key+']');
 						if (element.length == 1)
 						{
-							console.assert(item['changeable'] == true);
 							element.data('saved', item['value'])
 								   .data('global', (item['global'] ? 'X' : ''));
 							if (item['global'])

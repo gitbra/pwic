@@ -90,8 +90,8 @@ msgstr "S'inscrire"
 msgid "Disconnected from Pwic.wiki"
 msgstr "Se déconnecter de Pwic.wiki"
 
-msgid "You are disconnected."
-msgstr "Vous êtes déconnecté."
+msgid "You are disconnected"
+msgstr "Vous êtes déconnecté"
 
 msgid "You successfully logged out."
 msgstr "Vous êtes déconnecté avec succès."

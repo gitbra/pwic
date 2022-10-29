@@ -32,8 +32,9 @@ from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
 
-TyMime = namedtuple('TyMime', 'exts, mimes, magic, compressed')
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
+TyMime = namedtuple('TyMime', 'exts, mimes, magic, compressed')
+TyRobotsDict = Dict[str, Optional[bool]]
 
 CFBF = ['\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1']
 MATROSKA = ['\x1A\x45\xDF\xA3']
@@ -708,6 +709,11 @@ class PwicLib:
         return text
 
     @staticmethod
+    def robots2str(robots: TyRobotsDict) -> str:
+        ''' Convert structured boolean values into a meta string robots '''
+        return ' '.join([('' if robots[k] else 'no') + k for k in robots if robots[k] is not None])
+
+    @staticmethod
     def row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
         ''' Assign names to the SQL output '''
         d = {}
@@ -793,6 +799,20 @@ class PwicLib:
         for c in inputstr:
             barr.append(ord(c))
         return barr
+
+    @staticmethod
+    def str2robots(robots: str) -> TyRobotsDict:
+        ''' Convert a meta string robots into structured boolean values '''
+        values = PwicLib.list(robots)
+        result: TyRobotsDict = {}
+        for k in ['archive', 'follow', 'index', 'snippet']:
+            if 'no' + k in values:
+                result[k] = False
+            elif k in values:
+                result[k] = True
+            else:
+                result[k] = None
+        return result
 
     @staticmethod
     def x(value: Any) -> str:
