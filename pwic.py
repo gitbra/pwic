@@ -397,7 +397,7 @@ class PwicServer():
         pwic['title'] = row['description']
 
         # Grant the default rights as a reader
-        if (user[:4] != 'pwic') and (PwicLib.option(sql, project, 'auto_join', globale=False) == 'passive'):
+        if (user[:4] != 'pwic') and (PwicLib.option(sql, project, 'auto_join') == 'passive'):
             if sql.execute(''' SELECT 1
                                FROM roles
                                WHERE project = ?
@@ -3849,6 +3849,22 @@ class PwicServer():
                             self.dbconn.rollback()
                             raise web.HTTPForbidden()
 
+        # Find the dimensions of the loaded picture
+        width, height = 0, 0
+        if doc['mime'][:6] == 'image/':
+            try:
+                inmemory = BytesIO(doc['content'])
+                width, height = imagesize.get(inmemory)
+                inmemory.close()
+            except ValueError:
+                pass
+
+            # Check the maximal size
+            document_pixels_max = PwicLib.intval(PwicLib.option(sql, doc['project'], 'document_pixels_max', '-1'))
+            if 0 <= document_pixels_max < width * height:
+                self.dbconn.rollback()
+                raise web.HTTPRequestEntityTooLarge(document_pixels_max, width * height)
+
         # Upload the file on the server
         try:
             filename = join(PwicConst.DOCUMENTS_PATH % doc['project'], doc['filename'])
@@ -3857,14 +3873,6 @@ class PwicServer():
         except OSError as e:
             self.dbconn.rollback()
             raise web.HTTPInternalServerError() from e
-
-        # Find the dimensions of the loaded picture
-        width, height = 0, 0
-        if doc['mime'][:6] == 'image/':
-            try:
-                width, height = imagesize.get(filename)
-            except ValueError:
-                pass
 
         # Create the document in the database
         dt = PwicLib.dt()

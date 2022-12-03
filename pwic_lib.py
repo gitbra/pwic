@@ -117,6 +117,7 @@ class PwicConst:
            'dark_theme': TyEnv(True, True, True, False),
            'db_async': TyEnv(True, False, False, False),
            'document_name_regex': TyEnv(True, True, False, False),
+           'document_pixels_max': TyEnv(True, True, True, False),
            'document_size_max': TyEnv(True, True, False, False),
            'edit_time_min': TyEnv(True, True, False, False),
            'emojis': TyEnv(True, True, True, False),
@@ -658,10 +659,9 @@ class PwicLib:
                project: Optional[str],
                name: str,
                default: Optional[str] = None,
-               globale: bool = True,
                ) -> Optional[str]:
         ''' Read a variable from the table ENV that can be project-dependent or not '''
-        if sql is None:
+        if (sql is None) or (name not in PwicConst.ENV):
             return default
         try:
             query = ''' SELECT value
@@ -669,13 +669,23 @@ class PwicLib:
                         WHERE project = ?
                           AND key     = ?
                           AND value  <> '' '''
-            row = None
-            if (name in PwicConst.ENV) and PwicConst.ENV[name].pindep:
+            if project is None:
                 project = ''
-            if project not in ['', None]:
+
+            # Read by project
+            if not PwicConst.ENV[name].pdep:
+                project = ''
+            if project == '':
+                row = None
+            else:
                 row = sql.execute(query, (project, name)).fetchone()
-            if (row is None) and globale:
-                row = sql.execute(query, ('', name)).fetchone()
+
+            # Read globally
+            if (row is None) and PwicConst.ENV[name].pindep:
+                project = ''
+                row = sql.execute(query, (project, name)).fetchone()
+
+            # Result
             result = default if row is None else row['value']
             if isinstance(result, str):
                 result = result.replace('\r', '')

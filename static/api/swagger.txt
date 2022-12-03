@@ -117,7 +117,7 @@ paths:
         409:
           description: Duplicate file name in the project
         413:
-          description: File size limits exceeded
+          description: File size limit or number of pixels exceeded
         415:
           description: Failed MIME verification
         500:

@@ -98,6 +98,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
   on Extras.
 * wiki-tables: Google Code Wiki-style tables. See
   <http://code.google.com/p/support/wiki/WikiSyntax#Tables>.
+* wavedrom: Support for generating Wavedrom digital timing diagrams
 * xml: Passes one-liner processing instructions and namespaced XML tags.
 """
 
@@ -106,7 +107,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 #   not yet sure if there implications with this. Compare 'pydoc sre'
 #   and 'perldoc perlre'.
 
-__version_info__ = (2, 4, 5)
+__version_info__ = (2, 4, 6)
 __version__ = '.'.join(map(str, __version_info__))
 __author__ = "Trent Mick"
 
@@ -355,6 +356,9 @@ class Markdown(object):
             text = self._extract_metadata(text)
 
         text = self.preprocess(text)
+
+        if 'wavedrom' in self.extras:
+            text = self._do_wavedrom_blocks(text)
 
         if "fenced-code-blocks" in self.extras and not self.safe_mode:
             text = self._do_fenced_code_blocks(text)
@@ -1019,6 +1023,9 @@ class Markdown(object):
 
         if 'admonitions' in self.extras:
             text = self._do_admonitions(text)
+
+        if 'wavedrom' in self.extras:
+            text = self._do_wavedrom_blocks(text)
 
         if "fenced-code-blocks" in self.extras:
             text = self._do_fenced_code_blocks(text)
@@ -1715,11 +1722,11 @@ class Markdown(object):
 
     def _list_sub(self, match):
         lst = match.group(1)
-        lst_type = match.group(3) in self._marker_ul_chars and "ul" or "ol"
+        lst_type = match.group(4) in self._marker_ul_chars and "ul" or "ol"
 
-        if lst_type == 'ol' and match.group(3) != '1.':
+        if lst_type == 'ol' and match.group(4) != '1.':
             # if list doesn't start at 1 then set the ol start attribute
-            lst_opts = ' start="%s"' % match.group(3)[:-1]
+            lst_opts = ' start="%s"' % match.group(4)[:-1]
         else:
             lst_opts = ''
 
@@ -1743,16 +1750,17 @@ class Markdown(object):
             hits = []
             for marker_pat in (self._marker_ul, self._marker_ol):
                 less_than_tab = self.tab_width - 1
+                other_marker_pat = self._marker_ul if marker_pat == self._marker_ol else self._marker_ol
                 whole_list = r'''
                     (                   # \1 = whole list
                       (                 # \2
-                        [ ]{0,%d}
-                        (%s)            # \3 = first list item marker
+                        ([ ]{0,%d})     # \3 = the indentation level of the list item marker
+                        (%s)            # \4 = first list item marker
                         [ \t]+
-                        (?!\ *\3\ )     # '- - - ...' isn't a list. See 'not_quite_a_list' test case.
+                        (?!\ *\4\ )     # '- - - ...' isn't a list. See 'not_quite_a_list' test case.
                       )
                       (?:.+?)
-                      (                 # \4
+                      (                 # \5
                           \Z
                         |
                           \n{2,}
@@ -1761,9 +1769,15 @@ class Markdown(object):
                             [ \t]*
                             %s[ \t]+
                           )
+                        |
+                          \n+
+                          (?=
+                            \3          # lookahead for a different style of list item marker
+                            %s[ \t]+
+                          )
                       )
                     )
-                ''' % (less_than_tab, marker_pat, marker_pat)
+                ''' % (less_than_tab, marker_pat, marker_pat, other_marker_pat)
                 if self.list_level:  # sub-list
                     list_re = re.compile("^"+whole_list, re.X | re.M | re.S)
                 else:
@@ -2092,6 +2106,42 @@ class Markdown(object):
         hashed = _hash_text(text)
         self._code_table[text] = hashed
         return hashed
+
+    def _wavedrom_block_sub(self, match):
+        # if this isn't a wavedrom diagram block, exit now
+        if match.group(2) != 'wavedrom':
+            return match.string[match.start():match.end()]
+
+        # dedent the block for processing
+        lead_indent, waves = self._uniform_outdent(match.group(3))
+        # default tags to wrap the wavedrom block in
+        open_tag, close_tag = '<script type="WaveDrom">\n', '</script>'
+
+        # check if the user would prefer to have the SVG embedded directly
+        if not isinstance(self.extras['wavedrom'], dict):
+            embed_svg = True
+        else:
+            # default behaviour is to embed SVGs
+            embed_svg = self.extras['wavedrom'].get('prefer_embed_svg', True)
+
+        if embed_svg:
+            try:
+                import wavedrom
+                waves = wavedrom.render(waves).tostring()
+                open_tag, close_tag = '<div>', '\n</div>'
+            except ImportError:
+                pass
+
+        # hash SVG to prevent <> chars being messed with
+        self._escape_table[waves] = _hash_text(waves)
+
+        return self._uniform_indent(
+            '\n%s%s%s\n' % (open_tag, self._escape_table[waves], close_tag),
+            lead_indent, include_empty_lines=True
+        )
+
+    def _do_wavedrom_blocks(self, text):
+        return self._fenced_code_block_re.sub(self._wavedrom_block_sub, text)
 
     _admonitions = r'admonition|attention|caution|danger|error|hint|important|note|tip|warning'
     _admonitions_re = re.compile(r'''

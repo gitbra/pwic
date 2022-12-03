@@ -23,7 +23,7 @@ from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
 
-from pwic_lib import PwicConst
+from pwic_lib import PwicConst, PwicLib
 
 
 class PwicExtension():
@@ -373,7 +373,19 @@ class PwicExtension():
         ''' Event to calculate the meta HTML header 'robots' when a page is rendered.
             The result tells if the parameter 'robots' (that contains the result) has been changed.
         '''
-        return False
+        # Offline mode for the special pages
+        offline = template in ['search', 'page-history']
+        if (template == 'page') and not data['latest']:
+            seo_hide_revs = PwicLib.option(sql, project, 'seo_hide_revs') is not None
+            validated_only = PwicLib.option(sql, project, 'validated_only') is not None
+            if seo_hide_revs and not validated_only:
+                offline = True
+        if offline:
+            robots['archive'] = False
+            robots['index'] = False
+            #robots['follow'] = False
+            robots['snippet'] = False
+        return True
 
     @staticmethod
     def on_http_headers(sql: sqlite3.Cursor,                # Cursor to query the database
