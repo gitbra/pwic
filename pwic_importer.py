@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2022 Alexandre Bréard
+# Copyright (C) 2020-2023 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -69,7 +69,8 @@ class PwicImporter():
 
     @staticmethod
     def get_allowed_extensions() -> List[str]:
-        return ['odt', 'htm', 'html']
+        return (PwicImporterOdt.get_extensions()
+                + PwicImporterHtml.get_extensions())
 
 
 # =========

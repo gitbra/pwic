@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2022 Alexandre Bréard
+# Copyright (C) 2020-2023 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -2602,8 +2602,7 @@ class PwicServer():
             return _feed_atom(sql, project, row['description'], feed_size)
         if feed == 'rss':
             return _feed_rss(sql, project, row['description'], feed_size)
-        else:
-            return _feed_json(sql, project, days)
+        return _feed_json(sql, project, days)
 
     async def api_project_searchlink_get(self, request: web.Request) -> web.Response:
         ''' Search link to be added to the browser '''
