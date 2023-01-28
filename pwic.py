@@ -4136,7 +4136,7 @@ class PwicServer():
         # Convert to Markdown
         converter = PwicImporter(user)
         data = converter.convert(sql, docid)
-        if data is None:
+        if data in [None, '']:
             raise web.HTTPUnprocessableEntity()
         return web.Response(text=data, content_type=PwicLib.mime('md'))
 
@@ -4203,8 +4203,8 @@ def main() -> bool:
     # ... PWIC
     app['pwic'] = PwicServer(app['sql'])
     # ... session
-    keep_sessions = PwicLib.option(sql, '', 'keep_sessions') is None
-    if keep_sessions:
+    keep_sessions = PwicLib.option(sql, '', 'keep_sessions') is not None
+    if not keep_sessions:
         sql.execute(''' DELETE FROM env
                         WHERE key = 'pwic_session' ''')
     skey: Union[Optional[str], bytes] = PwicLib.option(sql, '', 'pwic_session')
