@@ -4227,7 +4227,7 @@ def main() -> bool:
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
-    app.add_routes(PwicExtension.load_custom_routes())
+    app.add_routes(PwicExtension.load_custom_routes(app['pwic']))
     app.add_routes([web.post('/api/login', app['pwic'].api_login),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),

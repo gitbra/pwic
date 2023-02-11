@@ -456,6 +456,8 @@ class PwicExtension():
             The result is the new Markdown text to be processed.
             The control hash key is not affected.
         '''
+        # ReDoS protection
+        markdown = PwicLib.recursive_replace(markdown, '*_*_*_*_*_*_*_*', '*')
         return markdown
 
     @staticmethod
@@ -588,12 +590,12 @@ class PwicExtension():
     # ===============
 
     @staticmethod
-    def load_custom_routes() -> List[web.RouteDef]:
+    def load_custom_routes(server,                          # PwicServer
+                           ) -> List[web.RouteDef]:
         # return [web.static('/.well-known/acme-challenge/', '/path/to/acme/challenge/'),
-        #         web.get('/special/sample', PwicExtension.on_special_sample)]
+        #         web.get('/special/sample', PwicExtension.on_page_special_sample)]
         return []
 
     # @staticmethod
-    # async def on_special_sample(request: web.Request) -> web.Response:
-    #     # from pwic_lib import PwicLib
+    # async def on_page_special_sample(request: web.Request) -> web.Response:
     #     return web.Response(text='Hello world!', content_type=PwicLib.mime('html'))
