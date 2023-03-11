@@ -49,7 +49,7 @@ class PwicConst:
     #  System
     # ========
 
-    VERSION = '1.0'
+    VERSION = '1.1'
     DB = './db'
     DB_SQLITE = DB + '/pwic.sqlite'
     DB_SQLITE_BACKUP = DB + '/pwic_%s.sqlite'
@@ -67,7 +67,7 @@ class PwicConst:
     PUBLIC_KEY = 'db/pwic_https.crt'
     CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'               # Various signs incompatible with filesystem, HTML, SQL...
     MAGIC_OAUTH = 'OAuth'
-    NOT_PROJECT = ['', 'api', 'special', 'static']
+    NOT_PROJECT = ['', 'admin', 'api', 'bugs', 'issues', 'special', 'static', 'tracker']
 
     # ========
     #  Packed

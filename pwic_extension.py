@@ -31,7 +31,7 @@ class PwicExtension():
 
         The behavior of Pwic.wiki is changeable in this file through a logic of events
         positioned at critical positions in the code base. It is easier and safer to
-        implement some changes here but it remains technically sensible.
+        implement some changes here but it remains technically sensitive.
 
         Each method is always active and generally returns from 0 to 2 results.
         The first one usually tells if something happened. The second one provides
