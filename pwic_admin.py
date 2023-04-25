@@ -347,7 +347,9 @@ class PwicAdmin():
                             "date" TEXT NOT NULL,
                             PRIMARY KEY("project")
                         )''')
-        sql.execute(''' INSERT INTO projects (project, description, date) VALUES ('', '', '')''')   # Empty projects.project
+        sql.execute(''' INSERT INTO projects (project, description, date)
+                        VALUES ('', '', ?)''',
+                    (dt['date'], ))
 
         # Table ENV
         sql.execute(''' CREATE TABLE "env" (

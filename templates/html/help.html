@@ -45,6 +45,7 @@
 			<tr><td><a href="#help_log">View the activity log</a></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 			<tr><td><a href="#help_log_user">View the activity of a user</a></td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}}</td></tr>
 			<tr><td><a href="#help_api">Automate Pwic.wiki (API)</a></td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
+			<tr><td><a href="#help_bi">Report into BI (OData)</a></td><td>{{pwic.emojis.check}}</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td><td>{{pwic.emojis.check}} (partial)</td></tr>
 			<tr><td><a href="#help_licenses">Read the licences</a></td><td>{{pwic.emojis.check}}</td><td></td><td></td><td></td><td></td></tr>
 		</table>
 
@@ -426,6 +427,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Enable a basic protection to prevent the user from playing around with his web browser to copy the text of the main page. It also forces the readers to focus on reading the page.</td>
+					</tr>
+					<tr>
+						<td><code>odata</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Enable the <a href="#help_bi">OData service</a> to report Pwic.wiki into your favorite BI system.</td>
 					</tr>
 					<tr>
 						<td><code>odt_image_height_max</code></td>
@@ -928,12 +935,33 @@
 		<p>The user page contains a public overview online of the recently modified pages (over the last 30 days) and the uploaded documents.</p>
 		<p>Your own user page is mentioned in the footer.</p>
 
-
 		<h1 id="help_api"><a href="#top">{{pwic.emojis.finger_up}}</a> Automate Pwic.wiki (API)</h1>
 		<p>The web interface communicates with <em>Pwic.wiki</em> through an application programming interface (API) whose specifications are <a href="/api">available online</a>.</p>
 		<p>You can develop external robots in the limit of your permitted authorizations. Some examples are available in the folder <code>static/api/</code>.</p>
 		<p>You can add your own paths by extending the source code.</p>
 
+		<h1 id="help_bi"><a href="#top">{{pwic.emojis.finger_up}}</a> Report into BI</h1>
+
+			<h2 id="help_bi_api">Through API remotely</h2>
+			<p>The <em>Application Programming Interface</em> (API) is a set of custom HTTP end-points used by the web user interface to perform all the updates in <em>Pwic.wiki</em> via POST requests mostly. All the users have access to a partial set of safe features depending on their online authentication.</p>
+			<p>The API is usable for the mass automation of the public data in read and write mode. It does not integrate well with BI tools because the data model is not reflected transparently and consistently.</p>
+			<p>The API cannot be turned off but you can restrict the users by their authorizations for each project.</p>
+
+			<h2 id="help_bi_odbc">Through ODBC locally</h2>
+			<p>If you have a direct and local access to the server, you can use an SQLite ODBC driver locally to integrate <em>Pwic.wiki</em> with your favorite BI tool. However, all the data will be exposed without any filter or check. It is a critical point of failure if you leak the values of the private keys stored in the table <em>env</em>.</p>
+			<p>There is no possible option to prevent the local use of an ODBC driver. The access to the database is restricted by the file system only.</p>
+
+			<h2 id="help_bi_odata">Through OData remotely</h2>
+			<p>OData is a protocol to share data with external systems. <em>Pwic.wiki</em> implements minimalistic features (read-only, no filter, no stream, basic authentication), so that you can query the data remotely for your reporting. The tested tool is PowerBI that is often used in the business environments.</p>
+			<p>First, you need to activate the OData interface through the global option <code>odata</code>. Its effect is immediate.</p>
+			<p>Second, the OData feed is available at the following addresses:</p>
+				<ul>
+					<li><code>/api/odata</code>: the description of the service,</li>
+					<li><code>/api/odata/$metadata</code>: the schema of the data,</li>
+					<li><code>/api/odata/table</code>: the data with the name <em>table</em> to be replaced by the real name that you want to retrieve. The paths are provided in the root description of the service.</li>
+				</ul>
+			<p>The data are filtered from source and the private ones remain hidden. The OData cannot be filtered out by a dollar-argument. An authentication through a challenge <em>Basic</em> applies at the lowest level only. You cannot use the federated authentication (<a href="#help_sso">OAuth</a>). For your security within an untrusted network, you should enable HTTPS. The exposed data may differ depending on your authorizations. A basic use of OData is possible with an account having a role of reader on the projects that you wants to report on.</p>
+			<p>The mass import of the tables in PowerBI via the shortest path is not supported for an unknown technical reason. Instead, you should add each table by its full path, which will require an authentication each time.</p>
 
 		<h1 id="help_licenses"><a href="#top">{{pwic.emojis.finger_up}}</a> Read the licenses</h1>
 		<p><em>Pwic.wiki</em> is released under the terms of the GNU Affero General Public License v3+. For more details, refer to the file <code>LICENSE</code>.</p>

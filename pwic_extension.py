@@ -34,7 +34,7 @@ class PwicExtension():
         implement some changes here but it remains technically sensitive.
 
         Each method is always active and generally returns from 0 to 2 results.
-        The first one usually tells if something happened. The second one provides
+        The first one usually indicates if something happened. The second one provides
         the new result. With no result, the parameters of the method are changeable
         if they are passed as a reference, else raise an exception.
     '''
@@ -73,7 +73,7 @@ class PwicExtension():
                                      document: Dict[str, Any],          # Submitted document (changeable)
                                      ) -> bool:
         ''' Event when a new document is submitted and before many internal checks are executed.
-            The result tells if the creation of the document is possible.
+            The result indicates if the creation of the document is possible.
         '''
         return True
 
@@ -87,8 +87,8 @@ class PwicExtension():
                                filename: str,                           # Name of the file
                                ) -> bool:
         ''' Event when the file must be deleted.
-            For the local files, the result tells if the deletion of the document is possible and Pwic.wiki will perform the deletion.
-            For the external files, you must delete the file with your custom logic, so the result tells if the operation is successful.
+            For the local files, the result indicates if the deletion of the document is possible and Pwic.wiki will perform the deletion.
+            For the external files, you must delete the file with your custom logic, so the result indicates if the operation is successful.
             The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
         '''
         # local_path = os.path.join(PwicConst.DOCUMENTS_PATH % project, filename)
@@ -116,7 +116,7 @@ class PwicExtension():
                                new_filename: str,           # Target file name
                                ) -> bool:
         ''' Event when a local file is renamed.
-            The result tells if the renaming of the document is possible.
+            The result indicates if the renaming of the document is possible.
         '''
         # local_path = os.path.join(PwicConst.DOCUMENTS_PATH % project, filename)
         return True
@@ -132,7 +132,7 @@ class PwicExtension():
                            milestone: str,                  # Milestone
                            ) -> bool:
         ''' Event when a new page is created.
-            The result tells if the creation of the page is possible.
+            The result indicates if the creation of the page is possible.
         '''
         return True
 
@@ -145,7 +145,7 @@ class PwicExtension():
                            revision: int,                   # Number of the revision
                            ) -> bool:
         ''' Event when a given revision of a page is about to be deleted.
-            The result tells if the deletion of the page is possible.
+            The result indicates if the deletion of the page is possible.
         '''
         return True
 
@@ -166,7 +166,7 @@ class PwicExtension():
                          protection: bool,                  # Flag for protection
                          ) -> bool:
         ''' Event when a new revision is submitted.
-            The result tells if the update of the page is possible.
+            The result indicates if the update of the page is possible.
         '''
         return True
 
@@ -181,7 +181,7 @@ class PwicExtension():
                            name: str                        # Target file name
                            ) -> Tuple[bool, Any, Dict]:
         ''' Event when a single page is exported.
-            The first result tells if the own implementation overrides the standard download.
+            The first result indicates if the own implementation overrides the standard download.
             The second result gives the new content to be downloaded. The value None denotes a forbidden download.
             The third result configures the HTTP response to ease the download with a correct format.
             An exception can be raised to cancel the download.
@@ -198,7 +198,7 @@ class PwicExtension():
                          dst_page: str,                     # Destination page
                          ) -> bool:
         ''' Event when a given page is renamed and/or moved to another project.
-            The result tells if both the rename and the move of the page is possible.
+            The result indicates if both the rename and the move of the page is possible.
             No other extension is called during the operation.
         '''
         return True
@@ -224,7 +224,7 @@ class PwicExtension():
                              revision: int,                 # Number of the revision
                              ) -> bool:
         ''' Event when a given revision of a page is validated.
-            The result tells if the validation of the page is possible.
+            The result indicates if the validation of the page is possible.
         '''
         return True
 
@@ -262,7 +262,7 @@ class PwicExtension():
                            user: str,                       # Sanitized name of the new user account
                            ) -> bool:
         ''' Event when an administrator requests the creation of a new user account (if needed) and its assignment to the project.
-            The result tells if the full operation is permitted.
+            The result indicates if the full operation is permitted.
             This check is important because there is no native way to remove a misspelled user account.
         '''
         return True
@@ -274,7 +274,7 @@ class PwicExtension():
                                     new_password: str,      # New desired password
                                     ) -> bool:
         ''' Event when a user changes his password.
-            The result tells if the modification of the password is allowed.
+            The result indicates if the modification of the password is allowed.
         '''
         return True
 
@@ -288,7 +288,7 @@ class PwicExtension():
                               state: Optional[str],         # New value of the role
                               ) -> bool:
         ''' Event when an administrator deletes or modifies a role of a user account.
-            The result tells if the modification of the role is allowed.
+            The result indicates if the modification of the role is allowed.
         '''
         return True
 
@@ -316,7 +316,7 @@ class PwicExtension():
                       event: Dict[str, Any],                # Details of the event
                       ) -> bool:
         ''' Event to block some audit events. You have no possibility to recover the rejected events.
-            The result tells if the audit event is skipped.
+            The result indicates if the audit event is skipped.
         '''
         return False
 
@@ -329,7 +329,7 @@ class PwicExtension():
                  revision: int,                             # Revision of the page
                  ) -> bool:
         ''' Event when a page is calling the cache.
-            The result tells if the cache can be used, so if the page should not be regenerated.
+            The result indicates if the cache can be used, so if the page should not be regenerated.
         '''
         return True
 
@@ -343,7 +343,7 @@ class PwicExtension():
                         filesize: int,                      # Size of the file
                         ) -> bool:
         ''' Event when a document is requested.
-            The result tells if the download of the document is allowed.
+            The result indicates if the download of the document is allowed.
         '''
         return True
 
@@ -371,7 +371,7 @@ class PwicExtension():
                        robots: Dict[str, Optional[bool]],   # Status of the robots (assign None to remove the value)
                        ) -> bool:
         ''' Event to calculate the meta HTML header 'robots' when a page is rendered.
-            The result tells if the parameter 'robots' (that contains the result) has been changed.
+            The result indicates if the parameter 'robots' (that contains the result) has been changed.
         '''
         # Offline mode for the special pages
         offline = template in ['search', 'page-history']
@@ -406,7 +406,7 @@ class PwicExtension():
                     authorized: bool,                       # Current status of the authorization
                     ) -> bool:
         ''' Event when the IP address of the user is checked.
-            The result tells if the IP address is authorized.
+            The result indicates if the IP address is authorized.
         '''
         return authorized
 
@@ -441,7 +441,7 @@ class PwicExtension():
                  ip: str,                                   # IP address
                  ) -> bool:
         ''' Event when a user successfully connects with a password.
-            The result tells if the connection is possible.
+            The result indicates if the connection is possible.
         '''
         return True
 
@@ -467,6 +467,26 @@ class PwicExtension():
                  ) -> None:
         ''' Event when email addresses are fetched from the remote OAuth server.
             Modify the parameter 'emails' without reallocating it.
+        '''
+
+    @staticmethod
+    def on_odata_content_pre(sql: sqlite3.Cursor,           # Cursor to query the database
+                             request: web.Request,          # HTTP request
+                             user: str,                     # Name of the user
+                             ) -> bool:
+        ''' Event when a user calls a content through the OData interface.
+            The result indicates if the operation is allowed.
+        '''
+        return True
+
+    @staticmethod
+    def on_odata_content(sql: sqlite3.Cursor,               # Cursor to query the database
+                         request: web.Request,              # HTTP request
+                         user: str,                         # Name of the user
+                         data: Dict[str, Any],              # Content to be delivered
+                         ) -> None:
+        ''' Event when an OData object is returned to the connected user.
+            Changing the structure of the OData object in parameter is not allowed by the OData design.
         '''
 
     @staticmethod
@@ -537,7 +557,7 @@ class PwicExtension():
                             ) -> bool:
         ''' Event to delegate the search of the documents.
             Populate pwic['documents'] to return the found documents.
-            The result tells if you implemented a custom logic.
+            The result indicates if you implemented a custom logic.
         '''
         return False
 
@@ -550,7 +570,7 @@ class PwicExtension():
                         ) -> bool:
         ''' Event to delegate the search of the pages.
             Populate pwic['pages'] to return the found pages, without reallocating it.
-            The result tells if you implemented a custom logic.
+            The result indicates if you implemented a custom logic.
         '''
         return False
 
@@ -571,7 +591,7 @@ class PwicExtension():
                         sql: sqlite3.Cursor,                # Cursor to query the database
                         ) -> bool:
         ''' Event when the server is ready to start.
-            The result tells if the server can start.
+            The result indicates if the server can start.
         '''
         return True
 

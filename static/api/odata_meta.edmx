@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+	<edmx:DataServices>
+		<Schema Namespace="wiki.pwic.odata.model" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+			<EntityType Name="Env">
+				<Key>
+					<PropertyRef Name="project"/>
+					<PropertyRef Name="key"/>
+				</Key>
+				<Property Name="project" Type="Edm.String" Nullable="false"/>
+				<Property Name="key" Type="Edm.String" Nullable="false"/>
+				<Property Name="value" Type="Edm.String" Nullable="false"/>
+				<NavigationProperty Name="env2project" Type="wiki.pwic.odata.model.Project">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityType Name="Document">
+				<Key>
+					<PropertyRef Name="id"/>
+				</Key>
+				<Property Name="id" Type="Edm.Int32" Nullable="false"/>
+				<Property Name="project" Type="Edm.String" Nullable="false"/>
+				<Property Name="page" Type="Edm.String" Nullable="false"/>
+				<Property Name="filename" Type="Edm.String" Nullable="false"/>
+				<Property Name="mime" Type="Edm.String" Nullable="false"/>
+				<Property Name="size" Type="Edm.Int32" Nullable="false"/>
+				<Property Name="width" Type="Edm.Int32" Nullable="false"/>
+				<Property Name="height" Type="Edm.Int32" Nullable="false"/>
+				<Property Name="hash" Type="Edm.String" Nullable="false"/>
+				<Property Name="author" Type="Edm.String" Nullable="false"/>
+				<Property Name="date" Type="Edm.Date" Nullable="false"/>
+				<Property Name="time" Type="Edm.TimeOfDay" Nullable="false"/>
+				<Property Name="exturl" Type="Edm.String" Nullable="false"/>
+				<NavigationProperty Name="document2page" Type="Collection(wiki.pwic.odata.model.Page)">
+					<!-- The relation is 1-n in the OData (latest=X), but N-N in the database -->
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+					<ReferentialConstraint Property="page" ReferencedProperty="page"/>
+				</NavigationProperty>
+				<NavigationProperty Name="document2project" Type="wiki.pwic.odata.model.Project">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="document2user" Type="wiki.pwic.odata.model.User">
+					<ReferentialConstraint Property="author" ReferencedProperty="user"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityType Name="Page">
+				<Key>
+					<PropertyRef Name="project"/>
+					<PropertyRef Name="page"/>
+					<PropertyRef Name="revision"/>
+				</Key>
+				<Property Name="project" Type="Edm.String" Nullable="false"/>
+				<Property Name="page" Type="Edm.String" Nullable="false"/>
+				<Property Name="revision" Type="Edm.Int32" Nullable="false"/>
+				<Property Name="draft" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="final" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="header" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="protection" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="author" Type="Edm.String" Nullable="false"/>
+				<Property Name="date" Type="Edm.Date" Nullable="false"/>
+				<Property Name="time" Type="Edm.TimeOfDay" Nullable="false"/>
+				<Property Name="title" Type="Edm.String" Nullable="false"/>
+				<Property Name="tags" Type="Edm.String" Nullable="false"/>
+				<Property Name="comment" Type="Edm.String" Nullable="false"/>
+				<Property Name="milestone" Type="Edm.String" Nullable="false"/>
+				<Property Name="valuser" Type="Edm.String" Nullable="false"/>
+				<Property Name="valdate" Type="Edm.Date" Nullable="false"/>
+				<Property Name="valtime" Type="Edm.TimeOfDay" Nullable="false"/>
+				<NavigationProperty Name="page2document" Type="Collection(wiki.pwic.odata.model.Document)">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+					<ReferentialConstraint Property="page" ReferencedProperty="page"/>
+				</NavigationProperty>
+				<NavigationProperty Name="page2project" Type="wiki.pwic.odata.model.Project">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="page2user1" Type="wiki.pwic.odata.model.User">
+					<ReferentialConstraint Property="author" ReferencedProperty="user"/>
+				</NavigationProperty>
+				<NavigationProperty Name="page2user2" Type="wiki.pwic.odata.model.User">
+					<ReferentialConstraint Property="valuser" ReferencedProperty="user"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityType Name="Project">
+				<Key>
+					<PropertyRef Name="project"/>
+				</Key>
+				<Property Name="project" Type="Edm.String" Nullable="false"/>
+				<Property Name="description" Type="Edm.String" Nullable="false"/>
+				<Property Name="date" Type="Edm.Date" Nullable="false"/>
+				<NavigationProperty Name="project2document" Type="Collection(wiki.pwic.odata.model.Document)">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="project2env" Type="Collection(wiki.pwic.odata.model.Env)">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="project2page" Type="Collection(wiki.pwic.odata.model.Page)">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="project2role" Type="Collection(wiki.pwic.odata.model.Role)">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityType Name="User">
+				<Key>
+					<PropertyRef Name="user"/>
+				</Key>
+				<Property Name="user" Type="Edm.String" Nullable="false"/>
+				<Property Name="initial" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="password_date" Type="Edm.String" Nullable="false"/>
+				<Property Name="password_time" Type="Edm.String" Nullable="false"/>
+				<NavigationProperty Name="user2document" Type="Collection(wiki.pwic.odata.model.Document)">
+					<ReferentialConstraint Property="user" ReferencedProperty="author"/>
+				</NavigationProperty>
+				<NavigationProperty Name="user2page1" Type="Collection(wiki.pwic.odata.model.Page)">
+					<ReferentialConstraint Property="user" ReferencedProperty="author"/>
+				</NavigationProperty>
+				<NavigationProperty Name="user2page2" Type="Collection(wiki.pwic.odata.model.Page)">
+					<ReferentialConstraint Property="user" ReferencedProperty="valuser"/>
+				</NavigationProperty>
+				<NavigationProperty Name="user2role" Type="Collection(wiki.pwic.odata.model.Role)">
+					<ReferentialConstraint Property="user" ReferencedProperty="user"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityType Name="Role">
+				<Key>
+					<PropertyRef Name="project"/>
+					<PropertyRef Name="user"/>
+				</Key>
+				<Property Name="project" Type="Edm.String" Nullable="false"/>
+				<Property Name="user" Type="Edm.String" Nullable="false"/>
+				<Property Name="admin" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="manager" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="editor" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="validator" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="reader" Type="Edm.Boolean" Nullable="false"/>
+				<NavigationProperty Name="role2project" Type="wiki.pwic.odata.model.Project">
+					<ReferentialConstraint Property="project" ReferencedProperty="project"/>
+				</NavigationProperty>
+				<NavigationProperty Name="role2user" Type="wiki.pwic.odata.model.User">
+					<ReferentialConstraint Property="user" ReferencedProperty="user"/>
+				</NavigationProperty>
+			</EntityType>
+			<EntityContainer Name="Container">
+				<EntitySet Name="documents" EntityType="wiki.pwic.odata.model.Document">
+					<NavigationPropertyBinding Path="document2page" Target="pages"/>
+					<NavigationPropertyBinding Path="document2project" Target="projects"/>
+					<NavigationPropertyBinding Path="document2user" Target="users"/>
+				</EntitySet>
+				<EntitySet Name="env" EntityType="wiki.pwic.odata.model.Env">
+					<NavigationPropertyBinding Path="env2project" Target="projects"/>
+				</EntitySet>
+				<EntitySet Name="pages" EntityType="wiki.pwic.odata.model.Page">
+					<NavigationPropertyBinding Path="page2document" Target="documents"/>
+					<NavigationPropertyBinding Path="page2project" Target="projects"/>
+					<NavigationPropertyBinding Path="page2user1" Target="users"/>
+					<NavigationPropertyBinding Path="page2user2" Target="users"/>
+				</EntitySet>
+				<EntitySet Name="projects" EntityType="wiki.pwic.odata.model.Project">
+					<NavigationPropertyBinding Path="project2document" Target="documents"/>
+					<NavigationPropertyBinding Path="project2env" Target="env"/>
+					<NavigationPropertyBinding Path="project2page" Target="pages"/>
+					<NavigationPropertyBinding Path="project2role" Target="roles"/>
+				</EntitySet>
+				<EntitySet Name="roles" EntityType="wiki.pwic.odata.model.Role">
+					<NavigationPropertyBinding Path="role2project" Target="projects"/>
+					<NavigationPropertyBinding Path="role2user" Target="users"/>
+				</EntitySet>
+				<EntitySet Name="users" EntityType="wiki.pwic.odata.model.User">
+					<NavigationPropertyBinding Path="user2document" Target="documents"/>
+					<NavigationPropertyBinding Path="user2page1" Target="pages"/>
+					<NavigationPropertyBinding Path="user2page2" Target="pages"/>
+					<NavigationPropertyBinding Path="user2role" Target="roles"/>
+				</EntitySet>
+			</EntityContainer>
+		</Schema>
+	</edmx:DataServices>
+</edmx:Edmx>

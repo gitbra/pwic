@@ -23,6 +23,8 @@ from bisect import insort, bisect_left
 from datetime import datetime
 from difflib import HtmlDiff
 import gzip
+import binascii
+from base64 import b64decode
 from html import escape
 from io import BytesIO
 import json
@@ -208,7 +210,7 @@ class PwicServer():
             session['timestamp'] = PwicLib.intval(time())
 
         # Check the HTTP referer in POST method and the user
-        user = PwicLib.safe_user_name(session.get('user', ''))
+        user = PwicLib.safe_user_name(session.get('user'))
         if (request.method == 'POST') and app['options']['http_referer']:
             referer = request.headers.get('Referer', '')
             if referer[:len(app['options']['base_url'])] != app['options']['base_url']:
@@ -328,7 +330,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Show the requested page
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
         page = PwicLib.safe_name(request.match_info.get('page', PwicConst.DEFAULTS['page']))
         page_special = (page == 'special')
         revision = PwicLib.intval(request.match_info.get('revision', '0'))
@@ -771,7 +773,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Check the authorizations
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT COUNT(*) AS total
                         FROM roles AS a
@@ -808,7 +810,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the parameters
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
         sql = self.dbconn.cursor()
         days = max(-1, PwicLib.intval(PwicLib.option(sql, project, 'audit_range', '30')))
         dt = PwicLib.dt(days)
@@ -860,8 +862,8 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the projects where the user can add pages
-        pwic: Dict[str, Any] = {'default_project': PwicLib.safe_name(request.rel_url.query.get('project', '')),
-                                'default_page': PwicLib.safe_name(request.rel_url.query.get('page', ''))}
+        pwic: Dict[str, Any] = {'default_project': PwicLib.safe_name(request.rel_url.query.get('project')),
+                                'default_page': PwicLib.safe_name(request.rel_url.query.get('page'))}
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT a.project, b.description
                         FROM roles AS a
@@ -910,7 +912,7 @@ class PwicServer():
 
         # Fetch the information of the user
         sql = self.dbconn.cursor()
-        userpage = PwicLib.safe_user_name(request.match_info.get('userpage', ''))
+        userpage = PwicLib.safe_user_name(request.match_info.get('userpage'))
         row = sql.execute(''' SELECT password, initial FROM users WHERE user = ?''', (userpage, )).fetchone()
         if row is None:
             raise web.HTTPNotFound()
@@ -1003,7 +1005,7 @@ class PwicServer():
 
         # Parse the query
         sql = self.dbconn.cursor()
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
         if PwicLib.option(sql, project, 'no_search') is not None:
             query = None
         else:
@@ -1162,7 +1164,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the parameters
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
 
         # Verify that the user is an administrator
         sql = self.dbconn.cursor()
@@ -1193,7 +1195,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the name of the project
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
         sql = self.dbconn.cursor()
         pwic: Dict[str, Any] = {'project': project,
                                 'roles': []}
@@ -1253,7 +1255,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the parameters
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
 
         # Fetch the documents of the project
         sql = self.dbconn.cursor()
@@ -1345,7 +1347,7 @@ class PwicServer():
             return await self._handle_login(request)
 
         # Fetch the parameters
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
 
         # Check the authorizations
         sql = self.dbconn.cursor()
@@ -1379,8 +1381,8 @@ class PwicServer():
 
         # Fetch the parameters
         sql = self.dbconn.cursor()
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
-        page = PwicLib.safe_name(request.match_info.get('page', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
+        page = PwicLib.safe_name(request.match_info.get('page'))
         new_revision = PwicLib.intval(request.match_info.get('new_revision', ''))
         old_revision = PwicLib.intval(request.match_info.get('old_revision', ''))
 
@@ -1483,8 +1485,8 @@ class PwicServer():
             return web.HTTPUnauthorized()
 
         # Read the properties of the requested document
-        project = PwicLib.safe_name(request.match_info.get('project', ''))
-        page = PwicLib.safe_name(request.match_info.get('page', ''))
+        project = PwicLib.safe_name(request.match_info.get('project'))
+        page = PwicLib.safe_name(request.match_info.get('page'))
         if '' in [project, page]:
             raise web.HTTPBadRequest()
 
@@ -1564,7 +1566,7 @@ class PwicServer():
         # Fetch the submitted data
         session = await get_session(request)
         post = await self._handle_post(request)
-        user = PwicLib.safe_user_name(post.get('user', ''))
+        user = PwicLib.safe_user_name(post.get('user'))
         pwd = '' if user == PwicConst.USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
         lang = post.get('language', session.get('language', ''))
         if lang not in app['langs']:
@@ -1777,12 +1779,12 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
 
-        # Verify that the user is an administrator of the project
+        # Verify that the user is an administrator of the/a project
         sql = self.dbconn.cursor()
         if project != '':
-            sql.execute(''' SELECT user
+            sql.execute(''' SELECT 1
                             FROM roles
                             WHERE project  = ?
                               AND user     = ?
@@ -1791,6 +1793,15 @@ class PwicServer():
                         (project, user))
             if sql.fetchone() is None:
                 project = ''
+        if project == '':
+            sql.execute(''' SELECT 1
+                            FROM roles
+                            WHERE user     = ?
+                              AND admin    = 'X'
+                              AND disabled = '' ''',
+                        (user, ))
+            if sql.fetchone() is None:
+                raise web.HTTPUnauthorized()
 
         # Fetch the environment variables
         sql.execute(''' SELECT project, key, value
@@ -1798,22 +1809,23 @@ class PwicServer():
                         WHERE ( project = ?
                              OR project = '' )
                           AND   value   <> ''
-                        ORDER BY key ASC,
+                        ORDER BY key     ASC,
                                  project DESC''',
                     (project, ))
+
+        # Formatting
         data = {}
         for row in sql.fetchall():
             if row['key'] not in PwicConst.ENV:
                 continue
             (global_, key, value) = (row['project'] == '', row['key'], row['value'])
-            if PwicConst.ENV[key].private:
-                value = None
-            if key not in data:
-                data[key] = {'value': value,
-                             'global': global_,
-                             'project_independent': PwicConst.ENV[key].pindep,
-                             'project_dependent': PwicConst.ENV[key].pdep,
-                             'changeable': PwicConst.ENV[key].pdep and PwicConst.ENV[key].online}
+            if PwicConst.ENV[key].private or (key in data):
+                continue
+            data[key] = {'value': value,
+                         'global': global_,
+                         'project_independent': PwicConst.ENV[key].pindep,
+                         'project_dependent': PwicConst.ENV[key].pdep,
+                         'changeable': PwicConst.ENV[key].pdep and PwicConst.ENV[key].online}
 
         # Final result
         return web.Response(text=json.dumps(data), content_type=PwicLib.mime('json'))
@@ -1890,7 +1902,7 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        account = PwicLib.safe_name(post.get('user', ''))
+        account = PwicLib.safe_user_name(post.get('user'))
         if account == '':
             account = user
 
@@ -1924,13 +1936,13 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
-        page = PwicLib.safe_name(post.get('page', ''))                                  # Optional
-        allrevs = PwicLib.xb(PwicLib.x(post.get('all', '')))
-        no_markdown = PwicLib.xb(PwicLib.x(post.get('no_markdown', '')))
-        no_document = PwicLib.xb(PwicLib.x(post.get('no_document', '')))
+        page = PwicLib.safe_name(post.get('page'))                                  # Optional
+        allrevs = PwicLib.xb(PwicLib.x(post.get('all')))
+        no_markdown = PwicLib.xb(PwicLib.x(post.get('no_markdown')))
+        no_document = PwicLib.xb(PwicLib.x(post.get('no_document')))
         data: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
 
         # Restriction of the API
@@ -2012,8 +2024,8 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        key = PwicLib.safe_name(post.get('key', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        key = PwicLib.safe_name(post.get('key'))
         value = post.get('value', '').replace('\r', '').strip()
         if (((project == '')
              or (key not in PwicConst.ENV)
@@ -2059,12 +2071,12 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        admin = PwicLib.xb(PwicLib.x(post.get('admin', '')))
-        manager = PwicLib.xb(PwicLib.x(post.get('manager', '')))
-        editor = PwicLib.xb(PwicLib.x(post.get('editor', '')))
-        validator = PwicLib.xb(PwicLib.x(post.get('validator', '')))
-        reader = PwicLib.xb(PwicLib.x(post.get('reader', '')))
+        project = PwicLib.safe_name(post.get('project'))
+        admin = PwicLib.xb(PwicLib.x(post.get('admin')))
+        manager = PwicLib.xb(PwicLib.x(post.get('manager')))
+        editor = PwicLib.xb(PwicLib.x(post.get('editor')))
+        validator = PwicLib.xb(PwicLib.x(post.get('validator')))
+        reader = PwicLib.xb(PwicLib.x(post.get('reader')))
         operator = post.get('operator', '')
         if (project == '') or not (admin or manager or editor or validator or reader) or (operator not in ['or', 'and', 'exact']):
             raise web.HTTPBadRequest()
@@ -2131,7 +2143,7 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         tags = PwicLib.list_tags(post.get('tags', ''))
         if '' in [project, tags]:
             raise web.HTTPBadRequest()
@@ -2192,7 +2204,7 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -2322,7 +2334,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Get the parameters
-        project = PwicLib.safe_name(request.rel_url.query.get('project', ''))
+        project = PwicLib.safe_name(request.rel_url.query.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -2573,7 +2585,7 @@ class PwicServer():
 
         # Get the parameters
         feed = request.match_info.get('feed', 'atom')
-        project = PwicLib.safe_name(request.rel_url.query.get('project', ''))
+        project = PwicLib.safe_name(request.rel_url.query.get('project'))
         days = min(max(0, PwicLib.intval(request.rel_url.query.get('days', '7'))), 90)
         if (feed not in ['atom', 'rss', 'json']) or (project == ''):
             raise web.HTTPBadRequest()
@@ -2612,7 +2624,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Get the parameters
-        project = PwicLib.safe_name(request.rel_url.query.get('project', ''))
+        project = PwicLib.safe_name(request.rel_url.query.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
 
@@ -2656,7 +2668,7 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Fetch the parameters
-        project = PwicLib.safe_name(request.rel_url.query.get('project', ''))
+        project = PwicLib.safe_name(request.rel_url.query.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
         sql = self.dbconn.cursor()
@@ -2713,14 +2725,14 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        kb = PwicLib.xb(PwicLib.x(post.get('kb', '')))
-        page = '' if kb else PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        kb = PwicLib.xb(PwicLib.x(post.get('kb')))
+        page = '' if kb else PwicLib.safe_name(post.get('page'))
         tags = PwicLib.list_tags(post.get('tags', ''))
         milestone = post.get('milestone', '').strip()
-        ref_project = PwicLib.safe_name(post.get('ref_project', ''))
-        ref_page = PwicLib.safe_name(post.get('ref_page', ''))
-        ref_tags = PwicLib.xb(PwicLib.x(post.get('ref_tags', '')))
+        ref_project = PwicLib.safe_name(post.get('ref_project'))
+        ref_page = PwicLib.safe_name(post.get('ref_page'))
+        ref_tags = PwicLib.xb(PwicLib.x(post.get('ref_tags')))
         if (((project in PwicConst.NOT_PROJECT)
              or (not kb and (page in ['', 'special']))
              or ((ref_page != '') and (ref_project == '')))):
@@ -2832,20 +2844,20 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         title = post.get('title', '').strip()
         markdown = post.get('markdown', '')                 # No strip()
         tags = PwicLib.list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
-        draft = PwicLib.xb(PwicLib.x(post.get('draft', '')))
-        final = PwicLib.xb(PwicLib.x(post.get('final', '')))
+        draft = PwicLib.xb(PwicLib.x(post.get('draft')))
+        final = PwicLib.xb(PwicLib.x(post.get('final')))
         if final:
             draft = False
-        header = PwicLib.xb(PwicLib.x(post.get('header', '')))
-        protection = PwicLib.xb(PwicLib.x(post.get('protection', '')))
-        no_quick_fix = PwicLib.xb(PwicLib.x(post.get('no_quick_fix', '')))
+        header = PwicLib.xb(PwicLib.x(post.get('header')))
+        protection = PwicLib.xb(PwicLib.x(post.get('protection')))
+        no_quick_fix = PwicLib.xb(PwicLib.x(post.get('no_quick_fix')))
         dt = PwicLib.dt()
         if '' in [user, project, page, title, comment]:
             raise web.HTTPBadRequest()
@@ -3017,8 +3029,8 @@ class PwicServer():
 
         # Get the revision to validate
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
         if ('' in [project, page]) or (revision == 0):
             raise web.HTTPBadRequest()
@@ -3077,10 +3089,10 @@ class PwicServer():
 
         # Get the page to move
         post = await self._handle_post(request)
-        srcproj = PwicLib.safe_name(post.get('ref_project', ''))
-        srcpage = PwicLib.safe_name(post.get('ref_page', ''))
-        dstproj = PwicLib.safe_name(post.get('project', ''))
-        dstpage = PwicLib.safe_name(post.get('page', ''))
+        srcproj = PwicLib.safe_name(post.get('ref_project'))
+        srcpage = PwicLib.safe_name(post.get('ref_page'))
+        dstproj = PwicLib.safe_name(post.get('project'))
+        dstpage = PwicLib.safe_name(post.get('page'))
         ignore_file_errors = PwicLib.xb(PwicLib.x(post.get('ignore_file_errors', 'X')))
         if dstpage == '':
             dstpage = srcpage
@@ -3220,8 +3232,8 @@ class PwicServer():
 
         # Get the revision to delete
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
         if ('' in [project, page]) or (revision == 0):
             raise web.HTTPBadRequest()
@@ -3354,8 +3366,8 @@ class PwicServer():
 
         # Read the parameters
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
         extension = post.get('format', '').strip().lower()
         if '' in [project, page, extension]:
@@ -3397,7 +3409,7 @@ class PwicServer():
 
         # Get the parameters
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         markdown = post.get('markdown', '')
         if project == '':
             raise web.HTTPBadRequest()
@@ -3433,9 +3445,9 @@ class PwicServer():
 
         # Fetch the submitted data
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         wisheduser = post.get('user', '').strip().lower()
-        newuser = PwicLib.safe_user_name(post.get('user', ''))
+        newuser = PwicLib.safe_user_name(post.get('user'))
         if (wisheduser != newuser) or ('' in [project, newuser]) or (newuser[:4] == 'pwic'):
             raise web.HTTPBadRequest()
 
@@ -3572,8 +3584,8 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        userpost = PwicLib.safe_user_name(post.get('name', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        userpost = PwicLib.safe_user_name(post.get('name'))
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
             roleid = roles.index(post.get('role', ''))
@@ -3909,10 +3921,10 @@ class PwicServer():
         ''' Download a file by redirecting to the right location '''
         # Fetch the parameters
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         docid = PwicLib.intval(post.get('id', '0'))
-        attachment = PwicLib.xb(PwicLib.x(post.get('attachment', '')))
+        attachment = PwicLib.xb(PwicLib.x(post.get('attachment')))
 
         # Redirect to the file
         if docid > 0:
@@ -3930,8 +3942,8 @@ class PwicServer():
 
         # Read the parameters
         post = await self._handle_post(request)
-        project = PwicLib.safe_name(post.get('project', ''))
-        page = PwicLib.safe_name(post.get('page', ''))
+        project = PwicLib.safe_name(post.get('project'))
+        page = PwicLib.safe_name(post.get('page'))
         if '' in [project, page]:
             raise web.HTTPBadRequest()
 
@@ -3979,7 +3991,7 @@ class PwicServer():
         # Read the parameters
         post = await self._handle_post(request)
         docid = PwicLib.intval(post.get('id', ''))
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         filename = PwicLib.safe_file_name(post.get('filename', ''))
         if (docid == 0) or (filename == ''):
             raise web.HTTPBadRequest()
@@ -4049,7 +4061,7 @@ class PwicServer():
         # Get the file to delete
         post = await self._handle_post(request)
         docid = PwicLib.intval(post.get('id', 0))
-        project = PwicLib.safe_name(post.get('project', ''))
+        project = PwicLib.safe_name(post.get('project'))
         if (project == '') or (docid == 0):
             raise web.HTTPBadRequest()
 
@@ -4139,6 +4151,209 @@ class PwicServer():
         if data in [None, '']:
             raise web.HTTPUnprocessableEntity()
         return web.Response(text=data, content_type=PwicLib.mime('md'))
+
+    async def api_odata(self, request: web.Request) -> web.Response:
+        # Verify the availability of the service
+        sql = self.dbconn.cursor()
+        if PwicLib.option(sql, '', 'odata') is None:
+            raise web.HTTPServiceUnavailable()
+
+        # Content
+        base_url = str(PwicLib.option(sql, '', 'base_url', ''))
+        with open('./static/api/odata_service.xml', mode='r') as f:
+            content = f.read()
+        content = (content.replace('\t', '')
+                          .replace('\r', '')
+                          .replace('\n', '')
+                          .replace('{base_url}', base_url)
+                          .strip())
+        return web.Response(text=content,
+                            content_type='application/xml',
+                            headers={'OData-Version': '4.0'})
+
+    async def api_odata_metadata(self, request: web.Request) -> web.Response:
+        # Verify the availability of the service
+        sql = self.dbconn.cursor()
+        if PwicLib.option(sql, '', 'odata') is None:
+            raise web.HTTPServiceUnavailable()
+
+        # Content
+        with open('./static/api/odata_meta.edmx', mode='r') as f:
+            content = f.read()
+        content = (content.replace('\t', '')
+                          .replace('\r', '')
+                          .replace('\n', '')
+                          .strip())
+        return web.Response(text=content,
+                            content_type='application/xml',
+                            headers={'OData-Version': '4.0'})
+
+    async def api_odata_content(self, request: web.Request) -> web.Response:
+        # Check the IP address
+        self._check_ip(PwicExtension.on_ip_header(request))
+
+        # Verify the availability of the service
+        sql = self.dbconn.cursor()
+        if PwicLib.option(sql, '', 'odata') is None:
+            raise web.HTTPServiceUnavailable()
+
+        # Fetch the user and its password
+        auth = request.headers.get('Authorization', '')
+        if auth == '':
+            return web.Response(status=401, headers={'WWW-Authenticate': 'Basic'})
+        if auth[:6] != 'Basic ':
+            raise web.HTTPBadRequest()
+        try:
+            auth = b64decode(auth[6:]).decode()
+        except binascii.Error:
+            raise web.HTTPBadRequest()
+        if ':' not in auth:
+            raise web.HTTPBadRequest()
+        user, passwd = auth.split(':', 1)
+
+        # Verify the user and password
+        if user == PwicConst.USERS['anonymous']:
+            raise web.HTTPUnauthorized()
+        row = sql.execute(''' SELECT password
+                              FROM users
+                              WHERE user    = ?
+                                AND initial = '' ''',
+                          (user, )).fetchone()
+        if row is None:
+            raise web.HTTPUnauthorized()
+        if row['password'] == PwicConst.MAGIC_OAUTH:
+            raise web.HTTPNotImplemented()
+        if row['password'] != PwicLib.sha256(passwd):
+            raise web.HTTPUnauthorized()
+        del row['password'], passwd, auth
+
+        # Extension
+        if not PwicExtension.on_odata_content_pre(sql, request, user):
+            raise web.HTTPUnauthorized()
+
+        # Prepare the query
+        base_url = str(PwicLib.option(sql, '', 'base_url', ''))
+        table = PwicLib.safe_name(request.match_info.get('table'))
+        if table == 'env':
+            sql.execute(''' SELECT 1
+                            FROM roles
+                            WHERE user     = ?
+                              AND admin    = 'X'
+                              AND disabled = '' ''',
+                        (user, ))
+            if sql.fetchone() is None:
+                raise web.HTTPUnauthorized()
+            sql.execute(''' SELECT a.project, a.key, a.value
+                            FROM env AS a
+                                INNER JOIN (
+                                    SELECT project
+                                    FROM roles
+                                    WHERE user     = ?
+                                      AND admin    = 'X'
+                                      AND disabled = ''
+                                  UNION
+                                    SELECT ''
+                                ) AS b
+                                    ON b.project = a.project
+                            WHERE a.value <> ''
+                            ORDER BY a.key     ASC,
+                                     a.project ASC''',
+                        (user, ))
+        elif table == 'projects':
+            sql.execute(''' SELECT a.project, a.description, a.date
+                            FROM projects AS a
+                                INNER JOIN roles AS b
+                                    ON  b.project  = a.project
+                                    AND b.user     = ?
+                                    AND b.disabled = ''
+                        UNION
+                            SELECT project, description, date
+                            FROM projects
+                            WHERE project = '' ''',
+                        (user, ))
+        elif table == 'pages':
+            sql.execute(''' SELECT a.project, a.page, a.revision, a.draft, a.final,
+                                   a.header, a.protection, a.author, a.date, a.time,
+                                   a.title, a.tags, a.comment, a.milestone, a.valuser,
+                                   a.valdate, a.valtime
+                            FROM pages AS a
+                                INNER JOIN roles AS b
+                                    ON  b.project  = a.project
+                                    AND b.user     = ?
+                                    AND b.disabled = ''
+                            WHERE a.latest = 'X' ''',
+                        (user, ))
+        elif table == 'documents':
+            sql.execute(''' SELECT a.id, a.project, a.page, a.filename, a.mime,
+                                   a.size, a.width, a.height, a.hash, a.author,
+                                   a.date, a.time, a.exturl
+                            FROM documents AS a
+                                INNER JOIN roles AS b
+                                    ON  b.project  = a.project
+                                    AND b.user     = ?
+                                    AND b.disabled = '' ''',
+                        (user, ))
+        elif table == 'users':
+            sql.execute(''' SELECT DISTINCT a.user, a.initial, a.password_date, a.password_time
+                            FROM users AS a
+                                INNER JOIN roles AS b
+                                    ON  b.user     = a.user
+                                    AND b.disabled = ''
+                                INNER JOIN (
+                                    SELECT project
+                                    FROM roles
+                                    WHERE user     = ?
+                                      AND disabled = ''
+                                ) AS c
+                                    ON c.project = b.project
+                        UNION
+                            SELECT user, initial, password_date, password_time
+                            FROM users
+                            WHERE user = '' ''',
+                        (user, ))
+        elif table == 'roles':
+            sql.execute(''' SELECT a.project, a.user, a.admin, a.manager, a.editor,
+                                   a.validator, a.reader
+                            FROM roles AS a
+                                INNER JOIN (
+                                    SELECT project
+                                    FROM roles
+                                    WHERE user     = ?
+                                      AND disabled = ''
+                                ) AS b
+                                    ON b.project = a.project''',
+                        (user, ))
+        else:
+            raise web.HTTPBadRequest()
+
+        # Fetch the data
+        data = {'@odata.context': '%s/api/odata/$metadata#%s' % (base_url, table),
+                'value': []}
+        for row in sql.fetchall():
+            # Fix the formats to comply with OData
+            if table == 'env':
+                if row['key'] not in PwicConst.ENV:
+                    continue
+                if (row['key'] in PwicConst.ENV) and PwicConst.ENV[row['key']].private:
+                    continue
+            elif table == 'pages':
+                for k in ['draft', 'final', 'header', 'protection']:
+                    row[k] = PwicLib.xb(row[k])
+                row['valdate'] = row['valdate'] or '1970-01-01'
+                row['valtime'] = row['valtime'] or '00:00:00'
+            elif table == 'users':
+                row['initial'] = PwicLib.xb(row['initial'])
+            elif table == 'roles':
+                for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
+                    row[k] = PwicLib.xb(row[k])
+            data['value'].append(row)
+
+        # Result
+        PwicExtension.on_odata_content(sql, request, user, data)
+        return web.Response(text=json.dumps(data, separators=(',', ':')),
+                            content_type='application/json; odata.metadata=none; odata.streaming=false; IEEE754Compatible=false',
+                            headers={'OData-Version': '4.0',
+                                     'Cache-Control': 'no-cache, must-revalidate'})
 
     async def api_swagger(self, request: web.Request) -> web.Response:
         ''' Display the features of the API '''
@@ -4262,6 +4477,9 @@ def main() -> bool:
                     web.post('/api/document/rename', app['pwic'].api_document_rename),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
                     web.post('/api/document/convert', app['pwic'].api_document_convert),
+                    web.get('/api/odata/$metadata', app['pwic'].api_odata_metadata),
+                    web.get('/api/odata/{table:[a-z]+}', app['pwic'].api_odata_content),
+                    web.get('/api/odata', app['pwic'].api_odata),
                     web.get('/api', app['pwic'].api_swagger),
                     web.get('/special/login', app['pwic']._handle_login),
                     web.get('/special/logout', app['pwic']._handle_logout),

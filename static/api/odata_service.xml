@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service xml:base="{base_url}/api/odata" xmlns="http://www.w3.org/2007/app" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:m="http://docs.oasis-open.org/odata/ns/metadata" m:context="{base_url}/api/odata/$metadata">
+	<workspace>
+		<atom:title type="text">OData integration for Pwic.wiki</atom:title>
+		<collection href="env">
+			<atom:title type="text">env</atom:title>
+		</collection>
+		<collection href="projects">
+			<atom:title type="text">projects</atom:title>
+		</collection>
+		<collection href="pages">
+			<atom:title type="text">pages</atom:title>
+		</collection>
+		<collection href="documents">
+			<atom:title type="text">documents</atom:title>
+		</collection>
+		<collection href="users">
+			<atom:title type="text">users</atom:title>
+		</collection>
+		<collection href="roles">
+			<atom:title type="text">roles</atom:title>
+		</collection>
+	</workspace>
+</service>

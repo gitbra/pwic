@@ -166,6 +166,7 @@ class PwicConst:
            'oauth_provider': TyEnv(True, False, False, False),
            'oauth_secret': TyEnv(True, False, False, True),
            'oauth_tenant': TyEnv(True, False, False, False),
+           'odata': TyEnv(True, False, False, False),
            'odt_image_height_max': TyEnv(True, True, True, False),
            'odt_image_width_max': TyEnv(True, True, True, False),
            'odt_page_height': TyEnv(True, True, True, False),
@@ -750,7 +751,7 @@ class PwicLib:
         return name.strip().lower()[:PwicLib.intval(PwicConst.DEFAULTS['limit_filename'])]
 
     @staticmethod
-    def safe_user_name(name: str) -> str:
+    def safe_user_name(name: Optional[str]) -> str:
         ''' Ensure that a user name is acceptable '''
         return PwicLib.safe_name(name, extra='')
 
