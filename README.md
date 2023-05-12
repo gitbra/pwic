@@ -24,6 +24,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Search link for the browsers
 - Highlight of the lines of code
 - Export of a page to Markdown (.md), web page (.html) and OpenDocument (.odt)
+- OData feed for BI reports
 - RSS feed
 - Share by link
 - Share by email

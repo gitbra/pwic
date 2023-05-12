@@ -729,7 +729,13 @@ class PwicLib:
         ''' Assign names to the SQL output '''
         d = {}
         for idx, col in enumerate(cursor.description):
-            d[col[0]] = row[idx]
+            if col[0] in ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled',      # roles
+                          'initial',                                                            # users
+                          'latest', 'draft', 'final', 'header', 'protection',                   # pages
+                          ]:
+                d[col[0]] = PwicLib.xb(row[idx])
+            else:
+                d[col[0]] = row[idx]
         return d
 
     @staticmethod
@@ -832,7 +838,7 @@ class PwicLib:
 
     @staticmethod
     def xb(value: str) -> bool:
-        ''' Convert 'X' to a boolean '''
+        ''' Convert 'X' to a boolean value '''
         return value == 'X'
 
     # =======

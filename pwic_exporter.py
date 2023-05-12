@@ -178,7 +178,7 @@ class PwicExporter():
             entry['manifest'] = ('<manifest:file-entry manifest:full-path="special/document_%d" manifest:media-type="%s" />' % (rowdoc['id'], rowdoc['mime'])) if rowdoc['exturl'] == '' else ''
             entry['width'] = PwicLib.intval(rowdoc['width'])
             entry['height'] = PwicLib.intval(rowdoc['height'])
-            entry['remote'] = (rowdoc['exturl'] != '')
+            entry['remote'] = rowdoc['exturl'] != ''
             pict[rowdoc['id']] = entry
         return pict
 
@@ -695,7 +695,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # The ODT annotations must be surrounded by <text:p> or <text:list>
         # Sometimes md2html does not render <p> for block annotations
         # The missing tag is then added dynamically here
-        missing = (len(self.tag_path) == 0)
+        missing = len(self.tag_path) == 0
         if missing:
             self.odt += '<text:p>'
         self.odt += '''<office:annotation><dc:creator>Unknown</dc:creator><text:p>%s</text:p></office:annotation>''' % escape(data)

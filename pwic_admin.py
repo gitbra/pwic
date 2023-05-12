@@ -883,6 +883,9 @@ class PwicAdmin():
     def split_project(self, projects: List[str], collapse: bool) -> bool:
         # Helpers
         def _transfer_record(sql: sqlite3.Cursor, table: str, row: Dict[str, Any]) -> None:
+            for k in row:
+                if isinstance(row[k], bool):
+                    row[k] = PwicLib.x(row[k])
             query = ''' INSERT OR REPLACE INTO %s
                         (%s) VALUES (%s)''' % (table,
                                                ', '.join(row.keys()),
@@ -984,7 +987,7 @@ class PwicAdmin():
                         (p, ))
             for row in sql.fetchall():
                 if keep_last:
-                    if not PwicLib.xb(row['latest']):
+                    if not row['latest']:
                         continue
                     row['revision'] = 1
                 _transfer_record(newsql, 'pages', row)
@@ -1006,7 +1009,7 @@ class PwicAdmin():
                                 'event': 'split-project',
                                 'project': p})
         self.db_commit()
-        print('The projects "%s" are copied into the separate database "%s" without the audit data and the documents.' % (', '.join(projects), fn))
+        print('The projects "%s" are copied into the separate database "%s" without the audit data and the file documents.' % (', '.join(projects), fn))
         return True
 
     def delete_project(self, project: str) -> bool:
@@ -1128,7 +1131,7 @@ class PwicAdmin():
                 return False
             print('The user must use the federated authentication to log in')
             pwd = PwicConst.MAGIC_OAUTH
-            initial = ''
+            initial = False
         else:
             print('Type the new temporary password with 8 characters at least: ', end='')
             pwd = input().strip()
@@ -1136,14 +1139,14 @@ class PwicAdmin():
                 print('Error: the password is too short')
                 return False
             pwd = PwicLib.sha256(pwd)
-            initial = 'X'
+            initial = True
 
         # Reset the password with no rights takedown else some projects may loose their administrators
         dt = PwicLib.dt()
         if new_account:
             sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
                             VALUES (?, ?, ?, ?, ?)''',
-                        (user, pwd, initial, dt['date'], dt['time']))
+                        (user, pwd, PwicLib.x(initial), dt['date'], dt['time']))
             PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'create-user',
                                 'user': user})
@@ -1155,7 +1158,7 @@ class PwicAdmin():
                                 password_date = ?,
                                 password_time = ?
                             WHERE user = ?''',
-                        (pwd, initial, dt['date'], dt['time'], user))
+                        (pwd, PwicLib.x(initial), dt['date'], dt['time'], user))
             PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'reset-password',
                                 'user': user,
@@ -1824,7 +1827,7 @@ class PwicAdmin():
         for row in sql.fetchall():
             roles = ''
             for k in ['admin', 'manager', 'editor', 'validator']:
-                if PwicLib.xb(row[k]):
+                if row[k]:
                     roles += k[:1].upper()
             tab.add_row([row['user'], row['project'], roles])
         tab.header = True
@@ -2226,7 +2229,7 @@ class PwicAdmin():
 
         # Initialization
         projects = []
-        multi = (project == '')
+        multi = project == ''
         tab = PrettyTable()
         tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Reason']
         for f in tab.field_names:

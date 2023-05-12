@@ -49,7 +49,7 @@ from aiohttp_session import setup, get_session, new_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from pwic_md import Markdown
-from pwic_lib import PwicConst, PwicLib
+from pwic_lib import PwicConst, PwicLib, PwicError
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter
@@ -112,7 +112,7 @@ class PwicServer():
             elif mask[0] == IPR_REG:
                 condition = mask[2].match(ip) is not None
             else:
-                condition = (ip == mask[2])
+                condition = ip == mask[2]
 
             # Evaluate
             if mask[1]:  # Negated
@@ -140,11 +140,11 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             return None
-        return (not PwicLib.xb(row['admin'])
-                and not PwicLib.xb(row['manager'])
-                and not PwicLib.xb(row['editor'])
-                and not PwicLib.xb(row['validator'])
-                and PwicLib.xb(row['reader']))
+        return (not row['admin']
+                and not row['manager']
+                and not row['editor']
+                and not row['validator']
+                and row['reader'])
 
     def _redirect_revision(self, sql: sqlite3.Cursor, project: str, user: str, page: str, revision: int) -> int:
         # Check if the user is a pure reader
@@ -283,14 +283,13 @@ class PwicServer():
             if row['key'] not in PwicConst.ENV:
                 continue
             (global_, key, value) = (row['project'] == '', row['key'], row['value'])
-            if PwicConst.ENV[key].private:
-                value = None
-            if key not in pwic['env']:
-                pwic['env'][key] = {'value': value,
-                                    'global': global_}
-                if key in ['document_size_max', 'project_size_max']:
-                    pwic['env'][key + '_str'] = {'value': PwicLib.size2str(PwicLib.intval(value)),
-                                                 'global': global_}
+            if PwicConst.ENV[key].private or (key in pwic['env']):
+                continue
+            pwic['env'][key] = {'value': value,
+                                'global': global_}
+            if key in ['document_size_max', 'project_size_max']:
+                pwic['env'][key + '_str'] = {'value': PwicLib.size2str(PwicLib.intval(value)),
+                                             'global': global_}
 
         # Dynamic settings for the robots
         robots = PwicLib.str2robots(str(PwicLib.option(sql, project, 'robots', '')))
@@ -332,7 +331,7 @@ class PwicServer():
         # Show the requested page
         project = PwicLib.safe_name(request.match_info.get('project'))
         page = PwicLib.safe_name(request.match_info.get('page', PwicConst.DEFAULTS['page']))
-        page_special = (page == 'special')
+        page_special = page == 'special'
         revision = PwicLib.intval(request.match_info.get('revision', '0'))
         action = request.match_info.get('action', 'view')
         pwic: Dict[str, Any] = {'project': project,
@@ -426,8 +425,7 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             return False
-        for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
-            pwic[k] = PwicLib.xb(row[k])
+        pwic.update(row)
         pwic['pure_reader'] = pwic['reader'] and not pwic['admin'] and not pwic['manager'] and not pwic['editor'] and not pwic['validator']
         return True
 
@@ -501,8 +499,6 @@ class PwicServer():
                           AND revision = ?''',
                     (project, page, revision))
         row = sql.fetchone()
-        for k in ['latest', 'draft', 'final', 'protection']:
-            row[k] = PwicLib.xb(row[k])
         row['tags'] = PwicLib.list(row['tags'])
         pwic.update(row)
 
@@ -611,7 +607,7 @@ class PwicServer():
                     (project, ))
         for row in sql.fetchall():
             for k in row:
-                if (k != 'user') and PwicLib.xb(row[k]):
+                if (k != 'user') and row[k]:
                     if not restrict_members or (k not in ['reader', 'editor']):
                         pwic[k + 's'].append(row['user'])
 
@@ -690,8 +686,6 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPBadRequest()
-        for k in ['draft', 'final', 'header', 'protection']:
-            row[k] = PwicLib.xb(row[k])
         pwic.update(row)
 
         # Detects the emojis
@@ -724,10 +718,8 @@ class PwicServer():
                     (project, page))
         pwic['revisions'] = sql.fetchall()
         for row in pwic['revisions']:
-            if PwicLib.xb(row['latest']):
+            if row['latest']:
                 pwic['title'] = row['title']
-            for k in ['latest', 'draft', 'final']:
-                row[k] = PwicLib.xb(row[k])
         return await self._handle_output(request, 'page-history', pwic)
 
     async def _page_move(self,
@@ -919,7 +911,7 @@ class PwicServer():
         pwic = {'user': user,
                 'userpage': userpage,
                 'password_oauth': row['password'] == PwicConst.MAGIC_OAUTH,
-                'password_initial': PwicLib.xb(row['initial'])}
+                'password_initial': row['initial']}
 
         # Fetch the commonly-accessible projects assigned to the user
         sql.execute(''' SELECT a.project, c.description
@@ -1065,9 +1057,9 @@ class PwicServer():
                 ok = True
                 score = 0
                 for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
-                    if (((q == ':latest' and PwicLib.xb(row['latest']))
-                         or (q == ':draft' and PwicLib.xb(row['draft']))
-                         or (q == ':final' and PwicLib.xb(row['final']))
+                    if (((q == ':latest' and row['latest'])
+                         or (q == ':draft' and row['draft'])
+                         or (q == ':final' and row['final'])
                          or (q[:7] == 'author:' and q[7:] in row['author'].lower())
                          or (q[:6] == 'title:' and q[6:] in row['title'].lower())
                          or (q == ':validated' and row['valuser'] != '')
@@ -1081,11 +1073,11 @@ class PwicServer():
                 if ok:
                     for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
                         if q == ':latest':
-                            count = PwicLib.intval(PwicLib.xb(row['latest']))
+                            count = PwicLib.intval(row['latest'])
                         elif q == ':draft':
-                            count = PwicLib.intval(PwicLib.xb(row['draft']))
+                            count = PwicLib.intval(row['draft'])
                         elif q == ':final':
-                            count = PwicLib.intval(PwicLib.xb(row['final']))
+                            count = PwicLib.intval(row['final'])
                         elif q[:7] == 'author:':
                             count = row['author'].lower().count(q[7:])
                         elif q[:6] == 'title:':
@@ -1111,8 +1103,6 @@ class PwicServer():
                 del row['markdown']
                 del row['tags']
                 del row['document_count']
-                for k in ['latest', 'draft', 'final']:
-                    row[k] = PwicLib.xb(row[k])
                 row['score'] = score
                 pwic['pages'].append(row)
 
@@ -1231,9 +1221,7 @@ class PwicServer():
                     (user, project, dt['date-90d'], project))
         pwic['roles'] = sql.fetchall()
         for row in pwic['roles']:
-            row['oauth'] = (row['oauth'] == PwicConst.MAGIC_OAUTH)
-            for k in ['initial', 'admin', 'manager', 'editor', 'validator', 'reader', 'disabled']:
-                row[k] = PwicLib.xb(row[k])
+            row['oauth'] = row['oauth'] == PwicConst.MAGIC_OAUTH
             if row['activity'] is None:
                 row['activity'] = '-'
 
@@ -1294,7 +1282,7 @@ class PwicServer():
                 linkmap[page] = []
 
             # Generate a fake link at the home page for all the bookmarked pages
-            if PwicLib.xb(row['header']) and page not in linkmap[PwicConst.DEFAULTS['page']]:
+            if row['header'] and (page not in linkmap[PwicConst.DEFAULTS['page']]):
                 linkmap[PwicConst.DEFAULTS['page']].append(page)
 
             # Find the links to the other pages
@@ -1604,8 +1592,8 @@ class PwicServer():
     async def api_oauth(self, request: web.Request) -> web.Response:
         ''' Manage the federated authentication '''
 
-        def _oauth_failed():
-            raise web.HTTPTemporaryRedirect('/?failed')
+        def _oauth_failed(parent_exception=None):
+            raise web.HTTPTemporaryRedirect('/?failed') from parent_exception
 
         def _fetch_token(url, query):
             try:
@@ -1618,10 +1606,10 @@ class PwicServer():
                 data = json.loads(data)
                 token = data.get('access_token', None)
                 if token is None:
-                    raise Exception()
+                    raise PwicError()
                 return data.get('token_type', 'Bearer'), token
-            except Exception:
-                _oauth_failed()
+            except Exception as e:
+                _oauth_failed(e)
 
         def _call_api(url, token_type, token):
             try:
@@ -1630,10 +1618,10 @@ class PwicServer():
                     data = data.decode(response.info().get_content_charset())
                 data = json.loads(data)
                 if data is None:
-                    raise Exception()
+                    raise PwicError()
                 return data
-            except Exception:
-                _oauth_failed()
+            except Exception as e:
+                _oauth_failed(e)
 
         # Checks
         ip = PwicExtension.on_ip_header(request)
@@ -1656,7 +1644,7 @@ class PwicServer():
         # Call the provider
         sql = self.dbconn.cursor()
         oauth = app['oauth']
-        no_domain = (len(oauth['domains']) == 0)
+        no_domain = len(oauth['domains']) == 0
         emails = []
         if oauth['provider'] == 'github':
             # Fetch an authentication token
@@ -1922,9 +1910,6 @@ class PwicServer():
                         ORDER BY a.project ASC''',
                     (user, account))
         data = sql.fetchall()
-        for row in data:
-            for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
-                row[k] = PwicLib.xb(row[k])
         return web.Response(text=json.dumps(data), content_type=PwicLib.mime('json'))
 
     async def api_project_get(self, request: web.Request) -> web.Response:
@@ -2179,9 +2164,9 @@ class PwicServer():
             for row in sql.fetchall():
                 if row['valuser'] != '':
                     item['validated'] += 1
-                elif PwicLib.xb(row['final']):
+                elif row['final']:
                     item['final'] += 1
-                elif PwicLib.xb(row['draft']):
+                elif row['draft']:
                     item['draft'] += 1
                 else:
                     item['step'] += 1
@@ -2255,7 +2240,7 @@ class PwicServer():
             _make_link('', '', row['project'], row['page'])
 
             # Assign the bookmarks to the home page
-            if PwicLib.xb(row['header']):
+            if row['header']:
                 _make_link(row['project'], PwicConst.DEFAULTS['page'], row['project'], row['page'])
 
             # Find the links to the other pages
@@ -2360,7 +2345,7 @@ class PwicServer():
                     (project, ))
         documents = sql.fetchall()
         for doc in documents:
-            doc['image'] = (doc['image'] == 1)
+            doc['image'] = doc['image'] == 1
 
         # Build the ZIP file
         folder_rev = 'revisions/'
@@ -2381,13 +2366,13 @@ class PwicServer():
                     page = sql.fetchone()
                     if page is None:
                         break
-                    if not with_revisions and not PwicLib.xb(page['latest']):
+                    if not with_revisions and not page['latest']:
                         continue
 
                     # Raw markdown
                     if with_revisions:
                         ziparch.writestr('%s%s.rev%d.md' % (folder_rev, page['page'], page['revision']), page['markdown'])
-                    if PwicLib.xb(page['latest']):
+                    if page['latest']:
                         ziparch.writestr('%s.md' % page['page'], page['markdown'])
 
                     # Regenerate HTML
@@ -2409,7 +2394,7 @@ class PwicServer():
                             html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="%s' % doc['exturl'])
                     if with_revisions:
                         ziparch.writestr('%s%s.rev%d.html' % (folder_rev, page['page'], page['revision']), html)
-                    if PwicLib.xb(page['latest']):
+                    if page['latest']:
                         ziparch.writestr('%s.html' % page['page'], html)
 
                 # Dependent files for the pages
@@ -2701,7 +2686,7 @@ class PwicServer():
             days = PwicLib.dt_diff(row['date'], dt['date'])
             if row['page'] == PwicConst.DEFAULTS['page']:
                 priority = 1.0
-            elif PwicLib.xb(row['header']):
+            elif row['header']:
                 priority = 0.7
             elif days <= 90:
                 priority = 0.5
@@ -2892,14 +2877,14 @@ class PwicServer():
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()        # Or not found which is normally unlikely
         revision = row['revision']
-        quick_fix_candidate = (markdown == row['markdown']) and not PwicLib.xb(row['final']) and (row['valuser'] == '')
-        manager = PwicLib.xb(row['manager'])
+        quick_fix_candidate = (markdown == row['markdown']) and not row['final'] and (row['valuser'] == '')
+        manager = row['manager']
         if not manager:
-            if PwicLib.xb(row['protection']):   # The protected pages can be updated by the managers only
+            if row['protection']:               # The protected pages can be updated by the managers only
                 self.dbconn.rollback()
                 raise web.HTTPUnauthorized()
             protection = False                  # This field cannot be set by the non-managers
-            header = PwicLib.xb(row['header'])  # This field is reserved to the managers, so we keep the existing value
+            header = row['header']              # This field is reserved to the managers, so we keep the existing value
 
         # Check the maximal number of revisions per page
         revision_count_max = PwicLib.intval(PwicLib.option(sql, project, 'revision_count_max'))
@@ -3589,10 +3574,10 @@ class PwicServer():
         roles = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled', 'delete']
         try:
             roleid = roles.index(post.get('role', ''))
-            delete = (roles[roleid] == 'delete')
+            delete = roles[roleid] == 'delete'
         except ValueError as e:
             raise web.HTTPBadRequest() from e
-        if '' in [project, userpost] or (userpost[:4] == 'pwic' and roles in ['admin', 'delete']):
+        if '' in [project, userpost] or ((userpost[:4] == 'pwic') and (roles in ['admin', 'delete'])):
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
@@ -3616,7 +3601,7 @@ class PwicServer():
                           AND a.user    = ?''',
                     (user, project, userpost))
         row = sql.fetchone()
-        if row is None or (not delete and PwicLib.xb(row['initial'])):
+        if row is None or (not delete and row['initial']):
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()
 
@@ -3642,7 +3627,7 @@ class PwicServer():
             return web.Response(text='OK', content_type=PwicLib.mime('txt'))
 
         # New role
-        newvalue = {'X': '', '': 'X'}[row[roles[roleid]]]
+        newvalue = PwicLib.x(not row[roles[roleid]])
         if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
@@ -4160,7 +4145,7 @@ class PwicServer():
 
         # Content
         base_url = str(PwicLib.option(sql, '', 'base_url', ''))
-        with open('./static/api/odata_service.xml', mode='r') as f:
+        with open('./static/api/odata_service.xml', mode='r', encoding='UTF-8') as f:
             content = f.read()
         content = (content.replace('\t', '')
                           .replace('\r', '')
@@ -4178,7 +4163,7 @@ class PwicServer():
             raise web.HTTPServiceUnavailable()
 
         # Content
-        with open('./static/api/odata_meta.edmx', mode='r') as f:
+        with open('./static/api/odata_meta.edmx', mode='r', encoding='UTF-8') as f:
             content = f.read()
         content = (content.replace('\t', '')
                           .replace('\r', '')
@@ -4205,8 +4190,8 @@ class PwicServer():
             raise web.HTTPBadRequest()
         try:
             auth = b64decode(auth[6:]).decode()
-        except binascii.Error:
-            raise web.HTTPBadRequest()
+        except binascii.Error as e:
+            raise web.HTTPBadRequest() from e
         if ':' not in auth:
             raise web.HTTPBadRequest()
         user, passwd = auth.split(':', 1)
@@ -4332,20 +4317,11 @@ class PwicServer():
         for row in sql.fetchall():
             # Fix the formats to comply with OData
             if table == 'env':
-                if row['key'] not in PwicConst.ENV:
-                    continue
-                if (row['key'] in PwicConst.ENV) and PwicConst.ENV[row['key']].private:
+                if (row['key'] not in PwicConst.ENV) or PwicConst.ENV[row['key']].private:
                     continue
             elif table == 'pages':
-                for k in ['draft', 'final', 'header', 'protection']:
-                    row[k] = PwicLib.xb(row[k])
                 row['valdate'] = row['valdate'] or '1970-01-01'
                 row['valtime'] = row['valtime'] or '00:00:00'
-            elif table == 'users':
-                row['initial'] = PwicLib.xb(row['initial'])
-            elif table == 'roles':
-                for k in ['admin', 'manager', 'editor', 'validator', 'reader']:
-                    row[k] = PwicLib.xb(row[k])
             data['value'].append(row)
 
         # Result
@@ -4559,7 +4535,7 @@ def main() -> bool:
             continue
 
         # Negation flag
-        item[1] = (mask[:1] == '~')
+        item[1] = mask[:1] == '~'
         if item[1]:
             mask = mask[1:]
 

@@ -260,16 +260,16 @@ class PwicStylerOdt(HTMLParser):
         elif tag == 'style:text-properties':
             value = PwicLib.read_attr(attrs, 'fo:font-weight')
             if value != '':
-                self.bold = (value != 'normal')
+                self.bold = value != 'normal'
             value = PwicLib.read_attr(attrs, 'fo:font-style')
             if value != '':
                 self.italic = value in ['italic', 'oblique']
             value = PwicLib.read_attr(attrs, 'style:text-underline-type')
             if value != '':
-                self.underline = (value != 'none')
+                self.underline = value != 'none'
             value = PwicLib.read_attr(attrs, 'style:text-line-through-style')
             if value != '':
-                self.strike = (value != 'none')
+                self.strike = value != 'none'
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.strip().lower()
