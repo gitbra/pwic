@@ -88,16 +88,18 @@ class PwicConst:
                 'password': 'initial',                      # Default password for the new accounts
                 'port': '8080',                             # Default HTTP port
                 }
-    REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),       # Find a document in Markdown
-               'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),   # Find the picture ID in IMG.SRC
-               'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                          # Name of the pages KB
-               'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                  # Length in XML
-               'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                # Check the format of the mime
-               'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),     # Find a page in Markdown
-               'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                          # Valid protocols for the links
-               'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                      # Find the HTML tags
-               'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                      # Tag in HTML
-               'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                          # Comment in HTML
+    REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),           # Find a document in Markdown
+               'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),       # Find the picture ID in IMG.SRC
+               'empty_tag': re.compile(r'<\b(\w+)\b(?<!table)\b(?<!tr|th|td)><\/\1>'),              # Removable blank HTML tags, except table elements
+               'adjacent_tag': re.compile(r'<\/\b(\w+)\b(?<!\/table)\b(?<!\/[tr|th|td])><\1>'),     # Removable adjacent HTML tags, except table elements
+               'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                              # Name of the pages KB
+               'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                      # Length in XML
+               'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                    # Check the format of the mime
+               'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),         # Find a page in Markdown
+               'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                              # Valid protocols for the links
+               'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                          # Find the HTML tags
+               'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                          # Tag in HTML
+               'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                              # Comment in HTML
                }
 
     # =========
@@ -204,6 +206,9 @@ class PwicConst:
 
     DPI = 120.                                              # Pixels per inch
     RTL = ['ar', 'fa', 'he']                                # RTL languages
+    VOID_HTML = ['area', 'base', 'br', 'col', 'embed',
+                 'hr', 'img', 'input', 'link', 'meta',
+                 'source', 'track', 'wbr']                  # Self-closing HTML tags
 
     # ========
     #  Emojis
@@ -708,7 +713,7 @@ class PwicLib:
         return default
 
     @staticmethod
-    def recursive_replace(text: str, search: str, replace: str, strip: bool = True) -> str:
+    def recursive_replace(text: str, search: Any, replace: str, strip: bool = True) -> str:
         ''' Replace a string recursively '''
         while True:
             curlen = len(text)

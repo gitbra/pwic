@@ -17,7 +17,7 @@
 		{% else %}
 
 			<h1>{% trans %}New page{% endtrans %}</h1>
-			<p><strong>{% trans %}Project:{% endtrans %}</strong><br/>
+			<p><strong>{% trans %}Project:{% endtrans %}</strong><br>
 				<select id="create_project">
 					{% for proj in pwic.projects %}
 						<option value="{{proj.project|escape}}"
@@ -27,13 +27,13 @@
 				</select>
 			</p>
 			<p><strong>{% trans %}Page identifier:{% endtrans %}</strong>
-				<br/><input id="create_kb" type="checkbox" /> <label for="create_kb">{% trans %}Generate a knowledge base article{% endtrans %}</label>
-				<br/><input id="create_page" class="pwic_fill" type="text" value="{{pwic.default_page|escape}}" spellcheck="false" /></p>
-			<p><strong>{% trans %}Tags:{% endtrans %}</strong> <input id="create_tags" class="pwic_fill" type="text" title="{% trans %}No hash and separated by a space{% endtrans %}" spellcheck="false" /></p>
-			<p><strong>{% trans %}Milestone:{% endtrans %}</strong> <input id="create_milestone" class="pwic_fill" type="text" /></p>
+				<br><input id="create_kb" type="checkbox"> <label for="create_kb">{% trans %}Generate a knowledge base article{% endtrans %}</label>
+				<br><input id="create_page" class="pwic_fill" type="text" value="{{pwic.default_page|escape}}" spellcheck="false"></p>
+			<p><strong>{% trans %}Tags:{% endtrans %}</strong> <input id="create_tags" class="pwic_fill" type="text" title="{% trans %}No hash and separated by a space{% endtrans %}" spellcheck="false"></p>
+			<p><strong>{% trans %}Milestone:{% endtrans %}</strong> <input id="create_milestone" class="pwic_fill" type="text"></p>
 
 			<h1>{% trans %}Copy in reference to another page{% endtrans %}</h1>
-			<p><strong>{% trans %}Project:{% endtrans %}</strong><br/>
+			<p><strong>{% trans %}Project:{% endtrans %}</strong><br>
 				<select id="create_ref_project">
 					<option value=""></option>
 					{% for p in pwic.projects %}
@@ -41,10 +41,10 @@
 					{% endfor %}
 				</select>
 			</p>
-			<p><strong>{% trans %}Page identifier:{% endtrans %}</strong> <input id="create_ref_page" class="pwic_fill" type="text" spellcheck="false" /></p>
-			<p><input id="create_ref_tags" type="checkbox" checked="checked" /> <label for="create_ref_tags">{% trans %}Copy and merge the tags{% endtrans %}</label></p>
+			<p><strong>{% trans %}Page identifier:{% endtrans %}</strong> <input id="create_ref_page" class="pwic_fill" type="text" spellcheck="false"></p>
+			<p><input id="create_ref_tags" type="checkbox" checked="checked"> <label for="create_ref_tags">{% trans %}Copy and merge the tags{% endtrans %}</label></p>
 
-			<p><input type="button" value="{{pwic.emojis.sparkles}} {% trans %}Create the page{% endtrans %}" onclick="create_submit()" /></p>
+			<p><input type="button" value="{{pwic.emojis.sparkles}} {% trans %}Create the page{% endtrans %}" onclick="create_submit()"></p>
 
 			{% include 'js/page-create.js' %}
 

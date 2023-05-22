@@ -19,7 +19,7 @@
 		{% else %}
 
 			<p class="pwic_italic">{% trans %}Reminder: your password must be changed before you can add a new user to the selected project.{% endtrans %}</p>
-			<p><strong>{% trans %}Project:{% endtrans %}</strong><br/>
+			<p><strong>{% trans %}Project:{% endtrans %}</strong><br>
 				<select id="create_project" name="project">
 					{% for proj in pwic.projects %}
 						<option value="{{proj.project|escape}}"
@@ -28,8 +28,8 @@
 					{% endfor %}
 				</select>
 			</p>
-			<p><strong>{% trans %}User name:{% endtrans %}</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus required="true" spellcheck="false" /></p>
-			<p><input type="button" value="{{pwic.emojis.users}} {% trans %}Create the user{% endtrans %}" onclick="create_submit()" /></p>
+			<p><strong>{% trans %}User name:{% endtrans %}</strong> <input id="create_user" class="pwic_fill" type="text" name="user" autofocus required="true" spellcheck="false"></p>
+			<p><input type="button" value="{{pwic.emojis.users}} {% trans %}Create the user{% endtrans %}" onclick="create_submit()"></p>
 
 		{% endif %}
 	</article>

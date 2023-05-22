@@ -3296,7 +3296,7 @@ class PwicServer():
                                     WHERE project  = ?
                                       AND page     = ?
                                       AND revision = ?''',
-                                (header, project, page, row['revision']))
+                                (PwicLib.x(header), project, page, row['revision']))
 
         # Delete the attached documents when the page doesn't exist anymore
         docKO = 0
@@ -4363,6 +4363,7 @@ def main() -> bool:
     parser = argparse.ArgumentParser(description='Pwic.wiki Server version %s' % PwicConst.VERSION)
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=PwicLib.intval(PwicConst.DEFAULTS['port']), help='Listening port')
+    parser.add_argument('--new-session', action='store_true', help='Generate a new secret key for the session (it will disconnect all the users)')
     parser.add_argument('--sql-trace', action='store_true', help='Display the SQL queries in the console for debugging purposes')
     args = parser.parse_args()
 
@@ -4395,26 +4396,25 @@ def main() -> bool:
     app['pwic'] = PwicServer(app['sql'])
     # ... session
     keep_sessions = PwicLib.option(sql, '', 'keep_sessions') is not None
-    if not keep_sessions:
+    if not keep_sessions or args.new_session:
         sql.execute(''' DELETE FROM env
                         WHERE key = 'pwic_session' ''')
     skey: Union[Optional[str], bytes] = PwicLib.option(sql, '', 'pwic_session')
     if skey is None:
         skey = urandom(32)
-    if not keep_sessions:
-        sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
-                        VALUES ('', 'pwic_session', ?)''',
-                    (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
-    if PwicLib.option(sql, '', 'strict_cookies') is not None:
-        setup(app, EncryptedCookieStorage(skey, httponly=True, samesite='Strict'))
-    else:
-        setup(app, EncryptedCookieStorage(skey, httponly=True))
+        if keep_sessions:
+            sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                            VALUES ('', 'pwic_session', ?)''',
+                        (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
+    setup(app, EncryptedCookieStorage(skey,
+                                      httponly=True,
+                                      samesite='Strict' if PwicLib.option(sql, '', 'strict_cookies') is not None else None))
     del skey
     # ... Markdown parser
     extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'underline']
     if PwicLib.option(sql, '', 'no_highlight') is not None:
         extras.append('highlightjs-lang')                       # highlight.js is not used in the foreground
-    app['markdown'] = Markdown(extras=extras, safe_mode=False)
+    app['markdown'] = Markdown(extras=extras, safe_mode=False, html4tags=True)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)

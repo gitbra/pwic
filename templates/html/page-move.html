@@ -12,10 +12,10 @@
 	<article>
 		<h1>[{{pwic.project|escape}}/{{pwic.page|escape}}] {{pwic.title|escape}}</h1>
 		
-		<input id="move_src_project" type="hidden" value="{{pwic.project|escape}}" />
-		<input id="move_src_page" type="hidden" value="{{pwic.page|escape}}" />
+		<input id="move_src_project" type="hidden" value="{{pwic.project|escape}}">
+		<input id="move_src_page" type="hidden" value="{{pwic.page|escape}}">
 
-		<p><strong>{% trans %}Target project:{% endtrans %}</strong><br/>
+		<p><strong>{% trans %}Target project:{% endtrans %}</strong><br>
 			<select id="move_dst_project">
 				{% for proj in pwic.projects %}
 					<option value="{{proj.project|escape}}"
@@ -24,9 +24,9 @@
 				{% endfor %}
 			</select>
 		</p>
-		<p><strong>{% trans %}Target page identifier:{% endtrans %}</strong> <input id="move_dst_page" class="pwic_fill" type="text" placeholder="{{pwic.page|escape}}" spellcheck="false" /></p>
+		<p><strong>{% trans %}Target page identifier:{% endtrans %}</strong> <input id="move_dst_page" class="pwic_fill" type="text" placeholder="{{pwic.page|escape}}" spellcheck="false"></p>
 
-		<p><input type="button" value="{{pwic.emojis.truck}} {% trans %}Move the page{% endtrans %}" onclick="move_submit()" /></p>
+		<p><input type="button" value="{{pwic.emojis.truck}} {% trans %}Move the page{% endtrans %}" onclick="move_submit()"></p>
 
 		<p class="pwic_italic">{% trans %}This form can be used to rename an existing page. No link will be updated in mass.{% endtrans %}</p>
 

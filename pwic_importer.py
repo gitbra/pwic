@@ -94,6 +94,7 @@ class PwicImporterHtml(HTMLParser):
                          'h4': '\n\n#### ',
                          'h5': '\n\n##### ',
                          'h6': '\n\n###### ',
+                         'hr': '\n\n---\n\n',
                          'i': '*',
                          'img': '![IMAGE',
                          'ins': '--',
@@ -121,7 +122,6 @@ class PwicImporterHtml(HTMLParser):
                           'h5': '\n',
                           'h6': '\n',
                           'i': '*',
-                          'img': '](#src)',
                           'ins': '--',
                           'ol': '\n',
                           'pre': '```',
@@ -141,7 +141,6 @@ class PwicImporterHtml(HTMLParser):
         self.pre = False
         self.last_tag = ''
         self.last_href = ''
-        self.last_src = ''
         self.table_col_max = 0
         self.table_col_cur = 0
         self.table_lin_cur = 0
@@ -152,13 +151,14 @@ class PwicImporterHtml(HTMLParser):
         HTMLParser.feed(self, cleaner.get_html())
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        if not self.pre and (tag == 'pre'):
-            self.pre = True
+        tagattr = {}
         if not self.pre:
+            if tag == 'pre':
+                self.pre = True
             if tag == 'a':
                 self.last_href = PwicLib.read_attr(attrs, 'href')
             if tag == 'img':
-                self.last_src = PwicLib.read_attr(attrs, 'src')
+                tagattr['src'] = PwicLib.read_attr(attrs, 'src')
             if (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
                 self.md = self.md.rstrip()
             if tag == 'table':
@@ -179,9 +179,14 @@ class PwicImporterHtml(HTMLParser):
                 self.table_col_max = max(self.table_col_max, self.table_col_cur)
         if tag in self.map_open:
             self.md += self.map_open[tag]
+            # Void tags
+            if tag == 'img':
+                self.md += '](%s)' % tagattr.get('src', '')
         self.last_tag = tag
 
     def handle_endtag(self, tag: str) -> None:
+        if tag in PwicConst.VOID_HTML:
+            return
         if self.pre and (tag == 'pre'):
             self.pre = False
         if tag in self.map_close:
@@ -190,9 +195,6 @@ class PwicImporterHtml(HTMLParser):
                 if tag == 'a':
                     value = value.replace('#href', self.last_href)
                     self.last_href = ''
-                if tag == 'img':
-                    value = value.replace('#src', self.last_src)
-                    self.last_src = ''
                 if (tag in ['td', 'th']) and (self.last_tag == 'tr'):
                     self.md = self.md.rstrip() + ' '
             self.md += value

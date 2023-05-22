@@ -89,8 +89,8 @@
 									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
 									.attr('download', filename)
 									.appendTo('body')
-									.trigger('click');
-						$('body').remove(dl);
+									.trigger('click')
+									.remove();
 						window.URL.revokeObjectURL(dl.href);
 						return true;
 					});
@@ -111,7 +111,7 @@
 
 		$('CODE').each(function(i, e) {
 			if ((e.clientHeight >= 100) || (e.clientWidth >= 300))
-				$(e).prepend($(document.createElement('DIV'))
+				$(e).prepend($(document.createElement('SPAN'))
 								.addClass('pwic_copy_code' + (e.clientHeight <= 50 ? '_tiny' : ''))
 								.attr('title', 'Copy')
 								.html('{{pwic.emojis.notes}}')

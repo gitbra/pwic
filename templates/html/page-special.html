@@ -12,7 +12,7 @@
 				{% if not pwic.env.no_search %}
 					<div class="pwic_searchbox pwic_js">
 						{{pwic.emojis.search}}
-						<input type="text" id="page_search" onkeypress="page_search()" />
+						<input type="text" id="page_search" onkeypress="page_search()">
 					</div>
 				{% endif %}
 			</div>
@@ -235,7 +235,7 @@
 								<span title="{% trans %}External storage{% endtrans %}">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
-						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td class="pwic_desktop pwic_break">{{doc.mime_icon}} {{doc.mime|escape}}</td>
 						<td>{{doc.size|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>

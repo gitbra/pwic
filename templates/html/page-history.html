@@ -25,7 +25,7 @@
 
 			{% for rev in pwic.revisions %}
 				<tr>
-					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()" /></td>
+					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()"></td>
 					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">{{rev.revision}}</a></td>
 					<td>
 						{% if rev.draft %}

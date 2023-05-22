@@ -40,8 +40,8 @@
 					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
 					.attr('download', '{{pwic.project|escape}}.gv')
 					.appendTo('body')
-					.trigger('click');
-		$('body').remove(dl);
+					.trigger('click')
+					.remove();
 		return true;
 	}
 

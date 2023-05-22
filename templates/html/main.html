@@ -3,51 +3,51 @@
 	dir="{% if pwic.env.language and (pwic.env.language.value in pwic.constants.rtl) %}rtl{% else %}ltr{% endif %}">
 <head>
 	<!-- General headers -->
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<meta name="generator" content="Pwic.wiki version {{pwic.constants.version|escape}}" />
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="generator" content="Pwic.wiki version {{pwic.constants.version|escape}}">
 	{% if pwic.env.robots %}
-		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}" />
+		<meta name="robots" content="{{pwic.env.robots.value|replace(' ',', ')|escape}}">
 	{% endif %}
-	<meta charset="utf-8" />
+	<meta charset="utf-8">
 	<title>{% block title %}{{pwic.title|escape}}{% endblock %}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	{% if pwic.canonical %}
-		<link rel="canonical" href="{{pwic.canonical|escape}}" />
+		<link rel="canonical" href="{{pwic.canonical|escape}}">
 	{% endif %}
-	<link rel="icon" type="image/png" href="/static/favicon.png" />
+	<link rel="icon" type="image/png" href="/static/favicon.png">
 	{% if pwic.project and (pwic.project not in pwic.constants.not_project) %}
 		{% if not pwic.env.no_search %}
-			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{{ gettext('Search in project %(project)s')|format(project=pwic.project|escape) }}" />
+			<link rel="search" type="application/opensearchdescription+xml" href="/api/project/searchlink/get?project={{pwic.project|escape}}" title="{{ gettext('Search in project %(project)s')|format(project=pwic.project|escape) }}">
 		{% endif  %}
 		{% if not pwic.env.no_feed and (not pwic.pure_reader or not pwic.env.no_history) %}
-			<link rel="alternate" type="application/atom+xml" href="/api/project/feed/atom/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='ATOM') }}" />
-			<link rel="alternate" type="application/rss+xml" href="/api/project/feed/rss/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='RSS') }}" />
+			<link rel="alternate" type="application/atom+xml" href="/api/project/feed/atom/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='ATOM') }}">
+			<link rel="alternate" type="application/rss+xml" href="/api/project/feed/rss/get?project={{pwic.project|escape}}" title="{{ gettext('Recent changes for %(project)s (%(format)s)')|format(project=pwic.project|escape, format='RSS') }}">
 		{% endif  %}
 	{% endif %}
 
 	<!-- Styles -->
-	<link rel="stylesheet" type="text/css" href="/static/styles.css" media="all" />
+	<link rel="stylesheet" type="text/css" href="/static/styles.css" media="all">
 	{% if pwic.env.css %}
 		{% set list = pwic.env.css.value.split(';') %}
 		{% for css in list %}
-			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="all" />
+			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="all">
 		{% endfor %}
 	{% endif %}
 
 	{% if pwic.env.dark_theme %}
-		<link rel="stylesheet" type="text/css" href="/static/styles_dark.css" media="screen" />
+		<link rel="stylesheet" type="text/css" href="/static/styles_dark.css" media="screen">
 		{% if pwic.env.css_dark %}
 			{% set list = pwic.env.css_dark.value.split(';') %}
 			{% for css in list %}
-				<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="screen" />
+				<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="screen">
 			{% endfor %}
 		{% endif %}
 	{% endif %}
 
-	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print" />
+	<link rel="stylesheet" type="text/css" href="/static/styles-print.css" media="print">
 	{% if pwic.env.css_printing %}
 		{% set list = pwic.env.css_printing.value.split(';') %}
 		{% for css in list %}
-			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="print" />
+			<link rel="stylesheet" type="text/css" href="{{css|trim|urlencode}}" media="print">
 		{% endfor %}
 	{% endif %}
 
@@ -61,7 +61,7 @@
 	<script src="/static/cash.min.js"></script>
 
 	{% if (pwic.template == 'page-edit') and pwic.env.mde %}
-		<link rel="stylesheet" type="text/css" href="/static/easymde.min.css" />
+		<link rel="stylesheet" type="text/css" href="/static/easymde.min.css">
 		<style>
 			/* Patch */
 			.CodeMirror { height: 75vh; }
@@ -81,14 +81,14 @@
 				svg: { fontCache: 'global' }
 			};
 		</script>
-		<script src="/static/mathjax.min.js" async="true"></script>
+		<script src="/static/mathjax.min.js" async></script>
 	{% endif %}
 
 	<script>
 		'use strict';
 
 		function pwic_entities(value) {
-			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quote');
+			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quote;');
 		}
 
 		function pwic_is_safe(name) {

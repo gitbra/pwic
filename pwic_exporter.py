@@ -295,7 +295,8 @@ class PwicCleanerHtml(HTMLParser):      # html2html
 
         # Tag path
         tag = tag.lower()
-        self.tag_path.append(tag)
+        if tag not in PwicConst.VOID_HTML:
+            self.tag_path.append(tag)
         if self.is_mute():
             return
         if (self.code == '') and (tag in ['blockcode', 'code', 'svg']):
@@ -341,10 +342,12 @@ class PwicCleanerHtml(HTMLParser):      # html2html
             self.html += data
 
     def get_html(self) -> str:
-        self.html = self.html.replace('<hr></hr>', '<hr/>').replace('></img>', '/>')
+        self.html = self.html.replace('<hr></hr>', '<hr>').replace('></img>', '>')
         while True:
             curlen = len(self.html)
             self.html = re.sub(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)?>(\s*)<\/\1>', r'\3', self.html)
+            self.html = re.sub(PwicConst.REGEXES['empty_tag'], '', self.html)
+            self.html = re.sub(PwicConst.REGEXES['adjacent_tag'], '', self.html)
             if len(self.html) == curlen:
                 break
         return self.html
@@ -472,11 +475,13 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                            'u': {'text:style-name': 'Underline'},
                            'ul': {'text:style-name': 'ListStructure',
                                   'text:continue-numbering': 'true'}}
-        self.noclosing = ['br', 'hr']
-        self.extrasBefore = {'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}" svg:height="{$h}" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>')}
-        self.extrasAfter = {'a': ('<text:span text:style-name="Link">', '</text:span>'),
-                            'td': ('<text:p>', '</text:p>'),
-                            'th': ('<text:p>', '</text:p>')}
+        self.extrasStart = {'a': ('', '<text:span text:style-name="Link">'),
+                            'img': ('<draw:frame text:anchor-type="as-char" svg:width="{$w}" svg:height="{$h}" style:rel-width="scale" style:rel-height="scale">', '</draw:frame>'),
+                            'td': ('', '<text:p>'),
+                            'th': ('', '<text:p>')}
+        self.extrasEnd = {'a': '</text:span>',
+                          'td': '</text:p>',
+                          'th': '</text:p>'}
 
         # Processing
         self.tag_path: List[str] = []
@@ -484,8 +489,6 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         self.blockquote_on = False
         self.blockcode_on = False
         self.has_code = False
-        self.lastIMGalt = ''
-        self.lastIMGtitle = ''
 
         # Output
         self.odt = ''
@@ -527,100 +530,110 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         del lastTag
 
         # Identify the new tag
-        self.tag_path.append(tag)
+        if tag not in PwicConst.VOID_HTML:
+            self.tag_path.append(tag)
         if tag == 'blockquote':
             self.blockquote_on = True
         if tag == 'blockcode':
             self.blockcode_on = True
             self.has_code = True
 
-        # Mapping of the tag
+        # Surrounding extra tags
         if tag not in self.maps:
             raise PwicError
-        if self.maps[tag] is not None:
-            # Automatic extra tags
-            if tag in self.extrasBefore:
-                self.odt += self.extrasBefore[tag][0]
+        if self.maps[tag] is None:
+            return
+        if tag in self.extrasStart:
+            self.odt += self.extrasStart[tag][0]
 
-            # Tag itself
-            self.odt += '<' + str(self.maps[tag])
-            if tag in self.attributes:
-                for property_key in self.attributes[tag]:
-                    property_value = self.attributes[tag][property_key]
-                    if property_value[:1] != '#':
-                        if property_key[:5] != 'dummy':
-                            self.odt += ' %s="%s"' % (property_key, escape(property_value))
+        # Tag itself
+        tag_img = {}
+        self.odt += '<' + str(self.maps[tag])
+        if tag in self.attributes:
+            for property_key in self.attributes[tag]:
+                property_value = self.attributes[tag][property_key]
+                if property_value[:1] != '#':
+                    if property_key[:5] != 'dummy':
+                        self.odt += ' %s="%s"' % (property_key, escape(property_value))
+                else:
+                    property_value = property_value[1:]
+                    if tag == 'p':
+                        if self.blockquote_on:
+                            self.odt += ' text:style-name="Blockquote"'
+                            break
                     else:
-                        property_value = property_value[1:]
-                        if tag == 'p':
-                            if self.blockquote_on:
-                                self.odt += ' text:style-name="Blockquote"'
+                        for key, value_ns in attrs:
+                            value = PwicLib.nns(value_ns)
+                            if key == property_value:
+                                # Fix the base URL for the links
+                                if (tag == 'a') and (key == 'href'):
+                                    if value[:1] in ['/']:
+                                        value = self.base_url + str(value)
+                                    elif value[:1] in ['?', '#', '.']:
+                                        value = '%s/%s/%s%s' % (self.base_url, self.project, self.page, value)
+                                    elif value[:2] == './' or value[:3] == '../':
+                                        value = '%s/%s/%s/%s' % (self.base_url, self.project, self.page, value)
+
+                                # Fix the attributes for the pictures
+                                if tag == 'img':
+                                    if key == 'alt':
+                                        tag_img['alt'] = value
+                                    elif key == 'title':
+                                        tag_img['title'] = value
+                                    elif key == 'src':
+                                        if value[:1] == '/':
+                                            value = value[1:]
+                                        if self.pict is not None:
+                                            docid_re = PwicConst.REGEXES['document_imgsrc'].match(value)
+                                            if docid_re is not None:
+                                                width = height = 0
+                                                docid = PwicLib.intval(docid_re.group(1))
+                                                if docid in self.pict:
+                                                    if self.pict[docid]['remote'] or (self.pict[docid]['link'] == value):
+                                                        value = self.pict[docid]['link_odt_img']
+                                                    width = self.pict[docid]['width']
+                                                    height = self.pict[docid]['height']
+                                                if 0 in [width, height]:
+                                                    width = height = PwicLib.intval(PwicConst.DEFAULTS['odt_img_defpix'])
+                                                self._replace_marker('{$w}', PwicLib.convert_length(width, 'cm', 2))
+                                                self._replace_marker('{$h}', PwicLib.convert_length(height, 'cm', 2))
+
+                                # Fix the class name for the syntax highlight
+                                if (tag == 'span') and self.blockcode_on and (key == 'class'):
+                                    value = 'Code_' + value
+
+                                if property_key[:5] != 'dummy':
+                                    self.odt += ' %s="%s"' % (property_key, escape(value))
                                 break
-                        else:
-                            for key, value_ns in attrs:
-                                value = PwicLib.nns(value_ns)
-                                if key == property_value:
-                                    # Fix the base URL for the links
-                                    if (tag == 'a') and (key == 'href'):
-                                        if value[:1] in ['/']:
-                                            value = self.base_url + str(value)
-                                        elif value[:1] in ['?', '#', '.']:
-                                            value = '%s/%s/%s%s' % (self.base_url, self.project, self.page, value)
-                                        elif value[:2] == './' or value[:3] == '../':
-                                            value = '%s/%s/%s/%s' % (self.base_url, self.project, self.page, value)
+        if tag in PwicConst.VOID_HTML:
+            self.odt += '/'
+        self.odt += '>'
 
-                                    # Fix the attributes for the pictures
-                                    if tag == 'img':
-                                        if key == 'alt':
-                                            self.lastIMGalt = value
-                                        elif key == 'title':
-                                            self.lastIMGtitle = value
-                                        elif key == 'src':
-                                            if value[:1] == '/':
-                                                value = value[1:]
-                                            if self.pict is not None:
-                                                docid_re = PwicConst.REGEXES['document_imgsrc'].match(value)
-                                                if docid_re is not None:
-                                                    width = height = 0
-                                                    docid = PwicLib.intval(docid_re.group(1))
-                                                    if docid in self.pict:
-                                                        if self.pict[docid]['remote'] or (self.pict[docid]['link'] == value):
-                                                            value = self.pict[docid]['link_odt_img']
-                                                        width = self.pict[docid]['width']
-                                                        height = self.pict[docid]['height']
-                                                    if 0 in [width, height]:
-                                                        width = height = PwicLib.intval(PwicConst.DEFAULTS['odt_img_defpix'])
-                                                    self._replace_marker('{$w}', PwicLib.convert_length(width, 'cm', 2))
-                                                    self._replace_marker('{$h}', PwicLib.convert_length(height, 'cm', 2))
+        # Surrounding extra tags
+        if tag == 'img':                    # Void tag
+            if 'alt' in tag_img:
+                self.odt += '<svg:title>%s</svg:title>' % escape(tag_img.get('alt', ''))
+            if 'title' in tag_img:
+                self.odt += '<svg:desc>%s</svg:desc>' % escape(tag_img.get('title', ''))
+        if tag in self.extrasStart:
+            self.odt += self.extrasStart[tag][1]
 
-                                    # Fix the class name for the syntax highlight
-                                    if (tag == 'span') and self.blockcode_on and (key == 'class'):
-                                        value = 'Code_' + value
-
-                                    if property_key[:5] != 'dummy':
-                                        self.odt += ' %s="%s"' % (property_key, escape(value))
-                                    break
-            if tag in self.noclosing:
-                self.odt += '/'
-            self.odt += '>'
-
-            # Handle the column descriptors of the tables
-            if tag == 'table':
-                self.table_descriptors.append({'cursor': len(self.odt),
-                                               'count': 0,
-                                               'max': 0})
-            if tag in ['th', 'td']:
-                self.table_descriptors[-1]['count'] += 1
-
-        # Automatic extra tags
-        if tag in self.extrasAfter:
-            self.odt += self.extrasAfter[tag][0]
+        # Handle the column descriptors of the tables
+        if tag == 'table':
+            self.table_descriptors.append({'cursor': len(self.odt),
+                                           'count': 0,
+                                           'max': 0})
+        if tag in ['th', 'td']:
+            self.table_descriptors[-1]['count'] += 1
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
 
         # Rules
         lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
+        # ... no void tag
+        if tag in PwicConst.VOID_HTML:
+            return
         # ... no imbricated paragraphs
         if (tag == 'p') and (lastTag != 'p'):
             return
@@ -635,13 +648,13 @@ class PwicMapperOdt(HTMLParser):        # html2odt
             raise PwicError
         self.tag_path.pop()
 
-        # Automatic extra tags
-        if tag in self.extrasAfter:
-            self.odt += self.extrasAfter[tag][1]
+        # Surrounding extra tags
+        if tag in self.extrasEnd:
+            self.odt += self.extrasEnd[tag]
 
         # Final mapping
         if tag in self.maps:
-            if tag not in self.noclosing:
+            if tag not in PwicConst.VOID_HTML:
                 if tag == 'blockquote':
                     self.blockquote_on = False
                 if tag == 'blockcode':
@@ -662,19 +675,6 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                     + '</table:table-columns>'
                                     + self.odt[cursor:])
                         self.table_descriptors.pop()
-
-        # Dynamic replacement text for a picture
-        if tag == 'img':
-            if self.lastIMGalt != '':
-                self.odt += '<svg:title>%s</svg:title>' % escape(self.lastIMGalt)
-                self.lastIMGalt = ''
-            if self.lastIMGtitle != '':
-                self.odt += '<svg:desc>%s</svg:desc>' % escape(self.lastIMGtitle)
-                self.lastIMGtitle = ''
-
-        # Automatic extra tags
-        if tag in self.extrasBefore:
-            self.odt += self.extrasBefore[tag][1]
 
     def handle_data(self, data: str) -> None:
         data = escape(data)

@@ -52,13 +52,13 @@
 							<p class="pwic_italic">{{pwic.emojis.warning}} {% trans %}Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else.{% endtrans %}</p>
 						{% endif %}
 						<table class="pwic_noborder">
-							<tr><td>{% trans %}Current password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true" /></td></tr>
-							<tr><td>{% trans %}New password:{% endtrans %}</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" autocomplete="new-password" required="true" /></td></tr>
-							<tr><td>{% trans %}Repeat password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" onpaste="return false" /></td></tr>
+							<tr><td>{% trans %}Current password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_current" autocomplete="current-password" required="true"></td></tr>
+							<tr><td>{% trans %}New password:{% endtrans %}</td>		<td><input class="pwic_fill" type="password" id="user_password_new1" autocomplete="new-password" required="true"></td></tr>
+							<tr><td>{% trans %}Repeat password:{% endtrans %}</td>	<td><input class="pwic_fill" type="password" id="user_password_new2" autocomplete="off" required="true" onpaste="return false"></td></tr>
 						</table>
 						<p>
-							<input type="button" value="{{pwic.emojis.locked}} {% trans %}Change{% endtrans %}" onclick="user_password_submit()"/>
-							<input type="button" value="{% trans %}Cancel{% endtrans %}" onclick="user_password_popup()"/>
+							<input type="button" value="{{pwic.emojis.locked}} {% trans %}Change{% endtrans %}" onclick="user_password_submit()">
+							<input type="button" value="{% trans %}Cancel{% endtrans %}" onclick="user_password_popup()">
 						</p>
 					</form>
 				</div>

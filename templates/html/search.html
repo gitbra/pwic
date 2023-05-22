@@ -15,10 +15,10 @@
 		<h1>{{pwic.pages|count + pwic.documents|count}} {% trans %}results{% endtrans %}</h1>
 
 		<p>{% trans %}Search terms:{% endtrans %}
-			<input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()" />
+			<input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()">
 			{% if not pwic.pure_reader or not pwic.env.no_history %}
 				<span style="pwic_nowrap pwic_js">
-					<input id="page_search_withrev" type="checkbox" {% if 'rev' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()" />
+					<input id="page_search_withrev" type="checkbox" {% if 'rev' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()">
 					<label for="page_search_withrev">{% trans %}Include the old revisions{% endtrans %}</label>
 				</div>
 			{% endif %}

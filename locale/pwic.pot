@@ -284,6 +284,12 @@ msgstr ""
 msgid "Annotation"
 msgstr ""
 
+msgid "Line"
+msgstr ""
+
+msgid "Horizontal line"
+msgstr ""
+
 msgid "Table"
 msgstr ""
 
@@ -660,7 +666,7 @@ msgstr ""
 msgid "Uploaded by %(author)s on %(date)s at %(time)s."
 msgstr ""
 
-msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
+msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
 msgstr ""
 
 #: ../templates/html/project-access.html

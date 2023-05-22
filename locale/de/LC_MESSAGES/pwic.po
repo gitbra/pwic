@@ -299,6 +299,12 @@ msgstr "Fußnote"
 msgid "Annotation"
 msgstr "Annotation"
 
+msgid "Line"
+msgstr "Linie"
+
+msgid "Horizontal line"
+msgstr "Horizontale Linie"
+
 msgid "Table"
 msgstr "Tabelle"
 
@@ -675,8 +681,8 @@ msgstr "Alles nachladen"
 msgid "Uploaded by %(author)s on %(date)s at %(time)s."
 msgstr "Hochgeladen von %(author)s am %(date)s um %(time)s."
 
-msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
-msgstr "Revision <span class=\"pwic_bold\">#%(revision)d</span> wurde zuletzt am %(date)s um %(time)s<br/>von <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a> geändert &mdash; <span title=\"Prüfsumme: %(hash)s\">%(shash)s</span>"
+msgid "Revision <span class=\"pwic_bold\">#%(revision)d</span> was last modified by <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a><br>on %(date)s at %(time)s &mdash; <span title=\"Hash: %(hash)s\">%(shash)s</span>"
+msgstr "Revision <span class=\"pwic_bold\">#%(revision)d</span> wurde zuletzt am %(date)s um %(time)s<br>von <a href=\"/special/user/%(author1)s\" rel=\"nofollow\">%(author2)s</a> geändert &mdash; <span title=\"Prüfsumme: %(hash)s\">%(shash)s</span>"
 
 #: ../templates/html/project-access.html
 msgid "No access"

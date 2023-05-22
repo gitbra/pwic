@@ -12,7 +12,7 @@
 				{% if not pwic.env.no_search %}
 					<div class="pwic_searchbox pwic_js">
 						{{pwic.emojis.search}}
-						<input type="text" id="page_search" onkeypress="page_search()" />
+						<input type="text" id="page_search" onkeypress="page_search()">
 					</div>
 				{% endif %}
 			</div>
@@ -23,10 +23,10 @@
 		<div id="pwic_progress"></div>
 
 		{% if pwic.env.maintenance %}
-			<div class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape|replace('\\n','<br/>')}}</div>
+			<div class="pwic_error">{{pwic.emojis.calendar}} {{pwic.env.maintenance.value|escape|replace('\\n','<br>')}}</div>
 		{% endif %}
 		{% if pwic.env.message %}
-			<div class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape|replace('\\n','<br/>')}}</div>
+			<div class="pwic_information">{{pwic.emojis.pin}} {{pwic.env.message.value|escape|replace('\\n','<br>')}}</div>
 		{% endif %}
 
 		<div class="pwic_action_bar">
@@ -131,13 +131,13 @@
 						{% if pwic.documents|count + pwic.images|count > 1 %}
 							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
 								<span>{% trans %}Download all{% endtrans %}</span>
-								<br/>{{pwic.emojis.inbox}}
+								<br>{{pwic.emojis.inbox}}
 							</a>
 						{% endif %}
 						{% for doc in pwic.documents %}
 							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
-								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+								<br><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
 						{% endfor %}
 					</div>
@@ -148,13 +148,13 @@
 						{% if (pwic.documents|count == 0) and (pwic.images|count > 1) %}
 							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
 								<span>{% trans %}Download all{% endtrans %}</span>
-								<br/>{{pwic.emojis.inbox}}
+								<br>{{pwic.emojis.inbox}}
 							</a>
 						{% endif %}
 						{% for doc in pwic.images %}
 							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
-								<br/><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+								<br><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
 							</a>
 						{% endfor %}
 					</div>
@@ -163,11 +163,11 @@
 		{% endif %}
 
 		<p id="page_lastmod">
-			{{ gettext('Revision <span class="pwic_bold">#%(revision)d</span> was last modified by <a href="/special/user/%(author1)s" rel="nofollow">%(author2)s</a><br/>on %(date)s at %(time)s &mdash; <span title="Hash: %(hash)s">%(shash)s</span>')|format(revision=pwic.revision, author1=pwic.author|urlencode, author2=pwic.author|escape, date=pwic.date|escape, time=pwic.time|escape, hash=pwic.hash|escape, shash=pwic.hash[:16]|escape) }}
+			{{ gettext('Revision <span class="pwic_bold">#%(revision)d</span> was last modified by <a href="/special/user/%(author1)s" rel="nofollow">%(author2)s</a><br>on %(date)s at %(time)s &mdash; <span title="Hash: %(hash)s">%(shash)s</span>')|format(revision=pwic.revision, author1=pwic.author|urlencode, author2=pwic.author|escape, date=pwic.date|escape, time=pwic.time|escape, hash=pwic.hash|escape, shash=pwic.hash[:16]|escape) }}
 		</p>
 
 		{% if pwic.env.legal_notice %}
-			<div id="page_legal_notice">{{pwic.env.legal_notice.value|escape|replace('\n','<br/>')}}</div>
+			<div id="page_legal_notice">{{pwic.env.legal_notice.value|escape|replace('\n','<br>')}}</div>
 		{% endif %}
 	</article>
 

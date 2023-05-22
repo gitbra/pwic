@@ -94,10 +94,10 @@
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td>Any user is granted as a reader depending on the value of the option:
-							<br/>- <code>active</code>: automatically when the user connects to <em>Pwic.wiki</em>,
-							<br/>- <code>sso</code>: same as <code>active</code> for the federated authentication only,
-							<br/>- <code>passive</code>: when the user opens the project on purpose.
-							<br/>You can add any user manually at any time. To exclude a user alongside with the automatic join, simply disable (not remove) the user from the management screen of the users. The option is useful when you need a public workspace for your team members but you don't want to manage the initial access manually. The option must be defined by project, not globally.</td>
+							<br>- <code>active</code>: automatically when the user connects to <em>Pwic.wiki</em>,
+							<br>- <code>sso</code>: same as <code>active</code> for the federated authentication only,
+							<br>- <code>passive</code>: when the user opens the project on purpose.
+							<br>You can add any user manually at any time. To exclude a user alongside with the automatic join, simply disable (not remove) the user from the management screen of the users. The option is useful when you need a public workspace for your team members but you don't want to manage the initial access manually. The option must be defined by project, not globally.</td>
 					</tr>
 					<tr>
 						<td><code>base_url</code></td>
@@ -212,9 +212,9 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>- Define the absolute or relative file name to log passively all the HTTP requests. There is no log file when the option is empty.
-							<br/>- The option is effective upon the restart of the server.
-							<br/>- Because the log file is exclusively locked, you must terminate <em>Pwic.wiki</em> before you can rotate the logs with the command <code>python3 pwic_admin.py rotate-logs</code>.
-							<br/>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
+							<br>- The option is effective upon the restart of the server.
+							<br>- Because the log file is exclusively locked, you must terminate <em>Pwic.wiki</em> before you can rotate the logs with the command <code>python3 pwic_admin.py rotate-logs</code>.
+							<br>- The log file includes neither user names, nor processed data. It should not be mistaken with the internal audit tables that are updated by name when a relevant write operation occurs in the database.</td>
 					</tr>
 					<tr>
 						<td><code>http_log_format</code></td>
@@ -257,10 +257,10 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>The session of a user is saved in a client-side encrypted cookie, so nobody can change its values. This option prevents the internal cryptographic key from being regenerated when the server starts. The effects are:
-							<br/>- The sessions of the users are never terminated, unless you restart <em>Pwic.wiki</em> without this option,
-							<br/>- The users don't have to reconnect in another tab if their work in progress cannot be submitted due to the expiration of their sessions,
-							<br/>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
-							<br/><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
+							<br>- The sessions of the users are never terminated, unless they expire after some time due to the option <code>session_expiry</code> or you restart <em>Pwic.wiki</em> with the command line option <code>--new-session</code>.
+							<br>- While they are writing, the users don't have to reconnect in another tab after the server is restarted, but the session expiry is still applicable.
+							<br>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
+							<br><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
 					</tr>
 					<tr>
 						<td><code>language</code></td>
@@ -387,9 +387,9 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>- Skip the login screen and assign the anonymous role to your visitors.
-							<br/>- On contrary to the option <code>auto_join</code>, they don't need a user account to read the pages.
-							<br/>- You can hide a project by disabling the user account <code>{{pwic.constants.anonymous_user}}</code>.
-							<br/>- The option <code>robots</code> is recommended when the option is turned on.
+							<br>- On contrary to the option <code>auto_join</code>, they don't need a user account to read the pages.
+							<br>- You can hide a project by disabling the user account <code>{{pwic.constants.anonymous_user}}</code>.
+							<br>- The option <code>robots</code> is recommended when the option is turned on.
 						</td>
 					</tr>
 					<tr>
@@ -530,9 +530,9 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>
 							- The <a href="https://en.wikipedia.org/wiki/Meta_element#The_robots_attribute">meta information</a> <code>robots</code> impacts the search engine optimization (SEO) of your projects in case it is made public through the option <code>no_login</code>.
-							<br/>- The parameter is optionally considered by the crawler. Several values separated with a space are available: <code>archive</code>, <code>noarchive</code>, <code>follow</code>, <code>nofollow</code>, <code>index</code>, <code>noindex</code>, <code>snippet</code> and <code>nosnippet</code>.
-							<br/>- Refer also to the related option <code>seo_hide_revs</code>.
-							<br/>- The values are overridden for some specific pages.</td>
+							<br>- The parameter is optionally considered by the crawler. Several values separated with a space are available: <code>archive</code>, <code>noarchive</code>, <code>follow</code>, <code>nofollow</code>, <code>index</code>, <code>noindex</code>, <code>snippet</code> and <code>nosnippet</code>.
+							<br>- Refer also to the related option <code>seo_hide_revs</code>.
+							<br>- The values are overridden for some specific pages.</td>
 					</tr>
 					<tr>
 						<td><code>rstrip</code></td>
@@ -638,10 +638,10 @@
 				<tr>
 					<td><code>oauth_provider</code></td>
 					<td>Name of the third-party identity provider:
-						<br/>- <code>github</code> (<a href="https://docs.github.com/en/developers/apps/authorizing-oauth-apps">documentation</a>)
-						<br/>- <code>google</code> (<a href="https://developers.google.com/accounts/docs/OAuth2">documentation</a>)
-						<br/>- <code>microsoft</code> (<a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow">documentation</a>)
-						<br/>- No value means that the feature is disabled
+						<br>- <code>github</code> (<a href="https://docs.github.com/en/developers/apps/authorizing-oauth-apps">documentation</a>)
+						<br>- <code>google</code> (<a href="https://developers.google.com/accounts/docs/OAuth2">documentation</a>)
+						<br>- <code>microsoft</code> (<a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow">documentation</a>)
+						<br>- No value means that the feature is disabled
 					</td>
 					<td>{{pwic.emojis.green_check}}</td>
 					<td>{{pwic.emojis.green_check}}</td>

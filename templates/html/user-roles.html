@@ -59,7 +59,7 @@
 							{% if role.admin %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+2}}"
@@ -71,7 +71,7 @@
 							{% if role.manager %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+3}}"
@@ -83,7 +83,7 @@
 							{% if role.editor %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+4}}"
@@ -95,7 +95,7 @@
 							{% if role.validator %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+5}}"
@@ -107,7 +107,7 @@
 							{% if role.reader %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						<input	id="roles_tag_{{u.value+6}}" type="checkbox"
@@ -119,7 +119,7 @@
 							{% if role.disabled %}
 								checked="checked"
 							{% endif %}
-						/>
+						>
 					</td>
 					<td>
 						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
@@ -127,7 +127,7 @@
 									onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')"
 									value="{{pwic.emojis.red_check}}"
 									title="{% trans %}Delete{% endtrans %} {{role.user|escape}}"
-							/>
+							>
 						{% endif %}
 					</td>
 				</tr>
