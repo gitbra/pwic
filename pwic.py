@@ -315,7 +315,7 @@ class PwicServer():
         pwic['template'] = name
         pwic['args'] = request.rel_url.query
         PwicExtension.on_render_pre(app, sql, request, pwic)
-        output = app['jinja'][pwic['language']].get_template('html/%s.html' % name).render(pwic=pwic)
+        output = app['jinja'][pwic['language']].get_template(f'html/{name}.html').render(pwic=pwic)
         output = PwicExtension.on_render_post(app, sql, request, pwic, output)
         headers: MultiDict = MultiDict({})
         PwicExtension.on_http_headers(sql, request, headers, project, name)
@@ -477,7 +477,7 @@ class PwicServer():
         # Output
         if (len(pwic['projects']) == 1) and (len(pwic['joinable_projects']) == 0):
             suffix = '?failed' if request.rel_url.query.get('failed', None) is not None else ''
-            raise web.HTTPTemporaryRedirect('/%s%s' % (pwic['projects'][0]['project'], suffix))
+            raise web.HTTPTemporaryRedirect(f'/{pwic["projects"][0]["project"]}{suffix}')
         return await self._handle_output(request, 'project-select', pwic)
 
     async def _page_view(self,
@@ -547,7 +547,7 @@ class PwicServer():
                              or ((pwic['author'] == user)
                                  and pwic['draft']))
         pwic['file_formats'] = PwicExporter.get_allowed_extensions()
-        pwic['canonical'] = ('%s/%s/%s' % (app['options']['base_url'], project, page)) + ('' if pwic['latest'] else '/rev%d' % revision)
+        pwic['canonical'] = f'{app["options"]["base_url"]}/{project}/{page}' + ('' if pwic['latest'] else f'/rev{revision}')
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -705,7 +705,7 @@ class PwicServer():
                             ) -> web.Response:
         # Redirect the pure reader if the history is disabled
         if pwic['pure_reader'] and (PwicLib.option(sql, project, 'no_history') is not None):
-            raise web.HTTPTemporaryRedirect('/%s/%s' % (project, page))
+            raise web.HTTPTemporaryRedirect(f'/{project}/{page}')
 
         # Extract the revisions
         sql.execute(''' SELECT revision, latest, draft, final, author,
@@ -792,7 +792,7 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPInternalServerError()
-        raise web.HTTPTemporaryRedirect('/%s/%s' % (project, row['page']))
+        raise web.HTTPTemporaryRedirect(f'/{project}/{row["page"]}')
 
     async def page_audit(self, request: web.Request) -> web.Response:
         ''' Serve the page to monitor the settings and the activty '''
@@ -819,7 +819,7 @@ class PwicServer():
                     (project, user))
         row = sql.fetchone()
         if row is None:
-            raise web.HTTPTemporaryRedirect('/%s/special' % project)  # Project not found, or user not authorized to view it
+            raise web.HTTPTemporaryRedirect(f'/{project}/special')  # Project not found, or user not authorized to view it
         pwic = {'project': project,
                 'project_description': row['description'],
                 'range': days,
@@ -1003,7 +1003,7 @@ class PwicServer():
         else:
             query = PwicLib.search_parse(request.rel_url.query.get('q', ''))
         if query is None:
-            raise web.HTTPTemporaryRedirect('/%s' % project)
+            raise web.HTTPTemporaryRedirect(f'/{project}')
 
         # Restrict the parameters
         pure_reader = self._is_pure_reader(sql, project, user)
@@ -1515,7 +1515,7 @@ class PwicServer():
         if counter == 0:
             raise web.HTTPNotFound()
         headers = {'Content-Type': str(PwicLib.mime('zip')),
-                   'Content-Disposition': 'attachment; filename="%s"' % PwicLib.attachment_name('%s_%s.zip' % (project, page))}
+                   'Content-Disposition': 'attachment; filename="%s"' % PwicLib.attachment_name(f'{project}_{page}.zip')}
         return web.Response(body=buffer, headers=MultiDict(headers))
 
     def _auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str, categories: List[str]) -> bool:
@@ -1613,7 +1613,7 @@ class PwicServer():
 
         def _call_api(url, token_type, token):
             try:
-                with urlopen(Request(url, headers={'Authorization': '%s %s' % (token_type, token)})) as response:
+                with urlopen(Request(url, headers={'Authorization': f'{token_type} {token}'})) as response:
                     data = response.read()
                     data = data.decode(response.info().get_content_charset())
                 data = json.loads(data)
@@ -1690,7 +1690,7 @@ class PwicServer():
                      'code': code,
                      'redirect_uri': app['options']['base_url'] + '/api/oauth',
                      'client_secret': oauth['server_secret']}
-            token_type, token = _fetch_token('https://login.microsoftonline.com/%s/oauth2/v2.0/token' % oauth['tenant'], query)
+            token_type, token = _fetch_token(f'https://login.microsoftonline.com/{oauth["tenant"]}/oauth2/v2.0/token', query)
 
             # Fetch the email of the user
             data = _call_api('https://graph.microsoft.com/v1.0/me/', token_type, token)
@@ -1974,7 +1974,7 @@ class PwicServer():
                 elif k != 'page':
                     if (not isinstance(row[k], str)) or (row[k] != ''):
                         item[k] = row[k]
-            item['url'] = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
+            item['url'] = f'{app["options"]["base_url"]}/{project}/{row["page"]}/rev{row["revision"]}'
             data[row['page']]['revisions'].append(item)
 
         # Fetch the documents
@@ -1990,7 +1990,7 @@ class PwicServer():
                 if row is None:
                     break
 
-                row['url'] = '%s/special/document/%d/%s' % (app['options']['base_url'], row['id'], row['filename'])
+                row['url'] = f'{app["options"]["base_url"]}/special/document/{row["id"]}/{row["filename"]}'
                 k = row['page']
                 del row['page']
                 if k in data:
@@ -2160,7 +2160,7 @@ class PwicServer():
                             WHERE project = ?
                               AND latest = 'X'
                               AND ' '||tags||' ' LIKE ? ''',
-                        (project, '%% %s %%' % tag))
+                        (project, f'% {tag} %'))
             for row in sql.fetchall():
                 if row['valuser'] != '':
                     item['validated'] += 1
@@ -2215,7 +2215,7 @@ class PwicServer():
             if (pos >= len(pages)) or (pages[pos] != tup):
                 insort(pages, tup)
                 return _get_node_id(project, page)
-            return 'n%d' % (pos + 1)
+            return f'n{pos+1}'
 
         # Fetch the pages
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown
@@ -2371,9 +2371,9 @@ class PwicServer():
 
                     # Raw markdown
                     if with_revisions:
-                        ziparch.writestr('%s%s.rev%d.md' % (folder_rev, page['page'], page['revision']), page['markdown'])
+                        ziparch.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.md', page['markdown'])
                     if page['latest']:
-                        ziparch.writestr('%s.md' % page['page'], page['markdown'])
+                        ziparch.writestr(f'{page["page"]}.md', page['markdown'])
 
                     # Regenerate HTML
                     html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
@@ -2384,18 +2384,18 @@ class PwicServer():
                     for doc in documents:
                         if doc['exturl'] == '':
                             if doc['image']:
-                                html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="documents/%s"' % doc['filename'])
-                            html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="documents/%s"' % doc['filename'])
-                            html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="documents/%s' % doc['filename'])
+                                html = html.replace(f'<img src="/special/document/{doc["id"]}"', f'<img src="documents/{doc["filename"]}"')
+                            html = html.replace(f'<a href="/special/document/{doc["id"]}"', f'<a href="documents/{doc["filename"]}"')
+                            html = html.replace(f'<a href="/special/document/{doc["id"]}/', f'<a href="documents/{doc["filename"]}')
                         else:
                             if doc['image']:
-                                html = html.replace('<img src="/special/document/%d"' % doc['id'], '<img src="%s"' % doc['exturl'])
-                            html = html.replace('<a href="/special/document/%d"' % doc['id'], '<a href="%s"' % doc['exturl'])
-                            html = html.replace('<a href="/special/document/%d/' % doc['id'], '<a href="%s' % doc['exturl'])
+                                html = html.replace(f'<img src="/special/document/{doc["id"]}"', f'<img src="{doc["exturl"]}"')
+                            html = html.replace(f'<a href="/special/document/{doc["id"]}"', f'<a href="{doc["exturl"]}"')
+                            html = html.replace(f'<a href="/special/document/{doc["id"]}/', f'<a href="{doc["exturl"]}')
                     if with_revisions:
-                        ziparch.writestr('%s%s.rev%d.html' % (folder_rev, page['page'], page['revision']), html)
+                        ziparch.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.html', html)
                     if page['latest']:
-                        ziparch.writestr('%s.html' % page['page'], html)
+                        ziparch.writestr(f'{page["page"]}.html', html)
 
                 # Dependent files for the pages
                 cssfn = PwicStylerHtml().css
@@ -2416,7 +2416,7 @@ class PwicServer():
                             content = b''
                             with open(fn, 'rb') as f:
                                 content = f.read()
-                            ziparch.writestr('documents/%s' % doc['filename'], content)
+                            ziparch.writestr(f'documents/{doc["filename"]}', content)
                             del content
         except Exception as e:
             raise web.HTTPInternalServerError() from e
@@ -2441,7 +2441,7 @@ class PwicServer():
         # Sub-features
         def _feed_atom(sql: sqlite3.Cursor, project: str, project_description: str, feed_size: int) -> web.Response:
             dt = PwicLib.dt()
-            url = '%s/api/project/atom/get?project=%s' % (app['options']['base_url'], project)
+            url = f'{app["options"]["base_url"]}/api/project/atom/get?project={project}'
             legnot = str(PwicLib.option(sql, project, 'legal_notice', ''))
             atom = '''<?xml version="1.0" encoding="utf-8"?>
                         <feed xmlns="http://www.w3.org/2005/Atom" xml:base="%s" xml:lang="%s">
@@ -2474,7 +2474,7 @@ class PwicServer():
                             LIMIT ?''',
                         (project, dt['date-90d'], feed_size))
             for row in sql.fetchall():
-                url = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
+                url = f'{app["options"]["base_url"]}/{project}/{row["page"]}/rev{row["revision"]}'
                 atom += '''<entry>
                              <title>[%s] %s</title>
                              <summary>%s</summary>
@@ -2502,11 +2502,11 @@ class PwicServer():
             def _author2rss(author: str) -> str:
                 p = author.find('@')
                 if p == -1:
-                    return '%s@no.reply (%s)' % (author, author)
-                return '%s (%s)' % (author, author[:p])
+                    return f'{author}@no.reply ({author})'
+                return f'{author} ({author[:p]})'
 
             dt = PwicLib.dt()
-            url = '%s/api/project/rss/get?project=%s' % (app['options']['base_url'], project)
+            url = f'{app["options"]["base_url"]}/api/project/rss/get?project={project}'
             rss = '''<?xml version="1.0" encoding="utf8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
                     <channel>
                         <title>Project %s (RSS)</title>
@@ -2530,7 +2530,7 @@ class PwicServer():
                             LIMIT ?''',
                         (project, dt['date-90d'], feed_size))
             for row in sql.fetchall():
-                url = '%s/%s/%s/rev%d' % (app['options']['base_url'], project, row['page'], row['revision'])
+                url = f'{app["options"]["base_url"]}/{project}/{row["page"]}/rev{row["revision"]}'
                 rss += '''<item>
                             <title>[%s] %s</title>
                             <description>%s</description>
@@ -2771,7 +2771,7 @@ class PwicServer():
 
         # Fetch the default markdown if the page is created in reference to another one
         default_title = page
-        default_markdown = '# %s' % page
+        default_markdown = f'# {page}'
         default_tags = ''
         if (ref_project != '') and (ref_page != ''):
             sql.execute(''' SELECT b.title, b.markdown, b.tags
@@ -2817,7 +2817,7 @@ class PwicServer():
         data = {'project': project,
                 'page': page,
                 'revision': revision,
-                'url': '/%s/%s' % (project, page)}
+                'url': f'/{project}/{page}'}
         return web.Response(text=json.dumps(data), content_type=PwicLib.mime('json'))
 
     async def api_page_edit(self, request: web.Request) -> None:
@@ -2911,7 +2911,7 @@ class PwicServer():
                 last_dt = sql.fetchone()['last_dt']
                 if last_dt is not None:
                     d1 = datetime.strptime(last_dt, PwicConst.DEFAULTS['dt_mask'])
-                    d2 = datetime.strptime('%s %s' % (dt['date'], dt['time']), PwicConst.DEFAULTS['dt_mask'])
+                    d2 = datetime.strptime(f'{dt["date"]} {dt["time"]}', PwicConst.DEFAULTS['dt_mask'])
                     if (d2 - d1).total_seconds() < edit_time_min:
                         self.dbconn.rollback()
                         raise web.HTTPServiceUnavailable()
@@ -3190,7 +3190,7 @@ class PwicServer():
                             'event': 'delete-page',
                             'project': srcproj,
                             'page': srcpage,
-                            'string': '/%s/%s' % (dstproj, dstpage)},
+                            'string': f'/{dstproj}/{dstpage}'},
                       request)
         sql.execute(''' SELECT revision
                         FROM pages
@@ -3203,10 +3203,10 @@ class PwicServer():
                             'project': dstproj,
                             'page': dstpage,
                             'reference': sql.fetchone()['revision'],
-                            'string': '/%s/%s' % (srcproj, srcpage)},
+                            'string': f'/{srcproj}/{srcpage}'},
                       request)
         self.dbconn.commit()
-        return web.HTTPFound('/%s/%s?%s' % (dstproj, dstpage, 'success' if ok else 'failed'))
+        return web.HTTPFound(f'/{dstproj}/{dstpage}?' + ('success' if ok else 'failed'))
 
     async def api_page_delete(self, request: web.Request) -> None:
         ''' Delete a revision of a page '''
@@ -3368,7 +3368,7 @@ class PwicServer():
             raise web.HTTPForbidden()
 
         # Handle the own file formats
-        endname = PwicLib.attachment_name('%s_%s_rev%d.%s' % (project, page, revision, extension))
+        endname = PwicLib.attachment_name(f'{project}_{page}_rev{revision}.{extension}')
         done, newbody, newheaders = PwicExtension.on_api_page_export(sql, request, project, user, page, revision, extension, endname)
         if done:
             if newbody is None:
@@ -3382,7 +3382,7 @@ class PwicServer():
         if data is None:
             raise web.HTTPUnsupportedMediaType()
         headers = {'Content-Type': str(PwicLib.mime(extension) or PwicLib.mime('')),
-                   'Content-Disposition': 'attachment; filename="%s"' % endname}
+                   'Content-Disposition': f'attachment; filename="{endname}"'}
         return web.Response(body=data, headers=MultiDict(headers))
 
     async def api_markdown(self, request: web.Request) -> web.Response:
@@ -3627,8 +3627,8 @@ class PwicServer():
             return web.Response(text='OK', content_type=PwicLib.mime('txt'))
 
         # New role
-        newvalue = PwicLib.x(not row[roles[roleid]])
-        if (roles[roleid] == 'admin') and (newvalue != 'X') and (user == userpost):
+        newvalue = not row[roles[roleid]]
+        if (roles[roleid] == 'admin') and not newvalue and (user == userpost):
             self.dbconn.rollback()
             raise web.HTTPUnauthorized()      # Cannot self-ungrant admin, so there is always at least one admin on the project
         if not PwicExtension.on_api_user_roles_set(sql, request, project, user, userpost, roles[roleid], newvalue):
@@ -3640,7 +3640,7 @@ class PwicServer():
                         WHERE project = ?
                           AND user    = ?'''
             sql.execute(query % roles[roleid],
-                        (newvalue, project, userpost))
+                        (PwicLib.x(newvalue), project, userpost))
         except sqlite3.IntegrityError as e:
             self.dbconn.rollback()
             raise web.HTTPUnauthorized() from e
@@ -3648,12 +3648,12 @@ class PwicServer():
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
         PwicLib.audit(sql, {'author': user,
-                            'event': '%s-%s' % ('grant' if PwicLib.xb(newvalue) else 'ungrant', roles[roleid]),
+                            'event': '%s-%s' % ('grant' if newvalue else 'ungrant', roles[roleid]),
                             'project': project,
                             'user': userpost},
                       request)
         self.dbconn.commit()
-        return web.Response(text=newvalue, content_type=PwicLib.mime('txt'))
+        return web.Response(text=PwicLib.x(newvalue), content_type=PwicLib.mime('txt'))
 
     async def api_document_create(self, request: web.Request) -> None:
         ''' API to create a new document '''
@@ -3913,9 +3913,9 @@ class PwicServer():
 
         # Redirect to the file
         if docid > 0:
-            return web.HTTPFound('/special/document/%d%s' % (docid, '?attachment' if attachment else ''))
+            return web.HTTPFound(f'/special/document/{docid}' + ('?attachment' if attachment else ''))
         if '' not in [project, page]:
-            return web.HTTPFound('/special/documents/%s/%s/download' % (project, page))
+            return web.HTTPFound(f'/special/documents/{project}/{page}/download')
         raise web.HTTPBadRequest()
 
     async def api_document_list(self, request: web.Request) -> web.Response:
@@ -3959,9 +3959,8 @@ class PwicServer():
         for row in documents:
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
             row['size'] = PwicLib.size2str(row['size'])
-            row['used'] = (('(/special/document/%d)' % row['id']) in markdown
-                           or ('(/special/document/%d "' % row['id']) in markdown)
-            row['url'] = '%s/special/document/%d/%s' % (app['options']['base_url'], row['id'], row['filename'])
+            row['used'] = (f'(/special/document/{row["id"]})' in markdown) or (f'(/special/document/{row["id"]} "' in markdown)
+            row['url'] = f'{app["options"]["base_url"]}/special/document/{row["id"]}/{row["filename"]}'
             row['convertible'] = conversion_allowed and (PwicLib.file_ext(row['filename']) in PwicImporter.get_allowed_extensions())
         PwicExtension.on_api_document_list(sql, request, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=PwicLib.mime('json'))
@@ -4007,7 +4006,7 @@ class PwicServer():
         # Rename the file
         ext = PwicLib.file_ext(row['filename'])
         if PwicLib.file_ext(filename) != ext:
-            filename += '.%s' % ext
+            filename += f'.{ext}'
         if filename == row['filename']:
             self.dbconn.rollback()
             raise web.HTTPBadRequest()
@@ -4031,7 +4030,7 @@ class PwicServer():
                             'project': project,
                             'page': row['page'],
                             'reference': docid,
-                            'string': '%s -> %s' % (row['filename'], filename)},
+                            'string': f'{row["filename"]} -> {filename}'},
                       request)
         self.dbconn.commit()
         raise web.HTTPOk()
@@ -4312,7 +4311,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Fetch the data
-        data = {'@odata.context': '%s/api/odata/$metadata#%s' % (base_url, table),
+        data = {'@odata.context': f'{base_url}/api/odata/$metadata#{table}',
                 'value': []}
         for row in sql.fetchall():
             # Fix the formats to comply with OData
@@ -4360,7 +4359,7 @@ def main() -> bool:
         return False
 
     # Command-line
-    parser = argparse.ArgumentParser(description='Pwic.wiki Server version %s' % PwicConst.VERSION)
+    parser = argparse.ArgumentParser(description=f'Pwic.wiki Server version {PwicConst.VERSION}')
     parser.add_argument('--host', default='127.0.0.1', help='Listening host')
     parser.add_argument('--port', type=int, default=PwicLib.intval(PwicConst.DEFAULTS['port']), help='Listening port')
     parser.add_argument('--new-session', action='store_true', help='Generate a new secret key for the session (it will disconnect all the users)')
@@ -4506,7 +4505,7 @@ def main() -> bool:
             print('Error: SSL certificates not found')
             return False
         except Exception as e:
-            print('Error: %s' % str(e))
+            print(f'Error: {e}')
             return False
 
     # General options of the server
@@ -4571,10 +4570,10 @@ def main() -> bool:
                               FROM audit.audit
                               WHERE id = ?''',
                           (row['id'], )).fetchone()
-        print('Last started on %s %s.' % (row['date'], row['time']))
+        print(f'Last started on {row["date"]} {row["time"]}.')
     PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                         'event': 'start-server',
-                        'string': '%s:%s' % (args.host, args.port)})
+                        'string': f'{args.host}:{args.port}'})
     app['sql'].commit()
     del sql
     web.run_app(app,

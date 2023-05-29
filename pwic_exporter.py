@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 from typing import Dict, List, Optional, Tuple, Union
 import sqlite3
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
@@ -248,7 +247,7 @@ class PwicExporter():
             odt.writestr('styles.xml', xml)
 
             # Content of the page
-            page_url = '%s/%s/%s/rev%d' % (base_url, row['project'], row['page'], row['revision'])
+            page_url = f'{base_url}/{row["project"]}/{row["page"]}/rev{row["revision"]}'
             xml = odtStyles.content
             xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
             xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
@@ -290,7 +289,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
                 if k not in result:
                     result[k] = v or ''
                 else:
-                    result[k] = ('%s %s' % (result[k], v)).strip()
+                    result[k] = f'{result[k]} {v}'.strip()
             return result
 
         # Tag path
@@ -314,8 +313,8 @@ class PwicCleanerHtml(HTMLParser):      # html2html
                  or ((self.code == 'svg') and (k[:2] != 'on')))):
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
-                    buffer += ' %s="%s"' % (k, v)
-        self.html += '<%s%s>' % (tag, buffer)
+                    buffer += f' {k}="{v}"'
+        self.html += f'<{tag}{buffer}>'
 
     def handle_endtag(self, tag: str):
         # Tag path
@@ -328,12 +327,12 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         if self.code == tag:    # Not imbricated
             self.code = ''
         if not self.is_mute():
-            self.html += '</%s>' % (tag)
+            self.html += f'</{tag}>'
         self.tag_path.pop()
 
     def handle_comment(self, data: str):
         if not self.is_mute():
-            self.handle_data('<!--%s-->' % data)
+            self.handle_data(f'<!--{data}-->')
 
     def handle_data(self, data: str):
         if not self.is_mute():
@@ -373,11 +372,11 @@ class PwicStylerHtml:
 
     def getCss(self, rel: bool) -> str:
         if rel:
-            return '<link rel="stylesheet" type="text/css" href="%s" />' % self.css
+            return f'<link rel="stylesheet" type="text/css" href="{self.css}" />'
         content = ''
         with open(self.css, 'r', encoding='utf-8') as f:
             content = f.read()
-        return '<style>%s</style>' % content
+        return f'<style>{content}</style>'
 
 
 # =========================
@@ -522,11 +521,11 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # ... list item should be enclosed by <p>
         if (tag != 'p') and (lastTag == 'li'):
             self.tag_path.append('p')
-            self.odt += '<%s>' % self.maps['p']
+            self.odt += f'<{self.maps["p"]}>'
         # ... subitems should close <p>
         elif (tag in ['ul', 'ol']) and (lastTag == 'p'):
             self.tag_path.pop()
-            self.odt += '</%s>' % self.maps['p']
+            self.odt += f'</{self.maps["p"]}>'
         del lastTag
 
         # Identify the new tag
@@ -570,9 +569,9 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                     if value[:1] in ['/']:
                                         value = self.base_url + str(value)
                                     elif value[:1] in ['?', '#', '.']:
-                                        value = '%s/%s/%s%s' % (self.base_url, self.project, self.page, value)
+                                        value = f'{self.base_url}/{self.project}/{self.page}{value}'
                                     elif value[:2] == './' or value[:3] == '../':
-                                        value = '%s/%s/%s/%s' % (self.base_url, self.project, self.page, value)
+                                        value = f'{self.base_url}/{self.project}/{self.page}/{value}'
 
                                 # Fix the attributes for the pictures
                                 if tag == 'img':
@@ -640,7 +639,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # ... list item should be enclosed by <p>
         if (tag == 'li') and (lastTag == 'p'):
             self.tag_path.pop()
-            self.odt += '</%s>' % self.maps['p']
+            self.odt += f'</{self.maps["p"]}>'
         del lastTag
 
         # Identify the tag
@@ -660,7 +659,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                 if tag == 'blockcode':
                     self.blockcode_on = False
                 if self.maps[tag] is not None:
-                    self.odt += '</%s>' % self.maps[tag]
+                    self.odt += f'</{self.maps[tag]}>'
 
                     # Handle the descriptors of the tables
                     if tag == 'tr':
@@ -681,7 +680,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # List item should be enclosed by <p>
         if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
             self.tag_path.append('p')
-            self.odt += '<%s>' % self.maps['p']
+            self.odt += f'<{self.maps["p"]}>'
         # Text alignment for the code
         if self.blockcode_on:
             data = data.replace('\r', '')

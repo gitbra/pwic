@@ -220,8 +220,8 @@ class PwicImporterHtml(HTMLParser):
 
         # Extract the main content
         for tag in ['body', 'article']:
-            p1 = html.find('<' + tag)
-            p2 = html.rfind('</%s>' % tag)
+            p1 = html.find(f'<{tag}')
+            p2 = html.rfind(f'</{tag}>')
             if (-1 not in [p1, p2]) and (p1 < p2):
                 p1 = html.find('>', p1)
                 html = html[p1 + 1:p2].replace('\r', '').strip()
@@ -414,7 +414,7 @@ class PwicImporterOdt(HTMLParser):
             except IndexError:
                 pass
         elif tag == 'text:a':
-            self.md += '](%s)' % self.link
+            self.md += f']({self.link})'
             self.link = ''
         elif tag == 'text:list':
             self.listlevel -= 1

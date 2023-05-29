@@ -89,7 +89,7 @@ class PwicExtension():
         ''' Event when the file must be deleted.
             For the local files, the result indicates if the deletion of the document is possible and Pwic.wiki will perform the deletion.
             For the external files, you must delete the file with your custom logic, so the result indicates if the operation is successful.
-            The page and id may be None when a mandatorily allowed technical maintenance occurs on the repository.
+            The page and id may be None when a mandatory allowed technical maintenance occurs on the repository.
         '''
         # local_path = os.path.join(PwicConst.DOCUMENTS_PATH % project, filename)
         return True
@@ -145,7 +145,7 @@ class PwicExtension():
                            revision: int,                   # Number of the revision
                            ) -> bool:
         ''' Event when a given revision of a page is about to be deleted.
-            The result indicates if the deletion of the page is possible.
+            The result indicates if the deletion of the revision is possible.
         '''
         return True
 
@@ -237,7 +237,7 @@ class PwicExtension():
                                value: str,                  # New value of the option
                                ) -> Optional[str]:
         ''' Event when a project-dependent option is about to be changed.
-            The result gives the new value of the variaable.
+            The result gives the new value of the variable.
             Setting the value None or an empty string will delete the option.
         '''
         return value
@@ -261,7 +261,7 @@ class PwicExtension():
                            admin: str,                      # Name of the administrator
                            user: str,                       # Sanitized name of the new user account
                            ) -> bool:
-        ''' Event when an administrator requests the creation of a new user account (if needed) and its assignment to the project.
+        ''' Event when an administrator requests the creation of a new user account (if needed) and also its assignment to the project.
             The result indicates if the full operation is permitted.
             This check is important because there is no native way to remove a misspelled user account.
         '''
@@ -285,7 +285,7 @@ class PwicExtension():
                               admin: str,                   # Name of the administrator
                               user: str,                    # Name of the user whose rights are modified
                               role: str,                    # Affected role: admin, manager, editor, validator, reader, disabled, delete
-                              state: Optional[str],         # New value of the role
+                              state: Optional[bool],        # New value of the role
                               ) -> bool:
         ''' Event when an administrator deletes or modifies a role of a user account.
             The result indicates if the modification of the role is allowed.

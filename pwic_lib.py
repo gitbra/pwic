@@ -414,12 +414,11 @@ class PwicConst:
              TyMime(['z'], ['application/x-compress'], ['\x1F\xA0'], True),
              TyMime(['zip'], ['application/x-zip-compressed'], ZIP, True),
              ]
-    EXECS = ['bat', 'cat', 'cmd', 'com', 'dll', 'docm', 'drv', 'exe', 'potm', 'ppsm', 'pptm', 'ps1', 'scr', 'sh', 'sys', 'vbs', 'xlsm']
+    EXECS = ['bat', 'cat', 'cmd', 'com', 'dll', 'docm', 'drv', 'exe', 'potm', 'ppsm', 'pptm', 'ps1', 'scr', 'sh', 'sys', 'vbs', 'xlsm', 'zsh']
 
 
 class PwicError(Exception):
     ''' Generic exception for Pwic.wiki '''
-    pass
 
 
 class PwicLib:
@@ -433,28 +432,28 @@ class PwicLib:
         from pwic_extension import PwicExtension
 
         # Check
+        if obj.get('event') in [None, '']:
+            raise PwicError
+        if request is not None:
+            obj['ip'] = PwicExtension.on_ip_header(request)
         if PwicExtension.on_audit_skip(sql, request, obj):
             return
 
-        # Forced properties of the event
-        dt = PwicLib.dt()
-        obj['date'] = dt['date']
-        obj['time'] = dt['time']
-        if request is not None:
-            obj['ip'] = PwicExtension.on_ip_header(request)
-        if obj.get('event', '') == '':
-            raise PwicError
-
         # Log the event
-        fields = ''
-        tupstr = ''
-        tup: Tuple[Union[str, int], ...] = ()
-        for key in obj:
-            fields += '%s, ' % PwicLib.safe_name(key)
-            tupstr += '?, '
-            tup += (obj[key], )
-        query = 'INSERT INTO audit.audit (%s) VALUES (%s)'
-        sql.execute(query % (fields[:-2], tupstr[:-2]), tup)
+        dt = PwicLib.dt()
+        sql.execute(''' INSERT INTO audit.audit (date, time, author, event, user, project, page, reference, string, ip)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ''',
+                    (str(obj.get('date', dt['date'])),
+                     str(obj.get('time', dt['time'])),
+                     str(obj.get('author', PwicConst.USERS['anonymous'])),
+                     str(obj.get('event', '')),
+                     str(obj.get('user', '')),
+                     str(obj.get('project', '')),
+                     str(obj.get('page', '')),
+                     PwicLib.intval(obj.get('reference', 0)),
+                     str(obj.get('string', '')),
+                     str(obj.get('ip', '')),
+                     ))
         if sql.rowcount != 1:
             raise PwicError
 
@@ -592,7 +591,7 @@ class PwicLib:
             The time zone may be provided by PwicExtension.on_timezone()
         '''
         from pwic_extension import PwicExtension
-        curtime = datetime.strptime('%s %s' % (sdate, stime), PwicConst.DEFAULTS['dt_mask'])
+        curtime = datetime.strptime(f'{sdate} {stime}', PwicConst.DEFAULTS['dt_mask'])
         curtime = curtime.replace(tzinfo=PwicExtension.on_timezone())
         return datetime.strftime(curtime, '%a, %d %b %Y %H:%M:%S %Z').replace('UTC', 'UT').strip()
 
@@ -940,10 +939,10 @@ class PwicLib:
         result = ''
         for q in query['included']:
             quote = '"' if ' ' in q else ''
-            result += ' %s%s%s' % (quote, q, quote)
+            result += f' {quote}{q}{quote}'
         for q in query['excluded']:
             quote = '"' if ' ' in q else ''
-            result += ' -%s%s%s' % (quote, q, quote)
+            result += f' -{quote}{q}{quote}'
         return result.strip()
 
     # ========
@@ -1049,16 +1048,16 @@ class PwicLib:
                         m2n = '1'
                     snum = tmask[m2n](c)
                     ssep = mask[2 * n + 1]
-                    sdisp += '%s%s' % (snum, ssep)
-                    stag += '_%s' % snum.lower()
+                    sdisp += f'{snum}{ssep}'
+                    stag += f'_{snum.lower()}'
 
                 # Adapt the line
                 if headerNumbering:
-                    lines[i] = '%s id="p%s"><span class="pwic_paragraph_id" title="#p%s">%s</span> %s' % (line[:3], stag, stag, sdisp, line[4:])
+                    lines[i] = f'{line[:3]} id="p{stag}"><span class="pwic_paragraph_id" title="#p{stag}">{sdisp}</span> {line[4:]}'
                 else:
-                    lines[i] = '%s id="p%s">%s' % (line[:3], stag, line[4:])
+                    lines[i] = f'{line[:3]} id="p{stag}">{line[4:]}'
                 tmap.append({'header': sdisp,
-                             'tag': 'p%s' % stag,
+                             'tag': f'p{stag}',
                              'level': stag.count('_'),
                              'title': line.strip()[4:-5]})
 
