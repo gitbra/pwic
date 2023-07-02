@@ -64,7 +64,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
   highlighting when using fenced-code-blocks and highlightjs.
 * html-classes: Takes a dict mapping html tag names (lowercase) to a
   string to use for a "class" tag attribute. Currently only supports "img",
-  "table", "pre", "code", "ul" and "ol" tags. Add an issue if you require
+  "table", "thead", "pre", "code", "ul" and "ol" tags. Add an issue if you require
   this for other tags.
 * link-patterns: Auto-link given regex patterns in text (e.g. bug number
   references, revision number references).
@@ -107,18 +107,16 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 #   not yet sure if there implications with this. Compare 'pydoc sre'
 #   and 'perldoc perlre'.
 
-__version_info__ = (2, 4, 7)
+__version_info__ = (2, 4, 9)
 __version__ = '.'.join(map(str, __version_info__))
 __author__ = "Trent Mick"
 
-import sys
-import re
 import logging
-from hashlib import sha256
-import optparse
-from random import random, randint
-import codecs
+import re
+import sys
 from collections import defaultdict
+from hashlib import sha256
+from random import randint, random
 from typing import Any                      # ++ PWIC
 
 # ---- globals
@@ -150,34 +148,6 @@ class MarkdownError(Exception):
 
 
 # ---- public api
-
-def markdown_path(path, encoding="utf-8",
-                  html4tags=False, tab_width=DEFAULT_TAB_WIDTH,
-                  safe_mode=None, extras=None, link_patterns=None,
-                  footnote_title=None, footnote_return_symbol=None,
-                  use_file_vars=False):
-    fp = codecs.open(path, 'r', encoding)
-    text = fp.read()
-    fp.close()
-    return Markdown(html4tags=html4tags, tab_width=tab_width,
-                    safe_mode=safe_mode, extras=extras,
-                    link_patterns=link_patterns,
-                    footnote_title=footnote_title,
-                    footnote_return_symbol=footnote_return_symbol,
-                    use_file_vars=use_file_vars).convert(text)
-
-
-def markdown(text, html4tags=False, tab_width=DEFAULT_TAB_WIDTH,
-             safe_mode=None, extras=None, link_patterns=None,
-             footnote_title=None, footnote_return_symbol=None,
-             use_file_vars=False, cli=False):
-    return Markdown(html4tags=html4tags, tab_width=tab_width,
-                    safe_mode=safe_mode, extras=extras,
-                    link_patterns=link_patterns,
-                    footnote_title=footnote_title,
-                    footnote_return_symbol=footnote_return_symbol,
-                    use_file_vars=use_file_vars, cli=cli).convert(text)
-
 
 class Markdown(object):
     # The dict of "extras" to enable in processing -- a mapping of
@@ -244,11 +214,14 @@ class Markdown(object):
         self._instance_extras = self.extras.copy()
 
         if 'link-patterns' in self.extras:
+            # allow link patterns via extras dict without kwarg explicitly set
+            link_patterns = link_patterns or extras['link-patterns']
             if link_patterns is None:
                 # if you have specified that the link-patterns extra SHOULD
                 # be used (via self.extras) but you haven't provided anything
                 # via the link_patterns argument then an error is raised
                 raise MarkdownError("If the 'link-patterns' extra is used, an argument for 'link_patterns' is required")
+
         self.link_patterns = link_patterns
         self.footnote_title = footnote_title
         self.footnote_return_symbol = footnote_return_symbol
@@ -368,6 +341,9 @@ class Markdown(object):
 
         # Turn block-level HTML blocks into hash entries
         text = self._hash_html_blocks(text, raw=True)
+
+        if 'markdown-in-html' in self.extras:
+            text = self._do_markdown_in_html(text)
 
         if "fenced-code-blocks" in self.extras and self.safe_mode:
             text = self._do_fenced_code_blocks(text)
@@ -754,6 +730,7 @@ class Markdown(object):
             html = match
         else:
             html = match.group(1)
+
         if raw and self.safe_mode:
             html = self._sanitize_html(html)
         elif 'markdown-in-html' in self.extras and 'markdown=' in html:
@@ -883,27 +860,39 @@ class Markdown(object):
 
         return text
 
-    def _strict_tag_block_sub(self, text, html_tags_re, callback):
+    def _strict_tag_block_sub(self, text, html_tags_re, callback, allow_indent=False):
+        '''
+        Finds and substitutes HTML blocks within blocks of text
+
+        Args:
+            text: the text to search
+            html_tags_re: a regex pattern of HTML block tags to match against.
+                For example, `Markdown._block_tags_a`
+            callback: callback function that receives the found HTML text block
+            allow_indent: allow matching HTML blocks that are not completely outdented
+        '''
         tag_count = 0
         current_tag = html_tags_re
         block = ''
         result = ''
 
         for chunk in text.splitlines(True):
-            is_markup = re.match(r'^(?:</code>(?=</pre>))?(</?(%s)\b>?)' % current_tag, chunk)
+            is_markup = re.match(
+                r'^(\s{0,%s})(?:</code>(?=</pre>))?(</?(%s)\b>?)' % ('' if allow_indent else '0', current_tag), chunk
+            )
             block += chunk
 
             if is_markup:
-                if chunk.startswith('</'):
+                if chunk.startswith('%s</' % is_markup.group(1)):
                     tag_count -= 1
                 else:
                     # if close tag is in same line
-                    if '</%s>' % is_markup.group(2) in chunk[is_markup.end():]:
+                    if self._tag_is_closed(is_markup.group(3), chunk):
                         # we must ignore these
                         is_markup = None
                     else:
                         tag_count += 1
-                        current_tag = is_markup.group(2)
+                        current_tag = is_markup.group(3)
 
             if tag_count == 0:
                 if is_markup:
@@ -915,6 +904,19 @@ class Markdown(object):
         result += block
 
         return result
+
+    def _tag_is_closed(self, tag_name, text):
+        # super basic check if number of open tags == number of closing tags
+        return len(re.findall('<%s(?:.*?)>' % tag_name, text)) == len(re.findall('</%s>' % tag_name, text))
+
+    def _do_markdown_in_html(self, text):
+        def callback(block):
+            indent, block = self._uniform_outdent(block)
+            block = self._hash_html_block_sub(block)
+            block = self._uniform_indent(block, indent, include_empty_lines=True, indent_empty_lines=False)
+            return block
+
+        return self._strict_tag_block_sub(text, self._block_tags_a, callback, True)
 
     def _strip_link_definitions(self, text):
         # Strips link definitions from text, stores the URLs and titles in
@@ -1147,7 +1149,7 @@ class Markdown(object):
                 align_from_col_idx[col_idx] = ' style="text-align:right;"'
 
         # thead
-        hlines = ['<table%s>' % self._html_class_str_from_tag('table'), '<thead>', '<tr>']
+        hlines = ['<table%s>' % self._html_class_str_from_tag('table'), '<thead%s>' % self._html_class_str_from_tag('thead'), '<tr>']
         cols = [re.sub(escape_bar_re, '|', cell.strip()) for cell in re.split(split_bar_re, re.sub(trim_bar_re, "", re.sub(trim_space_re, "", head)))]
         for col_idx, col in enumerate(cols):
             hlines.append('  <th%s>%s</th>' % (
@@ -1223,7 +1225,7 @@ class Markdown(object):
         add_hline('<table%s>' % self._html_class_str_from_tag('table'))
         # Check if first cell of first row is a header cell. If so, assume the whole row is a header row.
         if rows and rows[0] and re.match(r"^\s*~", rows[0][0]):
-            add_hline('<thead>', 1)
+            add_hline('<thead%s>' % self._html_class_str_from_tag('thead'), 1)
             add_hline('<tr>', 2)
             for cell in rows[0]:
                 add_hline("<th>{}</th>".format(format_cell(cell)), 3)
@@ -1484,7 +1486,7 @@ class Markdown(object):
         self._escape_table[url] = key
         return key
 
-    _safe_protocols = re.compile(r'^([a-z]+:|\/|\#)', re.I)     # ~~ PWIC
+    _safe_href = re.compile(r'^([a-z]+:|\/|\#)', re.I)          # ~~ PWIC
     def _do_links(self, text):
         """Turn Markdown link shortcuts into XHTML <a> and <img> tags.
 
@@ -1602,7 +1604,7 @@ class Markdown(object):
                         anchor_allowed_pos = start_idx + len(result)
                         text = text[:start_idx] + result + text[url_end_idx:]
                     elif start_idx >= anchor_allowed_pos:
-                        safe_link = self._safe_protocols.match(url) or url.startswith('#')
+                        safe_link = self._safe_href.match(url)
                         if self.safe_mode and not safe_link:
                             result_head = '<a href="#"%s>' % (title_str)
                         else:
@@ -1658,7 +1660,7 @@ class Markdown(object):
                             curr_pos = start_idx + len(result)
                             text = text[:start_idx] + result + text[match.end():]
                         elif start_idx >= anchor_allowed_pos:
-                            if self.safe_mode and not self._safe_protocols.match(url):
+                            if self.safe_mode and not self._safe_href.match(url):
                                 result_head = '<a href="#"%s>' % (title_str)
                             else:
                                 result_head = '<a href="%s"%s>' % (self._protect_url(url), title_str)
@@ -1888,7 +1890,8 @@ class Markdown(object):
         item = match.group(4)
         leading_line = match.group(1)
         if leading_line or "\n\n" in item or self._last_li_endswith_two_eols:
-            item = self._run_block_gamut(self._outdent(item))
+            item = self._uniform_outdent(item, min_outdent=' ', max_outdent=self.tab)[1]
+            item = self._run_block_gamut(item)
         else:
             # Recursion for sub-lists:
             item = self._do_lists(self._uniform_outdent(item, min_outdent=' ')[1])
@@ -2196,7 +2199,7 @@ class Markdown(object):
 
         return self._uniform_indent(
             '\n%s%s%s\n' % (open_tag, self._escape_table[waves], close_tag),
-            lead_indent, include_empty_lines=True
+            lead_indent, indent_empty_lines=True
         )
 
     def _do_wavedrom_blocks(self, text):
@@ -2249,7 +2252,7 @@ class Markdown(object):
     def _do_underline(self, text):
         text = self._underline_re.sub(r"<u>\1</u>", text)
         return text
-    
+
     _tg_spoiler_re = re.compile(r"\|\|\s?(.+?)\s?\|\|", re.S)
     def _do_tg_spoiler(self, text):
         text = self._tg_spoiler_re.sub(r"<tg-spoiler>\1</tg-spoiler>", text)
@@ -2541,6 +2544,9 @@ class Markdown(object):
         for regex, repl in self.link_patterns:
             replacements = []
             for match in regex.finditer(text):
+                if any(self._match_overlaps_substr(text, match, h) for h in link_from_hash):
+                    continue
+
                 if hasattr(repl, "__call__"):
                     href = repl(match)
                 else:
@@ -2604,25 +2610,33 @@ class Markdown(object):
         # Remove one level of line-leading tabs or spaces
         return self._outdent_re.sub('', text)
 
-    def _uniform_outdent(self, text, min_outdent=None, max_outdent=None):
-        # Removes the smallest common leading indentation from each (non empty)
-        # line of `text` and returns said indent along with the outdented text.
-        # The `min_outdent` kwarg makes sure the smallest common whitespace
-        # must be at least this size
-        # The `max_outdent` sets the maximum amount a line can be
-        # outdented by
+    @staticmethod
+    def _uniform_outdent(text, min_outdent=None, max_outdent=None):
+        '''
+        Removes the smallest common leading indentation from each (non empty)
+        line of `text` and returns said indent along with the outdented text.
+
+        Args:
+            min_outdent: make sure the smallest common whitespace is at least this size
+            max_outdent: the maximum amount a line can be outdented by
+        '''
 
         # find the leading whitespace for every line
         whitespace = [
             re.findall(r'^[ \t]*', line)[0] if line else None
             for line in text.splitlines()
         ]
+        whitespace_not_empty = [i for i in whitespace if i is not None]
+
+        # if no whitespace detected (ie: no lines in code block, issue #505)
+        if not whitespace_not_empty:
+            return '', text
 
         # get minimum common whitespace
-        outdent = min(i for i in whitespace if i is not None)
+        outdent = min(whitespace_not_empty)
         # adjust min common ws to be within bounds
         if min_outdent is not None:
-            outdent = min([i for i in whitespace if i is not None and i >= min_outdent] or [min_outdent])
+            outdent = min([i for i in whitespace_not_empty if i >= min_outdent] or [min_outdent])
         if max_outdent is not None:
             outdent = min(outdent, max_outdent)
 
@@ -2639,11 +2653,39 @@ class Markdown(object):
 
         return outdent, ''.join(outdented)
 
-    def _uniform_indent(self, text, indent, include_empty_lines=False):
-        return ''.join(
-            (indent + line if line.strip() or include_empty_lines else '')
-            for line in text.splitlines(True)
-        )
+    @staticmethod
+    def _uniform_indent(text, indent, include_empty_lines=False, indent_empty_lines=False):
+        '''
+        Uniformly indent a block of text by a fixed amount
+
+        Args:
+            text: the text to indent
+            indent: a string containing the indent to apply
+            include_empty_lines: don't remove whitespace only lines
+            indent_empty_lines: indent whitespace only lines with the rest of the text
+        '''
+        blocks = []
+        for line in text.splitlines(True):
+            if line.strip() or indent_empty_lines:
+                blocks.append(indent + line)
+            elif include_empty_lines:
+                blocks.append(line)
+            else:
+                blocks.append('')
+        return ''.join(blocks)
+
+    @staticmethod
+    def _match_overlaps_substr(text, match, substr):
+        '''
+        Checks if a regex match overlaps with a substring in the given text.
+        '''
+        for instance in re.finditer(re.escape(substr), text):
+            start, end = instance.span()
+            if start <= match.start() <= end:
+                return True
+            if start <= match.end() <= end:
+                return True
+        return False
 
 
 class MarkdownWithExtras(Markdown):
