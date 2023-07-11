@@ -91,7 +91,7 @@ class PwicConst:
     REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),           # Find a document in Markdown
                'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),       # Find the picture ID in IMG.SRC
                'empty_tag': re.compile(r'<\b(\w+)\b(?<!table)\b(?<!tr|th|td)><\/\1>'),              # Removable blank HTML tags, except table elements
-               'adjacent_tag': re.compile(r'<\/\b(\w+)\b(?<!\/table)\b(?<!\/[tr|th|td])><\1>'),     # Removable adjacent HTML tags, except table elements
+               'adjacent_tag': re.compile(r'<\/\b(?!(table|tr|th|td))\b(\w+)\s*><\2\s*>'),          # Removable adjacent HTML tags, except table elements
                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                              # Name of the pages KB
                'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                      # Length in XML
                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                    # Check the format of the mime
@@ -791,7 +791,7 @@ class PwicLib:
     def shrink(value: Optional[str]) -> str:
         ''' Convert a string into its shortest value in lower case '''
         if value is None:
-            value = ''
+            return ''
         return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
 
     @staticmethod

@@ -235,7 +235,7 @@
 								<span title="{% trans %}External storage{% endtrans %}">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
-						<td class="pwic_desktop pwic_break">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
 						<td>{{doc.size|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>

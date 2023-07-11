@@ -388,7 +388,7 @@
 											<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
 											<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
 											<td title="{% trans %}Hash:{% endtrans %} '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
-											<td class="pwic_desktop">'+doc['mime_icon']+' '+pwic_entities(doc['mime'])+'<\/td>\
+											<td class="pwic_desktop" title="'+pwic_entities(doc['mime'])+'">'+doc['mime_icon']+' '+pwic_entities(doc['extension'].toUpperCase())+'<\/td>\
 											<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
 											<td>'+pwic_entities(doc['date'])+'<\/td>\
 											<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\

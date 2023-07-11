@@ -106,9 +106,13 @@ class PwicServer():
         koExcl = False
 
         # Apply the rules
+        try:
+            ipobj = ip_address(ip)
+        except ValueError:
+            raise web.HTTPUnauthorized()
         for mask in app['options']['ip_filter']:
             if mask[0] == IPR_NET:
-                condition = ip_address(ip) in mask[2]
+                condition = ipobj in mask[2]
             elif mask[0] == IPR_REG:
                 condition = mask[2].match(ip) is not None
             else:
@@ -657,6 +661,7 @@ class PwicServer():
         for row in pwic['documents']:
             used_size += row['size']
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
+            row['extension'] = PwicLib.file_ext(row['filename'])
             row['size'] = PwicLib.size2str(row['size'])
         pmax = PwicLib.intval(PwicLib.option(sql, project, 'project_size_max'))
         pwic['disk_space'] = {'used': used_size,
@@ -2035,12 +2040,13 @@ class PwicServer():
 
         # Update the variable
         value = PwicExtension.on_api_project_env_set(sql, request, project, user, key, value)
-        if value in [None, '']:
+        is_empty = value in [None, '']
+        if is_empty:
             sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
         else:
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
         PwicLib.audit(sql, {'author': user,
-                            'event': '%sset-%s' % ('un' if value == '' else '', key),
+                            'event': '%sset-%s' % ('un' if is_empty else '', key),
                             'project': project,
                             'string': value},
                       request)
@@ -3945,6 +3951,7 @@ class PwicServer():
             raise web.HTTPNotFound()
         markdown = row['markdown']
         conversion_allowed = PwicLib.option(sql, project, 'no_document_conversion') is None
+        convertible_exts = PwicImporter.get_allowed_extensions()
         sql.execute(''' SELECT b.id, b.filename, b.mime, b.size, b.hash, b.author, b.date, b.time, b.exturl
                         FROM roles AS a
                             INNER JOIN documents AS b
@@ -3961,7 +3968,8 @@ class PwicServer():
             row['size'] = PwicLib.size2str(row['size'])
             row['used'] = (f'(/special/document/{row["id"]})' in markdown) or (f'(/special/document/{row["id"]} "' in markdown)
             row['url'] = f'{app["options"]["base_url"]}/special/document/{row["id"]}/{row["filename"]}'
-            row['convertible'] = conversion_allowed and (PwicLib.file_ext(row['filename']) in PwicImporter.get_allowed_extensions())
+            row['extension'] = PwicLib.file_ext(row['filename'])
+            row['convertible'] = conversion_allowed and (row['extension'] in convertible_exts)
         PwicExtension.on_api_document_list(sql, request, project, page, documents)
         return web.Response(text=json.dumps(documents), content_type=PwicLib.mime('json'))
 
@@ -4130,8 +4138,8 @@ class PwicServer():
             raise web.HTTPUnprocessableEntity()
 
         # Convert to Markdown
-        converter = PwicImporter(user)
-        data = converter.convert(sql, docid)
+        converter = PwicImporter()
+        data = converter.convert(sql, user, docid)
         if data in [None, '']:
             raise web.HTTPUnprocessableEntity()
         return web.Response(text=data, content_type=PwicLib.mime('md'))

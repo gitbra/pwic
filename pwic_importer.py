@@ -37,10 +37,7 @@ from pwic_exporter import PwicCleanerHtml
 class PwicImporter():
     ''' Import external documents into Pwic.wiki '''
 
-    def __init__(self, user: str):
-        self.user = user
-
-    def convert(self, sql: Optional[sqlite3.Cursor], identifier: int) -> Optional[str]:
+    def convert(self, sql: Optional[sqlite3.Cursor], user: str, identifier: int) -> Optional[str]:
         # Read the document
         if (sql is None) or (identifier == 0):
             return None
@@ -54,23 +51,44 @@ class PwicImporter():
             return None
 
         # Convert the document
-        base_url = str(PwicLib.option(sql, '', 'base_url', ''))
+        options = {'base_url': str(PwicLib.option(sql, '', 'base_url', ''))}
         filename = join(PwicConst.DOCUMENTS_PATH % row['project'], row['filename'])
         extension = PwicLib.file_ext(row['filename'])
         try:
             result = ''
-            if extension in PwicImporterHtml.get_extensions():
-                result = PwicImporterHtml().get_md(filename)
-            if extension in PwicImporterOdt.get_extensions():
-                result = PwicImporterOdt(base_url).get_md(filename)
+            for cls in handlers:
+                if extension in cls.get_extensions():
+                    result = cls().get_md(filename, options)
+                    if result != '':
+                        break
         except Exception:
             return None
-        return PwicExtension.on_api_document_convert(sql, row['project'], self.user, row['page'], identifier, result)
+        return PwicExtension.on_api_document_convert(sql, row['project'], user, row['page'], identifier, result)
 
     @staticmethod
     def get_allowed_extensions() -> List[str]:
-        return (PwicImporterOdt.get_extensions()
-                + PwicImporterHtml.get_extensions())
+        return sum([cls.get_extensions() for cls in handlers], [])      # sof/952914
+
+
+# =======
+#  md2md
+# =======
+
+class PwicImporterMd():
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['md', 'txt']
+
+    def get_md(self, filename: str, options: Dict[str, str]) -> str:
+        # Read the local file
+        try:
+            content = b''
+            with open(filename, 'rb') as f:
+                content = f.read()
+            md = content.decode().replace('\r', '')
+            return PwicLib.recursive_replace(md, '\n\n\n', '\n\n')
+        except Exception:
+            return ''
 
 
 # =========
@@ -141,6 +159,7 @@ class PwicImporterHtml(HTMLParser):
         self.pre = False
         self.last_tag = ''
         self.last_href = ''
+        self.last_colspan = 1
         self.table_col_max = 0
         self.table_col_cur = 0
         self.table_lin_cur = 0
@@ -175,7 +194,8 @@ class PwicImporterHtml(HTMLParser):
                     self.md += '\n|' + ('---|' * self.table_col_max)
             if tag in ['th', 'td']:
                 self.md = self.md.rstrip() + ' '
-                self.table_col_cur += 1
+                self.last_colspan = max(1, PwicLib.intval(PwicLib.read_attr(attrs, 'colspan', '1')))
+                self.table_col_cur += self.last_colspan
                 self.table_col_max = max(self.table_col_max, self.table_col_cur)
         if tag in self.map_open:
             self.md += self.map_open[tag]
@@ -198,6 +218,8 @@ class PwicImporterHtml(HTMLParser):
                 if (tag in ['td', 'th']) and (self.last_tag == 'tr'):
                     self.md = self.md.rstrip() + ' '
             self.md += value
+            if (tag in ['td', 'th']) and (self.last_colspan > 1):
+                self.md += value * (self.last_colspan - 1)
 
     def handle_data(self, data: str) -> None:
         if not self.pre:
@@ -208,7 +230,7 @@ class PwicImporterHtml(HTMLParser):
     def get_extensions() -> List[str]:
         return ['htm', 'html']
 
-    def get_md(self, filename: str) -> str:
+    def get_md(self, filename: str, options: Dict[str, str]) -> str:
         # Read the HTML content
         try:
             content = b''
@@ -297,10 +319,6 @@ class PwicStylerOdt(HTMLParser):
 
 
 class PwicImporterOdt(HTMLParser):
-    def __init__(self, base_url: str):
-        HTMLParser.__init__(self)
-        self.base_url = base_url
-
     def reset(self) -> None:
         HTMLParser.reset(self)
 
@@ -417,8 +435,7 @@ class PwicImporterOdt(HTMLParser):
             self.md += f']({self.link})'
             self.link = ''
         elif tag == 'text:list':
-            self.listlevel -= 1
-            self.listlevel = max(0, self.listlevel)
+            self.listlevel = max(0, self.listlevel - 1)
         elif tag == 'table:table':
             self.table = False
         elif tag == 'table:table-cell':
@@ -437,9 +454,13 @@ class PwicImporterOdt(HTMLParser):
     def get_extensions() -> List[str]:
         return ['odt']
 
-    def get_md(self, filename) -> str:
+    def get_md(self, filename, options: Dict[str, str]) -> str:
+        self.base_url = options.get('base_url', '')
         if not self.load_odt(filename):
             return ''
         self.feed(self.content)
         lines = [e.rstrip() for e in self.md.split('\n')]
         return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
+
+
+handlers = [PwicImporterMd, PwicImporterHtml, PwicImporterOdt]
