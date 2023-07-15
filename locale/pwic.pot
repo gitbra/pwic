@@ -302,6 +302,9 @@ msgstr ""
 msgid "List"
 msgstr ""
 
+msgid "Tasks"
+msgstr ""
+
 msgid "Quote"
 msgstr ""
 

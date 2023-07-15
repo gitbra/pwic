@@ -5,6 +5,7 @@
 # - type hint
 # - mask of valid links
 # - removed command line
+# - empty task list item
 
 
 # Copyright (c) 2012 Trent Mick.
@@ -1871,18 +1872,18 @@ class Markdown(object):
         re.M | re.X | re.S)
 
     _task_list_item_re = re.compile(r'''
-        (\[[\ xX]\])[ \t]+       # tasklist marker = \1
+        (\[[\ xX]?\])[ \t]+       # tasklist marker = \1
         (.*)                   # list item text = \2
-    ''', re.M | re.X | re.S)
+    ''', re.M | re.X | re.S)                                                    # ~~ PWIC
 
-    _task_list_warpper_str = r'<input type="checkbox" class="task-list-item-checkbox" %sdisabled> %s'
+    _task_list_warpper_str = r'<input type="checkbox" %sdisabled> %s'           # ~~ PWIC
 
     def _task_list_item_sub(self, match):
         marker = match.group(1)
         item_text = match.group(2)
         if marker in ['[x]','[X]']:
                 return self._task_list_warpper_str % ('checked ', item_text)
-        elif marker == '[ ]':
+        elif marker in ['[]', '[ ]']:                                           # ~~ PWIC
                 return self._task_list_warpper_str % ('', item_text)
 
     _last_li_endswith_two_eols = False

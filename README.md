@@ -41,7 +41,9 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 
 - Page layout supervised with Markdown and HTML
 - Wysiwyg editor for Markdown
-- Formatting and annotations
+- Formatting
+- Annotations
+- Task lists
 - Classification of the pages with hashtags and statuses
 - Automatic numbering of the headers with no gap
 - Mandatory, linear and partially undoable versioning

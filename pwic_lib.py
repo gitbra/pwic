@@ -705,11 +705,19 @@ class PwicLib:
 
     @staticmethod
     def read_attr(attrs: List[Tuple[str, Optional[str]]], key: str, default: str = '') -> str:
-        ''' Read a list of tuples by the first field '''
+        ''' Read a list of tuples by the first field and return the value in the second field '''
         for (k, v) in attrs:
             if k == key:
                 return PwicLib.nns(v)
         return default
+
+    @staticmethod
+    def read_attr_key(attrs: List[Tuple[str, Optional[str]]], key: str) -> bool:
+        ''' Check a list of tuples by the first field '''
+        for k in attrs:
+            if k[0] == key:
+                return True
+        return False
 
     @staticmethod
     def recursive_replace(text: str, search: Any, replace: str, strip: bool = True) -> str:

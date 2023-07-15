@@ -115,6 +115,7 @@ class PwicImporterHtml(HTMLParser):
                          'hr': '\n\n---\n\n',
                          'i': '*',
                          'img': '![IMAGE',
+                         'input': '[',
                          'ins': '--',
                          'li': '\n- ',
                          'ol': '\n',
@@ -174,17 +175,17 @@ class PwicImporterHtml(HTMLParser):
         if not self.pre:
             if tag == 'pre':
                 self.pre = True
-            if tag == 'a':
+            elif tag == 'a':
                 self.last_href = PwicLib.read_attr(attrs, 'href')
-            if tag == 'img':
+            elif tag == 'img':
                 tagattr['src'] = PwicLib.read_attr(attrs, 'src')
-            if (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
+            elif (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
                 self.md = self.md.rstrip()
-            if tag == 'table':
+            elif tag == 'table':
                 self.table_col_max = 0
                 self.table_col_cur = 0
                 self.table_lin_cur = 0
-            if tag == 'tr':
+            elif tag == 'tr':
                 self.md = self.md.rstrip()
                 if self.last_tag == 'table':
                     self.md += '\n'
@@ -192,7 +193,7 @@ class PwicImporterHtml(HTMLParser):
                 self.table_lin_cur += 1
                 if self.table_lin_cur == 2:
                     self.md += '\n|' + ('---|' * self.table_col_max)
-            if tag in ['th', 'td']:
+            elif tag in ['th', 'td']:
                 self.md = self.md.rstrip() + ' '
                 self.last_colspan = max(1, PwicLib.intval(PwicLib.read_attr(attrs, 'colspan', '1')))
                 self.table_col_cur += self.last_colspan
@@ -202,6 +203,13 @@ class PwicImporterHtml(HTMLParser):
             # Void tags
             if tag == 'img':
                 self.md += '](%s)' % tagattr.get('src', '')
+            elif tag == 'input':
+                type = PwicLib.read_attr(attrs, 'type')
+                if type == 'checkbox':
+                    self.md += 'X' if PwicLib.read_attr_key(attrs, 'checked') else ' '
+                else:
+                    self.md += type
+                self.md += ']'
         self.last_tag = tag
 
     def handle_endtag(self, tag: str) -> None:

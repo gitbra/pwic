@@ -309,7 +309,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         # Process the attributes
         buffer = ''
         for (k, v) in props.items():
-            if (((k in ['alt', 'class', 'colspan', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'width'])
+            if (((k in ['alt', 'checked', 'class', 'colspan', 'disabled', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'type', 'width'])
                  or ((self.code == 'svg') and (k[:2] != 'on')))):
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
@@ -412,6 +412,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                      'h6': 'text:h',
                      'hr': 'text:p',
                      'i': 'text:span',
+                     'input': None,
                      'img': 'draw:image',
                      'ins': 'text:span',
                      'li': 'text:list-item',
@@ -541,6 +542,8 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         if tag not in self.maps:
             raise PwicError
         if self.maps[tag] is None:
+            if (tag == 'input') and (PwicLib.read_attr(attrs, 'type') == 'checkbox'):
+                self.odt += '\u2611' if PwicLib.read_attr_key(attrs, 'checked') else '\u2610'
             return
         if tag in self.extrasStart:
             self.odt += self.extrasStart[tag][0]

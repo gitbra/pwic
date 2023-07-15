@@ -317,6 +317,9 @@ msgstr "Als Zieltabelle einfügen"
 msgid "List"
 msgstr "Liste"
 
+msgid "Tasks"
+msgstr "Aufgaben"
+
 msgid "Quote"
 msgstr "Zitat"
 

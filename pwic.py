@@ -4418,7 +4418,7 @@ def main() -> bool:
                                       samesite='Strict' if PwicLib.option(sql, '', 'strict_cookies') is not None else None))
     del skey
     # ... Markdown parser
-    extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'underline']
+    extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'task_list', 'underline']
     if PwicLib.option(sql, '', 'no_highlight') is not None:
         extras.append('highlightjs-lang')                       # highlight.js is not used in the foreground
     app['markdown'] = Markdown(extras=extras, safe_mode=False, html4tags=True)
