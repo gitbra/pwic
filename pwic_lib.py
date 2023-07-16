@@ -88,18 +88,19 @@ class PwicConst:
                 'password': 'initial',                      # Default password for the new accounts
                 'port': '8080',                             # Default HTTP port
                 }
-    REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),           # Find a document in Markdown
-               'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),       # Find the picture ID in IMG.SRC
-               'empty_tag': re.compile(r'<\b(\w+)\b(?<!table)\b(?<!tr|th|td)><\/\1>'),              # Removable blank HTML tags, except table elements
-               'adjacent_tag': re.compile(r'<\/\b(?!(table|tr|th|td))\b(\w+)\s*><\2\s*>'),          # Removable adjacent HTML tags, except table elements
-               'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                              # Name of the pages KB
-               'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                      # Length in XML
-               'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                    # Check the format of the mime
-               'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),         # Find a page in Markdown
-               'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                              # Valid protocols for the links
-               'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                          # Find the HTML tags
-               'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                          # Tag in HTML
-               'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                              # Comment in HTML
+    REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#| ")'),               # Find a document in Markdown
+               'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\?\#].*)?$'),           # Find the picture ID in IMG.SRC
+               'empty_tag': re.compile(r'<\b(\w+)\b(?<!table)\b(?<!tr|th|td)><\/\1>', re.IGNORECASE),   # Removable blank HTML tags, except table elements
+               'empty_tag_with_attrs': re.compile(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)*>(\s*)<\/\1>', re.IGNORECASE),                 # Removable blank HTML tags, except table elements
+               'adjacent_tag': re.compile(r'<\/(b|big|em|i|small|span|strong|sub|sup)[ \t]*>([ \t]*)<\1[ \t]*>', re.IGNORECASE),    # Removable adjacent inline HTML tags
+               'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                  # Name of the pages KB
+               'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                          # Length in XML
+               'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                        # Check the format of the mime
+               'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),             # Find a page in Markdown
+               'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                  # Valid protocols for the links
+               'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                              # Find the HTML tags
+               'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                              # Tag in HTML
+               'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                                  # Comment in HTML
                }
 
     # =========
@@ -990,7 +991,7 @@ class PwicLib:
             return _roman(value).lower()
 
         def _letter(value: int, mask: str) -> str:
-            # stackoverflow.com/questions/48983939
+            # sof/48983939
             def _divmod(n, base):
                 a, b = divmod(n, base)
                 if b == 0:

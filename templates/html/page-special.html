@@ -181,9 +181,10 @@
 		{% if pwic.tags|count > 0 %}
 			<h1 class="pwic_js">{% trans %}Progress by tag{% endtrans %}</h1>
 			<div id="page_progress_tags" class="pwic_tagbox pwic_js">
-				<a href="#" title="{% trans %}Reset{% endtrans %}">{{pwic.emojis.red_check}}</a>
+				<a href="#" title="{% trans %}Select all{% endtrans %}">{{pwic.emojis.check}}</a>
+				<a href="#" title="{% trans %}Deselect all{% endtrans %}">{{pwic.emojis.red_check}}</a>
 				{% for tag in pwic.tags %}
-					<a href="#" title="{% trans %}Un/Select this tag{% endtrans %}">#{{tag|escape}}</a>
+					<a href="#" title="{% trans %}De/Select this tag{% endtrans %}">#{{tag|escape}}</a>
 				{% endfor %}
 			</div>
 
@@ -236,7 +237,7 @@
 							{% endif%}
 						</td>
 						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
-						<td>{{doc.size|escape}}</td>
+						<td data-sort="{{doc.size|escape}}">{{doc.size_str|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %}

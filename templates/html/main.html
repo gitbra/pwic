@@ -112,7 +112,7 @@
 		}
 
 		function pwic_slash(value) {
-			{# stackoverflow.com/questions/18251399 #}
+			{# sof/18251399 #}
 			return value.split("'").join("\\'").split('"').join('\\"');
 		}
 
@@ -136,45 +136,50 @@
 
 		{% if not pwic.env.no_sort_table %}
 			function pwic_table_sort(that, column) {
-				function _sortkey(obj) {
+				function _get_sort_key(obj) {
 					var v, list = $(obj).find('INPUT[type=checkbox]');
 					if (list.length > 0)
 						return (!list.prop('checked')).toString();
-					else
-					{
-						v = obj.textContent;
-						if (v == '')
-							return '';
-						else
-							if (Number.isInteger(v))
-								return parseInt(v);
-							else
-								if (isNaN(v.replace(',', '.')))
-									return v.toLowerCase();
-								else
-									return parseFloat(v.replace(',', '.'));
-					}
+					v = obj.dataset.sort || obj.textContent;
+					if (v == '')
+						return '';
+					if (Number.isInteger(v))
+						return parseInt(v);
+					if (isNaN(v.replace(',', '.')))
+						return v.toLowerCase();
+					return parseFloat(v.replace(',', '.'));
 				}
 
 				var e = $(that),
 					table = e.parents('TABLE')[0],
-					i, finished, op, s1, s2;
-				op = parseInt(e.data('sort') || '0');
-				e.data('sort', 1 - op);
-				do {	
-					finished = true;
-					for (i=1 ; i<table.rows.length-1 ; i++)
+					i, j, op, data, src;
+
+				// Sort order
+				op = parseInt(e.data('sort') || '1');
+				e.data('sort', -op);
+
+				// Cache and sort the data
+				data = [];
+				for (i=1 ; i<table.rows.length ; i++)
+					data.push([i, _get_sort_key($(table.rows[i]).find('TD')[column])]);
+				data.sort(function(a, b) {
+							if (a[1] == b[1])
+								return 0;
+							return (a[1] < b[1] ? -1 : 1) * op;
+						});
+
+				// Update DOM
+				for (i=0 ; i<data.length ; i++)
+				{
+					src = data[i][0];
+					if (src != i + 1)
 					{
-						s1 = _sortkey($(table.rows[i]).find('TD')[column]);
-						s2 = _sortkey($(table.rows[i+1]).find('TD')[column]);
-						if (((op == 0) && (s1 > s2)) || ((op == 1) && (s1 < s2)))
-						{
-							table.rows[i].parentNode.insertBefore(table.rows[i+1], table.rows[i]);
-							finished = false;
-							break;
-						}
+						table.rows[src].parentNode.insertBefore(table.rows[src], table.rows[i+1]);
+						for (j=0; j<data.length; j++)
+							if (data[j][0] < src)
+								data[j][0]++;
 					}
-				} while (!finished);
+				}
 			}
 
 			$('TABLE').each(function(i, e) {

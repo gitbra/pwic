@@ -3,14 +3,21 @@
 		var	list_initial = null,
 			timeout = null;
 
-		$('#page_progress_tags > A:first-child').on('click', function() {
-			$('#page_progress_tags > A').removeClass('pwic_selected');
+		$('#page_progress_tags > A:nth-child(1)').on('click', function() {
+			$('#page_progress_tags > A:nth-child(n+3)').addClass('pwic_selected');
 			clearTimeout(timeout);
 			page_progress_refresh();
 			return false;
 		});
 
-		$('#page_progress_tags > A:not(:first-child)').on('click', function() {
+		$('#page_progress_tags > A:nth-child(2)').on('click', function() {
+			$('#page_progress_tags > A:nth-child(n+3)').removeClass('pwic_selected');
+			clearTimeout(timeout);
+			page_progress_refresh();
+			return false;
+		});
+
+		$('#page_progress_tags > A:nth-child(n+3)').on('click', function() {
 			$(this).toggleClass('pwic_selected');
 			clearTimeout(timeout);
 			timeout = setTimeout(function() { page_progress_refresh(); }, 2000);

@@ -96,6 +96,15 @@ msgstr "Sie haben abgemeldet"
 msgid "You successfully logged out."
 msgstr "Sie haben sich erfolgreich abgemeldet."
 
+msgid "You can go back to:"
+msgstr "Zurückgehen können Sie zu:"
+
+msgid "the selection of a new project"
+msgstr "die Auswahl eines neuen Projekt"
+
+msgid "the login page"
+msgstr "die Anmeldungsseite"
+
 #: ../templates/html/main.html
 msgid "Search in project %(project)s"
 msgstr "Im Projekt %(project)s durchsuchen"
@@ -116,9 +125,6 @@ msgstr "Die Seite existiert nicht."
 msgid "Please verify your authorizations, the spelling of the link and the revision level of the page."
 msgstr "Bitte prüfen Sie Ihre Rolle, die Schreibweise des Links und die Revisionszähler der Seite."
 
-msgid "You can go back to:"
-msgstr "Zurückgehen können Sie zu:"
-
 msgid "your last browsed page"
 msgstr "ihre zuletzt besuchte Seite"
 
@@ -133,9 +139,6 @@ msgstr "die Erstellung der fehlenden Seite"
 
 msgid "the special page of the project"
 msgstr "die Spezialseite des Projektes"
-
-msgid "the selection of a new project"
-msgstr "die Auswahl eines neuen Projekts"
 
 #: ../templates/html/page-audit.html
 msgid "Audit"
@@ -584,10 +587,13 @@ msgstr "Revisionszähler"
 msgid "Progress by tag"
 msgstr "Fortschritt nach Etikett"
 
-msgid "Reset"
-msgstr "Zurücksetzen"
+msgid "Select all"
+msgstr "Alles auswählen"
 
-msgid "Un/Select this tag"
+msgid "Deselect all"
+msgstr "Alles abwählen"
+
+msgid "De/Select this tag"
 msgstr "Diese Etikett (de)selektieren"
 
 msgid "Tag"

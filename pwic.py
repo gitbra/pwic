@@ -662,7 +662,7 @@ class PwicServer():
             used_size += row['size']
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
             row['extension'] = PwicLib.file_ext(row['filename'])
-            row['size'] = PwicLib.size2str(row['size'])
+            row['size_str'] = PwicLib.size2str(row['size'])
         pmax = PwicLib.intval(PwicLib.option(sql, project, 'project_size_max'))
         pwic['disk_space'] = {'used': used_size,
                               'used_str': PwicLib.size2str(used_size),

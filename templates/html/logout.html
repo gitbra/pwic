@@ -11,5 +11,11 @@
 
 	<article>
 		<p class="pwic_information">{{pwic.emojis.globe}} {% trans %}You successfully logged out.{% endtrans %}</p>
+
+		<p>{% trans %}You can go back to:{% endtrans %}</p>
+			<ol>
+				<li><a href="/">{% trans %}the selection of a new project{% endtrans %}</a></li>
+				<li><a href="/special/login">{% trans %}the login page{% endtrans %}</a></li>
+			</ol>
 	</article>
 {% endblock %}

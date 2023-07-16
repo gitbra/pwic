@@ -81,6 +81,15 @@ msgstr ""
 msgid "You successfully logged out."
 msgstr ""
 
+msgid "You can go back to:"
+msgstr ""
+
+msgid "the selection of a new project"
+msgstr ""
+
+msgid "the login page"
+msgstr ""
+
 #: ../templates/html/main.html
 msgid "Search in project %(project)s"
 msgstr ""
@@ -101,9 +110,6 @@ msgstr ""
 msgid "Please verify your authorizations, the spelling of the link and the revision level of the page."
 msgstr ""
 
-msgid "You can go back to:"
-msgstr ""
-
 msgid "your last browsed page"
 msgstr ""
 
@@ -117,9 +123,6 @@ msgid "the creation of the missing page"
 msgstr ""
 
 msgid "the special page of the project"
-msgstr ""
-
-msgid "the selection of a new project"
 msgstr ""
 
 #: ../templates/html/page-audit.html
@@ -569,10 +572,13 @@ msgstr ""
 msgid "Progress by tag"
 msgstr ""
 
-msgid "Reset"
+msgid "Select all"
 msgstr ""
 
-msgid "Un/Select this tag"
+msgid "Deselect all"
+msgstr ""
+
+msgid "De/Select this tag"
 msgstr ""
 
 msgid "Tag"

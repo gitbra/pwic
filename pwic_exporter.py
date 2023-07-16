@@ -344,9 +344,9 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         self.html = self.html.replace('<hr></hr>', '<hr>').replace('></img>', '>')
         while True:
             curlen = len(self.html)
-            self.html = re.sub(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)?>(\s*)<\/\1>', r'\3', self.html)
             self.html = re.sub(PwicConst.REGEXES['empty_tag'], '', self.html)
-            self.html = re.sub(PwicConst.REGEXES['adjacent_tag'], '', self.html)
+            self.html = re.sub(PwicConst.REGEXES['empty_tag_with_attrs'], r'\3', self.html)
+            self.html = re.sub(PwicConst.REGEXES['adjacent_tag'], r'\2', self.html)
             if len(self.html) == curlen:
                 break
         return self.html
