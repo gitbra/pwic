@@ -35,7 +35,7 @@
 			{% endif %}
 			<a href="/{{pwic.project|urlencode}}/special">{{pwic.emojis.star}} {% trans %}Special{% endtrans %}</a>
 			{% if pwic.manager %}
-				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/page">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.latest and (pwic.manager or (pwic.editor and not pwic.protection)) %}
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/edit">{{pwic.emojis.set_square}} {% trans %}Edit{% endtrans %}</a>
@@ -129,7 +129,7 @@
 				{% if pwic.documents|count > 0 %}
 					<div class="pwic_file_gallery">
 						{% if pwic.documents|count + pwic.images|count > 1 %}
-							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
+							<a href="/{{pwic.project|urlencode}}/special/documents/{{pwic.page|urlencode}}" rel="nofollow">
 								<span>{% trans %}Download all{% endtrans %}</span>
 								<br>{{pwic.emojis.inbox}}
 							</a>
@@ -146,7 +146,7 @@
 				{% if pwic.images|count > 0 %}
 					<div class="pwic_file_gallery">
 						{% if (pwic.documents|count == 0) and (pwic.images|count > 1) %}
-							<a href="/special/documents/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/download" rel="nofollow">
+							<a href="/{{pwic.project|urlencode}}/special/documents/{{pwic.page|urlencode}}" rel="nofollow">
 								<span>{% trans %}Download all{% endtrans %}</span>
 								<br>{{pwic.emojis.inbox}}
 							</a>

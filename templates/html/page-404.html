@@ -24,7 +24,7 @@
 				<li class="pwic_js"><a href="#" onclick="history.back()">{% trans %}your last browsed page{% endtrans %}</a></li>
 				<li><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">{% trans %}the latest revision of the page{% endtrans %}</a></li>
 				<li><a href="/{{pwic.project|urlencode}}">{% trans %}the home page of the project{% endtrans %}</a></li>
-				<li class="pwic_js"><a href="/special/page/create?project={{pwic.project|urlencode}}&page={{pwic.page|urlencode}}">{% trans %}the creation of the missing page{% endtrans %}</a></li>
+				<li class="pwic_js"><a href="/{{pwic.project|urlencode}}/special/page?page={{pwic.page|urlencode}}">{% trans %}the creation of the missing page{% endtrans %}</a></li>
 				<li><a href="/{{pwic.project|urlencode}}/special">{% trans %}the special page of the project{% endtrans %}</a></li>
 				<li><a href="/">{% trans %}the selection of a new project{% endtrans %}</a></li>
 			</ol>

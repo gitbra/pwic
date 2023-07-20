@@ -33,17 +33,17 @@
 
 		<div class="pwic_action_bar">
 			{% if pwic.admin %}
-				<a class="pwic_js" href="/special/user/create?project={{pwic.project|urlencode}}">{{pwic.emojis.users}} {% trans %}New user{% endtrans %}</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/user">{{pwic.emojis.users}} {% trans %}New user{% endtrans %}</a>
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/roles">{{pwic.emojis.key}} {% trans %}Roles{% endtrans %}</a>
 				<a href="/{{pwic.project|urlencode}}/special/audit">{{pwic.emojis.glasses}} {% trans %}Audit{% endtrans %}</a>
 				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/env">{{pwic.emojis.pill}} {% trans %}Settings{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.manager %}
-				<a class="pwic_js" href="/special/page/create?project={{pwic.project|urlencode}}">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
+				<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/page">{{pwic.emojis.sparkles}} {% trans %}New page{% endtrans %}</a>
 			{% endif %}
 			{% if not pwic.env.no_feed and (not pwic.pure_reader or not pwic.env.no_history) %}
-				<a href="/api/project/atom/get?project={{pwic.project|urlencode}}">{{pwic.emojis.atom}} {% trans %}ATOM{% endtrans %}</a>
-				<a href="/api/project/rss/get?project={{pwic.project|urlencode}}">{{pwic.emojis.rss}} {% trans %}RSS{% endtrans %}</a>
+				<a href="/{{pwic.project|urlencode}}/special/feed/atom">{{pwic.emojis.atom}} {% trans %}ATOM{% endtrans %}</a>
+				<a href="/{{pwic.project|urlencode}}/special/feed/rss">{{pwic.emojis.rss}} {% trans %}RSS{% endtrans %}</a>
 			{% endif %}
 			{% if pwic.manager %}
 				{% if not pwic.env.no_link_review %}
@@ -54,7 +54,7 @@
 				{% endif %}
 			{% endif %}
 			{% if pwic.admin %}
-				<a class="pwic_desktop" href="/api/project/export?project={{pwic.project|urlencode}}">{{pwic.emojis.clamp}} {% trans %}Export{% endtrans %}</a>
+				<a class="pwic_desktop" href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} {% trans %}Export{% endtrans %}</a>
 			{% endif %}
 			<a class="pwic_js" href="/api">{{pwic.emojis.brick}} {% trans %}API{% endtrans %}</a>
 			<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} {% trans %}Random page{% endtrans %}</a>
@@ -191,10 +191,14 @@
 			<table id="page_progress_list" class="pwic_hidden">
 				<tr>
 					<th>{% trans %}Tag{% endtrans %}</th>
-					<th colspan="2">{% trans %}Draft{% endtrans %}</th>
-					<th colspan="2">{% trans %}Step{% endtrans %}</th>
-					<th colspan="2">{% trans %}Final{% endtrans %}</th>
-					<th colspan="2">{% trans %}Validated{% endtrans %}</th>
+					<th>{% trans %}Draft{% endtrans %}</th>
+					<th class="pwic_desktop">{{pwic.emojis.updown}}</th>
+					<th>{% trans %}Step{% endtrans %}</th>
+					<th class="pwic_desktop">{{pwic.emojis.updown}}</th>
+					<th>{% trans %}Final{% endtrans %}</th>
+					<th class="pwic_desktop">{{pwic.emojis.updown}}</th>
+					<th>{% trans %}Validated{% endtrans %}</th>
+					<th class="pwic_desktop">{{pwic.emojis.updown}}</th>
 				</tr>
 			</table>
 

@@ -864,7 +864,7 @@ class PwicStylerOdt:
                      style:default-outline-level="1">
             <style:paragraph-properties fo:margin-top="12pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="24pt"
+            <style:text-properties fo:font-size="18pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H2"
@@ -875,7 +875,7 @@ class PwicStylerOdt:
                      style:default-outline-level="2">
             <style:paragraph-properties fo:margin-top="9pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="22pt"
+            <style:text-properties fo:font-size="16pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H3"
@@ -886,7 +886,7 @@ class PwicStylerOdt:
                      style:default-outline-level="3">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="20pt"
+            <style:text-properties fo:font-size="14pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H4"
@@ -897,7 +897,7 @@ class PwicStylerOdt:
                      style:default-outline-level="4">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="18pt"
+            <style:text-properties fo:font-size="13pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H5"
@@ -908,7 +908,7 @@ class PwicStylerOdt:
                      style:default-outline-level="5">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="16pt"
+            <style:text-properties fo:font-size="12pt"
                                    fo:font-weight="bold" />
         </style:style>
         <style:style style:name="H6"
@@ -919,7 +919,7 @@ class PwicStylerOdt:
                      style:default-outline-level="6">
             <style:paragraph-properties fo:margin-top="6pt"
                                         fo:margin-bottom="6pt" />
-            <style:text-properties fo:font-size="14pt"
+            <style:text-properties fo:font-size="12pt"
                                    fo:font-weight="bold" />
         </style:style>
 

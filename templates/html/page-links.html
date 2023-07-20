@@ -37,7 +37,7 @@
 				{% for page in pwic.broken %}
 					<tr>
 						<td><a href="/{{pwic.project|urlencode}}/{{page[0]|urlencode}}">{{page[0]|escape}}</a></td>
-						<td>{{pwic.emojis.sheet}} <a href="/special/page/create?project={{pwic.project|urlencode}}&amp;page={{page[1]|urlencode}}" title="{% trans %}Create the page{% endtrans %}">{{page[1]|escape}}</a></td>
+						<td>{{pwic.emojis.sheet}} <a href="/{{pwic.project|urlencode}}/special/page?page={{page[1]|urlencode}}" title="{% trans %}Create the page{% endtrans %}">{{page[1]|escape}}</a></td>
 					</tr>
 				{% endfor %}
 			</table>

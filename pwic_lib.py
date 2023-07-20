@@ -161,6 +161,7 @@ class PwicConst:
            'no_new_user': TyEnv(True, True, False, False),
            'no_printing': TyEnv(True, True, True, False),
            'no_search': TyEnv(True, True, True, False),
+           'no_sitemap': TyEnv(True, True, True, False),
            'no_sort_table': TyEnv(True, True, True, False),
            'no_space_page': TyEnv(True, True, True, False),
            'no_text_selection': TyEnv(True, True, True, False),
@@ -250,6 +251,7 @@ class PwicConst:
               'laptop': '&#x1F4BB;',
               'left': '&#x226A;',
               'locked': '&#x1F512;',
+              'map': '&#x1F5FA;&#xFE0F;',
               'noblank': '&#x22DB;',
               'notes': '&#x1F4CB;',
               'oneline': '&#x2AA5;',
@@ -277,6 +279,7 @@ class PwicConst:
               'trashcan': '&#x1F5D1;&#xFE0F;',
               'truck': '&#x1F69A;',
               'unlocked': '&#x1F513;',
+              'updown': '&#x1F503;',
               'users': '&#x1F465;',
               'validate': '&#x1F44C;',
               'warning': '&#x26A0;&#xFE0F;',
@@ -764,7 +767,7 @@ class PwicLib:
         ''' Ensure that a string will not collide with the reserved characters of the operating system '''
         chars = PwicConst.CHARS_UNSAFE + extra
         if name is None:
-            name = ''
+            return ''
         for c in chars:
             name = name.replace(c, '')
         return name.strip().lower()[:PwicLib.intval(PwicConst.DEFAULTS['limit_filename'])]

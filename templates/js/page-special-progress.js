@@ -61,15 +61,15 @@
 						{
 							var item = data[tag];
 							buffer += '<tr>'
-										+ '<td>' + _sl(tag, tag, 1) + '<\/td>'
-										+ '<td>' + _sl(tag + ' :draft', item['draft'], item['draft']) + '<\/td>'
-										+ '<td>' + _pc(item['draft'], item['total']) + '<\/td>'
-										+ '<td>' + _sl(tag + ' -:draft -:final -:validated', item['step'], item['step']) + '<\/td>'
-										+ '<td>' + _pc(item['step'], item['total']) + '<\/td>'
-										+ '<td>' + _sl(tag + ' :final', item['final'], item['final']) + '<\/td>'
-										+ '<td>' + _pc(item['final'], item['total']) + '<\/td>'
-										+ '<td>' + _sl(tag + ' :validated', item['validated'], item['validated']) + '<\/td>'
-										+ '<td>' + _pc(item['validated'], item['total']) + '<\/td>'
+										+ '<td>'						+ _sl(tag, tag, 1) + '<\/td>'
+										+ '<td>'						+ _sl(tag + ' :draft', item['draft'], item['draft']) + '<\/td>'
+										+ '<td class="pwic_desktop">'	+ _pc(item['draft'], item['total']) + '<\/td>'
+										+ '<td>'						+ _sl(tag + ' -:draft -:final -:validated', item['step'], item['step']) + '<\/td>'
+										+ '<td class="pwic_desktop">'	+ _pc(item['step'], item['total']) + '<\/td>'
+										+ '<td>'						+ _sl(tag + ' :final', item['final'], item['final']) + '<\/td>'
+										+ '<td class="pwic_desktop">'	+ _pc(item['final'], item['total']) + '<\/td>'
+										+ '<td>'						+ _sl(tag + ' :validated', item['validated'], item['validated']) + '<\/td>'
+										+ '<td class="pwic_desktop">'	+ _pc(item['validated'], item['total']) + '<\/td>'
 									+ '<\/tr>';
 						}
 					}
