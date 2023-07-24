@@ -183,6 +183,7 @@
 			<div id="page_progress_tags" class="pwic_tagbox pwic_js">
 				<a href="#" title="{% trans %}Select all{% endtrans %}">{{pwic.emojis.check}}</a>
 				<a href="#" title="{% trans %}Deselect all{% endtrans %}">{{pwic.emojis.red_check}}</a>
+				<a class="pwic_spacer" href="#" title="{% trans %}Combined selection{% endtrans %}">{{pwic.emojis.paperclip}}</a>
 				{% for tag in pwic.tags %}
 					<a href="#" title="{% trans %}De/Select this tag{% endtrans %}">#{{tag|escape}}</a>
 				{% endfor %}

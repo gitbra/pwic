@@ -86,6 +86,7 @@
 					filename = decodeURIComponent(escape(atob(filename)))
 					response.blob().then(function(blob) {
 						var dl = $(document.createElement('a'))
+									.addClass('pwic_hidden')
 									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
 									.attr('download', filename)
 									.appendTo('body')
@@ -116,6 +117,37 @@
 								.attr('title', 'Copy')
 								.html('{{pwic.emojis.notes}}')
 								.on('click', page_copy_code));
+		});
+	{% endif %}
+
+	{% if not pwic.env.no_table_csv %}
+		function page_export_table() {
+			var csv, row, x, y,
+				table = this.parentElement;
+
+			csv = [];
+			for (y=0; y<table.rows.length; y++)
+			{
+				row = [];
+				for (x=0; x<table.rows[y].cells.length; x++)
+					row.push('"' + table.rows[y].cells[x].textContent.replaceAll('"', '""') + '"');
+				csv.push(row.join(';'));
+			}
+
+			$(document.createElement('a'))
+				.addClass('pwic_hidden')
+				.attr('href', 'data:text/csv;base64,' + btoa(unescape(encodeURIComponent(csv.join('\n')))))
+				.attr('download', 'table.csv')
+				.appendTo('body')
+				.trigger('click')
+				.remove();
+		}
+
+		$('ARTICLE > TABLE').each(function(i, e) {
+			if (e.rows.length >= 10)
+				$(e).append($(document.createElement('CAPTION'))
+								.html({% trans %}'Download this table as CSV file'{% endtrans %})
+								.on('click', page_export_table));
 		});
 	{% endif %}
 </script>

@@ -320,6 +320,12 @@ msgstr "Coller comme table cible"
 msgid "List"
 msgstr "Liste"
 
+msgid "Bulleted list"
+msgstr "Liste à puces"
+
+msgid "Numbered list"
+msgstr "Liste numérotée"
+
 msgid "Tasks"
 msgstr "Tâches"
 
@@ -592,6 +598,9 @@ msgstr "Tout sélectionner"
 
 msgid "Deselect all"
 msgstr "Tout désélectionner"
+
+msgid "Combined selection"
+msgstr "Sélection combinée"
 
 msgid "De/Select this tag"
 msgstr "(Dé)sélectionner l'étiquette"
@@ -969,6 +978,9 @@ msgstr "'Le code a été copié avec succès dans le presse-papier.'"
 
 msgid "'The code cannot be copied to the clipboard.'"
 msgstr "'Le code ne peut pas être copié dans le presse-papier.'"
+
+msgid "'Download this table as CSV file'"
+msgstr "'Télécharger ce tableau au format CSV'"
 
 #: ../templates/js/user.js
 msgid "'The form is inconsistent.'"

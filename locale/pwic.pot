@@ -305,6 +305,12 @@ msgstr ""
 msgid "List"
 msgstr ""
 
+msgid "Bulleted list"
+msgstr ""
+
+msgid "Numbered list"
+msgstr ""
+
 msgid "Tasks"
 msgstr ""
 
@@ -576,6 +582,9 @@ msgid "Select all"
 msgstr ""
 
 msgid "Deselect all"
+msgstr ""
+
+msgid "Combined selection"
 msgstr ""
 
 msgid "De/Select this tag"
@@ -953,6 +962,9 @@ msgid "'The code has been copied successfully to the clipboard.'"
 msgstr ""
 
 msgid "'The code cannot be copied to the clipboard.'"
+msgstr ""
+
+msgid "'Download this table as CSV file'"
 msgstr ""
 
 #: ../templates/js/user.js

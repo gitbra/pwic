@@ -56,29 +56,49 @@
 		ta.focus();
 	}
 
-	function edit_prepend(tag) {
-		var	ta = $('#edit_markdown')[0],
-			ss = ta.selectionStart,
-			se = ta.selectionEnd;
+	function _edit_prepend_generic(ftag) {
+		var	ta   = $('#edit_markdown')[0],
+			ss   = ta.selectionStart,
+			se   = ta.selectionEnd,
+			stag = '';
 		if (ss > se)
 			ss, se = se, ss
-
-		// Prepend the tag
-		var appended = 0;
-		for (var i=se ; i>=0 ; i--)
+		
+		// Move the cursor at the beginning of the line
+		while (ta.value[ss] != '\n')
 		{
-			if ((i == 0) || (ta.value[i] == '\n'))
-			{
-				var j = (i != 0 ? 1 : 0);
-				ta.value = ta.value.substring(0, i+j) + tag + ta.value.substring(i+j);
-				appended++;
-				if (i <= ss)
-					break;
-			}
+			if (ss > 0)
+				ss--;
+			else
+				break;
 		}
-		ta.selectionStart = ss + tag.length;
-		ta.selectionEnd = se + appended * tag.length;
+
+		// Prepend
+		for (var i=ss; i<=se; )
+		{
+			if (ta.value[i] != '\n')
+			{
+				i++;
+				continue;
+			}
+			i++;
+			stag = ftag();
+			ta.value = ta.value.substring(0, i) + stag + ta.value.substring(i);
+			i += stag.length;
+			se += stag.length;
+		}
+		ta.selectionStart = ss;
+		ta.selectionEnd = se;
 		ta.focus();
+	}
+
+	function edit_prepend(tag) {
+		return _edit_prepend_generic(() => tag);
+	}
+
+	function edit_prepend_nlist() {
+		var id = 0;
+		return _edit_prepend_generic(() => ++id + '. ');
 	}
 
 	function _edit_block_transform(f) {

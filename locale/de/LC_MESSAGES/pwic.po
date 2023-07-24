@@ -320,6 +320,12 @@ msgstr "Als Zieltabelle einfügen"
 msgid "List"
 msgstr "Liste"
 
+msgid "Bulleted list"
+msgstr "Aufzählung"
+
+msgid "Numbered list"
+msgstr "Nummerierte Aufzählung"
+
 msgid "Tasks"
 msgstr "Aufgaben"
 
@@ -592,6 +598,9 @@ msgstr "Alles auswählen"
 
 msgid "Deselect all"
 msgstr "Alles abwählen"
+
+msgid "Combined selection"
+msgstr "Kombinierte Auswahl"
 
 msgid "De/Select this tag"
 msgstr "Diese Etikett (de)selektieren"
@@ -969,6 +978,9 @@ msgstr "'Der Quellcode wurde erfolgreich in die Zwischenablage kopiert.'"
 
 msgid "'The code cannot be copied to the clipboard.'"
 msgstr "'Der Quellcode kann nicht in die Zwischenablage kopiert werden.'"
+
+msgid "'Download this table as CSV file'"
+msgstr "'Diese Tabelle als CSV-Datei herunterladen'"
 
 #: ../templates/js/user.js
 msgid "'The form is inconsistent.'"

@@ -36,7 +36,8 @@
 	function graph_download() {
 		if (graph_cache == null)
 			return false;
-		var dl = $(document.createElement('a'))
+		$(document.createElement('a'))
+					.addClass('pwic_hidden')
 					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
 					.attr('download', '{{pwic.project|escape}}.gv')
 					.appendTo('body')

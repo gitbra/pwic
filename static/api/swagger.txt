@@ -800,6 +800,12 @@ paths:
           type: string
           description: List of the tags separated with a space
           required: true
+        - in: formData
+          name: combined
+          type: boolean
+          description: Should match all the tags (true) or at least one tag (false)
+          required: false
+          default: false
       responses:
         200:
           description: Successful operation

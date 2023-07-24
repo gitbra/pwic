@@ -204,11 +204,11 @@ class PwicImporterHtml(HTMLParser):
             if tag == 'img':
                 self.md += '](%s)' % tagattr.get('src', '')
             elif tag == 'input':
-                type = PwicLib.read_attr(attrs, 'type')
-                if type == 'checkbox':
+                typ = PwicLib.read_attr(attrs, 'type')
+                if typ == 'checkbox':
                     self.md += 'X' if PwicLib.read_attr_key(attrs, 'checked') else ' '
                 else:
-                    self.md += type
+                    self.md += typ
                 self.md += ']'
         self.last_tag = tag
 

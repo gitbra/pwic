@@ -52,7 +52,8 @@
 						<input type="button" value="{% trans %}Line{% endtrans %}" title="{% trans %}Horizontal line{% endtrans %}" onclick="edit_decorate('\n---\n\n', '')">
 						<input id="edit_toolbar_table" type="button" value="Table" title="{% trans %}Table{% endtrans %} | {% trans %}Table{% endtrans %}" onclick="edit_table()">
 						<input type="button" value="{% trans %}AutoTable{% endtrans %}" title="{% trans %}Paste as target table{% endtrans %}" onclick="edit_table_import()">
-						<input type="button" value="- {% trans %}List{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L">
+						<input type="button" value="- {% trans %}List{% endtrans %}" title="- {% trans %}Bulleted list{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L">
+						<input type="button" value="1. {% trans %}List{% endtrans %}" title="1. {% trans %}Numbered list{% endtrans %}" onclick="edit_prepend_nlist()">
 						<input type="button" value="- [X] {% trans %}Tasks{% endtrans %}" onclick="edit_prepend('- [ ] ')">
 						<input type="button" value="> {% trans %}Quote{% endtrans %}" onclick="edit_prepend('> ')">
 						<input type="button" value=">! {% trans %}Spoiler{% endtrans %}" onclick="edit_prepend('>! ')">

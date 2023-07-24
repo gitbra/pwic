@@ -108,8 +108,8 @@ class PwicServer():
         # Apply the rules
         try:
             ipobj = ip_address(ip)
-        except ValueError:
-            raise web.HTTPUnauthorized()
+        except ValueError as e:
+            raise web.HTTPUnauthorized() from e
         for mask in app['options']['ip_filter']:
             if mask[0] == IPR_NET:
                 condition = ipobj in mask[2]
@@ -557,10 +557,10 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Get the parameters
-        format = request.match_info.get('format', 'atom')
+        fmt = request.match_info.get('format', 'atom')
         project = PwicLib.safe_name(request.match_info.get('project'))
         days = min(max(0, PwicLib.intval(request.rel_url.query.get('days', '7'))), 90)
-        if format not in ['atom', 'rss', 'json']:
+        if fmt not in ['atom', 'rss', 'json']:
             raise web.HTTPBadRequest()
 
         # Verify that the user has access to the feed
@@ -583,9 +583,9 @@ class PwicServer():
 
         # Result
         feed_size = max(1, PwicLib.intval(PwicLib.option(sql, project, 'feed_size', '25')))
-        if format == 'atom':
+        if fmt == 'atom':
             return _feed_atom(sql, project, row['description'], feed_size)
-        if format == 'rss':
+        if fmt == 'rss':
             return _feed_rss(sql, project, row['description'], feed_size)
         return _feed_json(sql, project, days)
 
@@ -2522,7 +2522,8 @@ class PwicServer():
         # Fetch the submitted data
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project'))
-        tags = PwicLib.list_tags(post.get('tags', ''))
+        tags = PwicLib.list(PwicLib.list_tags(post.get('tags', '')))
+        combined = PwicLib.xb(PwicLib.x(post.get('combined')))
         if '' in [project, tags]:
             raise web.HTTPBadRequest()
 
@@ -2536,35 +2537,49 @@ class PwicServer():
                        (project, user)).fetchone() is None:
             return web.HTTPUnauthorized()
 
-        # Check each tag
+        # Initialize each tag
         data = {}
-        for tag in PwicLib.list(tags):
-            if tag == '':
-                continue
-            item = {'draft': 0,
-                    'step': 0,
-                    'final': 0,
-                    'validated': 0,
-                    'total': 0}
+        for t in tags:
+            data[t] = {'draft': 0,
+                       'step': 0,
+                       'final': 0,
+                       'validated': 0,
+                       'total': 0}
 
-            # Select the pages
-            sql.execute(''' SELECT draft, final, valuser
-                            FROM pages
-                            WHERE project = ?
-                              AND latest = 'X'
-                              AND ' '||tags||' ' LIKE ? ''',
-                        (project, f'% {tag} %'))
-            for row in sql.fetchall():
-                if row['valuser'] != '':
-                    item['validated'] += 1
-                elif row['final']:
-                    item['final'] += 1
-                elif row['draft']:
-                    item['draft'] += 1
+        # Calculate the statistics
+        sql.execute(''' SELECT draft, final, tags, valuser
+                        FROM pages
+                        WHERE project = ?
+                          AND latest = 'X' ''',
+                    (project, ))
+        for row in sql.fetchall():
+            row['tags'] = PwicLib.list(row['tags'])
+
+            # Verify the tags
+            ok = combined
+            for t in tags:
+                if combined:
+                    ok = ok and (t in row['tags'])
+                    if not ok:
+                        continue
                 else:
-                    item['step'] += 1
-                item['total'] += 1
-            data[tag] = item
+                    ok = ok or (t in row['tags'])
+                    if ok:
+                        break
+
+            # Save the stats
+            if ok:
+                for t in tags:
+                    if t in row['tags']:
+                        if row['valuser'] != '':
+                            data[t]['validated'] += 1
+                        elif row['final']:
+                            data[t]['final'] += 1
+                        elif row['draft']:
+                            data[t]['draft'] += 1
+                        else:
+                            data[t]['step'] += 1
+                        data[t]['total'] += 1
 
         # Final result
         return web.Response(text=json.dumps(data), content_type=PwicLib.mime('json'))

@@ -4,14 +4,14 @@
 			timeout = null;
 
 		$('#page_progress_tags > A:nth-child(1)').on('click', function() {
-			$('#page_progress_tags > A:nth-child(n+3)').addClass('pwic_selected');
+			$('#page_progress_tags > A:nth-child(n+4)').addClass('pwic_selected');
 			clearTimeout(timeout);
 			page_progress_refresh();
 			return false;
 		});
 
 		$('#page_progress_tags > A:nth-child(2)').on('click', function() {
-			$('#page_progress_tags > A:nth-child(n+3)').removeClass('pwic_selected');
+			$('#page_progress_tags > A:nth-child(n+4)').removeClass('pwic_selected');
 			clearTimeout(timeout);
 			page_progress_refresh();
 			return false;
@@ -37,7 +37,7 @@
 
 			// Get the selected tags
 			var tags = '';
-			$('#page_progress_tags > A').each(function(index, element) {
+			$('#page_progress_tags > A:nth-child(n+4)').each(function(index, element) {
 				if ($(element).hasClass('pwic_selected'))
 					tags += ' ' + $(element).text().substring(1);
 			});
@@ -50,7 +50,8 @@
 				var options = {	method: 'POST',
 								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 								body:	'project={{pwic.project|urlencode}}' +
-										'&tags='+encodeURIComponent(tags),
+										'&tags='+encodeURIComponent(tags) +
+										'&combined='+($('#page_progress_tags > A:nth-child(3)').hasClass('pwic_selected')?'on':''),
 								credentials: 'same-origin' };
 				try {
 					var request = await fetch('/api/project/progress/get', options);
@@ -60,17 +61,18 @@
 						for (var tag in data)
 						{
 							var item = data[tag];
-							buffer += '<tr>'
-										+ '<td>'						+ _sl(tag, tag, 1) + '<\/td>'
-										+ '<td>'						+ _sl(tag + ' :draft', item['draft'], item['draft']) + '<\/td>'
-										+ '<td class="pwic_desktop">'	+ _pc(item['draft'], item['total']) + '<\/td>'
-										+ '<td>'						+ _sl(tag + ' -:draft -:final -:validated', item['step'], item['step']) + '<\/td>'
-										+ '<td class="pwic_desktop">'	+ _pc(item['step'], item['total']) + '<\/td>'
-										+ '<td>'						+ _sl(tag + ' :final', item['final'], item['final']) + '<\/td>'
-										+ '<td class="pwic_desktop">'	+ _pc(item['final'], item['total']) + '<\/td>'
-										+ '<td>'						+ _sl(tag + ' :validated', item['validated'], item['validated']) + '<\/td>'
-										+ '<td class="pwic_desktop">'	+ _pc(item['validated'], item['total']) + '<\/td>'
-									+ '<\/tr>';
+							if (item['total'] > 0)
+								buffer += '<tr>'
+											+ '<td>'						+ _sl(tag, tag, 1) + '<\/td>'
+											+ '<td>'						+ _sl(tag + ' :draft', item['draft'], item['draft']) + '<\/td>'
+											+ '<td class="pwic_desktop">'	+ _pc(item['draft'], item['total']) + '<\/td>'
+											+ '<td>'						+ _sl(tag + ' -:draft -:final -:validated', item['step'], item['step']) + '<\/td>'
+											+ '<td class="pwic_desktop">'	+ _pc(item['step'], item['total']) + '<\/td>'
+											+ '<td>'						+ _sl(tag + ' :final', item['final'], item['final']) + '<\/td>'
+											+ '<td class="pwic_desktop">'	+ _pc(item['final'], item['total']) + '<\/td>'
+											+ '<td>'						+ _sl(tag + ' :validated', item['validated'], item['validated']) + '<\/td>'
+											+ '<td class="pwic_desktop">'	+ _pc(item['validated'], item['total']) + '<\/td>'
+										+ '<\/tr>';
 						}
 					}
 				}
