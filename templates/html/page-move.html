@@ -28,7 +28,30 @@
 
 		<p><input type="button" value="{{pwic.emojis.truck}} {% trans %}Move the page{% endtrans %}" onclick="move_submit()"></p>
 
-		<p class="pwic_italic">{% trans %}This form can be used to rename an existing page. No link will be updated in mass.{% endtrans %}</p>
+		<p class="pwic_italic">
+			{% trans %}This form can be used to rename an existing page.{% endtrans %}
+
+			{% if pwic.relations|count > 0 %}
+				{% trans %}No link will be updated within the following pages:{% endtrans %}
+			{% endif %}
+		</p>
+
+		{% if pwic.relations|count > 0 %}
+			<table>
+				<tr>
+					<th>{% trans %}Link{% endtrans %}</th>
+					<th>{% trans %}Title{% endtrans %}</th>
+					<th>{% trans %}Date{% endtrans %}</th>
+				</tr>
+				{% for row in pwic.relations %}
+					<tr>
+						<td><a href="/{{row.project|urlencode}}/{{row.page|urlencode}}">/{{row.project|escape}}/{{row.page|escape}}</a></td>
+						<td>{{row.title|escape}}</td>
+						<td>{{row.date|escape}}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		{% endif %}
 
 		{% include 'js/page-move.js' %}
 	</article>

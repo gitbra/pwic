@@ -613,9 +613,14 @@ class PwicExtension():
     def load_custom_routes(server,                          # PwicServer
                            ) -> List[web.RouteDef]:
         # return [web.static('/.well-known/acme-challenge/', '/path/to/acme/challenge/'),
-        #         web.get('/special/sample', PwicExtension.on_page_special_sample)]
+        #         web.get('/special/sample', PwicExtension.on_page_special_sample),
+        #         web.get('/robots.txt', PwicExtension.on_page_static_robots)]
         return []
 
     # @staticmethod
     # async def on_page_special_sample(request: web.Request) -> web.Response:
     #     return web.Response(text='Hello world!', content_type=PwicLib.mime('html'))
+
+    # @staticmethod
+    # async def on_page_static_robots(request: web.Request) -> web.Response:
+    #     return web.FileResponse('./static/robots.txt')    # sof/34121814

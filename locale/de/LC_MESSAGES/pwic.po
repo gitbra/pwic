@@ -526,8 +526,11 @@ msgstr "Zielbezeichner der Seite:"
 msgid "Move the page"
 msgstr "Die Seite verschieben"
 
-msgid "This form can be used to rename an existing page. No link will be updated in mass."
-msgstr "Dieses Formular kann eine existierende Seite umbenennen, aber kein Link wird aktualisiert."
+msgid "This form can be used to rename an existing page."
+msgstr "Dieses Formular kann eine existierende Seite umbenennen."
+
+msgid "No link will be updated within the following pages:"
+msgstr "Kein Link wird in den folgenden Seiten aktualisiert:"
 
 #: ../templates/html/page-special.html
 msgid "New user"

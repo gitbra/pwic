@@ -57,6 +57,9 @@ class PwicConst:
     DOCUMENTS_PATH = DB + '/documents/%s/'
     LOCALE_PATH = './locale/'
     TEMPLATES_PATH = './templates/'
+    BOOL_COLUMNS = ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled',      # roles
+                    'initial',                                                            # users
+                    'latest', 'draft', 'final', 'header', 'protection']                   # pages
 
     # ==========
     #  Security
@@ -747,10 +750,7 @@ class PwicLib:
         ''' Assign names to the SQL output '''
         d = {}
         for idx, col in enumerate(cursor.description):
-            if col[0] in ['admin', 'manager', 'editor', 'validator', 'reader', 'disabled',      # roles
-                          'initial',                                                            # users
-                          'latest', 'draft', 'final', 'header', 'protection',                   # pages
-                          ]:
+            if col[0] in PwicConst.BOOL_COLUMNS:
                 d[col[0]] = PwicLib.xb(row[idx])
             else:
                 d[col[0]] = row[idx]

@@ -151,7 +151,7 @@
 					v = v.replaceAll(',', '.');
 					if ((/^-?\d+(\.\d*)?(e-?\d+)?$/.test(v)) || (/^-?\.\d+(e-?\d+)?$/.test(v)))
 						return parseFloat(v);
-					return v.toLowerCase();
+					return v.trim().toLowerCase();
 				}
 
 				var e = $(that),

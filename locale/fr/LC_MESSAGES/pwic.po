@@ -526,8 +526,11 @@ msgstr "Identifiant de la page cible :"
 msgid "Move the page"
 msgstr "Déplacer la page"
 
-msgid "This form can be used to rename an existing page. No link will be updated in mass."
-msgstr "Ce formulaire peut être utilisé pour renommer une page existante. Aucun lien ne sera mis à jour en masse."
+msgid "This form can be used to rename an existing page."
+msgstr "Ce formulaire peut être utilisé pour renommer une page existante."
+
+msgid "No link will be updated within the following pages:"
+msgstr "Aucun lien ne sera mis à jour au sein des pages suivantes :"
 
 #: ../templates/html/page-special.html
 msgid "New user"

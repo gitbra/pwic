@@ -48,7 +48,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Automatic numbering of the headers with no gap
 - Mandatory, linear and partially undoable versioning
 - Management of attached documents by name, mime, size and magic bytes
-- Import of texts from OpenDocument
+- Import of texts from OpenDocument Text, HTML and Markdown
 
 ### For the managers
 

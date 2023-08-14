@@ -1139,6 +1139,35 @@ class PwicServer():
                     (user, ))
         pwic['projects'] = sql.fetchall()
 
+        # Related pages
+        patterns = (f'%](/{project}/{page})%',
+                    f'%](/{project}/{page} "%',
+                    f'%](/{project}/{page}/%',
+                    f'%](/{project}/{page}#%',
+                    f'%]({app["options"]["base_url"]}/{project}/{page})%',
+                    f'%]({app["options"]["base_url"]}/{project}/{page} "%',
+                    f'%]({app["options"]["base_url"]}/{project}/{page}/%',
+                    f'%]({app["options"]["base_url"]}/{project}/{page}#')
+        sql.execute(''' SELECT a.project, a.page, a.date, a.title
+                        FROM pages AS a
+                            INNER JOIN roles AS b
+                                ON  b.project  = a.project
+                                AND b.user     = ?
+                                AND b.disabled = ''
+                        WHERE   latest      = 'X'
+                          AND ( markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ? )
+                        ORDER BY a.project ASC,
+                                 a.title   ASC''',
+                    (user, ) + patterns)
+        pwic['relations'] = sql.fetchall()
+
         # Render the page
         sql.execute(''' SELECT title
                         FROM pages
@@ -2652,7 +2681,7 @@ class PwicServer():
                 _make_link(row['project'], PwicConst.DEFAULTS['page'], row['project'], row['page'])
 
             # Find the links to the other pages
-            subpages = PwicConst.REGEXES['page'].findall(row['markdown'])
+            subpages = PwicConst.REGEXES['page'].findall(row['markdown'].replace(app['options']['base_url'], ''))
             if subpages is not None:
                 for sp in subpages:
                     if sp[0] in PwicConst.NOT_PROJECT:
@@ -2910,7 +2939,7 @@ class PwicServer():
             sql.execute(''' SELECT COUNT(revision) AS total
                             FROM pages
                             WHERE project = ?
-                              AND page    = ? ''',
+                              AND page    = ?''',
                         (project, page))
             if sql.fetchone()['total'] >= revision_count_max:
                 self.dbconn.rollback()

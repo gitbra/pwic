@@ -511,7 +511,10 @@ msgstr ""
 msgid "Move the page"
 msgstr ""
 
-msgid "This form can be used to rename an existing page. No link will be updated in mass."
+msgid "This form can be used to rename an existing page."
+msgstr ""
+
+msgid "No link will be updated within the following pages:"
 msgstr ""
 
 #: ../templates/html/page-special.html

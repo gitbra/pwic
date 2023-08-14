@@ -75,6 +75,9 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
   some limitations.
 * metadata: Extract metadata from a leading '---'-fenced block.
   See <https://github.com/trentm/python-markdown2/issues/77> for details.
+* middle-word-em: Allows or disallows emphasis syntax in the middle of words,
+  defaulting to allow. Disabling this means that `this_text_here` will not be
+  converted to `this<em>text</em>here`.
 * nofollow: Add `rel="nofollow"` to add `<a>` tags with an href. See
   <http://en.wikipedia.org/wiki/Nofollow>.
 * numbering: Support of generic counters.  Non standard extension to
@@ -108,7 +111,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 #   not yet sure if there implications with this. Compare 'pydoc sre'
 #   and 'perldoc perlre'.
 
-__version_info__ = (2, 4, 9)
+__version_info__ = (2, 4, 10)
 __version__ = '.'.join(map(str, __version_info__))
 __author__ = "Trent Mick"
 
@@ -2260,17 +2263,24 @@ class Markdown(object):
         return text
 
     _strong_re = re.compile(r"(\*\*|__)(?=\S)(.+?[*_]*)(?<=\S)\1", re.S)
-    _em_re = re.compile(r"(\*|_)(?=\S)(.+?)(?<=\S)\1", re.S)
+    _em_re = r"(\*|_)(?=\S)(.+?)(?<=\S)\1"
     _code_friendly_strong_re = re.compile(r"\*\*(?=\S)(.+?[*_]*)(?<=\S)\*\*", re.S)
-    _code_friendly_em_re = re.compile(r"\*(?=\S)(.+?)(?<=\S)\*", re.S)
+    _code_friendly_em_re = r"\*(?=\S)(.+?)(?<=\S)\*"
     def _do_italics_and_bold(self, text):
+        if self.extras.get('middle-word-em', True) is False:
+            code_friendly_em_re = r'(?<=\b)%s(?=\b)' % self._code_friendly_em_re
+            em_re = r'(?<=\b)%s(?=\b)' % self._em_re
+        else:
+            code_friendly_em_re = self._code_friendly_em_re
+            em_re = self._em_re
+
         # <strong> must go first:
         if "code-friendly" in self.extras:
             text = self._code_friendly_strong_re.sub(r"<strong>\1</strong>", text)
-            text = self._code_friendly_em_re.sub(r"<em>\1</em>", text)
+            text = re.sub(code_friendly_em_re, r"<em>\1</em>", text, flags=re.S)
         else:
             text = self._strong_re.sub(r"<strong>\2</strong>", text)
-            text = self._em_re.sub(r"<em>\2</em>", text)
+            text = re.sub(em_re, r"<em>\2</em>", text, flags=re.S)
         return text
 
     # "smarty-pants" extra: Very liberal in interpreting a single prime as an
@@ -2599,9 +2609,12 @@ class Markdown(object):
 
     def _unescape_special_chars(self, text):
         # Swap back in all the special characters we've hidden.
+        hashmap = tuple(self._escape_table.items()) + tuple(self._code_table.items())
+        # html_blocks table is in format {hash: item} compared to usual {item: hash}
+        hashmap += tuple(tuple(reversed(i)) for i in self.html_blocks.items())
         while True:
             orig_text = text
-            for ch, hash in list(self._escape_table.items()) + list(self._code_table.items()):
+            for ch, hash in hashmap:
                 text = text.replace(hash, ch)
             if text == orig_text:
                 break
