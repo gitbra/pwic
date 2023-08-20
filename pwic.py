@@ -1144,10 +1144,12 @@ class PwicServer():
                     f'%](/{project}/{page} "%',
                     f'%](/{project}/{page}/%',
                     f'%](/{project}/{page}#%',
+                    f'%](/{project}/{page}?%',
                     f'%]({app["options"]["base_url"]}/{project}/{page})%',
                     f'%]({app["options"]["base_url"]}/{project}/{page} "%',
                     f'%]({app["options"]["base_url"]}/{project}/{page}/%',
-                    f'%]({app["options"]["base_url"]}/{project}/{page}#')
+                    f'%]({app["options"]["base_url"]}/{project}/{page}#',
+                    f'%]({app["options"]["base_url"]}/{project}/{page}?')
         sql.execute(''' SELECT a.project, a.page, a.date, a.title
                         FROM pages AS a
                             INNER JOIN roles AS b
@@ -1156,6 +1158,8 @@ class PwicServer():
                                 AND b.disabled = ''
                         WHERE   latest      = 'X'
                           AND ( markdown LIKE ?
+                             OR markdown LIKE ?
+                             OR markdown LIKE ?
                              OR markdown LIKE ?
                              OR markdown LIKE ?
                              OR markdown LIKE ?
@@ -2700,15 +2704,28 @@ class PwicServer():
         authorized_projects = [row['project'] for row in sql.fetchall()]
 
         # Build the file for GraphViz
-        def _get_node_title(sql: sqlite3.Cursor, project: str, page: str) -> str:
-            sql.execute(''' SELECT title
+        def _get_node_infos(sql: sqlite3.Cursor, project: str, page: str) -> Tuple[str, Optional[str]]:
+            # Read the page
+            sql.execute(''' SELECT draft, final, title, valuser
                             FROM pages
                             WHERE project = ?
                               AND page    = ?
                               AND latest  = 'X' ''',
                         (project, page))
             row = sql.fetchone()
-            return '' if row is None else row['title']
+            if row is None:
+                return ('', None)
+
+            # Define the background color
+            if row['valuser'] != '':
+                color = 'C0FFC0'        # Light green
+            elif row['final']:
+                color = 'FFFFC0'        # Light yellow
+            elif row['draft']:
+                color = 'FFE0E0'        # Light red
+            else:
+                color = None
+            return (row['title'], color)
 
         viz = 'digraph PWIC_WIKI {\n'
         lastProject = ''
@@ -2720,22 +2737,23 @@ class PwicServer():
                     viz += '}\n'
                 lastProject = toProject
                 viz += 'subgraph cluster_%s {\n' % toProject
-                viz += 'label="%s";\n' % toProject.replace('"', '\\"')
+                viz += f'label="{toProject}";\n'
                 if toProject in authorized_projects:
-                    viz += 'URL="/%s";\n' % toProject.replace('"', '\\"')
+                    viz += f'URL="/{toProject}";\n'
 
                 # Define all the nodes of the cluster
                 for project, page in pages:
                     if project == toProject:
-                        title = _get_node_title(sql, project, page)
-                        if title != '' and project not in authorized_projects:
+                        title, bgcolor = _get_node_infos(sql, project, page)
+                        if (title != '') and (project not in authorized_projects):
                             title = '[No authorization]'
-                        viz += ('%s [label="%s"; tooltip="%s"%s%s];\n'
+                        viz += ('%s [label="%s"; tooltip="%s"%s%s%s];\n'
                                 % (_get_node_id(project, page),
-                                   page.replace('"', '\\"'),
+                                   page,
                                    title.replace('"', '\\"') if title != '' else '[The page does not exist]',
-                                   ('; URL="/%s/%s"' % (project, page) if project in authorized_projects and title != '' else ''),
-                                   ('; color=red' if title == '' else '')))
+                                   (f'; URL="/{project}/{page}"' if project in authorized_projects and title != '' else ''),
+                                   ('; color="red"' if title == '' else ''),
+                                   (f'; style="filled"; fillcolor="#{bgcolor}"' if bgcolor is not None else '')))
 
             # Create the links in the cluster of the targeted node (else there is no box)
             if '' not in [fromProject, fromPage]:

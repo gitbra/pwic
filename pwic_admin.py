@@ -112,6 +112,12 @@ class PwicAdmin():
         spb.add_argument('project', default='', help='Project name')
 
         # ... Users
+        spb = subparsers.add_parser('list-users', help='List the user accounts')
+        spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
+
+        spb = subparsers.add_parser('show-user', help='Show the current roles for one user')
+        spb.add_argument('user', default='', help='User name')
+
         spb = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
         spb.add_argument('user', default='', help='User name')
 
@@ -208,6 +214,10 @@ class PwicAdmin():
             return self.split_project(args.project, args.no_history)
         if args.command == 'delete-project':
             return self.delete_project(args.project)
+        if args.command == 'list-users':
+            return self.list_users(args.project)
+        if args.command == 'show-user':
+            return self.show_user(args.user)
         if args.command == 'create-user':
             return self.create_user(args.user)
         if args.command == 'reset-password':
@@ -252,6 +262,15 @@ class PwicAdmin():
         # Default behavior
         parser.print_help()
         return False
+
+    def _prepare_prettytable(self, fields: List[str], header: bool = True, border: bool = True) -> PrettyTable:
+        tab = PrettyTable()
+        tab.header = header
+        tab.border = border
+        tab.field_names = fields
+        for f in tab.field_names:
+            tab.align[f] = 'l'
+        return tab
 
     # ==========
     #  Database
@@ -462,6 +481,14 @@ class PwicAdmin():
         if self.db is not None:
             self.db.rollback()
 
+    def db_sql2table(self, sql: sqlite3.Cursor) -> Optional[PrettyTable]:
+        tab = None
+        for row in sql.fetchall():
+            if tab is None:
+                tab = self._prepare_prettytable([k[:1].upper() + k[1:] for k in row])
+            tab.add_row([str(row[k]).replace('\r', '').replace('\n', ' ').strip()[:255].strip() for k in row])
+        return tab
+
     # =========
     #  Methods
     # =========
@@ -508,12 +535,8 @@ class PwicAdmin():
             try:
                 from importlib.metadata import PackageNotFoundError, version
                 print('Python packages:')
-                tab = PrettyTable()
-                tab.field_names = ['Package', 'Version']
-                tab.align[tab.field_names[0]] = 'l'
-                tab.align[tab.field_names[1]] = 'r'
-                tab.header = True
-                tab.border = True
+                tab = self._prepare_prettytable(['Package', 'Version'])
+                tab.align['Version'] = 'r'
                 for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
                                 'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
                     try:
@@ -542,7 +565,7 @@ class PwicAdmin():
                             WHERE value <> ''
                             ORDER BY project, key''')
         ok = False
-        tab = PrettyTable()
+        tab = self._prepare_prettytable(['Project', 'Key', 'Value'])
         for row in sql.fetchall():
             if (project != '') and (row['project'] not in ['', project]):
                 continue
@@ -556,11 +579,6 @@ class PwicAdmin():
                 tab.add_row([row['project'], row['key'], value])
             ok = True
         if tab.rowcount > 0:
-            tab.field_names = ['Project', 'Key', 'Value']
-            for f in tab.field_names:
-                tab.align[f] = 'l'
-            tab.header = True
-            tab.border = True
             print(tab.get_string())
         return ok
 
@@ -662,18 +680,13 @@ class PwicAdmin():
 
         # Report
         if len(buffer) == 0:
-            print('No change is required')
+            print('No change is required.')
         else:
             if test:
                 print('List of the options to be deleted:')
             else:
                 print('List of the deleted options:')
-            tab = PrettyTable()
-            tab.field_names = ['Project', 'Variable']
-            for f in tab.field_names:
-                tab.align[f] = 'l'
-            tab.header = True
-            tab.border = True
+            tab = self._prepare_prettytable(['Project', 'Variable'])
             tab.add_rows(buffer)
             print(tab.get_string())
         return True
@@ -687,13 +700,8 @@ class PwicAdmin():
             return False
 
         # Buffer
-        tab = PrettyTable()
-        tab.field_names = ['Extension', 'MIME']
+        tab = self._prepare_prettytable(['Extension', 'MIME'])
         tab.sortby = 'Extension'
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        tab.header = True
-        tab.border = True
 
         # Read all the file extensions
         root = winreg.HKEY_CLASSES_ROOT
@@ -742,12 +750,7 @@ class PwicAdmin():
                 data[row['project']]['admin'].append(row['user'])
 
         # Display the entries
-        tab = PrettyTable()
-        tab.field_names = ['Project', 'Description', 'Administrators', 'Count']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        tab.header = True
-        tab.border = True
+        tab = self._prepare_prettytable(['Project', 'Description', 'Administrators', 'Count'])
         for key in data:
             tab.add_row([key, data[key]['description'], ', '.join(data[key]['admin']), len(data[key]['admin'])])
         print(tab.get_string())
@@ -1076,6 +1079,62 @@ class PwicAdmin():
         print('Warning: the file structure is now inconsistent with the old backups (if any)')
         return True
 
+    def list_users(self, project: str) -> bool:
+        # Connect to the database
+        sql = self.db_connect()
+        if sql is None:
+            return False
+
+        # Fetch the users
+        project = PwicLib.safe_name(project)
+        if project == '':
+            sql.execute(''' SELECT user, IIF(password == ?, 'True', 'False') AS SSO, initial, password_date, password_time
+                            FROM users
+                            WHERE user <> ''
+                            ORDER BY user''',
+                        (PwicConst.MAGIC_OAUTH, ))
+        else:
+            sql.execute(''' SELECT a.user, IIF(a.password == ?, 'True', 'False') AS SSO, a.initial, a.password_date, a.password_time, b.disabled
+                            FROM users AS a
+                                INNER JOIN roles AS b
+                                    ON b.user = a.user
+                            WHERE a.user    <> ''
+                              AND b.project  = ?
+                            ORDER BY a.user''',
+                        (PwicConst.MAGIC_OAUTH, project))
+
+        # Show the list
+        tab = self.db_sql2table(sql)
+        if tab is not None:
+            print(tab.get_string())
+            print(f'\n{tab.rowcount} entries found.')
+            return True
+        return False
+
+    def show_user(self, user: str) -> bool:
+        # Connect to the database
+        sql = self.db_connect()
+        if sql is None:
+            return False
+
+        # Display the user
+        sql.execute(''' SELECT project, admin, manager, editor, validator, reader, disabled
+                        FROM roles
+                        WHERE user = ?
+                        ORDER BY disabled  ASC,
+                                 admin     DESC,
+                                 manager   DESC,
+                                 editor    DESC,
+                                 validator DESC,
+                                 reader    DESC,
+                                 project   ASC''',
+                    (PwicLib.safe_user_name(user), ))
+        tab = self.db_sql2table(sql)
+        if tab is not None:
+            print(tab.get_string())
+            return True
+        return False
+
     def create_user(self, user: str) -> bool:
         # Connect to the database
         sql = self.db_connect()
@@ -1262,22 +1321,16 @@ class PwicAdmin():
                           AND b.numAdmin = 1
                         ORDER BY a.project''',
                     (user, ))
-        found = False
+        tab = None
         for row in sql.fetchall():
-            if not found:
-                found = True
-                tab = PrettyTable()
-                tab.field_names = ['Project', 'Description']
-                for f in tab.field_names:
-                    tab.align[f] = 'l'
+            if tab is None:
+                tab = self._prepare_prettytable(['Project', 'Description'], header=False, border=False)
                 if force:
                     print('Warning: the following projects will have no administrator anymore')
                 else:
                     print('Error: organize a transfer of ownership for the following projects before revoking the user')
             tab.add_row([row['project'], row['description']])
-        if found:
-            tab.header = False
-            tab.border = False
+        if tab is not None:
             print(tab.get_string())
             if not force:
                 return False
@@ -1332,17 +1385,11 @@ class PwicAdmin():
                     (dmin_str, dmax_str))
 
         # Report the log
-        tab = PrettyTable()
-        tab.field_names = ['ID', 'Date', 'Time', 'Author', 'Event', 'User', 'Project', 'Page', 'Reference', 'IP', 'String']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        for row in sql.fetchall():
-            tab.add_row([row['id'], row['date'], row['time'], row['author'], row['event'], row['user'], row['project'],
-                         row['page'], '' if row['reference'] == 0 else str(row['reference']), row['ip'], row['string']])
-        tab.header = True
-        tab.border = True
-        print(tab.get_string())
-        return True
+        tab = self.db_sql2table(sql)
+        if tab is not None:
+            print(tab.get_string())
+            return True
+        return False
 
     def show_login(self, days: int) -> bool:
         # Select the data
@@ -1368,16 +1415,11 @@ class PwicAdmin():
                     (dt['date-nd'], ))
 
         # Report the log
-        tab = PrettyTable()
-        tab.field_names = ['User', 'Date', 'Time', 'Events']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        for row in sql.fetchall():
-            tab.add_row([row['user'], row['date'], row['time'], row['events']])
-        tab.header = True
-        tab.border = True
-        print(tab.get_string())
-        return True
+        tab = self.db_sql2table(sql)
+        if tab is not None:
+            print(tab.get_string())
+            return True
+        return False
 
     def show_stats(self) -> bool:
         # Connect to the database
@@ -1385,14 +1427,7 @@ class PwicAdmin():
         if sql is None:
             return False
         dt = PwicLib.dt()
-
-        # Structure of the log
-        tab = PrettyTable()
-        tab.field_names = ['Topic', 'Project / Key', 'Period', 'Value']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        tab.header = True
-        tab.border = True
+        tab = self._prepare_prettytable(['Topic', 'Project / Key', 'Period', 'Value'])
 
         # Macros
         def _totals(sql: sqlite3.Cursor,
@@ -1820,18 +1855,13 @@ class PwicAdmin():
                     (project, project, dt['date-nd'], project, project))
 
         # Report the log
-        tab = PrettyTable()
-        tab.field_names = ['User', 'Project', 'Roles']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
+        tab = self._prepare_prettytable(['User', 'Project', 'Roles'])
         for row in sql.fetchall():
             roles = ''
             for k in ['admin', 'manager', 'editor', 'validator']:
                 if row[k]:
                     roles += k[:1].upper()
             tab.add_row([row['user'], row['project'], roles])
-        tab.header = True
-        tab.border = True
         print('The pure readers are not included in the list.')
         print(tab.get_string())
         return True
@@ -2229,12 +2259,7 @@ class PwicAdmin():
         # Initialization
         projects = []
         multi = project == ''
-        tab = PrettyTable()
-        tab.field_names = ['Action', 'Type', 'Project', 'Value', 'Reason']
-        for f in tab.field_names:
-            tab.align[f] = 'l'
-        tab.header = True
-        tab.border = True
+        tab = self._prepare_prettytable(['Action', 'Type', 'Project', 'Value', 'Reason'])
 
         # Select the projects
         if not self.db_lock(sql):
@@ -2426,7 +2451,6 @@ class PwicAdmin():
 
     def execute_sql(self) -> bool:
         # Ask for a query
-        tab = PrettyTable()
         print('This feature may corrupt the database. Please use it to upgrade Pwic.wiki upon explicit request only.')
         print("\nType the query to execute on a single line:")
         query = input()
@@ -2446,30 +2470,18 @@ class PwicAdmin():
                     print(f'\nError: {e}')
                     self.db_rollback()
                     return False
-                rc = sql.rowcount
 
-                # Buffering
-                fields = None
-                for row in sql.fetchall():
-                    tab.add_row([str(row[k]).replace('\r', '').replace('\n', ' ')[:255] for k in row])
-                    if (fields is None) and (row is not None) and (len(row) > 0):
-                        fields = list(row)
+                # Output
+                print(f'Affected rows = {sql.rowcount}')
+                tab = self.db_sql2table(sql)
+                if tab is not None:
+                    print(tab.get_string())
 
                 # Trace
                 PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'execute-sql',
                                     'string': query})
                 self.db_commit()
-
-                # Output
-                print(f'Affected rows = {rc}')
-                if fields is not None:
-                    tab.field_names = fields
-                    for f in tab.field_names:
-                        tab.align[f] = 'l'
-                    tab.header = True
-                    tab.border = True
-                    print(tab.get_string())
                 return True
 
         # Default behavior
