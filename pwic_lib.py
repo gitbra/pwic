@@ -28,8 +28,6 @@ from hashlib import sha256
 from base64 import b64encode
 from string import ascii_lowercase, ascii_uppercase
 from aiohttp import web
-from parsimonious.grammar import Grammar
-from parsimonious.nodes import NodeVisitor
 
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
@@ -101,6 +99,7 @@ class PwicConst:
                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$'),                                        # Check the format of the mime
                'page': re.compile(r'\]\(\/([^\/\#\?\)]+)\/([^\/\#\?\)" ]+)(\/rev[0-9]+)?'),             # Find a page in Markdown
                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                  # Valid protocols for the links
+               'search_terms': re.compile(r'(-?)("[^"\n]+"|[^ \n]+)[\t ]*', re.IGNORECASE),             # Split the search terms
                'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                              # Find the HTML tags
                'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                              # Tag in HTML
                'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                                  # Comment in HTML
@@ -767,9 +766,9 @@ class PwicLib:
     @staticmethod
     def safe_name(name: Optional[str], extra: str = '.@') -> str:
         ''' Ensure that a string will not collide with the reserved characters of the operating system '''
-        chars = PwicConst.CHARS_UNSAFE + extra
         if name is None:
             return ''
+        chars = PwicConst.CHARS_UNSAFE + extra
         for c in chars:
             name = name.replace(c, '')
         return name.strip().lower()[:PwicLib.intval(PwicConst.DEFAULTS['limit_filename'])]
@@ -921,29 +920,18 @@ class PwicLib:
     @staticmethod
     def search_parse(query: str) -> Optional[Dict[str, List[str]]]:
         ''' Build a search object from a string '''
-        if query in ['', None]:
-            return None
-        try:
-            ast = Grammar(
-                r'''
-                decl        = term*
-                term        = space negate space comb
-                comb        = individual / quoted
-
-                space       = ~r"[\s\t]*"
-                negate      = ~r"-?"
-                individual  = ~r'[^\"|^\s]+'
-                quoted      = ~r'\"[^\"]+\"'
-                '''
-            ).parse(query.strip())
-
-            # Extract the keywords
-            psv = PwicSearchVisitor()
-            psv.visit(ast)
-            return {'included': psv.included,
-                    'excluded': psv.excluded}
-        except Exception:
-            return None
+        included = []
+        excluded = []
+        terms = PwicConst.REGEXES['search_terms'].findall(query.replace('\r', '').strip())
+        for negative, term in terms:
+            if term.startswith('"') and term.endswith('"'):
+                term = term[1:-1]
+            if negative == '-':
+                excluded.append(term)
+            else:
+                included.append(term)
+        return {'included': included,
+                'excluded': excluded}
 
     @staticmethod
     def search2string(query: Dict[str, List[str]]) -> str:
@@ -1077,34 +1065,3 @@ class PwicLib:
 
         # Final formatting
         return '\n'.join(lines), tmap
-
-
-class PwicSearchVisitor(NodeVisitor):
-    def __init__(self) -> None:
-        self.negate = False
-        self.included: List[str] = []
-        self.excluded: List[str] = []
-
-    def visit_decl(self, node, visited_children) -> None:
-        pass
-
-    def visit_term(self, node, visited_children) -> None:
-        pass
-
-    def visit_comb(self, node, visited_children) -> None:
-        pass
-
-    def visit_space(self, node, visited_children) -> None:
-        pass
-
-    def visit_negate(self, node, visited_children) -> None:
-        if node.match.group(0) == '-':
-            self.negate = True
-
-    def visit_individual(self, node, visited_children) -> None:
-        (self.excluded if self.negate else self.included).append(node.match.group(0).strip().lower())
-        self.negate = False
-
-    def visit_quoted(self, node, visited_children) -> None:
-        (self.excluded if self.negate else self.included).append(node.match.group(0)[1:-1].strip().lower())
-        self.negate = False

@@ -155,7 +155,6 @@ To enhance the existing translations, you may edit selected languages by [joinin
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
 - [MathJax](https://github.com/mathjax/MathJax-src) is released under Apache 2.0 License
 - [Noto Sans](https://fonts.google.com/specimen/Noto+Sans) is released under Open Font License
-- [Parsimonious](https://github.com/erikrose/parsimonious) is released under MIT License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
 - [Python](https://github.com/python/cpython/) is released under Python Software Foundation License

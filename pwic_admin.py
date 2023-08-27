@@ -538,7 +538,7 @@ class PwicAdmin():
                 tab = self._prepare_prettytable(['Package', 'Version'])
                 tab.align['Version'] = 'r'
                 for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
-                                'jinja2', 'parsimonious', 'PrettyTable', 'pygments']:
+                                'jinja2', 'PrettyTable', 'pygments']:
                     try:
                         tab.add_row([package, version(package)])
                     except PackageNotFoundError:

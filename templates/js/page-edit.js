@@ -44,7 +44,10 @@
 			if ((url != null) && (url != ''))
 			{
 				url = url.trim();
-				if (url.match(/^[a-z0-9_\-\.]+(#p[0-9\.]+)?$/i))
+				if ((url.length > 0)
+				 && (url.indexOf(':') === -1)
+				 && (url.indexOf('/') === -1)
+				 && (url.indexOf(' ') === -1))
 					url = '/{{pwic.project}}/' + url.toLowerCase();
 
 				// Replace the text by another one
