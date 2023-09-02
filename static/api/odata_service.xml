@@ -20,5 +20,6 @@
 		<collection href="roles">
 			<atom:title type="text">roles</atom:title>
 		</collection>
+		<!-- More collection ? -->
 	</workspace>
 </service>

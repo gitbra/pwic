@@ -140,6 +140,7 @@
 					<ReferentialConstraint Property="user" ReferencedProperty="user"/>
 				</NavigationProperty>
 			</EntityType>
+			<!-- More EntityType ? -->
 			<EntityContainer Name="Container">
 				<EntitySet Name="documents" EntityType="wiki.pwic.odata.model.Document">
 					<NavigationPropertyBinding Path="document2page" Target="pages"/>
@@ -171,6 +172,7 @@
 					<NavigationPropertyBinding Path="user2page2" Target="pages"/>
 					<NavigationPropertyBinding Path="user2role" Target="roles"/>
 				</EntitySet>
+				<!-- More EntitySet ? -->
 			</EntityContainer>
 		</Schema>
 	</edmx:DataServices>

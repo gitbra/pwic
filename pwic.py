@@ -41,11 +41,12 @@ from ipaddress import ip_network, ip_address
 from urllib.parse import parse_qs, quote, urlencode
 from urllib.request import Request, urlopen
 from gettext import translation
+from http.cookies import CookieError
 import imagesize
 from jinja2 import Environment, FileSystemLoader
 from multidict import MultiDict
 from aiohttp import web, MultipartReader, hdrs
-from aiohttp_session import setup, get_session, new_session
+from aiohttp_session import setup, get_session, new_session, Session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from pwic_md import Markdown
@@ -195,12 +196,21 @@ class PwicServer():
                 revision = row['revision']
         return revision
 
+    async def _get_session(self, request: web.Request) -> Session:
+        ''' Get the current session safely '''
+        try:
+            session = await get_session(request)
+        except CookieError as e:
+            # session = await new_session(request)
+            raise web.HTTPBadRequest() from e
+        return session
+
     async def _suser(self, request: web.Request) -> str:
         ''' Retrieve the logged user after some technical checks '''
         # Check the IP address
         ip = PwicExtension.on_ip_header(request)
         self._check_ip(ip)
-        session = await get_session(request)
+        session = await self._get_session(request)
         if ip != session.get('ip', ip):
             return ''
 
@@ -254,7 +264,7 @@ class PwicServer():
             self.dbconn.commit()
 
         # Destroy the session
-        session = await get_session(request)
+        session = await self._get_session(request)
         session.invalidate()
         return await self._handle_output(request, 'logout', {})
 
@@ -304,7 +314,7 @@ class PwicServer():
             pwic['env']['robots']['value'] = PwicLib.robots2str(robots)
 
         # Session
-        session = await get_session(request)
+        session = await self._get_session(request)
         pwic['oauth_user_secret'] = session.get('user_secret', None)
         # ... language
         session_lang = session.get('language', '')
@@ -324,6 +334,9 @@ class PwicServer():
         headers: MultiDict = MultiDict({})
         PwicExtension.on_http_headers(sql, request, headers, project, name)
         return web.Response(text=output, content_type=PwicLib.mime('html'), headers=headers)
+
+    async def _handle_headers(self, request: web.Request, response: web.Response):
+        response.headers['Server'] = f'Pwic.wiki v{PwicConst.VERSION}'
 
     async def project_searchlink(self, request: web.Request) -> web.Response:
         ''' Search link to be added to the browser '''
@@ -1977,7 +1990,7 @@ class PwicServer():
         self._check_ip(ip)
 
         # Fetch the submitted data
-        session = await get_session(request)
+        session = await self._get_session(request)
         post = await self._handle_post(request)
         user = PwicLib.safe_user_name(post.get('user'))
         pwd = '' if user == PwicConst.USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
@@ -2060,7 +2073,7 @@ class PwicServer():
             _oauth_failed()
 
         # Check the state
-        session = await get_session(request)
+        session = await self._get_session(request)
         state_current = session.get('user_secret', '')
         if state != state_current:
             session['user_secret'] = PwicLib.random_hash()
@@ -3562,7 +3575,7 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Change the language
-        session = await get_session(request)
+        session = await self._get_session(request)
         session['language'] = language
         return web.HTTPOk()
 
@@ -4204,6 +4217,9 @@ class PwicServer():
         return web.Response(text=data, content_type=PwicLib.mime('md'))
 
     async def api_odata(self, request: web.Request) -> web.Response:
+        # Check the IP address
+        self._check_ip(PwicExtension.on_ip_header(request))
+
         # Verify the availability of the service
         sql = self.dbconn.cursor()
         if PwicLib.option(sql, '', 'odata') is None:
@@ -4211,8 +4227,10 @@ class PwicServer():
 
         # Content
         base_url = str(PwicLib.option(sql, '', 'base_url', ''))
-        with open('./static/api/odata_service.xml', mode='r', encoding='UTF-8') as f:
+        fn = 'odata_service.xml'
+        with open(f'./static/api/{fn}', mode='r', encoding='UTF-8') as f:
             content = f.read()
+        content = PwicExtension.on_odata_xml_definition(sql, request, fn, content)
         content = (content.replace('\t', '')
                           .replace('\r', '')
                           .replace('\n', '')
@@ -4223,14 +4241,19 @@ class PwicServer():
                             headers={'OData-Version': '4.0'})
 
     async def api_odata_metadata(self, request: web.Request) -> web.Response:
+        # Check the IP address
+        self._check_ip(PwicExtension.on_ip_header(request))
+
         # Verify the availability of the service
         sql = self.dbconn.cursor()
         if PwicLib.option(sql, '', 'odata') is None:
             raise web.HTTPServiceUnavailable()
 
         # Content
-        with open('./static/api/odata_meta.edmx', mode='r', encoding='UTF-8') as f:
+        fn = 'odata_meta.edmx'
+        with open(f'./static/api/{fn}', mode='r', encoding='UTF-8') as f:
             content = f.read()
+        content = PwicExtension.on_odata_xml_definition(sql, request, fn, content)
         content = (content.replace('\t', '')
                           .replace('\r', '')
                           .replace('\n', '')
@@ -4374,7 +4397,7 @@ class PwicServer():
                                 ) AS b
                                     ON b.project = a.project''',
                         (user, ))
-        else:
+        elif not PwicExtension.on_odata_custom_content(sql, request, user, table):
             raise web.HTTPBadRequest()
 
         # Fetch the data
@@ -4460,6 +4483,7 @@ def main() -> bool:
     app._client_max_size = max(app._client_max_size, PwicLib.intval(PwicLib.option(sql, '', 'client_size_max')))
     # ... PWIC
     app['pwic'] = PwicServer(app['sql'])
+    app.on_response_prepare.append(app['pwic']._handle_headers)
     # ... session
     keep_sessions = PwicLib.option(sql, '', 'keep_sessions') is not None
     if not keep_sessions or args.new_session:

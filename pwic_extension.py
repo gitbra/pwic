@@ -23,7 +23,7 @@ from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
 
-from pwic_lib import PwicConst, PwicLib
+from pwic_lib import PwicLib
 
 
 class PwicExtension():
@@ -397,7 +397,6 @@ class PwicExtension():
         ''' Event when a page or a document is delivered, excluding the API and the static files.
             To change the HTTP headers, modify the parameter 'headers' without reallocating it.
         '''
-        headers['Server'] = 'Pwic.wiki v%s' % PwicConst.VERSION
         if template == 'login':
             headers['X-Frame-Options'] = 'deny'
 
@@ -470,6 +469,17 @@ class PwicExtension():
         '''
 
     @staticmethod
+    def on_odata_xml_definition(sql: sqlite3.Cursor,        # Cursor to query the database
+                                request: web.Request,       # HTTP request
+                                filename: str,              # Name of the static XML configuration file
+                                content: str,               # Content of the file
+                                ):
+        ''' Event to change the XML definition of the OData service.
+            The result is the content of the new file.
+        '''
+        return content
+
+    @staticmethod
     def on_odata_content_pre(sql: sqlite3.Cursor,           # Cursor to query the database
                              request: web.Request,          # HTTP request
                              user: str,                     # Name of the user
@@ -478,6 +488,17 @@ class PwicExtension():
             The result indicates if the operation is allowed.
         '''
         return True
+
+    @staticmethod
+    def on_odata_custom_content(sql: sqlite3.Cursor,        # Cursor to query the database
+                                request: web.Request,       # HTTP request
+                                user: str,                  # Name of the user
+                                table: str,                 # Name of the custom table
+                                ) -> bool:
+        ''' Event to process the data selection of one custom table.
+            The result indicates if some data were retrieved within the SQL cursor.
+        '''
+        return False
 
     @staticmethod
     def on_odata_content(sql: sqlite3.Cursor,               # Cursor to query the database
