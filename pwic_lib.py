@@ -69,6 +69,7 @@ class PwicConst:
     CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'               # Various signs incompatible with filesystem, HTML, SQL...
     MAGIC_OAUTH = 'OAuth'
     NOT_PROJECT = ['', 'admin', 'api', 'bugs', 'issues', 'special', 'static', 'tracker']
+    NOT_PAGE = ['', 'special']
 
     # ========
     #  Packed
@@ -201,6 +202,7 @@ class PwicConst:
            'support_text': TyEnv(True, True, True, False),
            'support_url': TyEnv(True, True, True, False),
            'title': TyEnv(True, True, True, False),
+           'totp': TyEnv(True, False, False, False),
            'validated_only': TyEnv(True, True, True, False),
            'zip_no_exec': TyEnv(True, True, False, False),
            }
@@ -277,6 +279,7 @@ class PwicConst:
               'server': '&#x1F5A5;&#xFE0F;',
               'set_square': '&#x1F4D0;',
               'sheet': '&#x1F4C4;',
+              'slot': '&#x1F3B0;',
               'sparkles': '&#x2728;',
               'star': '&#x2B50;',
               'top': '&#x1F51D;',
@@ -926,6 +929,7 @@ class PwicLib:
         for negative, term in terms:
             if term.startswith('"') and term.endswith('"'):
                 term = term[1:-1]
+            term = term.lower()
             if negative == '-':
                 excluded.append(term)
             else:

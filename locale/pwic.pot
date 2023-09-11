@@ -59,6 +59,9 @@ msgstr ""
 msgid "Password:"
 msgstr ""
 
+msgid "Optional PIN code for 2FA:"
+msgstr ""
+
 msgid "Language:"
 msgstr ""
 
@@ -713,7 +716,7 @@ msgstr ""
 msgid "Unfortunately, you have access to no project at all."
 msgstr ""
 
-msgid "Projects you joined already"
+msgid "Joined projects"
 msgstr ""
 
 msgid "Description"
@@ -834,7 +837,10 @@ msgstr ""
 msgid "Own password:"
 msgstr ""
 
-msgid "Federated authentification only"
+msgid "Enabled two-factor authentication (2FA)"
+msgstr ""
+
+msgid "Federated authentication only"
 msgstr ""
 
 msgid "change it"

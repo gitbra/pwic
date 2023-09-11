@@ -74,6 +74,9 @@ msgstr "Utilisateur :"
 msgid "Password:"
 msgstr "Mot de passe :"
 
+msgid "Optional PIN code for 2FA:"
+msgstr "Code PIN optionnel pour 2FA :"
+
 msgid "Language:"
 msgstr "Langue :"
 
@@ -728,8 +731,8 @@ msgstr "Sélectionnez votre projet"
 msgid "Unfortunately, you have access to no project at all."
 msgstr "Malheureusement, vous n'avez accès à aucun projet."
 
-msgid "Projects you joined already"
-msgstr "Projets déjà rejoints"
+msgid "Joined projects"
+msgstr "Projets rejoints"
 
 msgid "Description"
 msgstr "Description"
@@ -849,7 +852,10 @@ msgstr "Profil"
 msgid "Own password:"
 msgstr "Mot de passe personnalisé :"
 
-msgid "Federated authentification only"
+msgid "Enabled two-factor authentication (2FA)"
+msgstr "Double authentification activée (2FA)"
+
+msgid "Federated authentication only"
 msgstr "Authentification fédérée seulement"
 
 msgid "change it"

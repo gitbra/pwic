@@ -105,7 +105,9 @@
 					<PropertyRef Name="user"/>
 				</Key>
 				<Property Name="user" Type="Edm.String" Nullable="false"/>
+				<Property Name="oauth" Type="Edm.Boolean" Nullable="false"/>
 				<Property Name="initial" Type="Edm.Boolean" Nullable="false"/>
+				<Property Name="totp" Type="Edm.Boolean" Nullable="false"/>
 				<Property Name="password_date" Type="Edm.String" Nullable="false"/>
 				<Property Name="password_time" Type="Edm.String" Nullable="false"/>
 				<NavigationProperty Name="user2document" Type="Collection(wiki.pwic.odata.model.Document)">

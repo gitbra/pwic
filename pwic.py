@@ -48,6 +48,7 @@ from multidict import MultiDict
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session, Session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+import pyotp
 
 from pwic_md import Markdown
 from pwic_lib import PwicConst, PwicLib, PwicError
@@ -1343,13 +1344,17 @@ class PwicServer():
         # Fetch the information of the user
         sql = self.dbconn.cursor()
         userpage = PwicLib.safe_user_name(request.match_info.get('userpage'))
-        row = sql.execute(''' SELECT password, initial FROM users WHERE user = ?''', (userpage, )).fetchone()
+        row = sql.execute(''' SELECT IIF(password == ?, 'X', '') AS oauth, initial, IIF(totp <> '', 'X', '') AS totp
+                              FROM users
+                              WHERE user = ?''',
+                          (PwicConst.MAGIC_OAUTH, userpage)).fetchone()
         if row is None:
             raise web.HTTPNotFound()
         pwic = {'user': user,
                 'userpage': userpage,
-                'password_oauth': row['password'] == PwicConst.MAGIC_OAUTH,
-                'password_initial': row['initial']}
+                'password_oauth': PwicLib.xb(row['oauth']),
+                'password_initial': row['initial'],
+                'password_totp': PwicLib.xb(row['totp'])}
 
         # Fetch the commonly-accessible projects assigned to the user
         sql.execute(''' SELECT a.project, c.description
@@ -1388,7 +1393,8 @@ class PwicServer():
         pwic['documents'] = sql.fetchall()
         for row in pwic['documents']:
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
-            row['size'] = PwicLib.size2str(row['size'])
+            row['extension'] = PwicLib.file_ext(row['filename'])
+            row['size_str'] = PwicLib.size2str(row['size'])
 
         # Fetch the latest pages updated by the selected user
         dt = PwicLib.dt()
@@ -1913,7 +1919,7 @@ class PwicServer():
         # Read the properties of the requested document
         project = PwicLib.safe_name(request.match_info.get('project'))
         page = PwicLib.safe_name(request.match_info.get('page'))
-        if '' in [project, page]:
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE):
             raise web.HTTPBadRequest()
 
         # Fetch the documents
@@ -1994,21 +2000,31 @@ class PwicServer():
         post = await self._handle_post(request)
         user = PwicLib.safe_user_name(post.get('user'))
         pwd = '' if user == PwicConst.USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
+        pin = PwicLib.intval(post.get('pin'))
         lang = post.get('language', session.get('language', ''))
         if lang not in app['langs']:
             lang = PwicConst.DEFAULTS['language']
 
         # Login with the credentials
-        ok = False
+        ok_pwd = False
+        ok_totp = True
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT 1
-                        FROM users
-                        WHERE user     = ?
-                          AND password = ?''',
-                    (user, pwd))
-        if sql.fetchone() is not None:
-            ok = PwicExtension.on_login(sql, request, user, lang, ip)
-            if ok:
+        row = sql.execute(''' SELECT totp
+                              FROM users
+                              WHERE user     = ?
+                              AND password = ?''',
+                          (user, pwd)).fetchone()
+        if row is not None:
+            # 2FA TOTP and custom checks
+            if (row['totp'] != '') and (PwicLib.option(sql, '', 'no_totp') is None):
+                if not pyotp.TOTP(row['totp']).verify(str(pin)):
+                    ok_totp = False
+                del row['totp']
+            if ok_totp:
+                ok_pwd = PwicExtension.on_login(sql, request, user, lang, ip)
+
+            # Open the session
+            if ok_pwd:
                 self._auto_join(sql, request, user, ['active'])
                 session = await new_session(request)
                 session['user'] = user
@@ -2024,8 +2040,10 @@ class PwicServer():
 
         # Final redirection (do not use "raise")
         if 'redirect' in request.rel_url.query:
-            return web.HTTPFound('/' if ok else '/?failed')
-        return web.HTTPOk() if ok else web.HTTPUnauthorized()
+            return web.HTTPFound('/' if ok_pwd and ok_totp else '/special/login?failed')
+        if not ok_totp:
+            return web.HTTPRequestTimeout()
+        return web.HTTPOk() if ok_pwd else web.HTTPUnauthorized()
 
     async def api_oauth(self, request: web.Request) -> web.Response:
         ''' Manage the federated authentication '''
@@ -2570,7 +2588,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         tags = PwicLib.list(PwicLib.list_tags(post.get('tags', '')))
         combined = PwicLib.xb(PwicLib.x(post.get('combined')))
-        if '' in [project, tags]:
+        if (project in PwicConst.NOT_PROJECT) or (len(tags) == 0):
             raise web.HTTPBadRequest()
 
         # Verify that the user is authorized for the project
@@ -2701,7 +2719,7 @@ class PwicServer():
             subpages = PwicConst.REGEXES['page'].findall(row['markdown'].replace(app['options']['base_url'], ''))
             if subpages is not None:
                 for sp in subpages:
-                    if sp[0] in PwicConst.NOT_PROJECT:
+                    if (sp[0] in PwicConst.NOT_PROJECT) or (sp[1] in PwicConst.NOT_PAGE):
                         continue
                     _get_node_id(sp[0], sp[1])
                     _make_link(row['project'], row['page'], sp[0], sp[1])
@@ -2797,7 +2815,7 @@ class PwicServer():
         ref_page = PwicLib.safe_name(post.get('ref_page'))
         ref_tags = PwicLib.xb(PwicLib.x(post.get('ref_tags')))
         if (((project in PwicConst.NOT_PROJECT)
-             or (not kb and (page in ['', 'special']))
+             or (not kb and (page in PwicConst.NOT_PAGE))
              or ((ref_page != '') and (ref_project == '')))):
             raise web.HTTPBadRequest()
 
@@ -2922,7 +2940,7 @@ class PwicServer():
         protection = PwicLib.xb(PwicLib.x(post.get('protection')))
         no_quick_fix = PwicLib.xb(PwicLib.x(post.get('no_quick_fix')))
         dt = PwicLib.dt()
-        if '' in [user, project, page, title, comment]:
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE) or ('' in [user, title, comment]):
             raise web.HTTPBadRequest()
 
         # Check the maximal size of a revision
@@ -3095,7 +3113,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
-        if ('' in [project, page]) or (revision == 0):
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE) or (revision == 0):
             raise web.HTTPBadRequest()
 
         # Verify that it is possible to validate the page
@@ -3159,7 +3177,10 @@ class PwicServer():
         ignore_file_errors = PwicLib.xb(PwicLib.x(post.get('ignore_file_errors', 'X')))
         if dstpage == '':
             dstpage = srcpage
-        if '' in [srcproj, srcpage, dstproj, dstpage]:
+        if (((srcproj in PwicConst.NOT_PROJECT)
+             or (srcpage in PwicConst.NOT_PAGE)
+             or (dstproj in PwicConst.NOT_PROJECT)
+             or (dstpage in PwicConst.NOT_PAGE))):
             raise web.HTTPBadRequest()
 
         # Verify that the user is a manager of the 2 projects (no need to check the protection of the page)
@@ -3298,7 +3319,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
-        if ('' in [project, page]) or (revision == 0):
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE) or (revision == 0):
             raise web.HTTPBadRequest()
 
         # Verify that the deletion is possible
@@ -3433,7 +3454,7 @@ class PwicServer():
         page = PwicLib.safe_name(post.get('page'))
         revision = PwicLib.intval(post.get('revision', 0))
         extension = post.get('format', '').strip().lower()
-        if '' in [project, page, extension]:
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE) or (extension == ''):
             raise web.HTTPBadRequest()
 
         # Apply the options on the parameters
@@ -3511,7 +3532,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         wisheduser = post.get('user', '').strip().lower()
         newuser = PwicLib.safe_user_name(post.get('user'))
-        if (wisheduser != newuser) or ('' in [project, newuser]) or (newuser[:4] == 'pwic'):
+        if (project in PwicConst.NOT_PROJECT) or (wisheduser != newuser) or (newuser[:4] in ['', 'pwic']):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
@@ -3655,7 +3676,7 @@ class PwicServer():
             delete = roles[roleid] == 'delete'
         except ValueError as e:
             raise web.HTTPBadRequest() from e
-        if '' in [project, userpost] or ((userpost[:4] == 'pwic') and (roles in ['admin', 'delete'])):
+        if (project in PwicConst.NOT_PROJECT) or (userpost == '') or ((userpost[:4] == 'pwic') and (roles in ['admin', 'delete'])):
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
@@ -4007,7 +4028,7 @@ class PwicServer():
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project'))
         page = PwicLib.safe_name(post.get('page'))
-        if '' in [project, page]:
+        if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE):
             raise web.HTTPBadRequest()
 
         # Read the documents
@@ -4368,7 +4389,9 @@ class PwicServer():
                                     AND b.disabled = '' ''',
                         (user, ))
         elif table == 'users':
-            sql.execute(''' SELECT DISTINCT a.user, a.initial, a.password_date, a.password_time
+            sql.execute(''' SELECT DISTINCT a.user, IIF(a.password == ?, 'X', '') AS oauth,
+                                            a.initial, IIF(a.totp <> '', 'X', '') AS totp,
+                                            a.password_date, a.password_time
                             FROM users AS a
                                 INNER JOIN roles AS b
                                     ON  b.user     = a.user
@@ -4381,10 +4404,10 @@ class PwicServer():
                                 ) AS c
                                     ON c.project = b.project
                         UNION
-                            SELECT user, initial, password_date, password_time
+                            SELECT user, '' AS oauth, initial, '' AS totp, password_date, password_time
                             FROM users
                             WHERE user = '' ''',
-                        (user, ))
+                        (PwicConst.MAGIC_OAUTH, user))
         elif table == 'roles':
             sql.execute(''' SELECT a.project, a.user, a.admin, a.manager, a.editor,
                                    a.validator, a.reader
@@ -4411,6 +4434,9 @@ class PwicServer():
             elif table == 'pages':
                 row['valdate'] = row['valdate'] or '1970-01-01'
                 row['valtime'] = row['valtime'] or '00:00:00'
+            elif table == 'users':
+                row['oauth'] = PwicLib.xb(row['oauth'])
+                row['totp'] = PwicLib.xb(row['totp'])
             data['value'].append(row)
 
         # Result

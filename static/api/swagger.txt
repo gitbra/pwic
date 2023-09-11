@@ -46,6 +46,11 @@ paths:
           description: Password of the user
           required: false
         - in: formData
+          name: pin
+          type: integer
+          description: PIN code if your account uses 2FA TOTP
+          required: false
+        - in: formData
           name: language
           type: string
           description: Language
@@ -58,6 +63,8 @@ paths:
           description: Redirection with the parameter ?failed if the credentials were rejected
         401:
           description: Unsufficient authorizations
+        408:
+          description: Expired PIN code for 2FA TOTP
   /api/oauth:
     get:
       summary: Connect through a third-party identity provider

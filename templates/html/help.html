@@ -284,7 +284,7 @@
 						<td><code>link_nofollow</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>The external links marked as <code>rel="nofollow"</code> don't contribute to the search engine optimization (SEO). The option applies server-side on the dynamic content only, so the cache must be regenerated if it is changed. This option is not recommended by default.</td>
+						<td>The external links are marked as <code>rel="nofollow"</code> and don't contribute to the search engine optimization (SEO). The option applies server-side on the dynamic content only, so the cache must be regenerated if the option is changed. The option is not recommended by default.</td>
 					</tr>
 					<tr>
 						<td><code>magic_bytes</code></td>
@@ -613,6 +613,12 @@
 						<td>Suffix appended to the title of the pages that can be used to name the website.</td>
 					</tr>
 					<tr>
+						<td><code>totp</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
+						<td>Enable the <a href="#help_2fa">two-factor authentication</a> (2FA TOTP). The existing secret keys are not removed when the option is disabled. The user accounts can be managed at any moment.</td>
+					</tr>
+					<tr>
 						<td><code>validated_only</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -695,6 +701,18 @@
 					<td>{{pwic.emojis.red_check}}</td>
 				</tr>
 			</table>
+
+			<h2 id="help_2fa">Two-factor authentication (2FA TOTP)</h2>
+			<p>This feature stands for <em>2-factor authentication</em> (2FA) and <em>Time-based One Time Password</em> (TOTP). The concept is to share a secret key with the user once. When he connects to the website, a PIN code is requested: its value changes every 30 seconds automatically. Consequently, this random password managed on a separate device acts as a second source of authentication and strengthens the security of your account.</p>
+			<p>The setup is very easy:</p>
+				<ul>
+					<li>Define the options <code>base_url</code> and <code>totp</code>,</li>
+					<li>Install any TOTP-compatible application on your smartphone,</li>
+					<li>Run the command <code>./pa reset-totp [username]</code> (Linux) or <code>pa.bat reset-totp [username]</code> (Windows) to generate a secret key for the given user account,</li>
+					<li>Transfer privately the generated information into the TOTP application by using the mean of your choice.</li>
+				</ul>
+			<p>This authentication technique has the benefit to be standard (RFC 6238), offline and easy to activate. It cannot act as a primary authentication method. It is also incompatible with the <a href="#help_sso">federated authentication</a> because some providers include built-in 2FA techniques already (especially SMS).</p>
+			<p>2FA is optional, user-specific and can be assigned, removed and updated at any moment.</p>
 
 			<h2>Reverse proxy</h2>
 			<p>The feature is supported but not enabled by default because the filter by IP address should not be sensible to some special HTTP headers.</p>
@@ -1068,6 +1086,12 @@
 				<td>2.14.0</td>
 				<td class="pwic_desktop">Library for Python</td>
 				<td><a href="https://raw.githubusercontent.com/pygments/pygments/master/README.rst">BSD-2-Clause License</a></td>
+			</tr>
+			<tr>
+				<td><a href="https://github.com/pyauth/pyotp">pyotp</a></td>
+				<td>2.9.0</td>
+				<td class="pwic_desktop">Library for Python</td>
+				<td><a href="https://raw.githubusercontent.com/pyauth/pyotp/develop/LICENSE">MIT License</a></td>
 			</tr>
 			<tr>
 				<td><a href="https://github.com/python/cpython/">Python</a></td>

@@ -16,9 +16,13 @@
 
 		<h2>{% trans %}Profile{% endtrans %}</h2>
 		<ul>
-			<li>{% trans %}Own password:{% endtrans %} <span id="user_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
+			<li>{% trans %}Own password:{% endtrans %}
+				<span id="user_password_status">{{pwic.emojis.red_check if pwic.password_initial else pwic.emojis.green_check}}</span>
+				{% if pwic.password_totp %}
+					<span title="{% trans %}Enabled two-factor authentication (2FA){% endtrans %}">{{pwic.emojis.slot}}</span>
+				{% endif %}
 				{% if pwic.password_oauth %}
-					<span title="{% trans %}Federated authentification only{% endtrans %}">{{pwic.emojis.id}}</span>
+					<span title="{% trans %}Federated authentication only{% endtrans %}">{{pwic.emojis.id}}</span>
 				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
 					<span class="pwic_js">(<a href="#" onclick="return user_password_popup()">{% trans %}change it{% endtrans %}</a>)</span>
 				{% endif %}
@@ -131,8 +135,8 @@
 								<span title="{% trans %}External storage{% endtrans %}">{{pwic.emojis.cloud}}</span>
 							{% endif%}
 						</td>
-						<td class="pwic_desktop pwic_break">{{doc.mime_icon}} {{doc.mime|escape}}</td>
-						<td>{{doc.size|escape}}</td>
+						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
+						<td>{{doc.size_str|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %} <span title="{% trans %}Duplicate file{% endtrans %}">{{pwic.emojis.gemini}}</span> {% endif %}

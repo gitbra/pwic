@@ -18,6 +18,9 @@
 		<form id="login_form" action="/api/login?redirect" method="post">
 			<p><strong>{% trans %}User:{% endtrans %}</strong> <input class="pwic_fill" type="text" id="login_user" name="user" autofocus autocomplete="username" required="true" spellcheck="false"></p>
 			<p><strong>{% trans %}Password:{% endtrans %}</strong> <input class="pwic_fill" type="password" id="login_password" name="password" autocomplete="current-password"></p>
+			{% if pwic.env.totp %}
+				<p><strong>{% trans %}Optional PIN code for 2FA:{% endtrans %}</strong> <input type="number" id="login_pin" name="pin" min="0" max="999999"></p>
+			{% endif %}
 			<p {% if pwic.constants.languages|count == 1 %} class="pwic_hidden" {% endif %}>
 				<strong>{% trans %}Language:{% endtrans %}</strong>
 				<br><select id="login_language" name="language">

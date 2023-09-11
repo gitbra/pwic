@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
 import sqlite3
 import gzip
@@ -32,10 +32,11 @@ from subprocess import call
 from stat import S_IREAD
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from http.client import RemoteDisconnected
 import imagesize
 from prettytable import PrettyTable
+import pyotp
 
 from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
@@ -120,11 +121,16 @@ class PwicAdmin():
 
         spb = subparsers.add_parser('create-user', help='Create a user with no assignment to a project')
         spb.add_argument('user', default='', help='User name')
+        spb.add_argument('--totp', action='store_true', help='Enable 2FA TOTP for the user')
 
         spb = subparsers.add_parser('reset-password', help='Reset the password of a user')
         spb.add_argument('user', default='', help='User name')
         spb.add_argument('--create', action='store_true', help='Create the user account if needed')
         spb.add_argument('--oauth', action='store_true', help='Force the federated authentication')
+
+        spb = subparsers.add_parser('reset-totp', help="Reset the user's secret key of the 2FA authentication")
+        spb.add_argument('user', default='', help='User name')
+        spb.add_argument('--disable', action='store_true', help='Turn off 2FA TOTP')
 
         spb = subparsers.add_parser('assign-user', help='Assign a user to a project as a reader')
         spb.add_argument('project', default='', help='Project name')
@@ -219,9 +225,11 @@ class PwicAdmin():
         if args.command == 'show-user':
             return self.show_user(args.user)
         if args.command == 'create-user':
-            return self.create_user(args.user)
+            return self.create_user(args.user, args.totp)
         if args.command == 'reset-password':
             return self.reset_password(args.user, args.create, args.oauth)
+        if args.command == 'reset-totp':
+            return self.reset_totp(args.user, args.disable)
         if args.command == 'assign-user':
             return self.assign_user(args.project, args.user)
         if args.command == 'revoke-user':
@@ -384,13 +392,14 @@ class PwicAdmin():
                             "user" TEXT NOT NULL,
                             "password" TEXT NOT NULL,
                             "initial" TEXT NOT NULL CHECK("initial" IN ('', 'X')),
+                            "totp" TEXT NOT NULL,
                             "password_date" TEXT NOT NULL,
                             "password_time" TEXT NOT NULL,
                             PRIMARY KEY("user")
                         )''')
         for e in ['', PwicConst.USERS['anonymous'], PwicConst.USERS['ghost']]:
-            sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
-                            VALUES (?, '', '', ?, ?)''',
+            sql.execute(''' INSERT INTO users (user, password, initial, totp, password_date, password_time)
+                            VALUES (?, '', '', '', ?, ?)''',
                         (e, dt['date'], dt['time']))
 
         # Table ROLES
@@ -538,7 +547,7 @@ class PwicAdmin():
                 tab = self._prepare_prettytable(['Package', 'Version'])
                 tab.align['Version'] = 'r'
                 for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
-                                'jinja2', 'PrettyTable', 'pygments']:
+                                'jinja2', 'PrettyTable', 'pygments', 'pyotp']:
                     try:
                         tab.add_row([package, version(package)])
                     except PackageNotFoundError:
@@ -790,8 +799,8 @@ class PwicAdmin():
             return False
 
         # Add the user account
-        sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, password_date, password_time)
-                        VALUES (?, ?, 'X', ?, ?)''',
+        sql.execute(''' INSERT OR IGNORE INTO users (user, password, initial, totp, password_date, password_time)
+                        VALUES (?, ?, 'X', '', ?, ?)''',
                     (admin, PwicLib.sha256(PwicConst.DEFAULTS['password']), dt['date'], dt['time']))
         if sql.rowcount > 0:
             PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
@@ -1088,13 +1097,17 @@ class PwicAdmin():
         # Fetch the users
         project = PwicLib.safe_name(project)
         if project == '':
-            sql.execute(''' SELECT user, IIF(password == ?, 'True', 'False') AS SSO, initial, password_date, password_time
+            sql.execute(''' SELECT user, IIF(password == ?, 'True', 'False') AS oauth,
+                                   IIF(totp == '', 'False', 'True') AS totp,
+                                   initial, password_date, password_time
                             FROM users
                             WHERE user <> ''
                             ORDER BY user''',
                         (PwicConst.MAGIC_OAUTH, ))
         else:
-            sql.execute(''' SELECT a.user, IIF(a.password == ?, 'True', 'False') AS SSO, a.initial, a.password_date, a.password_time, b.disabled
+            sql.execute(''' SELECT a.user, IIF(a.password == ?, 'True', 'False') AS oauth,
+                                   IIF(totp == '', 'False', 'True') AS totp,
+                                   a.initial, a.password_date, a.password_time, b.disabled
                             FROM users AS a
                                 INNER JOIN roles AS b
                                     ON b.user = a.user
@@ -1135,7 +1148,7 @@ class PwicAdmin():
             return True
         return False
 
-    def create_user(self, user: str) -> bool:
+    def create_user(self, user: str, totp: bool) -> bool:
         # Connect to the database
         sql = self.db_connect()
         if sql is None:
@@ -1146,21 +1159,28 @@ class PwicAdmin():
         if user[:4] in ['', 'pwic']:
             print('Error: invalid user')
             return False
-        sql.execute(''' SELECT user FROM users WHERE user = ?''', (user, ))
+        sql.execute(''' SELECT 1
+                        FROM users
+                        WHERE user = ?''',
+                    (user, ))
         if sql.fetchone() is not None:
-            print(f'Error: the user "{user}" already exists')
+            print(f'Error: the user "{user}" exists already')
             return False
 
         # Create the user account
         dt = PwicLib.dt()
-        sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
-                        VALUES (?, ?, 'X', ?, ?)''',
+        sql.execute(''' INSERT INTO users (user, password, initial, totp, password_date, password_time)
+                        VALUES (?, ?, 'X', '', ?, ?)''',
                     (user, PwicLib.sha256(PwicConst.DEFAULTS['password']), dt['date'], dt['time']))
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'create-user',
                             'user': user})
         self.db_commit()
         print(f'The user "{user}" is created with the default password "{PwicConst.DEFAULTS["password"]}".')
+
+        # TOTP
+        if totp:
+            return self.reset_totp(user, False)
         return True
 
     def reset_password(self, user: str, create: bool, oauth: bool) -> bool:
@@ -1175,12 +1195,13 @@ class PwicAdmin():
         if (user[:4] in ['', 'pwic']) or (not create and new_account):
             print('Error: invalid user')
             return False
-        if sql.execute(''' SELECT user
-                           FROM roles
-                           WHERE user  = ?
-                             AND admin = 'X'
-                           LIMIT 1''',
-                       (user, )).fetchone() is not None:
+        sql.execute(''' SELECT 1
+                        FROM roles
+                        WHERE user  = ?
+                          AND admin = 'X'
+                        LIMIT 1''',
+                    (user, ))
+        if sql.fetchone() is not None:
             print(f'The user "{user}" has administrative rights on some projects')
 
         # Ask for a new password
@@ -1203,8 +1224,8 @@ class PwicAdmin():
         # Reset the password with no rights takedown else some projects may loose their administrators
         dt = PwicLib.dt()
         if new_account:
-            sql.execute(''' INSERT INTO users (user, password, initial, password_date, password_time)
-                            VALUES (?, ?, ?, ?, ?)''',
+            sql.execute(''' INSERT INTO users (user, password, initial, totp, password_date, password_time)
+                            VALUES (?, ?, ?, '', ?, ?)''',
                         (user, pwd, PwicLib.x(initial), dt['date'], dt['time']))
             PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'create-user',
@@ -1223,6 +1244,55 @@ class PwicAdmin():
                                 'user': user,
                                 'string': PwicConst.MAGIC_OAUTH if pwd == PwicConst.MAGIC_OAUTH else ''})
             print(f'\nThe password has been changed for the user "{user}"')
+        self.db_commit()
+        return True
+
+    def reset_totp(self, user: str, disable: bool) -> bool:
+        # Verify the user account
+        user = PwicLib.safe_user_name(user)
+        if user[:4] in ['', 'pwic']:
+            print('Error: invalid user')
+            return False
+        sql = self.db_connect()
+        if sql is None:
+            return False
+        sql.execute(''' SELECT 1
+                        FROM users
+                        WHERE user = ?''',
+                    (user, ))
+        if sql.fetchone() is None:
+            print(f'Error: the user "{user}" does not exist')
+            return False
+
+        # 2FA TOTP without no_totp
+        if disable:
+            sql.execute(''' UPDATE users
+                            SET totp = ''
+                            WHERE user = ?''',
+                        (user, ))
+            print(f'2FA TOTP is disabled for the user "{user}".')
+        else:
+            host = urlparse(str(PwicLib.option(sql, '', 'base_url', ''))).netloc
+            if host == '':
+                print('Error: the option "base_url" is not defined')
+                return False
+            if PwicLib.option(sql, '', 'totp') is None:
+                print('Warning: 2FA TOTP is not enabled yet')
+            if '@' in user:
+                print('Warning: the embedded 2FA TOTP is not compatible with OAuth')
+            totp_secret = pyotp.random_base32()
+            sql.execute(''' UPDATE users
+                            SET totp = ?
+                            WHERE user = ?''',
+                        (totp_secret, user))
+            totp_url = pyotp.totp.TOTP(totp_secret).provisioning_uri(name=user, issuer_name=host)
+            print(f'To configure 2FA TOTP fully, share securely the following info with the user "{user}":')
+            print(f'- Key: {totp_secret}')
+            print(f'- URL: {totp_url}')
+            del totp_secret, totp_url
+        PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
+                            'event': 'reset-totp',
+                            'user': user})
         self.db_commit()
         return True
 
@@ -1468,6 +1538,10 @@ class PwicAdmin():
                 ''' SELECT COUNT(user) AS kpi
                     FROM users
                     WHERE password = ?''', (PwicConst.MAGIC_OAUTH, ))
+        _totals(sql, 'Number of users with 2FA TOTP',
+                ''' SELECT COUNT(user) AS kpi
+                    FROM users
+                    WHERE totp <> '' ''', None)
         _totals(sql, 'Number of users with an initial password',
                 ''' SELECT COUNT(user) AS kpi
                     FROM users
@@ -2450,43 +2524,78 @@ class PwicAdmin():
             return False
 
     def execute_sql(self) -> bool:
-        # Ask for a query
+        def _validate_sql(queries: List[str]) -> Dict[str, Union[int, bool]]:
+            query = '\n'.join(queries).strip()
+            if (len(query) > 0) and (query[-1:] != ';'):
+                query += ';'
+            statements = 0
+            quote = None
+            brackets = 0
+            cm1 = ''
+            cm2 = ''
+            for i, c in enumerate(query):
+                escaped = (cm1 == '\\') and (cm2 != '\\')
+                if (c == ';') and (brackets == 0) and (quote is None):
+                    statements += 1
+                elif (c in ['"', "'"]) and not escaped:
+                    if quote == c:
+                        quote = None
+                    elif quote is None:
+                        quote = c
+                elif (c == '(') and (not escaped) and (quote is None):
+                    brackets += 1
+                elif (c == ')') and (not escaped) and (quote is None):
+                    brackets -= 1
+                cm2 = cm1
+                cm1 = c
+            return {'statements': statements,
+                    'ok': (brackets == 0) and (quote is None)}
+
+        # Ask for queries
         print('This feature may corrupt the database. Please use it to upgrade Pwic.wiki upon explicit request only.')
-        print("\nType the query to execute on a single line:")
-        query = input()
-        if len(query) > 0:
+        print("\nType the queries separated by semicolons. Leave a blank line after the last statement to validate the input:")
+        queries = []
+        while True:
+            query = input()
+            queries.append(query)
+            validation = _validate_sql(queries)
+            if (len(query) == 0) and validation['ok']:
+                break
 
-            # Ask for the confirmation
-            print(f'\nAre you sure to execute << {query} >> ?\nType "YES" to continue: ', end='')
-            if input() == 'YES':
+        # Ask for the confirmation
+        print('\nTo continue, please confirm by typing "YES": ', end='')
+        if input() != 'YES':
+            return False
 
-                # Execute
-                sql = self.db_connect()
-                if sql is None:
-                    return False
-                try:
-                    sql.execute(query)
-                except sqlite3.OperationalError as e:
-                    print(f'\nError: {e}')
-                    self.db_rollback()
-                    return False
-
-                # Output
+        # Execute
+        query = '\n'.join(queries).replace('\r', '')
+        sql = self.db_connect()
+        if sql is None:
+            return False
+        try:
+            if validation['statements'] == 1:
+                sql.execute(query)
                 print(f'Affected rows = {sql.rowcount}')
                 tab = self.db_sql2table(sql)
                 if tab is not None:
                     print(tab.get_string())
+            else:
+                sql.executescript(query)
+                print('\nNo log')
+        except sqlite3.OperationalError as e:
+            print(f'\nError: {e}')
+            self.db_rollback()
+            return False
 
-                # Trace
-                PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
-                                    'event': 'execute-sql',
-                                    'string': query})
-                self.db_commit()
-                return True
-
-        # Default behavior
-        print('Aborted')
-        return False
+        # Trace
+        try:
+            PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
+                                'event': 'execute-sql',
+                                'string': query.replace('\n', ' ')})
+        except sqlite3.OperationalError:
+            print('\nWarning: no audit saved for technical reasons')
+        self.db_commit()
+        return True
 
     def shutdown_server(self, port: int, force: bool) -> bool:
         # Ask for confirmation

@@ -298,12 +298,12 @@ class PwicExtension():
                  event: Dict[str, Any],                     # Details of the event
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                archive-audit   change-password  clear-cache      create-backup     create-document    create-project   create-revision
-                create-user     delete-document  delete-page      delete-project    delete-revision    delete-user      execute-sql
-                export-project  grant-admin      grant-editor     grant-manager     grant-reader       grant-validator  init-db
-                login           logout           rename-document  repair-documents  reset-password     set-*            shutdown-server
-                split-project   start-server     ungrant-admin    ungrant-editor    ungrant-manager    ungrant-reader   ungrant-validator
-                unlock-db       unset-*          update-document  update-revision   validate-revision
+                archive-audit      change-password  clear-cache      create-backup     create-document  create-project     create-revision
+                create-user        delete-document  delete-page      delete-project    delete-revision  delete-user        execute-sql
+                export-project     grant-admin      grant-editor     grant-manager     grant-reader     grant-validator    init-db
+                login              logout           rename-document  repair-documents  reset-password   reset-totp         set-*
+                shutdown-server    split-project    start-server     ungrant-admin     ungrant-editor   ungrant-manager    ungrant-reader
+                ungrant-validator  unlock-db        unset-*          update-document   update-revision  validate-revision
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.
@@ -439,8 +439,9 @@ class PwicExtension():
                  language: str,                             # Selected language
                  ip: str,                                   # IP address
                  ) -> bool:
-        ''' Event when a user successfully connects with a password.
+        ''' Event when a user successfully connects with a password and 2FA TOTP.
             The result indicates if the connection is possible.
+            Note: the custom check for OAuth is covered by "PwicExtension.on_oauth".
         '''
         return True
 

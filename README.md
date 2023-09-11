@@ -81,6 +81,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Multi-projects with dedicated authorizations by user
 - Global and project-dependent settings
 - OAuth2-based federated authentication with control of the state (SSO)
+- Two-factor authentication based on time (2FA TOTP)
 - Cache system
 - Private and public modes
 - Custom CSS and templates

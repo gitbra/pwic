@@ -12,6 +12,7 @@
 	function login_anonymous() {
 		$('#login_user').val('{{pwic.constants.anonymous_user|escape}}');
 		$('#login_password').val('');
+		$('#login_pin').val('');
 		$('#login_form')[0].submit();
 		return true;
 	}
