@@ -17,11 +17,15 @@
 		<p>{% trans %}Search terms:{% endtrans %}
 			<input id="page_search" class="pwic_fill" type="text" value="{{pwic.terms|escape}}" onkeypress="page_search()">
 			{% if not pwic.pure_reader or not pwic.env.no_history %}
-				<span style="pwic_nowrap pwic_js">
+				<span class="pwic_js">
 					<input id="page_search_withrev" type="checkbox" {% if 'rev' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()">
-					<label for="page_search_withrev">{% trans %}Include the old revisions{% endtrans %}</label>
+					<label for="page_search_withrev">{% trans %}Include the old revisions{% endtrans %}</label>,
 				</div>
 			{% endif %}
+			<span class="pwic_js">
+				<input id="page_search_casesensitive" type="checkbox" {% if 'cs' in pwic.args %}checked="checked"{% endif %} onclick="page_start_search()">
+				<label for="page_search_casesensitive">{% trans %}Case-sensitive{% endtrans %}</label>
+			</div>
 		</p>
 
 		{% if pwic.pages|count > 0 %}

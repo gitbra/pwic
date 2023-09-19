@@ -192,7 +192,8 @@ class PwicAdmin():
         spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
         spb.add_argument('--force', action='store_true', help='No confirmation')
 
-        subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
+        spb = subparsers.add_parser('execute-sql', help='Execute an SQL query on the database (dangerous)')
+        spb.add_argument('--file', default='', help='SQL query from file')
 
         spb = subparsers.add_parser('shutdown-server', help='Terminate the server')
         spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
@@ -263,7 +264,7 @@ class PwicAdmin():
         if args.command == 'unlock-db':
             return self.unlock_db(args.port, args.force)
         if args.command == 'execute-sql':
-            return self.execute_sql()
+            return self.execute_sql(args.file)
         if args.command == 'shutdown-server':
             return self.shutdown_server(args.port, args.force)
 
@@ -2523,7 +2524,7 @@ class PwicAdmin():
             print(f'failed\nError: {e}')
             return False
 
-    def execute_sql(self) -> bool:
+    def execute_sql(self, filename: str) -> bool:
         def _validate_sql(queries: List[str]) -> Dict[str, Union[int, bool]]:
             query = '\n'.join(queries).strip()
             if (len(query) > 0) and (query[-1:] != ';'):
@@ -2549,18 +2550,33 @@ class PwicAdmin():
                 cm2 = cm1
                 cm1 = c
             return {'statements': statements,
-                    'ok': (brackets == 0) and (quote is None)}
+                    'ok': (statements > 0) and (brackets == 0) and (quote is None)}
 
         # Ask for queries
         print('This feature may corrupt the database. Please use it to upgrade Pwic.wiki upon explicit request only.')
-        print("\nType the queries separated by semicolons. Leave a blank line after the last statement to validate the input:")
         queries = []
-        while True:
-            query = input()
-            queries.append(query)
+        if filename == '':
+            print("\nType the queries separated by semicolons. Leave a blank line after the last statement to validate the input:")
+            while True:
+                query = input()
+                queries.append(query)
+                validation = _validate_sql(queries)
+                if (len(query) == 0) and validation['ok']:
+                    break
+        else:
+            try:
+                with open(filename, 'rb') as fh:
+                    query = fh.read().decode()
+            except (OSError, FileNotFoundError):
+                print('Error: unknown file')
+                return False
+            queries = query.split('\n')
             validation = _validate_sql(queries)
-            if (len(query) == 0) and validation['ok']:
-                break
+            if not validation['ok']:
+                print('Error: invalid SQL syntax')
+                return False
+            print('You are about to execute the following statements:\n')
+            print(query.strip())
 
         # Ask for the confirmation
         print('\nTo continue, please confirm by typing "YES": ', end='')

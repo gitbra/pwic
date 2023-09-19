@@ -53,8 +53,8 @@
 					<a class="pwic_js" href="/{{pwic.project|urlencode}}/special/graph">{{pwic.emojis.globe}} {% trans %}Graph{% endtrans %}</a>
 				{% endif %}
 			{% endif %}
-			{% if pwic.admin %}
-				<a class="pwic_desktop" href="/{{pwic.project|urlencode}}/special/export">{{pwic.emojis.clamp}} {% trans %}Export{% endtrans %}</a>
+			{% if pwic.admin and not pwic.env.no_export_project %}
+				<a class="pwic_desktop" href="/{{pwic.project|urlencode}}/special/export/zip" title="{{ gettext('Export to format %(format)s')|format(format='ZIP') }}">{{pwic.emojis.clamp}} ZIP</a>
 			{% endif %}
 			<a class="pwic_js" href="/api">{{pwic.emojis.brick}} {% trans %}API{% endtrans %}</a>
 			<a href="/{{pwic.project|urlencode}}/special/random">{{pwic.emojis.dice}} {% trans %}Random page{% endtrans %}</a>

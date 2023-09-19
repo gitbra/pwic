@@ -554,8 +554,8 @@ msgstr "Liens"
 msgid "Graph"
 msgstr "Graphe"
 
-msgid "Export"
-msgstr "Exporter"
+msgid "Export to format %(format)s"
+msgstr "Exporter au format %(format)s"
 
 msgid "API"
 msgstr "API"
@@ -758,6 +758,9 @@ msgstr "Termes de la recherche :"
 
 msgid "Include the old revisions"
 msgstr "Inclure les anciennes révisions"
+
+msgid "Case-sensitive"
+msgstr "Sensible à la casse"
 
 msgid "Pages"
 msgstr "Pages"

@@ -32,7 +32,7 @@ from pwic_extension import PwicExtension
 
 
 class PwicExporter():
-    ''' Export documents from Pwic.wiki '''
+    ''' Export pages from Pwic.wiki '''
 
     def __init__(self, app_markdown: Markdown, user: str):
         self.app_markdown = app_markdown

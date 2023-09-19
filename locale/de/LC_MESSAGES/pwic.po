@@ -554,8 +554,8 @@ msgstr "Links"
 msgid "Graph"
 msgstr "Graphik"
 
-msgid "Export"
-msgstr "Exportieren"
+msgid "Export to format %(format)s"
+msgstr "Als %(format)s-Format exportieren"
 
 msgid "API"
 msgstr "API"
@@ -758,6 +758,9 @@ msgstr "Suchbegriffe:"
 
 msgid "Include the old revisions"
 msgstr "Die alte Revisionen einschließen"
+
+msgid "Case-sensitive"
+msgstr "Mit der Unterscheidung von Groß- und Kleinschreibung"
 
 msgid "Pages"
 msgstr "Seiten"

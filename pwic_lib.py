@@ -854,7 +854,7 @@ class PwicLib:
     @staticmethod
     def x(value: Any) -> str:
         ''' Reduce an input value to a boolean string '''
-        return '' if value in [None, '', 0, '0', False, 'false', 'False', '-', '~', 'no', 'No', 'off', 'Off'] else 'X'
+        return '' if value in [None, '', 0, '0', False, 'false', 'False', 'FALSE', '-', '~', 'no', 'No', 'NO', 'off', 'Off', 'OFF'] else 'X'
 
     @staticmethod
     def xb(value: str) -> bool:
@@ -921,7 +921,7 @@ class PwicLib:
     # ===============
 
     @staticmethod
-    def search_parse(query: str) -> Optional[Dict[str, List[str]]]:
+    def search_parse(query: str, case_sensitive: bool) -> Optional[Dict[str, List[str]]]:
         ''' Build a search object from a string '''
         included = []
         excluded = []
@@ -929,11 +929,14 @@ class PwicLib:
         for negative, term in terms:
             if term.startswith('"') and term.endswith('"'):
                 term = term[1:-1]
-            term = term.lower()
+            if not case_sensitive:
+                term = term.lower()
             if negative == '-':
                 excluded.append(term)
             else:
                 included.append(term)
+        included.sort(key=lambda v: v.lower())
+        excluded.sort(key=lambda v: v.lower())
         return {'included': included,
                 'excluded': excluded}
 

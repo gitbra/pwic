@@ -539,7 +539,7 @@ msgstr ""
 msgid "Graph"
 msgstr ""
 
-msgid "Export"
+msgid "Export to format %(format)s"
 msgstr ""
 
 msgid "API"
@@ -742,6 +742,9 @@ msgid "Search terms:"
 msgstr ""
 
 msgid "Include the old revisions"
+msgstr ""
+
+msgid "Case-sensitive"
 msgstr ""
 
 msgid "Pages"

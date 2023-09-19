@@ -612,6 +612,9 @@ class PwicServer():
 
         # Get the parameters
         project = PwicLib.safe_name(request.match_info.get('project'))
+        fmt = request.match_info.get('format')
+        if fmt != 'zip':
+            raise web.HTTPUnsupportedMediaType()
 
         # Verify that the export is authorized
         sql = self.dbconn.cursor()
@@ -643,7 +646,7 @@ class PwicServer():
         converter.set_option('relative_html', True)
         try:
             inmemory = BytesIO()
-            with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as ziparch:
+            with ZipFile(inmemory, mode='w', compression=ZIP_DEFLATED) as archive:
                 # Fetch the relevant pages
                 sql_sub = self.dbconn.cursor()
                 sql.execute(''' SELECT page, revision, latest, author, date, time, title, markdown
@@ -661,9 +664,9 @@ class PwicServer():
 
                     # Raw markdown
                     if with_revisions:
-                        ziparch.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.md', page['markdown'])
+                        archive.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.md', page['markdown'])
                     if page['latest']:
-                        ziparch.writestr(f'{page["page"]}.md', page['markdown'])
+                        archive.writestr(f'{page["page"]}.md', page['markdown'])
 
                     # Regenerate HTML
                     html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
@@ -683,18 +686,18 @@ class PwicServer():
                             html = html.replace(f'<a href="/special/document/{doc["id"]}"', f'<a href="{doc["exturl"]}"')
                             html = html.replace(f'<a href="/special/document/{doc["id"]}/', f'<a href="{doc["exturl"]}')
                     if with_revisions:
-                        ziparch.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.html', html)
+                        archive.writestr(f'{folder_rev}{page["page"]}.rev{page["revision"]}.html', html)
                     if page['latest']:
-                        ziparch.writestr(f'{page["page"]}.html', html)
+                        archive.writestr(f'{page["page"]}.html', html)
 
                 # Dependent files for the pages
                 cssfn = PwicStylerHtml().css
                 content = b''
                 with open(cssfn, 'rb') as f:
                     content = f.read()
-                ziparch.writestr(cssfn, content)
+                archive.writestr(cssfn, content)
                 if with_revisions:
-                    ziparch.writestr(folder_rev + cssfn, content)
+                    archive.writestr(folder_rev + cssfn, content)
                 del content
 
                 # Attached documents
@@ -706,7 +709,7 @@ class PwicServer():
                             content = b''
                             with open(fn, 'rb') as f:
                                 content = f.read()
-                            ziparch.writestr(f'documents/{doc["filename"]}', content)
+                            archive.writestr(f'documents/{doc["filename"]}', content)
                             del content
         except Exception as e:
             raise web.HTTPInternalServerError() from e
@@ -715,7 +718,7 @@ class PwicServer():
         PwicLib.audit(sql, {'author': user,
                             'event': 'export-project',
                             'project': project,
-                            'string': 'full' if with_revisions else 'latest'},
+                            'string': 'zip-full' if with_revisions else 'zip-latest'},
                       request)
         self.dbconn.commit()
 
@@ -1442,10 +1445,11 @@ class PwicServer():
         # Parse the query
         sql = self.dbconn.cursor()
         project = PwicLib.safe_name(request.match_info.get('project'))
+        case_sensitive = 'cs' in request.rel_url.query
         if PwicLib.option(sql, project, 'no_search') is not None:
             query = None
         else:
-            query = PwicLib.search_parse(request.rel_url.query.get('q', ''))
+            query = PwicLib.search_parse(request.rel_url.query.get('q', ''), case_sensitive)
         if query is None:
             raise web.HTTPTemporaryRedirect(f'/{project}')
 
@@ -1466,7 +1470,7 @@ class PwicServer():
                     (project, ))
         pwic = {'project': project,
                 'project_description': sql.fetchone()['description'],
-                'terms': PwicLib.search2string(query),
+                'terms': PwicLib.search2string(PwicLib.search_parse(request.rel_url.query.get('q', ''), True)),
                 'pages': [],
                 'documents': [],
                 'with_rev': with_rev,
@@ -1475,7 +1479,7 @@ class PwicServer():
         # Search for a page
         if not PwicExtension.on_search_pages(sql, request, user, pwic, query):
             sql.execute(''' SELECT a.project, a.page, a.revision, a.latest, a.draft, a.final,
-                                   a.author, a.date, a.time, a.title, LOWER(a.markdown) AS markdown,
+                                   a.author, a.date, a.time, a.title, a.markdown,
                                    a.tags, a.valuser, a.valdate, a.valtime, b.document_count
                             FROM pages AS a
                                 LEFT JOIN (
@@ -1495,27 +1499,33 @@ class PwicServer():
                 row = sql.fetchone()
                 if row is None:
                     break
+                tmp_title = row['title']
+                if not case_sensitive:
+                    row['markdown'] = row['markdown'].lower()       # sqlite.lower != python.lower
+                    row['title'] = row['title'].lower()
                 tagList = PwicLib.list(row['tags'])
 
                 # Apply the filters
                 ok = True
                 score = 0
                 for q in query['excluded']:         # The first occurrence of an excluded term excludes the whole page
+                    qlow = q.lower()
                     if (((q == ':latest' and row['latest'])
                          or (q == ':draft' and row['draft'])
                          or (q == ':final' and row['final'])
-                         or (q[:7] == 'author:' and q[7:] in row['author'].lower())
-                         or (q[:6] == 'title:' and q[6:] in row['title'].lower())
+                         or (q[:7] == 'author:' and qlow[7:] in row['author'])
+                         or (q[:6] == 'title:' and q[6:] in row['title'])
                          or (q == ':validated' and row['valuser'] != '')
-                         or (q[:10] == 'validator:' and q[10:] in row['valuser'].lower())
+                         or (q[:10] == 'validator:' and qlow[10:] in row['valuser'])
                          or (q == ':document' and PwicLib.intval(row['document_count']) > 0)
                          or (q[1:] in tagList if q[:1] == '#' else False)
-                         or (q == row['page'].lower())
+                         or (qlow == row['page'])
                          or (q in row['markdown']))):
                         ok = False
                         break
                 if ok:
                     for q in query['included']:     # The first non-occurrence of an included term excludes the whole page
+                        qlow = q.lower()
                         if q == ':latest':
                             count = PwicLib.intval(row['latest'])
                         elif q == ':draft':
@@ -1523,19 +1533,19 @@ class PwicServer():
                         elif q == ':final':
                             count = PwicLib.intval(row['final'])
                         elif q[:7] == 'author:':
-                            count = row['author'].lower().count(q[7:])
+                            count = row['author'].count(qlow[7:])
                         elif q[:6] == 'title:':
-                            count = row['title'].lower().count(q[6:])
+                            count = row['title'].count(q[6:])
                         elif q == ':validated':
                             count = PwicLib.intval(row['valuser'] != '')
                         elif q[:10] == 'validator:':
-                            count = PwicLib.intval(q[10:] in row['valuser'].lower())
+                            count = PwicLib.intval(qlow[10:] in row['valuser'])
                         elif q == ':document':
                             count = PwicLib.intval(PwicLib.intval(row['document_count']) > 0)
                         elif (q[1:] in tagList if q[:1] == '#' else False):
                             count = 5               # A tag counts more
                         else:
-                            count = 5 * PwicLib.intval(q == row['page'].lower()) + row['markdown'].count(q)
+                            count = 5 * PwicLib.intval(qlow == row['page']) + row['markdown'].count(q)
                         if count == 0:
                             ok = False
                             break
@@ -1544,6 +1554,7 @@ class PwicServer():
                     continue
 
                 # Save the found result
+                row['title'] = tmp_title
                 del row['markdown']
                 del row['tags']
                 del row['document_count']
@@ -1567,6 +1578,7 @@ class PwicServer():
                 for q in query['excluded']:
                     if ':' in q:
                         continue
+                    q = q.lower()
                     if (q in row['page']) or (q in row['filename']) or (q in row['mime']):
                         ok = False
                         break
@@ -1574,6 +1586,7 @@ class PwicServer():
                     for q in query['included']:
                         if ':' in q:
                             continue
+                        q = q.lower()
                         if (q not in row['page']) and (q not in row['filename']) and (q not in row['mime']):
                             ok = False
                             break
@@ -4586,7 +4599,7 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}/special/feed/{format:json|atom|rss}', app['pwic'].project_feed),
                     web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
                     web.get(r'/{project:[^\/]+}/special/graph', app['pwic'].page_graph),
-                    web.get(r'/{project:[^\/]+}/special/export', app['pwic'].project_export),
+                    web.get(r'/{project:[^\/]+}/special/export/{format:zip}', app['pwic'].project_export),
                     web.get(r'/{project:[^\/]+}/special/random', app['pwic'].page_random),
                     web.get(r'/{project:[^\/]+}/special/documents/{page:[^\/]+}', app['pwic'].document_all_get),
                     web.get(r'/{project:[^\/]+}/{page:[^\/]+}/rev{new_revision:[0-9]+}/compare/rev{old_revision:[0-9]+}', app['pwic'].page_compare),
