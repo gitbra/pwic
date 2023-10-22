@@ -456,8 +456,6 @@ class PwicExtension():
             The result is the new Markdown text to be processed.
             The control hash key is not affected.
         '''
-        # ReDoS protection
-        markdown = PwicLib.recursive_replace(markdown, '*_*_*_*_*_*_*_*', '*')
         return markdown
 
     @staticmethod

@@ -273,7 +273,13 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         HTMLParser.reset(self)
         self.tag_path: List[str] = []
         self.code = ''                  # Special code block
+        self.html_tmp = ''              # Short buffer
         self.html = ''                  # Final buffer
+
+    def _push_buffer(self, full: bool):
+        if len(self.html_tmp) > (0 if full else 262144):
+            self.html += self.html_tmp
+            self.html_tmp = ''
 
     def is_mute(self) -> bool:
         for t in self.skipped_tags:
@@ -314,7 +320,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
                     buffer += f' {k}="{v}"'
-        self.html += f'<{tag}{buffer}>'
+        self.html_tmp += f'<{tag}{buffer}>'
 
     def handle_endtag(self, tag: str):
         # Tag path
@@ -327,7 +333,8 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         if self.code == tag:    # Not imbricated
             self.code = ''
         if not self.is_mute():
-            self.html += f'</{tag}>'
+            self.html_tmp += f'</{tag}>'
+            self._push_buffer(False)
         self.tag_path.pop()
 
     def handle_comment(self, data: str):
@@ -338,9 +345,10 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         if not self.is_mute():
             if self.code in ['blockcode', 'code']:
                 data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
-            self.html += data
+            self.html_tmp += data
 
     def get_html(self) -> str:
+        self._push_buffer(True)
         self.html = self.html.replace('<hr></hr>', '<hr>').replace('></img>', '>')
         while True:
             curlen = len(self.html)

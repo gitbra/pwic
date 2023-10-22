@@ -50,7 +50,11 @@ Supported extra syntax options (see -x|--extras option below and
 see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 
 * admonitions: Enable parsing of RST admonitions.
-* break-on-newline: Replace single new line characters with <br> when True
+* breaks: Control where hard breaks are inserted in the markdown.
+  Options include:
+  - on_newline: Replace single new line characters with <br> when True
+  - on_backslash: Replace backslashes at the end of a line with <br>
+* break-on-newline: Alias for the on_newline option in the breaks extra.
 * code-friendly: Disable _ and __ for em and strong.
 * cuddled-lists: Allow lists to be cuddled to the preceding paragraph.
 * fenced-code-blocks: Allows a code block to not have to be indented
@@ -111,7 +115,7 @@ see <https://github.com/trentm/python-markdown2/wiki/Extras> for details):
 #   not yet sure if there implications with this. Compare 'pydoc sre'
 #   and 'perldoc perlre'.
 
-__version_info__ = (2, 4, 10)
+__version_info__ = (2, 4, 11)
 __version__ = '.'.join(map(str, __version_info__))
 __author__ = "Trent Mick"
 
@@ -215,6 +219,11 @@ class Markdown(object):
                 self._toc_depth = 6
             else:
                 self._toc_depth = self.extras["toc"].get("depth", 6)
+
+        if 'break-on-newline' in self.extras:
+            self.extras.setdefault('breaks', {})
+            self.extras['breaks']['on_newline'] = True
+
         self._instance_extras = self.extras.copy()
 
         if 'link-patterns' in self.extras:
@@ -695,7 +704,7 @@ class Markdown(object):
     # _block_tags_b.  This way html5 tags are easy to keep track of.
     _html5tags = '|article|aside|header|hgroup|footer|nav|section|figure|figcaption'
 
-    _block_tags_a = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del'
+    _block_tags_a = 'p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del|style'
     _block_tags_a += _html5tags
 
     _strict_tag_block_re = re.compile(r"""
@@ -1298,8 +1307,13 @@ class Markdown(object):
             text = self._do_smart_punctuation(text)
 
         # Do hard breaks:
-        if "break-on-newline" in self.extras:
-            text = re.sub(r" *\n(?!\<(?:\/?(ul|ol|li))\>)", "<br%s\n" % self.empty_element_suffix, text)
+        if 'breaks' in self.extras:
+            break_tag = "<br%s\n" % self.empty_element_suffix
+            # do backslashes first because on_newline inserts the break before the newline
+            if self.extras['breaks'].get('on_backslash', False):
+                text = re.sub(r' *\\\n', break_tag, text)
+            if self.extras['breaks'].get('on_newline', False):
+                text = re.sub(r" *\n(?!\<(?:\/?(ul|ol|li))\>)", break_tag, text)
         else:
             text = re.sub(r" {2,}\n", " <br%s\n" % self.empty_element_suffix, text)
 
@@ -1479,18 +1493,38 @@ class Markdown(object):
             url = self._strip_anglebrackets.sub(r'\1', url)
         return url, title, end_idx
 
+    # https://developer.mozilla.org/en-US/docs/web/http/basics_of_http/data_urls
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
+    _data_url_re = re.compile(r'''
+        data:
+        # in format type/subtype;parameter=optional
+        (?P<mime>\w+/[\w+\.-]+(?:;\w+=[\w+\.-]+)?)?
+        # optional base64 token
+        (?P<token>;base64)?
+        ,(?P<data>.*)
+    ''', re.X)
+
     def _protect_url(self, url):
         '''
         Function that passes a URL through `_html_escape_url` to remove any nasty characters,
         and then hashes the now "safe" URL to prevent other safety mechanisms from tampering
         with it (eg: escaping "&" in URL parameters)
         '''
-        url = _html_escape_url(url, safe_mode=self.safe_mode)
+        data_url = self._data_url_re.match(url)
+        charset = None
+        if data_url is not None:
+            mime = data_url.group('mime') or ''
+            if mime.startswith('image/') and data_url.group('token') == ';base64':
+                charset='base64'
+        url = _html_escape_url(url, safe_mode=self.safe_mode, charset=charset)
         key = _hash_text(url)
         self._escape_table[url] = key
         return key
 
-    _safe_href = re.compile(r'^([a-z]+:|\/|\#)', re.I)          # ~~ PWIC
+    @property
+    def _safe_href(self):
+        return re.compile(r'^([a-z]+:|\/|\#)', re.I)          # ~~ PWIC
+
     def _do_links(self, text):
         """Turn Markdown link shortcuts into XHTML <a> and <img> tags.
 
@@ -2262,10 +2296,10 @@ class Markdown(object):
         text = self._tg_spoiler_re.sub(r"<tg-spoiler>\1</tg-spoiler>", text)
         return text
 
-    _strong_re = re.compile(r"(\*\*|__)(?=\S)(.+?[*_]*)(?<=\S)\1", re.S)
-    _em_re = r"(\*|_)(?=\S)(.+?)(?<=\S)\1"
-    _code_friendly_strong_re = re.compile(r"\*\*(?=\S)(.+?[*_]*)(?<=\S)\*\*", re.S)
-    _code_friendly_em_re = r"\*(?=\S)(.+?)(?<=\S)\*"
+    _strong_re = re.compile(r"(\*\*|__)(?=\S)(.*\S)\1", re.S)
+    _em_re = r"(\*|_)(?=\S)(.*?\S)\1"
+    _code_friendly_strong_re = re.compile(r"\*\*(?=\S)(.*\S)\*\*", re.S)
+    _code_friendly_em_re = r"\*(?=\S)(.+?)\*"
     def _do_italics_and_bold(self, text):
         if self.extras.get('middle-word-em', True) is False:
             code_friendly_em_re = r'(?<=\b)%s(?=\b)' % self._code_friendly_em_re
@@ -3011,14 +3045,21 @@ def _xml_encode_email_char_at_random(ch):
         return '&#%s;' % ord(ch)
 
 
-def _html_escape_url(attr, safe_mode=False):
-    """Replace special characters that are potentially malicious in url string."""
+def _html_escape_url(attr, safe_mode=False, charset=None):
+    """
+    Replace special characters that are potentially malicious in url string.
+
+    Args:
+        charset: don't escape characters from this charset. Currently the only
+            exception is for '+' when charset=='base64'
+    """
     escaped = (attr
         .replace('"', '&quot;')
         .replace('<', '&lt;')
         .replace('>', '&gt;'))
     if safe_mode:
-        escaped = escaped.replace('+', ' ')
+        if charset != 'base64':
+            escaped = escaped.replace('+', ' ')
         escaped = escaped.replace("'", "&#39;")
     return escaped
 
