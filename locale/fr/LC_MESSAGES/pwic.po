@@ -933,6 +933,12 @@ msgstr "'Collez le lien :'"
 msgid "'You cannot use this feature.'"
 msgstr "'Vous ne pouvez pas utiliser cette fonctionnalité.'"
 
+msgid "'Tooltip of the image:'"
+msgstr "'Bulle d\\'aide de l\\'image :'"
+
+msgid "'Alternate text for the image:'"
+msgstr "'Texte alternatif pour l\\'image :'"
+
 msgid "'Do you want to replace the current content by the one of the selected document?'"
 msgstr "'Voulez-vous remplacer le contenu actuel par celui du document sélectionné ?'"
 

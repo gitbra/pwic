@@ -130,7 +130,7 @@ Once you have well tested Pwic.wiki and defined the global and project-dependent
 
 Please use the [issue tracker](https://github.com/gitbra/pwic/issues) on Github to ask questions, report bugs and request new features.
 
-To enhance the existing translations, you may edit selected languages by [joining the online workspace](https://explore.transifex.com/pwicwiki/pwicwiki/). Native speakers can achieve one translation precisely in few hours.
+To enhance the existing translations, you may edit the selected languages by [joining the online workspace](https://explore.transifex.com/pwicwiki/pwicwiki/). Native speakers can achieve one translation precisely in few hours.
 
 
 ## Licenses

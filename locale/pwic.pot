@@ -918,6 +918,12 @@ msgstr ""
 msgid "'You cannot use this feature.'"
 msgstr ""
 
+msgid "'Tooltip of the image:'"
+msgstr ""
+
+msgid "'Alternate text for the image:'"
+msgstr ""
+
 msgid "'Do you want to replace the current content by the one of the selected document?'"
 msgstr ""
 

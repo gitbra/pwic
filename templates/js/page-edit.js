@@ -270,8 +270,8 @@
 		// Include an image
 		if (mime.substring(0, 6) == 'image/')
 		{
-			var tip = prompt('Tooltip of the image:', ''),
-				alt = prompt('Alternate text for the image:', '');
+			var tip = prompt({% trans %}'Tooltip of the image:'{% endtrans %}, ''),
+				alt = prompt({% trans %}'Alternate text for the image:'{% endtrans %}, '');
 			buffer = '![';
 			if (alt != '')
 				buffer += pwic_kick(alt, '[]');

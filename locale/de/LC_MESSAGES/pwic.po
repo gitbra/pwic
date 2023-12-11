@@ -933,6 +933,12 @@ msgstr "'Der Link einfügen:'"
 msgid "'You cannot use this feature.'"
 msgstr "'Diese Funktion ist nicht verfügbar.'"
 
+msgid "'Tooltip of the image:'"
+msgstr "'Tooltip des Bildes:'"
+
+msgid "'Alternate text for the image:'"
+msgstr "'Alternativer Text des Bildes:'"
+
 msgid "'Do you want to replace the current content by the one of the selected document?'"
 msgstr "'Möchten Sie die aktuelle Seite durch den Inhalt des selektierten Dokuments ersetzen?'"
 

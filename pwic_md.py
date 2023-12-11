@@ -122,7 +122,7 @@ __author__ = "Trent Mick"
 import logging
 import re
 import sys
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from hashlib import sha256
 from random import randint, random
 from typing import Any                      # ++ PWIC
@@ -220,6 +220,14 @@ class Markdown(object):
             else:
                 self._toc_depth = self.extras["toc"].get("depth", 6)
 
+        if 'header-ids' in self.extras:
+            if not isinstance(self.extras['header-ids'], dict):
+                self.extras['header-ids'] = {
+                    'mixed': False,
+                    'prefix': self.extras['header-ids'],
+                    'reset-count': True
+                }
+
         if 'break-on-newline' in self.extras:
             self.extras.setdefault('breaks', {})
             self.extras['breaks']['on_newline'] = True
@@ -260,10 +268,13 @@ class Markdown(object):
 
     def _setup_extras(self):
         if "footnotes" in self.extras:
-            self.footnotes = {}
+            # order of insertion matters for footnotes. Use ordered dict for Python < 3.7
+            # https://docs.python.org/3/whatsnew/3.7.html#summary-release-highlights
+            self.footnotes = OrderedDict()
             self.footnote_ids = []
         if "header-ids" in self.extras:
-            self._count_from_header_id = defaultdict(int)
+            if not hasattr(self, '_count_from_header_id') or self.extras['header-ids'].get('reset-count', False):
+                self._count_from_header_id = defaultdict(int)
         if "metadata" in self.extras:
             self.metadata = {}
 
@@ -402,6 +413,17 @@ class Markdown(object):
             text = self._a_nofollow_or_blank_links.sub(r'<\1 rel="nofollow"\2', text)
 
         if "toc" in self.extras and self._toc:
+            if self.extras['header-ids'].get('mixed'):
+                # TOC will only be out of order if mixed headers is enabled
+                def toc_sort(entry):
+                    '''Sort the TOC by order of appearance in text'''
+                    return re.search(
+                        # header tag, any attrs, the ID, any attrs, the text, close tag
+                        r'^<(h%d).*?id=(["\'])%s\2.*>%s</\1>$' % (entry[0], entry[1], re.escape(entry[2])),
+                        text, re.M
+                    ).start()
+
+                self._toc.sort(key=toc_sort)
             self._toc_html = calculate_toc_html(self._toc)
 
             # Prepend toc html to output
@@ -741,8 +763,15 @@ class Markdown(object):
     def _hash_html_block_sub(self, match, raw=False):
         if isinstance(match, str):
             html = match
+            tag = None
         else:
             html = match.group(1)
+            try:
+                tag = match.group(2)
+            except IndexError:
+                tag = None
+
+        tag = tag or re.match(r'^<(\S).*?>', html).group(1)
 
         if raw and self.safe_mode:
             html = self._sanitize_html(html)
@@ -751,6 +780,10 @@ class Markdown(object):
             m = self._html_markdown_attr_re.search(first_line)
             if m:
                 lines = html.split('\n')
+                if len(lines) < 3:  # if MD is on same line as HTML
+                    lines = re.split(r'(<%s.*markdown=.*?>)' % tag, lines[0])[1:] + lines[1:]
+                    first_line = lines[0]
+                    lines = lines[:-1] + re.split(r'(</%s>.*?$)' % tag, lines[-1])[:-1]
                 middle = '\n'.join(lines[1:-1])
                 last_line = lines[-1]
                 first_line = first_line[:m.start()] + first_line[m.end():]
@@ -761,6 +794,8 @@ class Markdown(object):
                 return ''.join(["\n\n", f_key,
                     "\n\n", middle, "\n\n",
                     l_key, "\n\n"])
+        elif self.extras.get('header-ids', {}).get('mixed') and self._h_tag_re.match(html):
+            html = self._h_tag_re.sub(self._h_tag_sub, html)
         key = _hash_text(html)
         self.html_blocks[key] = html
         return "\n\n" + key + "\n\n"
@@ -1197,21 +1232,21 @@ class Markdown(object):
                 (?:(?<=\n\n)|\A\n?)             # leading blank line
 
                 ^[ ]{0,%d}                      # allowed whitespace
-                (.*[|].*)  \n                   # $1: header row (at least one pipe)
+                (.*[|].*)[ ]*\n                   # $1: header row (at least one pipe)
 
                 ^[ ]{0,%d}                      # allowed whitespace
                 (                               # $2: underline row
                     # underline row with leading bar
-                    (?:  \|\ *:?-+:?\ *  )+  \|? \s? \n
+                    (?:  \|\ *:?-+:?\ *  )+  \|? \s?[ ]*\n
                     |
                     # or, underline row without leading bar
-                    (?:  \ *:?-+:?\ *\|  )+  (?:  \ *:?-+:?\ *  )? \s? \n
+                    (?:  \ *:?-+:?\ *\|  )+  (?:  \ *:?-+:?\ *  )? \s?[ ]*\n
                 )
 
                 (                               # $3: data rows
                     (?:
                         ^[ ]{0,%d}(?!\ )         # ensure line begins with 0 to less_than_tab spaces
-                        .*\|.*  \n
+                        .*\|.*[ ]*\n
                     )+
                 )
             ''' % (less_than_tab, less_than_tab, less_than_tab), re.M | re.X)
@@ -1748,6 +1783,13 @@ class Markdown(object):
 
         return header_id
 
+    def _header_id_exists(self, text):
+        header_id = _slugify(text)
+        prefix = self.extras['header-ids'].get('prefix')
+        if prefix and isinstance(prefix, str):
+            header_id = prefix + '-' + header_id
+        return header_id in self._count_from_header_id or header_id in map(lambda x: x[1], self._toc)
+
     def _toc_add_entry(self, level, id, name):
         if level > self._toc_depth:
             return
@@ -1772,6 +1814,7 @@ class Markdown(object):
     _h_re_tag_friendly = re.compile(_h_re_base % '+', re.X | re.M)
 
     def _h_sub(self, match):
+        '''Handles processing markdown headers'''
         if match.group(1) is not None and match.group(3) == "-":
             return match.group(1)
         elif match.group(1) is not None:
@@ -1789,13 +1832,44 @@ class Markdown(object):
         header_id_attr = ""
         if "header-ids" in self.extras:
             header_id = self.header_id_from_text(header_group,
-                self.extras["header-ids"], n)
+                self.extras["header-ids"].get('prefix'), n)
             if header_id:
                 header_id_attr = ' id="%s"' % header_id
         html = self._run_span_gamut(header_group)
         if "toc" in self.extras and header_id:
             self._toc_add_entry(n, header_id, html)
         return "<h%d%s>%s</h%d>\n\n" % (n, header_id_attr, html, n)
+
+    _h_tag_re = re.compile(r'''
+        ^<h([1-6])(.*)>  # \1 tag num, \2 attrs
+        (.*)  # \3 text
+        </h\1>
+    ''', re.X | re.M)
+
+    def _h_tag_sub(self, match):
+        '''Different to `_h_sub` in that this function handles existing HTML headers'''
+        text = match.string[match.start(): match.end()]
+        h_level = int(match.group(1))
+        # extract id= attr from tag, trying to account for regex "misses"
+        id_attr = (re.match(r'.*?id=(\S+)?.*', match.group(2) or '') or '')
+        if id_attr:
+            # if id attr exists, extract that
+            id_attr = id_attr.group(1) or ''
+        id_attr = id_attr.strip('\'" ')
+        h_text = match.group(3)
+
+        # check if header was already processed (ie: was a markdown header rather than HTML)
+        if id_attr and self._header_id_exists(id_attr):
+            return text
+
+        # generate new header id if none existed
+        header_id = id_attr or self.header_id_from_text(h_text, self.extras['header-ids'].get('prefix'), h_level)
+        if "toc" in self.extras:
+            self._toc_add_entry(h_level, header_id, h_text)
+        if header_id and not id_attr:
+            # '<h[digit]' + new ID + '...'
+            return text[:3] + ' id="%s"' % header_id + text[3:]
+        return text
 
     def _do_headers(self, text):
         # Setext-style headers:
@@ -2296,9 +2370,9 @@ class Markdown(object):
         text = self._tg_spoiler_re.sub(r"<tg-spoiler>\1</tg-spoiler>", text)
         return text
 
-    _strong_re = re.compile(r"(\*\*|__)(?=\S)(.*\S)\1", re.S)
+    _strong_re = re.compile(r"(\*\*|__)(?=\S)(.+?[*_]?)(?<=\S)\1", re.S)
     _em_re = r"(\*|_)(?=\S)(.*?\S)\1"
-    _code_friendly_strong_re = re.compile(r"\*\*(?=\S)(.*\S)\*\*", re.S)
+    _code_friendly_strong_re = re.compile(r"\*\*(?=\S)(.+?[*_]?)(?<=\S)\*\*", re.S)
     _code_friendly_em_re = r"\*(?=\S)(.+?)\*"
     def _do_italics_and_bold(self, text):
         if self.extras.get('middle-word-em', True) is False:
@@ -2472,6 +2546,10 @@ class Markdown(object):
             if not self.footnote_return_symbol:
                 self.footnote_return_symbol = "&#8617;"
 
+            # self.footnotes is generated in _strip_footnote_definitions, which runs re.sub on the whole
+            # text. This means that the dict keys are inserted in order of appearance. Use the dict to
+            # sort footnote ids by that same order
+            self.footnote_ids.sort(key=lambda a: list(self.footnotes.keys()).index(a))
             for i, id in enumerate(self.footnote_ids):
                 if i != 0:
                     footer.append('')
@@ -2807,7 +2885,7 @@ def _slugify(value):
     From Django's "django/template/defaultfilters.py".
     """
     import unicodedata
-    value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode()
+    value = unicodedata.normalize('NFKD', value).encode('utf-8', 'ignore').decode()
     value = _slugify_strip_re.sub('', value).strip().lower()
     return _slugify_hyphenate_re.sub('-', value)
 ## end of http://code.activestate.com/recipes/577257/ }}}
