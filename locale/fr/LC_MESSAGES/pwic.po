@@ -230,7 +230,7 @@ msgid "Tags:"
 msgstr "Étiquettes :"
 
 msgid "No hash and separated by a space"
-msgstr "Sans dièse et séparés par un espace"
+msgstr "Sans dièse et séparées par un espace"
 
 msgid "Milestone:"
 msgstr "Jalon :"

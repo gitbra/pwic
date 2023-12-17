@@ -22,6 +22,7 @@ import sqlite3
 import re
 from collections import namedtuple, OrderedDict
 from datetime import datetime, timedelta
+from time import time
 from os import urandom
 from os.path import splitext
 from hashlib import sha256
@@ -850,6 +851,11 @@ class PwicLib:
             else:
                 result[k] = None
         return result
+
+    @staticmethod
+    def timestamp() -> int:
+        ''' Returns the current time stamp '''
+        return PwicLib.intval(time())
 
     @staticmethod
     def x(value: Any) -> str:

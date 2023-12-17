@@ -35,7 +35,6 @@ from random import randint
 import re
 import sqlite3
 import sys
-from time import time
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from ipaddress import ip_network, ip_address
 from urllib.parse import parse_qs, quote, urlencode
@@ -218,11 +217,11 @@ class PwicServer():
         # Check the expiration of the session
         expiry = app['options']['session_expiry']
         if expiry > 0:
-            cur_time = PwicLib.intval(time())
+            cur_time = PwicLib.timestamp()
             if PwicLib.intval(session.get('timestamp', cur_time)) < cur_time - expiry:
                 session.invalidate()
                 return ''
-            session['timestamp'] = PwicLib.intval(time())
+            session['timestamp'] = PwicLib.timestamp()
 
         # Check the HTTP referer in POST method and the user
         user = PwicLib.safe_user_name(session.get('user'))
@@ -2004,6 +2003,19 @@ class PwicServer():
 
     async def api_login(self, request: web.Request) -> web.Response:
         ''' API to log in people '''
+
+        def _cache_totp(user: str, pin: str) -> bool:
+            # Note: the cache is not shared across multiple processes
+            curtime = PwicLib.timestamp()
+            for k in G_TOTP_CACHE:
+                if G_TOTP_CACHE[k] < curtime - 3660:
+                    del G_TOTP_CACHE[k]
+            key = f'{user}@{pin}'
+            if key in G_TOTP_CACHE:
+                return False
+            G_TOTP_CACHE[key] = curtime
+            return True
+
         # Checks
         ip = PwicExtension.on_ip_header(request)
         self._check_ip(ip)
@@ -2013,7 +2025,7 @@ class PwicServer():
         post = await self._handle_post(request)
         user = PwicLib.safe_user_name(post.get('user'))
         pwd = '' if user == PwicConst.USERS['anonymous'] else PwicLib.sha256(post.get('password', ''))
-        pin = PwicLib.intval(post.get('pin'))
+        pin = str(PwicLib.intval(post.get('pin')))
         lang = post.get('language', session.get('language', ''))
         if lang not in app['langs']:
             lang = PwicConst.DEFAULTS['language']
@@ -2030,8 +2042,10 @@ class PwicServer():
         if row is not None:
             # 2FA TOTP and custom checks
             if (row['totp'] != '') and (PwicLib.option(sql, '', 'no_totp') is None):
-                if not pyotp.TOTP(row['totp']).verify(str(pin)):
+                if not pyotp.TOTP(row['totp']).verify(pin):
                     ok_totp = False
+                else:
+                    ok_totp = _cache_totp(user, pin)
                 del row['totp']
             if ok_totp:
                 ok_pwd = PwicExtension.on_login(sql, request, user, lang, ip)
@@ -2044,7 +2058,7 @@ class PwicServer():
                 session['language'] = lang
                 session['user_secret'] = PwicLib.random_hash()
                 session['ip'] = ip
-                session['timestamp'] = PwicLib.intval(time())
+                session['timestamp'] = PwicLib.timestamp()
                 if user != PwicConst.USERS['anonymous']:
                     PwicLib.audit(sql, {'author': user,
                                         'event': 'login'},
@@ -2217,7 +2231,7 @@ class PwicServer():
         session['language'] = PwicLib.detect_language(request, app['langs'], sso=True)
         session['user_secret'] = PwicLib.random_hash()
         session['ip'] = ip
-        session['timestamp'] = PwicLib.intval(time())
+        session['timestamp'] = PwicLib.timestamp()
         PwicLib.audit(sql, {'author': user,
                             'event': 'login',
                             'string': PwicConst.MAGIC_OAUTH},
@@ -4468,6 +4482,8 @@ class PwicServer():
 #  Program entry point
 # =====================
 
+G_TOTP_CACHE = {}
+
 app = web.Application()
 
 
@@ -4484,7 +4500,7 @@ def main() -> bool:
 
     # Check the databases
     if not isfile(PwicConst.DB_SQLITE) or not isfile(PwicConst.DB_SQLITE_AUDIT):
-        print('Error: the databases are not initialized')
+        print('Error: the databases are not initialized by the admin command "init-db"')
         return False
 
     # Command-line
