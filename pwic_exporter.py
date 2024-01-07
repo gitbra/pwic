@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2023 Alexandre Bréard
+# Copyright (C) 2020-2024 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -266,7 +266,7 @@ class PwicExporter():
 class PwicCleanerHtml(HTMLParser):      # html2html
     def __init__(self, skipped_tags: str, nofollow: bool):
         HTMLParser.__init__(self)
-        self.skipped_tags = PwicLib.list('applet embed iframe link meta object script style ' + skipped_tags.lower())
+        self.skipped_tags = PwicLib.list('applet embed iframe link meta noscript object script style ' + skipped_tags.lower())
         self.nofollow = nofollow
 
     def reset(self) -> None:
