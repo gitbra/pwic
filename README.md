@@ -1,4 +1,4 @@
-# Pwic.wiki server powered by Python and SQLite
+# Pwic.wiki server written with Python and SQLite
 
 
 ## Presentation

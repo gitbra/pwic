@@ -86,7 +86,7 @@ class PwicImporterMd():
             with open(filename, 'rb') as f:
                 content = f.read()
             md = content.decode().replace('\r', '')
-            return PwicLib.recursive_replace(md, '\n\n\n', '\n\n')
+            return PwicLib.recursive_replace(md, '\n\n\n', '\n\n').strip()
         except Exception:
             return ''
 
@@ -166,8 +166,8 @@ class PwicImporterHtml(HTMLParser):
         self.table_lin_cur = 0
 
     def feed(self, data: str):
-        cleaner = PwicCleanerHtml('', False)
-        cleaner.feed(data)
+        cleaner = PwicCleanerHtml('aside header nav', False)
+        cleaner.feed(data.replace('\r', ''))
         HTMLParser.feed(self, cleaner.get_html())
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
@@ -178,7 +178,7 @@ class PwicImporterHtml(HTMLParser):
             elif tag == 'a':
                 self.last_href = PwicLib.read_attr(attrs, 'href')
             elif tag == 'img':
-                tagattr['src'] = PwicLib.read_attr(attrs, 'src')
+                tagattr['src'] = PwicLib.read_attr(attrs, 'src', PwicLib.read_attr(attrs, 'data-src'))
             elif (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
                 self.md = self.md.rstrip()
             elif tag == 'table':
@@ -202,7 +202,7 @@ class PwicImporterHtml(HTMLParser):
             self.md += self.map_open[tag]
             # Void tags
             if tag == 'img':
-                self.md += '](%s)' % tagattr.get('src', '')
+                self.md += '](%s)' % tagattr.get('src', tagattr.get('data-src', ''))
             elif tag == 'input':
                 typ = PwicLib.read_attr(attrs, 'type')
                 if typ == 'checkbox':
@@ -231,7 +231,8 @@ class PwicImporterHtml(HTMLParser):
 
     def handle_data(self, data: str) -> None:
         if not self.pre:
-            data = PwicLib.recursive_replace(data.replace('\t', ' '), '  ', ' ', strip=False)
+            data = PwicLib.recursive_replace(data.replace('\t', ' '), '  ', ' ',
+                                             strip=(self.last_tag == 'a') and (self.md[-1:] == '['))
         self.md += data
 
     @staticmethod
@@ -259,7 +260,7 @@ class PwicImporterHtml(HTMLParser):
         # Convert
         self.feed(html)
         lines = [e.rstrip() for e in self.md.split('\n')]
-        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
+        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n').strip()
 
 
 # ========
@@ -468,7 +469,7 @@ class PwicImporterOdt(HTMLParser):
             return ''
         self.feed(self.content)
         lines = [e.rstrip() for e in self.md.split('\n')]
-        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n')
+        return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n').strip()
 
 
 handlers = [PwicImporterMd, PwicImporterHtml, PwicImporterOdt]

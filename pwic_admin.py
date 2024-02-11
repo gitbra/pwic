@@ -25,7 +25,7 @@ import datetime
 import sys
 import os
 import ssl
-from os import chmod, listdir, makedirs, mkdir, removedirs, rename, rmdir
+from os import chmod, listdir, makedirs, mkdir, removedirs, rename, rmdir, system
 from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from subprocess import call
@@ -705,9 +705,14 @@ class PwicAdmin():
         # Load the platform-dependent library
         try:
             import winreg
+            win = True
         except ImportError:
-            print('Error: unsupported operating system')
-            return False
+            win = False
+
+        # Mime types for Linux
+        if not win:
+            system('cat /etc/mime.types')
+            return True
 
         # Buffer
         tab = self._prepare_prettytable(['Extension', 'MIME'])

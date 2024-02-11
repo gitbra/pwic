@@ -315,7 +315,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         # Process the attributes
         buffer = ''
         for (k, v) in props.items():
-            if (((k in ['alt', 'checked', 'class', 'colspan', 'disabled', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'type', 'width'])
+            if (((k in ['alt', 'checked', 'class', 'colspan', 'data-src', 'disabled', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'type', 'width'])
                  or ((self.code == 'svg') and (k[:2] != 'on')))):
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
