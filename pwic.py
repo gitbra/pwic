@@ -4482,8 +4482,7 @@ class PwicServer():
 #  Program entry point
 # =====================
 
-G_TOTP_CACHE = {}
-
+G_TOTP_CACHE: Dict[str, int] = {}
 app = web.Application()
 
 

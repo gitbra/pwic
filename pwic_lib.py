@@ -932,7 +932,7 @@ class PwicLib:
     # ===============
 
     @staticmethod
-    def search_parse(query: str, case_sensitive: bool) -> Optional[Dict[str, List[str]]]:
+    def search_parse(query: str, case_sensitive: bool) -> Dict[str, List[str]]:
         ''' Build a search object from a string '''
         included = []
         excluded = []
