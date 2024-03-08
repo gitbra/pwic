@@ -22,6 +22,7 @@ import sqlite3
 from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
+from prettytable import PrettyTable
 
 from pwic_lib import PwicLib
 
@@ -293,6 +294,23 @@ class PwicExtension():
         return True
 
     @staticmethod
+    def on_admin_split_project(sql_src: sqlite3.Cursor,     # Cursor for the source database
+                               sql_dst: sqlite3.Cursor,     # Cursor for the target database
+                               projects: List[str],         # List of the impacted projects
+                               ) -> None:
+        ''' Event when a database is split.
+            You can execute additional operations for your custom tables.
+        '''
+
+    @staticmethod
+    def on_admin_stats(sql: sqlite3.Cursor,                 # Cursor to query the database
+                       tab: PrettyTable,                    # Result view
+                       ) -> None:
+        ''' Event when an administrator runs the command "show-stats".
+        '''
+        # tab.add_row(['Custom stat', 'demo-project', '2024-01', 123])
+
+    @staticmethod
     def on_audit(sql: sqlite3.Cursor,                       # Cursor to query the database
                  request: Optional[web.Request],            # HTTP request, None if called from the console
                  event: Dict[str, Any],                     # Details of the event
@@ -520,15 +538,6 @@ class PwicExtension():
                                     ) -> None:
         ''' Event when a list of documents is to be exported as an archive for a given project.
             Modify the parameter 'documents' without reallocating it.
-        '''
-
-    @staticmethod
-    def on_project_split(sql: sqlite3.Cursor,               # Cursor for the source database
-                         newsql: sqlite3.Cursor,            # Cursor for the target database
-                         projects: List[str],               # List of the impacted projects
-                         ) -> None:
-        ''' Event when a database is split.
-            You can execute additional operations for your custom tables.
         '''
 
     @staticmethod

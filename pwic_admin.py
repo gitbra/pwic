@@ -1018,7 +1018,7 @@ class PwicAdmin():
             for row in sql.fetchall():
                 _transfer_record(newsql, 'documents', row)
         # ... custom copy
-        PwicExtension.on_project_split(sql, newsql, projects)
+        PwicExtension.on_admin_split_project(sql, newsql, projects)
 
         # Result
         newsql.execute(''' COMMIT''')
@@ -1903,6 +1903,7 @@ class PwicAdmin():
                     ORDER BY event''', None)
 
         # Final output
+        PwicExtension.on_admin_stats(sql, tab)
         print(tab.get_string())
         return True
 

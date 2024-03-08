@@ -17,7 +17,7 @@
 		return true;
 	}
 
-{% if pwic.env.oauth_provider %}
+{% if pwic.env.base_url and pwic.env.oauth_provider %}
 	function login_oauth() {
 		{% if pwic.env.oauth_provider.value == 'github' %}
 			window.location = 'https://github.com/login/oauth/authorize' +

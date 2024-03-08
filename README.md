@@ -111,6 +111,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Install Python >=3.7: `apt-get install python3 python3-pip gzip --no-install-recommends`
 - Clone the repository `git clone https://github.com/gitbra/pwic.git` or uncompress the [latest modifications](https://github.com/gitbra/pwic/archive/refs/heads/master.zip) in the folder of your choice
 - Install the dependencies: `python3 -m pip install --upgrade -r requirements.txt`
+	- If your packages are managed by the system, use instead `apt-get install python3-xxx` where `xxx` stands for the name of each package listed in the file `requirements.txt`
 - Optionally modify some default values in the file `pwic_lib.py` with a text editor to increase the security:
 	- Change the default password in `PwicConst.DEFAULTS['password']`
 	- Write random characters in the secret salt `PwicConst.SALT` forever
@@ -122,6 +123,8 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Create a new project `demo` for the user `admin`: `python3 pwic_admin.py create-project demo "Demo project" admin`
 - Run the server: `python3 pwic.py`
 - Open your browser at `http://127.0.0.1:8080` by default
+- Log in with your account and change your password by using the link in the footer
+- In the special area of the project, grant yourself the role *Manager* to allow the creation of new pages
 
 Once you have well tested Pwic.wiki and defined the global and project-dependent variables described in the embedded help file, you can use the bind address `0.0.0.0` and change the port in the main command line.
 

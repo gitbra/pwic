@@ -1232,7 +1232,7 @@ class PwicServer():
                     (project, n))
         row = sql.fetchone()
         if row is None:
-            raise web.HTTPInternalServerError()
+            row = {'page': PwicConst.DEFAULTS['page']}
         raise web.HTTPTemporaryRedirect(f'/{project}/{row["page"]}')
 
     async def page_audit(self, request: web.Request) -> web.Response:
@@ -1745,7 +1745,7 @@ class PwicServer():
             subpages = PwicConst.REGEXES['page'].findall(row['markdown'])
             if subpages is not None:
                 for sp in subpages:
-                    if (sp[0] == project) and (sp[1] not in linkmap[page]):
+                    if ((sp[0][1:] or project) == project) and (sp[1] not in linkmap[page]):
                         linkmap[page].append(sp[1])
 
             # Looks for the linked documents
@@ -2746,10 +2746,10 @@ class PwicServer():
             subpages = PwicConst.REGEXES['page'].findall(row['markdown'].replace(app['options']['base_url'], ''))
             if subpages is not None:
                 for sp in subpages:
-                    if (sp[0] in PwicConst.NOT_PROJECT) or (sp[1] in PwicConst.NOT_PAGE):
-                        continue
-                    _get_node_id(sp[0], sp[1])
-                    _make_link(row['project'], row['page'], sp[0], sp[1])
+                    sp = [sp[0][1:] or project, sp[1]]
+                    if (sp[0] not in PwicConst.NOT_PROJECT) and (sp[1] not in PwicConst.NOT_PAGE):
+                        _get_node_id(sp[0], sp[1])
+                        _make_link(row['project'], row['page'], sp[0], sp[1])
         if len(maps) == 0:
             raise web.HTTPUnauthorized()
 

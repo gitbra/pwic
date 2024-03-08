@@ -47,8 +47,8 @@
 				if ((url.length > 0)
 				 && (url.indexOf(':') === -1)
 				 && (url.indexOf('/') === -1)
-				 && (url.indexOf(' ') === -1))
-					url = '/{{pwic.project}}/' + url.toLowerCase();
+				 && (url == url.toLowerCase()))
+					url = '/{{pwic.project}}/' + url;
 
 				// Replace the text by another one
 				ta.value = ta.value.substring(0, ss) + '[' + ta.value.substring(ss, se) + ']('+url+')' + ta.value.substring(se);
