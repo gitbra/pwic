@@ -90,7 +90,9 @@
 				{% if (not pwic.env.document_size_max) or (pwic.env.document_size_max.value|int > 0) %}
 					<h2>Documents</h2>
 					<div id="edit_files_drop" ondrop="edit_drop(event)" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
-						<input type="button" value="{{pwic.emojis.refresh}}" title="{% trans %}Refresh{% endtrans %}" onclick="edit_refresh_documents()" style="margin-right: 15px">
+						<input type="button" value="{{pwic.emojis.refresh}}" title="{% trans %}Refresh{% endtrans %}" onclick="edit_refresh_documents()">
+						<input class="pwic_mobile" type="button" value="{{pwic.emojis.inbox}}" title="{% trans %}Upload a new document{% endtrans %}" onclick="edit_upload_document()" style="margin-left: 15px">
+						<br>
 						{% trans %}Drop the files here{% endtrans %}
 						{% if pwic.env.document_size_max_str %}
 							({% trans %}max:{% endtrans %} {{pwic.env.document_size_max_str.value}})

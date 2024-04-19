@@ -2714,7 +2714,7 @@ class PwicServer():
             if (pos >= len(pages)) or (pages[pos] != tup):
                 insort(pages, tup)
                 return _get_node_id(project, page)
-            return f'n{pos+1}'
+            return f'n{pos + 1}'
 
         # Fetch the pages
         sql.execute(''' SELECT b.project, b.page, b.header, b.markdown

@@ -2153,7 +2153,7 @@ class PwicAdmin():
         # ... rotate the files
         for i in reversed(range(1, nfiles)):    # i=[1..nfiles-1]
             try:
-                rename(f'{fn}.{i}.gz', f'{fn}.{i+1}.gz')
+                rename(f'{fn}.{i}.gz', f'{fn}.{i + 1}.gz')
             except OSError:
                 pass
         # ... compress the last file

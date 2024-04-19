@@ -356,6 +356,9 @@ msgstr "Insérer"
 msgid "Refresh"
 msgstr "Rafraîchir"
 
+msgid "Upload a new document"
+msgstr "Charger un nouveau document"
+
 msgid "Drop the files here"
 msgstr "Déposez les fichiers ici"
 

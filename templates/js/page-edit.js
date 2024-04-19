@@ -430,43 +430,52 @@
 	var edit_files_list_initial = $('#edit_files_list').html();
 	edit_refresh_documents();	// For the initialization
 
+	function _edit_transfer_files(files) {
+		// Create an XHR for each file
+		var notification = null;
+		for (var i=0 ; i<files.length ; i++)
+		{
+			// Fields
+			var form = new FormData();
+			form.append('project', '{{pwic.project|escape}}');
+			form.append('page', '{{pwic.page|escape}}');
+			form.append('content', files[i]);
+
+			// Request
+			fetch('/api/document/create', {	method: 'POST',
+											body: form,
+											credentials: 'same-origin' })
+				.then(function(response) {
+					if (!response.ok)
+						throw Error(response.status + ' ' + response.statusText);
+					if (notification != null)
+						clearTimeout(notification);
+					notification = setTimeout(function() {
+										edit_refresh_documents();
+										alert({% trans %}'The file is uploaded and usable in the list below.'{% endtrans %});
+									}, 2000);
+				})
+				.catch(error => alert(error));
+		}
+	}
+
+	function edit_upload_document() {
+		var obj = $(document.createElement('input'))
+						.attr('type', 'file')
+						.addClass('pwic_hidden')
+						.appendTo('body')
+						.on('change', (e) => { _edit_transfer_files(e.target.files), obj.remove() })
+						.on('cancel', () => obj.remove())
+						.trigger('click');
+	}
+
 	function edit_drop(event) {
 		$('#edit_files_drop').removeClass('pwic_dragover');
 		if (event.dataTransfer.items)
 		{
 			event.preventDefault();
 			event.stopPropagation();
-			
-			// Create an XHR for each file
-			var files = event.dataTransfer.files,
-				notification = null;
-			for (var i=0 ; i<files.length ; i++)
-			{
-				// Fields
-				var form = new FormData();
-				form.append('project', '{{pwic.project|escape}}');
-				form.append('page', '{{pwic.page|escape}}');
-				form.append('content', files[i]);
-
-				// Request
-				fetch('/api/document/create', {	method: 'POST',
-												body: form,
-												credentials: 'same-origin' })
-					.then(function(response) {
-						if (!response.ok)
-							throw Error(response.status + ' ' + response.statusText);
-						else
-						{
-							if (notification != null)
-								clearTimeout(notification);
-							notification = setTimeout(function() {
-												edit_refresh_documents();
-												alert({% trans %}'The file is uploaded and usable in the list below.'{% endtrans %});
-											}, 2000);
-						}
-					})
-					.catch(error => alert(error));
-			}
+			_edit_transfer_files(event.dataTransfer.files);
 		}
 		else
 			alert({% trans %}'Unsupported feature.'{% endtrans %});

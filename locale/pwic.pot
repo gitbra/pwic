@@ -341,6 +341,9 @@ msgstr ""
 msgid "Refresh"
 msgstr ""
 
+msgid "Upload a new document"
+msgstr ""
+
 msgid "Drop the files here"
 msgstr ""
 
