@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import sqlite3
@@ -29,6 +29,7 @@ from hashlib import sha256
 from base64 import b64encode
 from string import ascii_lowercase, ascii_uppercase
 from aiohttp import web
+from html.parser import HTMLParser
 
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
@@ -754,7 +755,7 @@ class PwicLib:
         return ' '.join([('' if robots[k] else 'no') + k for k in robots if robots[k] is not None])
 
     @staticmethod
-    def row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]):
+    def row_factory(cursor: sqlite3.Cursor, row: Tuple[Any, ...]) -> Dict[str, Any]:
         ''' Assign names to the SQL output '''
         d = {}
         for idx, col in enumerate(cursor.description):
@@ -1083,3 +1084,75 @@ class PwicLib:
 
         # Final formatting
         return '\n'.join(lines), tmap
+
+
+class PwicBuffer:
+    ''' Class to concatenate long strings through a short buffer '''
+    def __init__(self):
+        self.buflen = 262144
+        self.reset()
+
+    def reset(self):
+        ''' Reset the string buffer '''
+        self.tmp = ''
+        self.data = ''
+
+    def push(self, buffer: str):
+        ''' Add a string to the buffer '''
+        self.tmp += buffer
+        if len(self.tmp) >= self.buflen:
+            self.data += self.tmp
+            self.tmp = ''
+
+    def pop(self) -> str:
+        ''' Get the complete buffered string '''
+        self.data += self.tmp
+        self.tmp = ''
+        return self.data
+
+    def override(self, buffer: str):
+        ''' Replace the current buffer by a new string '''
+        self.tmp = ''
+        self.data = buffer
+
+    def length(self):
+        ''' Get the length of the buffered string '''
+        return len(self.tmp) + len(self.data)
+
+    def rstrip(self):
+        ''' Strip the buffer from the right '''
+        self.data += self.tmp
+        self.tmp = ''
+        self.data = self.data.rstrip()
+
+    def lastchar(self) -> str:
+        ''' Get the last character of the buffered string '''
+        return self.tmp[-1:] or self.data[-1:]
+
+
+class PwicHTMLParserTL(HTMLParser):
+    ''' Class HTMLParser with a limited duration of execution '''
+    def reset(self) -> None:
+        ''' Reset all the data of the parser '''
+        super().reset()
+        self.timer_max = PwicLib.timestamp() + 15
+        self.timer_counter = 0
+
+    def feed(self, data: str) -> None:
+        ''' Parse the inbound content '''
+        # No reset
+        try:
+            super().feed(data)
+        except TimeoutError:
+            self.on_timeout()
+
+    def check_timeout(self) -> None:
+        ''' Raise an exception if the duration is exhausted '''
+        self.timer_counter += 1
+        if self.timer_counter >= 16384:
+            self.timer_counter = 0
+            if PwicLib.timestamp() > self.timer_max:
+                raise TimeoutError()
+
+    def on_timeout(self) -> None:
+        ''' Abstract event raised when the duration is exhausted '''

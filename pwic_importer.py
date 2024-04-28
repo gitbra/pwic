@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Dict, List, Optional, Tuple
 import sqlite3
@@ -25,7 +25,7 @@ from zipfile import ZipFile
 from html import unescape
 from html.parser import HTMLParser
 
-from pwic_lib import PwicConst, PwicLib
+from pwic_lib import PwicConst, PwicLib, PwicBuffer, PwicHTMLParserTL
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicCleanerHtml
 
@@ -95,9 +95,10 @@ class PwicImporterMd():
 #  html2md
 # =========
 
-class PwicImporterHtml(HTMLParser):
+class PwicImporterHtml(PwicHTMLParserTL):
     def __init__(self):
-        HTMLParser.__init__(self)
+        self.md = PwicBuffer()
+        super().__init__()
         self.map_open = {'a': '[',
                          'b': '**',
                          'blockcode': '\n\n> ',
@@ -155,8 +156,8 @@ class PwicImporterHtml(HTMLParser):
                           'ul': '\n'}
 
     def reset(self) -> None:
-        HTMLParser.reset(self)
-        self.md = ''
+        super().reset()
+        self.md.reset()
         self.pre = False
         self.last_tag = ''
         self.last_href = ''
@@ -168,9 +169,13 @@ class PwicImporterHtml(HTMLParser):
     def feed(self, data: str):
         cleaner = PwicCleanerHtml('aside header nav', False)
         cleaner.feed(data.replace('\r', ''))
-        HTMLParser.feed(self, cleaner.get_html())
+        super().feed(cleaner.get_html())
+
+    def on_timeout(self) -> None:
+        self.md.reset()
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.check_timeout()
         tagattr = {}
         if not self.pre:
             if tag == 'pre':
@@ -180,36 +185,37 @@ class PwicImporterHtml(HTMLParser):
             elif tag == 'img':
                 tagattr['src'] = PwicLib.read_attr(attrs, 'src', PwicLib.read_attr(attrs, 'data-src'))
             elif (tag == 'li') and (self.last_tag not in ['ol', 'ul']):
-                self.md = self.md.rstrip()
+                self.md.rstrip()
             elif tag == 'table':
                 self.table_col_max = 0
                 self.table_col_cur = 0
                 self.table_lin_cur = 0
             elif tag == 'tr':
-                self.md = self.md.rstrip()
+                self.md.rstrip()
                 if self.last_tag == 'table':
-                    self.md += '\n'
+                    self.md.push('\n')
                 self.table_col_cur = 0
                 self.table_lin_cur += 1
                 if self.table_lin_cur == 2:
-                    self.md += '\n|' + ('---|' * self.table_col_max)
+                    self.md.push('\n|' + ('---|' * self.table_col_max))
             elif tag in ['th', 'td']:
-                self.md = self.md.rstrip() + ' '
+                self.md.rstrip()
+                self.md.push(' ')
                 self.last_colspan = max(1, PwicLib.intval(PwicLib.read_attr(attrs, 'colspan', '1')))
                 self.table_col_cur += self.last_colspan
                 self.table_col_max = max(self.table_col_max, self.table_col_cur)
         if tag in self.map_open:
-            self.md += self.map_open[tag]
+            self.md.push(self.map_open[tag])
             # Void tags
             if tag == 'img':
-                self.md += '](%s)' % tagattr.get('src', tagattr.get('data-src', ''))
+                self.md.push('](%s)' % tagattr.get('src', tagattr.get('data-src', '')))
             elif tag == 'input':
                 typ = PwicLib.read_attr(attrs, 'type')
                 if typ == 'checkbox':
-                    self.md += 'X' if PwicLib.read_attr_key(attrs, 'checked') else ' '
+                    self.md.push('X' if PwicLib.read_attr_key(attrs, 'checked') else ' ')
                 else:
-                    self.md += typ
-                self.md += ']'
+                    self.md.push(typ)
+                self.md.push(']')
         self.last_tag = tag
 
     def handle_endtag(self, tag: str) -> None:
@@ -224,16 +230,17 @@ class PwicImporterHtml(HTMLParser):
                     value = value.replace('#href', self.last_href)
                     self.last_href = ''
                 if (tag in ['td', 'th']) and (self.last_tag == 'tr'):
-                    self.md = self.md.rstrip() + ' '
-            self.md += value
+                    self.md.rstrip()
+                    self.md.push(' ')
+            self.md.push(value)
             if (tag in ['td', 'th']) and (self.last_colspan > 1):
-                self.md += value * (self.last_colspan - 1)
+                self.md.push(value * (self.last_colspan - 1))
 
     def handle_data(self, data: str) -> None:
         if not self.pre:
             data = PwicLib.recursive_replace(data.replace('\t', ' '), '  ', ' ',
-                                             strip=(self.last_tag == 'a') and (self.md[-1:] == '['))
-        self.md += data
+                                             strip=(self.last_tag == 'a') and (self.md.lastchar() == '['))
+        self.md.push(data)
 
     @staticmethod
     def get_extensions() -> List[str]:
@@ -259,7 +266,7 @@ class PwicImporterHtml(HTMLParser):
 
         # Convert
         self.feed(html)
-        lines = [e.rstrip() for e in self.md.split('\n')]
+        lines = [e.rstrip() for e in self.md.pop().split('\n')]
         return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n').strip()
 
 
@@ -269,7 +276,7 @@ class PwicImporterHtml(HTMLParser):
 
 class PwicStylerOdt(HTMLParser):
     def reset(self) -> None:
-        HTMLParser.reset(self)
+        super().reset()
         self.styles: Dict[str, Dict[str, bool]] = {}
         self.reset_marks()
 
@@ -327,16 +334,20 @@ class PwicStylerOdt(HTMLParser):
         return deco
 
 
-class PwicImporterOdt(HTMLParser):
+class PwicImporterOdt(PwicHTMLParserTL):
+    def __init__(self):
+        self.md = PwicBuffer()
+        super().__init__()
+
     def reset(self) -> None:
-        HTMLParser.reset(self)
+        super().reset()
 
         # Content
         self.content = ''
         self.styler = PwicStylerOdt()
 
         # Parser
-        self.md = ''
+        self.md.reset()
         self.link = ''
         self.listlevel = 0
         self.table = False
@@ -344,6 +355,9 @@ class PwicImporterOdt(HTMLParser):
         self.table_cols = 0
         self.spanstack: List[str] = []
         self.mute = ''
+
+    def on_timeout(self) -> None:
+        self.md.reset()
 
     def load_odt(self, filename: str) -> bool:
         # Read the contents
@@ -379,6 +393,7 @@ class PwicImporterOdt(HTMLParser):
         return True
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.check_timeout()
         # Mute
         if self.mute != '':
             return
@@ -388,40 +403,40 @@ class PwicImporterOdt(HTMLParser):
             deco = self.styler.get_decorator(PwicLib.read_attr(attrs, 'text:style-name'))
             if self.link != '':
                 deco = deco.replace('--', '')
-            self.md += deco
+            self.md.push(deco)
             self.spanstack.append(deco[::-1])
         elif tag == 'text:a':
-            self.md += '['
+            self.md.push('[')
             self.link = PwicLib.read_attr(attrs, 'xlink:href')
             if (self.link[:len(self.base_url)] == self.base_url) and (len(self.link) > len(self.base_url)):
                 self.link = self.link[len(self.base_url):]
         elif tag == 'draw:frame':
-            self.md += '[IMAGE]'
+            self.md.push('[IMAGE]')
             self.mute = tag                                 # Assumed to be not imbricated
         # Block
         elif tag == 'text:p':
             if (self.listlevel == 0) and not self.table:
-                self.md += '\n\n'
+                self.md.push('\n\n')
         elif tag == 'text:h':
-            self.md += '\n\n%s ' % ('#' * PwicLib.intval(PwicLib.read_attr(attrs, 'text:outline-level')))
+            self.md.push('\n\n%s ' % ('#' * PwicLib.intval(PwicLib.read_attr(attrs, 'text:outline-level'))))
         # List
         elif tag == 'text:list':
             self.listlevel += 1
             if self.listlevel == 1:
-                self.md += '\n\n'
+                self.md.push('\n\n')
         elif tag == 'text:list-item':
-            self.md += '\n%s- ' % ('    ' * (self.listlevel - 1))
+            self.md.push('\n%s- ' % ('    ' * (self.listlevel - 1)))
         # Table
         elif tag == 'table:table':
             self.table = True
             self.table_rows = 0
             self.table_cols = 0
-            self.md += '\n'
+            self.md.push('\n')
         elif tag == 'table:table-row':
             self.table_rows += 1
             if self.table_rows == 2:
-                self.md += '\n|%s' % ('---|' * self.table_cols)
-            self.md += '\n| '
+                self.md.push('\n|%s' % ('---|' * self.table_cols))
+            self.md.push('\n| ')
         elif tag == 'table:table-cell':
             self.table_cols += 1
 
@@ -430,25 +445,25 @@ class PwicImporterOdt(HTMLParser):
         if tag == self.mute:
             self.mute = ''
         if tag == 'text:s':
-            self.md += ' '
+            self.md.push(' ')
         elif tag == 'text:tab':
-            self.md += '\t'
+            self.md.push('\t')
         elif tag == 'text:line-break':
-            self.md += '\n'
+            self.md.push('\n')
         elif tag == 'text:span':
             try:
-                self.md += self.spanstack.pop()
+                self.md.push(self.spanstack.pop())
             except IndexError:
                 pass
         elif tag == 'text:a':
-            self.md += f']({self.link})'
+            self.md.push(f']({self.link})')
             self.link = ''
         elif tag == 'text:list':
             self.listlevel = max(0, self.listlevel - 1)
         elif tag == 'table:table':
             self.table = False
         elif tag == 'table:table-cell':
-            self.md += ' | '
+            self.md.push(' | ')
 
     def handle_data(self, data: str) -> None:
         if self.mute != '':
@@ -457,7 +472,7 @@ class PwicImporterOdt(HTMLParser):
             data = data.replace('\n', ' ')
             data = re.sub(r'^[\s\t]+', ' ', data)   # Soft strip for start
             data = re.sub(r'[\s\t]+$', ' ', data)   # Soft strip for end
-        self.md += unescape(data)
+        self.md.push(unescape(data))
 
     @staticmethod
     def get_extensions() -> List[str]:
@@ -468,7 +483,7 @@ class PwicImporterOdt(HTMLParser):
         if not self.load_odt(filename):
             return ''
         self.feed(self.content)
-        lines = [e.rstrip() for e in self.md.split('\n')]
+        lines = [e.rstrip() for e in self.md.pop().split('\n')]
         return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n').strip()
 
 

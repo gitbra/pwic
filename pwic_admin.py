@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
@@ -2540,7 +2540,7 @@ class PwicAdmin():
             brackets = 0
             cm1 = ''
             cm2 = ''
-            for i, c in enumerate(query):
+            for _, c in enumerate(query):
                 escaped = (cm1 == '\\') and (cm2 != '\\')
                 if (c == ';') and (brackets == 0) and (quote is None):
                     statements += 1

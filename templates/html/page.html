@@ -3,7 +3,7 @@
 
 {% block content %}
 	<header>
-		<div class="pwic_ph1"><a href="/{% if pwic.page != 'home' %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a></div>
+		<div class="pwic_ph1"><a href="/{% if pwic.page != pwic.constants['default_home'] %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a></div>
 		{% if (not pwic.env.no_search) or (pwic.links|count > 0) %}
 			<div class="pwic_tagbox">
 				{% for link in pwic.links %}

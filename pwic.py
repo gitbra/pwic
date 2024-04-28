@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import argparse
@@ -65,11 +65,11 @@ IPR_EQ, IPR_NET, IPR_REG = range(3)
 class PwicServer():
     ''' Main server for Pwic.wiki '''
 
-    def __init__(self, dbconn: sqlite3.Connection):
+    def __init__(self, dbconn: sqlite3.Connection) -> None:
         ''' Constructor '''
         self.dbconn = dbconn
 
-    def _lock(self, sql):
+    def _lock(self, sql: Optional[sqlite3.Cursor]) -> bool:
         ''' Lock the current database '''
         if sql is None:
             return False
@@ -335,7 +335,7 @@ class PwicServer():
         PwicExtension.on_http_headers(sql, request, headers, project, name)
         return web.Response(text=output, content_type=PwicLib.mime('html'), headers=headers)
 
-    async def _handle_headers(self, request: web.Request, response: web.Response):
+    async def _handle_headers(self, request: web.Request, response: web.Response) -> None:
         response.headers['Server'] = f'Pwic.wiki v{PwicConst.VERSION}'
 
     async def project_searchlink(self, request: web.Request) -> web.Response:
@@ -671,6 +671,7 @@ class PwicServer():
                     html = converter.convert(sql_sub, project, page['page'], page['revision'], 'html')
                     if html is None:
                         continue
+                    html = str(html)
 
                     # Fix the relative links
                     for doc in documents:
@@ -2075,10 +2076,10 @@ class PwicServer():
     async def api_oauth(self, request: web.Request) -> web.Response:
         ''' Manage the federated authentication '''
 
-        def _oauth_failed(parent_exception=None):
+        def _oauth_failed(parent_exception: Optional[Exception] = None) -> None:
             raise web.HTTPTemporaryRedirect('/?failed') from parent_exception
 
-        def _fetch_token(url, query):
+        def _fetch_token(url: str, query: Dict[str, Any]) -> Tuple[str, str]:
             try:
                 with urlopen(Request(url,
                                      urlencode(query).encode(),
@@ -2094,7 +2095,7 @@ class PwicServer():
             except Exception as e:
                 _oauth_failed(e)
 
-        def _call_api(url, token_type, token):
+        def _call_api(url: str, token_type: str, token: str) -> Dict:
             try:
                 with urlopen(Request(url, headers={'Authorization': f'{token_type} {token}'})) as response:
                     data = response.read()
@@ -2775,14 +2776,13 @@ class PwicServer():
                 return ('', None)
 
             # Define the background color
+            color: Optional[str] = None
             if row['valuser'] != '':
                 color = 'C0FFC0'        # Light green
             elif row['final']:
                 color = 'FFFFC0'        # Light yellow
             elif row['draft']:
                 color = 'FFE0E0'        # Light red
-            else:
-                color = None
             return (row['title'], color)
 
         viz = 'digraph PWIC_WIKI {\n'
@@ -4260,9 +4260,9 @@ class PwicServer():
         # Convert to Markdown
         converter = PwicImporter()
         data = converter.convert(sql, user, docid)
-        if data in [None, '']:
+        if data in [None, '', b'']:
             raise web.HTTPUnprocessableEntity()
-        return web.Response(text=data, content_type=PwicLib.mime('md'))
+        return web.Response(text=str(data), content_type=PwicLib.mime('md'))
 
     async def api_odata(self, request: web.Request) -> web.Response:
         # Check the IP address
@@ -4451,8 +4451,8 @@ class PwicServer():
             raise web.HTTPBadRequest()
 
         # Fetch the data
-        data = {'@odata.context': f'{base_url}/api/odata/$metadata#{table}',
-                'value': []}
+        data: Dict[str, Any] = {'@odata.context': f'{base_url}/api/odata/$metadata#{table}',
+                                'value': []}
         for row in sql.fetchall():
             # Fix the formats to comply with OData
             if table == 'env':

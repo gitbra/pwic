@@ -15,7 +15,7 @@
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Dict, List, Optional, Tuple, Union
 import sqlite3
@@ -24,10 +24,9 @@ from io import BytesIO
 from os.path import isfile, join
 import re
 from html import escape
-from html.parser import HTMLParser
 
 from pwic_md import Markdown, MarkdownError
-from pwic_lib import PwicConst, PwicLib, PwicError
+from pwic_lib import PwicConst, PwicLib, PwicError, PwicBuffer, PwicHTMLParserTL
 from pwic_extension import PwicExtension
 
 
@@ -49,7 +48,7 @@ class PwicExporter():
                 page: str,
                 revision: int,
                 extension: str,
-                ) -> Optional[str]:
+                ) -> Optional[Union[str, bytes]]:
         # Read the revision without the cache
         if (sql is None) or (revision == 0) or (extension not in PwicExporter.get_allowed_extensions()):
             return None
@@ -108,7 +107,7 @@ class PwicExporter():
         html = cleaner.get_html()
         return PwicExtension.on_html(sql, row['project'], row['page'], row['revision'], html).replace('\r', '')
 
-    def _corehtml2html(self, sql: sqlite3.Cursor, row: Dict, html: str, base_url: str, legal_notice: str):
+    def _corehtml2html(self, sql: sqlite3.Cursor, row: Dict, html: str, base_url: str, legal_notice: str) -> str:
         # Convert HTML without headers to full HTML
         htmlStyles = PwicStylerHtml()
         html = PwicLib.extended_syntax(html,
@@ -119,7 +118,7 @@ class PwicExporter():
                                   row['time'],
                                   row['page'].replace('<', '&lt;').replace('>', '&gt;'),
                                   row['title'].replace('<', '&lt;').replace('>', '&gt;'),
-                                  htmlStyles.getCss(rel=self.options['relative_html']).replace('src:url(/', 'src:url(%s/' % escape(base_url)),
+                                  htmlStyles.get_css(rel=self.options['relative_html']).replace('src:url(/', 'src:url(%s/' % escape(base_url)),
                                   '' if legal_notice == '' else ('<!--\n%s\n-->' % legal_notice),
                                   html)
         if not self.options['relative_html']:
@@ -181,9 +180,11 @@ class PwicExporter():
             pict[rowdoc['id']] = entry
         return pict
 
-    def _md2odt(self, sql: sqlite3.Cursor, row: Dict, base_url: str, legal_notice: str):
+    def _md2odt(self, sql: sqlite3.Cursor, row: Dict, base_url: str, legal_notice: str) -> Optional[bytes]:
         # Convert to ODT
         html = self.md2corehtml(sql, row, export_odt=True)
+        if html == '':
+            return None
         pict = self._odt_get_pict(sql, row)
         try:
             odtGenerator = PwicMapperOdt(base_url, row['project'], row['page'], pict)
@@ -250,7 +251,7 @@ class PwicExporter():
             page_url = f'{base_url}/{row["project"]}/{row["page"]}/rev{row["revision"]}'
             xml = odtStyles.content
             xml = xml.replace('<!-- content-url -->', '<text:p text:style-name="Reference"><text:a xlink:href="%s" xlink:type="simple"><text:span text:style-name="Link">%s</text:span></text:a></text:p>' % (page_url, page_url))  # Trick to connect the master layout to the page
-            xml = xml.replace('<!-- content-page -->', odtGenerator.odt)
+            xml = xml.replace('<!-- content-page -->', odtGenerator.buffer.pop())
             odt.writestr('content.xml', xml)
 
         # Result
@@ -263,23 +264,21 @@ class PwicExporter():
 #  Tools for HTML
 # ================
 
-class PwicCleanerHtml(HTMLParser):      # html2html
-    def __init__(self, skipped_tags: str, nofollow: bool):
-        HTMLParser.__init__(self)
+class PwicCleanerHtml(PwicHTMLParserTL):    # html2html
+    def __init__(self, skipped_tags: str, nofollow: bool) -> None:
+        self.buffer = PwicBuffer()
+        super().__init__()
         self.skipped_tags = PwicLib.list('applet embed iframe link meta noscript object script style ' + skipped_tags.lower())
         self.nofollow = nofollow
 
     def reset(self) -> None:
-        HTMLParser.reset(self)
+        super().reset()
         self.tag_path: List[str] = []
-        self.code = ''                  # Special code block
-        self.html_tmp = ''              # Short buffer
-        self.html = ''                  # Final buffer
+        self.code = ''                      # Special code block
+        self.buffer.reset()
 
-    def _push_buffer(self, full: bool):
-        if len(self.html_tmp) > (0 if full else 262144):
-            self.html += self.html_tmp
-            self.html_tmp = ''
+    def on_timeout(self) -> None:
+        self.buffer.reset()
 
     def is_mute(self) -> bool:
         for t in self.skipped_tags:
@@ -287,7 +286,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
                 return True
         return False
 
-    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         def _list2obj(attrs: List[Tuple[str, Optional[str]]]) -> Dict[str, str]:
             result = {}
             for (k, v) in attrs:
@@ -299,6 +298,7 @@ class PwicCleanerHtml(HTMLParser):      # html2html
             return result
 
         # Tag path
+        self.check_timeout()
         tag = tag.lower()
         if tag not in PwicConst.VOID_HTML:
             self.tag_path.append(tag)
@@ -320,9 +320,9 @@ class PwicCleanerHtml(HTMLParser):      # html2html
                 v2 = PwicLib.shrink(v)
                 if ('javascript' not in v2) and ('url:' not in v2):
                     buffer += f' {k}="{v}"'
-        self.html_tmp += f'<{tag}{buffer}>'
+        self.buffer.push(f'<{tag}{buffer}>')
 
-    def handle_endtag(self, tag: str):
+    def handle_endtag(self, tag: str) -> None:
         # Tag path
         tag = tag.lower()
         lastTag = self.tag_path[-1] if len(self.tag_path) > 0 else ''
@@ -333,31 +333,29 @@ class PwicCleanerHtml(HTMLParser):      # html2html
         if self.code == tag:    # Not imbricated
             self.code = ''
         if not self.is_mute():
-            self.html_tmp += f'</{tag}>'
-            self._push_buffer(False)
+            self.buffer.push(f'</{tag}>')
         self.tag_path.pop()
 
-    def handle_comment(self, data: str):
+    def handle_comment(self, data: str) -> None:
         if not self.is_mute():
             self.handle_data(f'<!--{data}-->')
 
-    def handle_data(self, data: str):
+    def handle_data(self, data: str) -> None:
         if not self.is_mute():
             if self.code in ['blockcode', 'code']:
                 data = data.replace('<', '&lt;').replace('>', '&gt;')   # No escape()
-            self.html_tmp += data
+            self.buffer.push(data)
 
     def get_html(self) -> str:
-        self._push_buffer(True)
-        self.html = self.html.replace('<hr></hr>', '<hr>').replace('></img>', '>')
+        html = self.buffer.pop().replace('<hr></hr>', '<hr>').replace('></img>', '>')
         while True:
-            curlen = len(self.html)
-            self.html = re.sub(PwicConst.REGEXES['empty_tag'], '', self.html)
-            self.html = re.sub(PwicConst.REGEXES['empty_tag_with_attrs'], r'\3', self.html)
-            self.html = re.sub(PwicConst.REGEXES['adjacent_tag'], r'\2', self.html)
-            if len(self.html) == curlen:
+            curlen = len(html)
+            html = re.sub(PwicConst.REGEXES['empty_tag'], '', html)
+            html = re.sub(PwicConst.REGEXES['empty_tag_with_attrs'], r'\3', html)
+            html = re.sub(PwicConst.REGEXES['adjacent_tag'], r'\2', html)
+            if len(html) == curlen:
                 break
-        return self.html
+        return html
 
 
 class PwicStylerHtml:
@@ -378,7 +376,7 @@ class PwicStylerHtml:
 </body>
 </html>'''
 
-    def getCss(self, rel: bool) -> str:
+    def get_css(self, rel: bool) -> str:
         if rel:
             return f'<link rel="stylesheet" type="text/css" href="{self.css}" />'
         content = ''
@@ -391,10 +389,10 @@ class PwicStylerHtml:
 #  Tools for OpenDocument
 # =========================
 
-class PwicMapperOdt(HTMLParser):        # html2odt
-    def __init__(self, base_url: str, project: str, page: str, pict: Dict = None) -> None:
-        # The parser can be feeded only once
-        HTMLParser.__init__(self)
+class PwicMapperOdt(PwicHTMLParserTL):      # html2odt
+    def __init__(self, base_url: str, project: str, page: str, pict: Optional[Dict] = None) -> None:
+        self.buffer = PwicBuffer()
+        super().__init__()
 
         # External parameters
         self.base_url = base_url
@@ -498,13 +496,16 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         self.blockcode_on = False
         self.has_code = False
 
-        # Output
-        self.odt = ''
-
     def _replace_marker(self, joker: str, content: str) -> None:
-        pos = self.odt.rfind(joker)
+        odt = self.buffer.pop()
+        pos = odt.rfind(joker)
         if pos != -1:
-            self.odt = self.odt[:pos] + str(content) + self.odt[pos + len(joker):]
+            self.buffer.override(odt[:pos] + str(content) + odt[pos + len(joker):])
+        del odt
+
+    def reset(self) -> None:
+        super().reset()
+        self.buffer.reset()
 
     def feed(self, data: str):
         # Find the unsupported tags
@@ -517,9 +518,13 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # Recleansing
         cleaner = PwicCleanerHtml(' '.join(unsupported), False)
         cleaner.feed(data)
-        HTMLParser.feed(self, cleaner.get_html())
+        super().feed(cleaner.get_html())
+
+    def on_timeout(self):
+        raise TimeoutError()
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self.check_timeout()
         tag = tag.lower()
 
         # Rules
@@ -530,11 +535,11 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # ... list item should be enclosed by <p>
         if (tag != 'p') and (lastTag == 'li'):
             self.tag_path.append('p')
-            self.odt += f'<{self.maps["p"]}>'
+            self.buffer.push(f'<{self.maps["p"]}>')
         # ... subitems should close <p>
         elif (tag in ['ul', 'ol']) and (lastTag == 'p'):
             self.tag_path.pop()
-            self.odt += f'</{self.maps["p"]}>'
+            self.buffer.push(f'</{self.maps["p"]}>')
         del lastTag
 
         # Identify the new tag
@@ -551,25 +556,25 @@ class PwicMapperOdt(HTMLParser):        # html2odt
             raise PwicError
         if self.maps[tag] is None:
             if (tag == 'input') and (PwicLib.read_attr(attrs, 'type') == 'checkbox'):
-                self.odt += '\u2611' if PwicLib.read_attr_key(attrs, 'checked') else '\u2610'
+                self.buffer.push('\u2611' if PwicLib.read_attr_key(attrs, 'checked') else '\u2610')
             return
         if tag in self.extrasStart:
-            self.odt += self.extrasStart[tag][0]
+            self.buffer.push(self.extrasStart[tag][0])
 
         # Tag itself
         tag_img = {}
-        self.odt += '<' + str(self.maps[tag])
+        self.buffer.push('<' + str(self.maps[tag]))
         if tag in self.attributes:
             for property_key in self.attributes[tag]:
                 property_value = self.attributes[tag][property_key]
                 if property_value[:1] != '#':
                     if property_key[:5] != 'dummy':
-                        self.odt += ' %s="%s"' % (property_key, escape(property_value))
+                        self.buffer.push(' %s="%s"' % (property_key, escape(property_value)))
                 else:
                     property_value = property_value[1:]
                     if tag == 'p':
                         if self.blockquote_on:
-                            self.odt += ' text:style-name="Blockquote"'
+                            self.buffer.push(' text:style-name="Blockquote"')
                             break
                     else:
                         for key, value_ns in attrs:
@@ -613,24 +618,24 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                                     value = 'Code_' + value
 
                                 if property_key[:5] != 'dummy':
-                                    self.odt += ' %s="%s"' % (property_key, escape(value))
+                                    self.buffer.push(' %s="%s"' % (property_key, escape(value)))
                                 break
         if tag in PwicConst.VOID_HTML:
-            self.odt += '/'
-        self.odt += '>'
+            self.buffer.push('/')
+        self.buffer.push('>')
 
         # Surrounding extra tags
         if tag == 'img':                    # Void tag
             if 'alt' in tag_img:
-                self.odt += '<svg:title>%s</svg:title>' % escape(tag_img.get('alt', ''))
+                self.buffer.push('<svg:title>%s</svg:title>' % escape(tag_img.get('alt', '')))
             if 'title' in tag_img:
-                self.odt += '<svg:desc>%s</svg:desc>' % escape(tag_img.get('title', ''))
+                self.buffer.push('<svg:desc>%s</svg:desc>' % escape(tag_img.get('title', '')))
         if tag in self.extrasStart:
-            self.odt += self.extrasStart[tag][1]
+            self.buffer.push(self.extrasStart[tag][1])
 
         # Handle the column descriptors of the tables
         if tag == 'table':
-            self.table_descriptors.append({'cursor': len(self.odt),
+            self.table_descriptors.append({'cursor': self.buffer.length(),
                                            'count': 0,
                                            'max': 0})
         if tag in ['th', 'td']:
@@ -650,7 +655,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # ... list item should be enclosed by <p>
         if (tag == 'li') and (lastTag == 'p'):
             self.tag_path.pop()
-            self.odt += f'</{self.maps["p"]}>'
+            self.buffer.push(f'</{self.maps["p"]}>')
         del lastTag
 
         # Identify the tag
@@ -660,7 +665,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
 
         # Surrounding extra tags
         if tag in self.extrasEnd:
-            self.odt += self.extrasEnd[tag]
+            self.buffer.push(self.extrasEnd[tag])
 
         # Final mapping
         if tag in self.maps:
@@ -670,7 +675,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                 if tag == 'blockcode':
                     self.blockcode_on = False
                 if self.maps[tag] is not None:
-                    self.odt += f'</{self.maps[tag]}>'
+                    self.buffer.push(f'</{self.maps[tag]}>')
 
                     # Handle the descriptors of the tables
                     if tag == 'tr':
@@ -679,11 +684,13 @@ class PwicMapperOdt(HTMLParser):        # html2odt
                         self.table_descriptors[-1]['count'] = 0
                     if tag == 'table':
                         cursor = self.table_descriptors[-1]['cursor']
-                        self.odt = (self.odt[:cursor]
-                                    + '<table:table-columns>'
-                                    + ''.join(['<table:table-column/>' for _ in range(self.table_descriptors[-1]['max'])])
-                                    + '</table:table-columns>'
-                                    + self.odt[cursor:])
+                        odt = self.buffer.pop()
+                        self.buffer.override(odt[:cursor]
+                                             + '<table:table-columns>'
+                                             + ''.join(['<table:table-column/>' for _ in range(self.table_descriptors[-1]['max'])])
+                                             + '</table:table-columns>'
+                                             + odt[cursor:])
+                        del odt
                         self.table_descriptors.pop()
 
     def handle_data(self, data: str) -> None:
@@ -691,7 +698,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # List item should be enclosed by <p>
         if (self.tag_path[-1] if len(self.tag_path) > 0 else '') == 'li':
             self.tag_path.append('p')
-            self.odt += f'<{self.maps["p"]}>'
+            self.buffer.push(f'<{self.maps["p"]}>')
         # Text alignment for the code
         if self.blockcode_on:
             data = data.replace('\r', '')
@@ -699,7 +706,7 @@ class PwicMapperOdt(HTMLParser):        # html2odt
             data = data.replace('\t', '<text:tab/>')
             data = data.replace(' ', '<text:s/>')
         # Default behavior
-        self.odt += data
+        self.buffer.push(data)
 
     def handle_comment(self, data: str) -> None:
         # The ODT annotations must be surrounded by <text:p> or <text:list>
@@ -707,10 +714,10 @@ class PwicMapperOdt(HTMLParser):        # html2odt
         # The missing tag is then added dynamically here
         missing = len(self.tag_path) == 0
         if missing:
-            self.odt += '<text:p>'
-        self.odt += '''<office:annotation><dc:creator>Unknown</dc:creator><text:p>%s</text:p></office:annotation>''' % escape(data)
+            self.buffer.push('<text:p>')
+        self.buffer.push('<office:annotation><dc:creator>Unknown</dc:creator><text:p>%s</text:p></office:annotation>' % escape(data))
         if missing:
-            self.odt += '</text:p>'
+            self.buffer.push('</text:p>')
 
 
 class PwicStylerOdt:
