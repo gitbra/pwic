@@ -122,7 +122,7 @@
 
 	{% if not pwic.env.no_table_csv %}
 		function page_export_table() {
-			var csv, row, x, y,
+			var csv, row, x, y, val,
 				table = this.parentElement;
 
 			csv = [];
@@ -130,7 +130,12 @@
 			{
 				row = [];
 				for (x=0; x<table.rows[y].cells.length; x++)
-					row.push('"' + table.rows[y].cells[x].textContent.replaceAll('"', '""') + '"');
+				{
+					val = table.rows[y].cells[x].textContent;
+					if ((val.indexOf('"') != -1) || (val.indexOf(';') != -1))
+						val = '"' + val.replaceAll('"', '""') + '"';
+					row.push(val);
+				}
 				csv.push(row.join(';'));
 			}
 

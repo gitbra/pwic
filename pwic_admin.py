@@ -610,7 +610,6 @@ class PwicAdmin():
         if (project == '') and not PwicConst.ENV[key].pindep:
             print('Error: the parameter is not project-independent')
             return False
-        value = value.replace('\r', '').strip()
 
         # Connect to the database
         sql = self.db_connect()
@@ -619,10 +618,12 @@ class PwicAdmin():
 
         # Adapt the value
         current = str(PwicLib.option(sql, project, key, ''))
+        value = value.replace('\r', '').strip()
         if remove:
-            value = current.replace(value, '').replace('  ', ' ').strip()
+            value = current.replace(value, '').replace('  ', ' ')
         elif append:
-            value = f'{current} {value}'.strip()
+            value = f'{current} {value}'
+        value = PwicExtension.on_api_project_env_set(sql, None, project, PwicConst.USERS['system'], key, value)
 
         # Reset the project-dependent values if --override
         if override:
@@ -847,7 +848,7 @@ class PwicAdmin():
         print(f'- Password      : "{PwicConst.DEFAULTS["password"]}" or the existing password')
         print('')
         print('WARNING:')
-        print("To create new pages in the project, you must change your password and grant the role 'manager' or 'editor' to the suitable user account.")
+        print("To create new pages in the project, you must change your password and grant the role 'manager' to the suitable user account.")
         print('')
         print('Thanks for using Pwic.wiki!')
         return True

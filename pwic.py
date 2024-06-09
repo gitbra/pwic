@@ -47,7 +47,7 @@ from multidict import MultiDict
 from aiohttp import web, MultipartReader, hdrs
 from aiohttp_session import setup, get_session, new_session, Session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
-import pyotp
+from pyotp import TOTP
 
 from pwic_md import Markdown
 from pwic_lib import PwicConst, PwicLib, PwicError
@@ -2043,7 +2043,7 @@ class PwicServer():
         if row is not None:
             # 2FA TOTP and custom checks
             if (row['totp'] != '') and (PwicLib.option(sql, '', 'no_totp') is None):
-                if not pyotp.TOTP(row['totp']).verify(pin):
+                if not TOTP(row['totp']).verify(pin):
                     ok_totp = False
                 else:
                     ok_totp = _cache_totp(user, pin)
@@ -2518,16 +2518,15 @@ class PwicServer():
             raise web.HTTPUnauthorized()
 
         # Update the variable
-        value = PwicExtension.on_api_project_env_set(sql, request, project, user, key, value)
-        is_empty = value in [None, '']
-        if is_empty:
+        value = str(PwicExtension.on_api_project_env_set(sql, request, project, user, key, value))
+        if value == '':
             sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
         else:
             sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
         PwicLib.audit(sql, {'author': user,
-                            'event': '%sset-%s' % ('un' if is_empty else '', key),
+                            'event': '%sset-%s' % ('un' if value == '' else '', key),
                             'project': project,
-                            'string': value},
+                            'string': '' if PwicConst.ENV[key].private else value},
                       request)
         self.dbconn.commit()
         raise web.HTTPOk()

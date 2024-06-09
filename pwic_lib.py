@@ -849,7 +849,7 @@ class PwicLib:
         ''' Convert a meta string robots into structured boolean values '''
         values = PwicLib.list(robots)
         result: TyRobotsDict = {}
-        for k in ['archive', 'follow', 'index', 'snippet']:
+        for k in ['archive', 'follow', 'imageindex', 'index', 'snippet', 'translate']:
             if 'no' + k in values:
                 result[k] = False
             elif k in values:

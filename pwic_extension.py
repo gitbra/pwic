@@ -230,18 +230,18 @@ class PwicExtension():
         return True
 
     @staticmethod
-    def on_api_project_env_set(sql: sqlite3.Cursor,         # Cursor to query the database
-                               request: web.Request,        # HTTP request
-                               project: str,                # Name of the project
-                               user: str,                   # Name of the user
-                               key: str,                    # Name of the option modified for the project
-                               value: str,                  # New value of the option
-                               ) -> Optional[str]:
-        ''' Event when a project-dependent option is about to be changed.
-            The result gives the new value of the variable.
-            Setting the value None or an empty string will delete the option.
+    def on_api_project_env_set(sql: sqlite3.Cursor,             # Cursor to query the database
+                               request: Optional[web.Request],  # HTTP request when online
+                               project: str,                    # Name of the project (empty = global scope)
+                               user: str,                       # Name of the user
+                               key: str,                        # Name of the option modified for the project
+                               value: str,                      # New value of the option
+                               ) -> str:
+        ''' Event when an option is about to be changed.
+            The non-null result gives the new value of the variable.
+            Setting the result to an empty string will delete the option.
         '''
-        return value
+        return value.replace('\r', '').strip()
 
     @staticmethod
     def on_api_project_info_get(sql: sqlite3.Cursor,                                # Cursor to query the database
