@@ -49,7 +49,7 @@ class PwicConst:
     #  System
     # ========
 
-    VERSION = '1.1'
+    VERSION = '1.2'
     DB = './db'
     DB_SQLITE = DB + '/pwic.sqlite'
     DB_SQLITE_BACKUP = DB + '/pwic_%s.sqlite'
