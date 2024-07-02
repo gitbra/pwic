@@ -15,18 +15,17 @@
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: 'project={{pwic.project|urlencode}}',
 											credentials: 'same-origin' })
-		.then(function(response) {
+		.then(response => {
 			if (!response.ok)
 				throw Error(response.status + ' ' + response.statusText);
-			else
-				response.text().then(function(text) {
-					graph_cache = text;
-					if (action == 'render')
-						graph_generate_svg();
-					else
-						if (action == 'download')
-							graph_download();
-				});
+			response.text().then(text => {
+				graph_cache = text;
+				if (action == 'render')
+					graph_generate_svg();
+				else
+					if (action == 'download')
+						graph_download();
+			});
 		})
 		.catch(error => alert(error));
 	}
@@ -57,8 +56,8 @@
 
 			// Zooming area for SVG
 			var panZoom = svgPanZoom(svg, {zoomEnabled: true, controlIconsEnabled: true, center: true, minZoom: 0.1});
-			svg.addEventListener('paneresize', function(e) { panZoom.resize(); }, false);
-			window.addEventListener('resize', function(e) { panZoom.resize(); });
+			svg.addEventListener('paneresize', e => panZoom.resize(), false);
+			window.addEventListener('resize', e => panZoom.resize());
 			worker.terminate();
 		};
 		worker.onerror = function(e) {

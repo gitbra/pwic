@@ -892,30 +892,14 @@ msgstr ""
 msgid "'The parameters are not acceptable.'"
 msgstr ""
 
-#: ../templates/js/page-edit-easymde.js
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr ""
+
 msgid "'Number of columns:'"
 msgstr ""
 
 msgid "'Number of rows:'"
-msgstr ""
-
-msgid "'Insert a table'"
-msgstr ""
-
-msgid "'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'"
-msgstr ""
-
-msgid "'Attach an uploaded document'"
-msgstr ""
-
-msgid "'Are you sure to switch back to the basic editor?'"
-msgstr ""
-
-msgid "'Switch to the classical editor'"
-msgstr ""
-
-#: ../templates/js/page-edit.js
-msgid "'Paste the link:'"
 msgstr ""
 
 msgid "'You cannot use this feature.'"

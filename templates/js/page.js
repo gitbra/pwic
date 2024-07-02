@@ -2,19 +2,19 @@
 	'use strict';
 
 	{% if pwic.env.no_text_selection %}
-		$(document).on('keydown', event => { return !((event.key == 'F12') || (event.ctrlKey && event.shiftKey && (event.key == 'I')) || (event.ctrlKey && (event.key == 'u'))); });
-		$(document).on('selectstart', () => { return false; });
-		$(document).on('contextmenu', () => { return false; });
+		$(document).on('keydown', e => !((e.key == 'F12') || (e.ctrlKey && e.shiftKey && (e.key == 'I')) || (e.ctrlKey && (e.key == 'u'))));
+		$(document).on('selectstart', () => false);
+		$(document).on('contextmenu', () => false);
 	{% endif %}
 
-	window.onscroll = function() {
+	window.onscroll = () => {
 		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
 		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
 		$('#page_topofpage').toggleClass('pwic_hidden', scroll == 0);
 	};
 
-	$(document).on('keyup', (event) => {
+	$(document).on('keyup', event => {
 		if (!$('#pwic_browser').hasClass('pwic_hidden'))
 			if ((event || window.event).key == 'Escape')
 				$('#pwic_browser_access').trigger('click');
@@ -54,14 +54,13 @@
 												'page={{pwic.page|urlencode}}&' +
 												'revision={{pwic.revision|urlencode}}',
 										credentials: 'same-origin' })
-				.then(function(response) {
+				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
-					else
-						window.location =	'/{{pwic.project|escape}}' +
-											'/{{pwic.page|escape}}' +
-											(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
-											(action == 'delete' ? '?success' : '');
+					window.location =	'/{{pwic.project|escape}}' +
+										'/{{pwic.page|escape}}' +
+										(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
+										(action == 'delete' ? '?success' : '');
 				})
 				.catch(error => alert(error));
 		}
@@ -76,26 +75,23 @@
 											'revision={{pwic.revision|urlencode}}&'+
 											'format=' + encodeURIComponent(format),
 									credentials: 'same-origin' })
-			.then(function(response) {
+			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
-				else
-				{
-					var filename = response.headers.get('Content-Disposition').split('"')[1];
-					filename = filename.substring(10,filename.length-2);
-					filename = decodeURIComponent(escape(atob(filename)))
-					response.blob().then(function(blob) {
-						var dl = $(document.createElement('a'))
-									.addClass('pwic_hidden')
-									.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
-									.attr('download', filename)
-									.appendTo('body')
-									.trigger('click')
-									.remove();
-						window.URL.revokeObjectURL(dl.href);
-						return true;
-					});
-				}
+				var filename = response.headers.get('Content-Disposition').split('"')[1];
+				filename = filename.substring(10,filename.length-2);
+				filename = decodeURIComponent(escape(atob(filename)))
+				response.blob().then(blob => {
+					var dl = $(document.createElement('a'))
+								.addClass('pwic_hidden')
+								.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
+								.attr('download', filename)
+								.appendTo('body')
+								.trigger('click')
+								.remove();
+					window.URL.revokeObjectURL(dl.href);
+					return true;
+				});
 			})
 			.catch(error => alert(error));
 		return false;
@@ -110,7 +106,7 @@
 			);
 		}
 
-		$('CODE').each(function(i, e) {
+		$('CODE').each((i, e) => {
 			if ((e.clientHeight >= 100) || (e.clientWidth >= 300))
 				$(e).prepend($(document.createElement('SPAN'))
 								.addClass('pwic_copy_code' + (e.clientHeight <= 50 ? '_tiny' : ''))
@@ -148,7 +144,7 @@
 				.remove();
 		}
 
-		$('ARTICLE > TABLE').each(function(i, e) {
+		$('ARTICLE > TABLE').each((i, e) => {
 			if (e.rows.length >= 10)
 				$(e).append($(document.createElement('CAPTION'))
 								.html({% trans %}'Download this table as CSV file'{% endtrans %})

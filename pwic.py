@@ -1860,8 +1860,8 @@ class PwicServer():
         # Show the page
         def _diff(tfrom: str, tto: str) -> str:
             diff = HtmlDiff()
-            tfrom2 = tfrom.split('\n')
-            tto2 = tto.split('\n')
+            tfrom2 = tfrom.replace('\r', '').split('\n')
+            tto2 = tto.replace('\r', '').split('\n')
             return diff.make_table(tfrom2, tto2)            \
                        .replace('&nbsp;', ' ')              \
                        .replace(' nowrap="nowrap"', '')     \
@@ -2954,7 +2954,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         page = PwicLib.safe_name(post.get('page'))
         title = post.get('title', '').strip()
-        markdown = post.get('markdown', '')                 # No strip()
+        markdown = post.get('markdown', '').replace('\r', '')       # No strip()
         tags = PwicLib.list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
@@ -4551,7 +4551,7 @@ def main() -> bool:
                         (skey, ))                   # Possible BLOB into TEXT explained at sqlite.org/faq.html#q3
     setup(app, EncryptedCookieStorage(skey,
                                       httponly=True,
-                                      samesite='Strict' if PwicLib.option(sql, '', 'strict_cookies') is not None else None))
+                                      samesite='Strict' if PwicLib.option(sql, '', 'strict_cookies') is not None else 'Lax'))
     del skey
     # ... Markdown parser
     extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'task_list', 'underline']

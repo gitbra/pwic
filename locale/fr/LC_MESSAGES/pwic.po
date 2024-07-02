@@ -907,31 +907,15 @@ msgstr "L'utilisateur n'a chargé aucun document."
 msgid "'The parameters are not acceptable.'"
 msgstr "'Les paramètres ne sont pas acceptables.'"
 
-#: ../templates/js/page-edit-easymde.js
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr "'Collez le lien :'"
+
 msgid "'Number of columns:'"
 msgstr "'Nombre de colonnes :'"
 
 msgid "'Number of rows:'"
 msgstr "'Nombre de lignes :'"
-
-msgid "'Insert a table'"
-msgstr "'Insérer une table'"
-
-msgid "'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'"
-msgstr "'Depuis la liste des documents, utilisez plutôt le signe + devant le fichier à attacher comme une image ou un lien.'"
-
-msgid "'Attach an uploaded document'"
-msgstr "'Attacher un document déposé'"
-
-msgid "'Are you sure to switch back to the basic editor?'"
-msgstr "'Êtes-vous sûr de basculer vers l\\'éditeur basique ?'"
-
-msgid "'Switch to the classical editor'"
-msgstr "'Basculer vers l\\'éditeur classique'"
-
-#: ../templates/js/page-edit.js
-msgid "'Paste the link:'"
-msgstr "'Collez le lien :'"
 
 msgid "'You cannot use this feature.'"
 msgstr "'Vous ne pouvez pas utiliser cette fonctionnalité.'"

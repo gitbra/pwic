@@ -10,17 +10,16 @@
 			$('INPUT[type=button]').attr('disabled', '');
 			fetch('/api/user/create', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	'project='+encodeURIComponent(project)+
-												'&user='+encodeURIComponent(user),
+										body: new URLSearchParams({	project: project,
+																	user: user}),
 										credentials: 'same-origin' })
-				.then(function(response) {
+				.then(response => {
 					$('INPUT[type=button]').removeAttr('disabled');
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
-					else
-						window.location = '/'+project+'/special/roles';
+					window.location = '/' + project + '/special/roles';
 				})
-				.catch(function(error) {
+				.catch(error => {
 					alert(error);
 					$('INPUT[type=button]').removeAttr('disabled');
 				});

@@ -1,8 +1,8 @@
 <script>
 	'use strict';
 
-	$('#create_kb').on('change', function(event) {
-		var state = $(this).prop('checked');
+	$('#create_kb').on('change', event => {
+		var state = $(event.target).prop('checked');
 		$('#create_page').toggleClass('pwic_hidden', state);
 		if (state)
 			$('#create_page').val('');
@@ -25,26 +25,25 @@
 
 		// Submit the form
 		$('INPUT[type=button]').attr('disabled', '');
+		var args = {project:		project,
+					kb:				kbmode,
+					page:			page,
+					tags:			$('#create_tags').val(),
+					milestone:		$('#create_milestone').val(),
+					ref_project:	$('#create_ref_project').val(),
+					ref_page:		$('#create_ref_page').val(),
+					ref_tags:		$('#create_ref_tags').val()};
 		fetch('/api/page/create', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body:	'project='+encodeURIComponent(project)+
-											'&kb='+encodeURIComponent(kbmode)+
-											'&page='+encodeURIComponent(page)+
-											'&tags='+encodeURIComponent($('#create_tags').val())+
-											'&milestone='+encodeURIComponent($('#create_milestone').val())+
-											'&ref_project='+encodeURIComponent($('#create_ref_project').val())+
-											'&ref_page='+encodeURIComponent($('#create_ref_page').val())+
-											'&ref_tags='+encodeURIComponent($('#create_ref_tags').val()),
+									body: new URLSearchParams(args),
 									credentials: 'same-origin' })
-			.then(function(response) {
+			.then(response => {
 				$('INPUT[type=button]').removeAttr('disabled');
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
-				response.json().then(function(data) {
-					window.location = data['url'] + '?success';
-				});
+				response.json().then(data => window.location = data['url'] + '?success');
 			})
-			.catch(function(error) {
+			.catch(error => {
 				alert(error);
 				$('INPUT[type=button]').removeAttr('disabled');
 			});

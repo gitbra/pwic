@@ -40,7 +40,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 ### For the editors
 
 - Page layout supervised with Markdown and HTML
-- Wysiwyg editor for Markdown
+- Markdown editor with syntax highlighting
 - Formatting
 - Annotations
 - Task lists

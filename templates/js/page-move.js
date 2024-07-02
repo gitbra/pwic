@@ -1,9 +1,9 @@
 <script>
 	'use strict';
 
-	$('#move_dst_page').on('dblclick', function() {
-		if ($(this).val() == '')
-			$(this).val($(this).prop('placeholder'));
+	$('#move_dst_page').on('dblclick', event => {
+		if ($(event.target).val() == '')
+			$(event.target).val($(event.target).prop('placeholder'));
 	});
 
 	function move_submit() {
@@ -29,20 +29,20 @@
 
 		// Submit the form
 		$('INPUT[type=button]').attr('disabled', '');
+		var args = {project: dstproj,
+					page: dstpage,
+					ref_project: srcproj,
+					ref_page: srcpage,
+					ignore_file_errors: 'X'};
 		fetch('/api/page/move', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body:	'project='+encodeURIComponent(dstproj)+
-											'&page='+encodeURIComponent(dstpage)+
-											'&ref_project='+encodeURIComponent(srcproj)+
-											'&ref_page='+encodeURIComponent(srcpage)+
-											'&ignore_file_errors=X',
+									body: new URLSearchParams(args),
 									credentials: 'same-origin' })
-			.then(function(response) {
+			.then(response => {
 				$('INPUT[type=button]').removeAttr('disabled');
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
-				else
-					window.location = response.url;
+				window.location = response.url;
 			})
 			.catch(error => {
 				alert(error);

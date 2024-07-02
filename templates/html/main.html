@@ -62,30 +62,7 @@
 
 	<!-- Scripts -->
 	<script src="/static/cash.min.js"></script>
-
-	{% if (pwic.template == 'page-edit') and pwic.env.mde %}
-		<link rel="stylesheet" type="text/css" href="/static/easymde.min.css">
-		<style>
-			/* Patch */
-			.CodeMirror { height: 75vh; }
-			{% if pwic.env.dark_theme %}
-				.CodeMirror { background-color: lightgray; }
-				.cm-url{ color: black !important; }
-				.editor-toolbar { background-color: gray; }
-			{% endif %}
-		</style>
-		<script src="/static/easymde.min.js"></script>
-	{% endif %}
-
-	{% if (pwic.template == 'page') and pwic.env.mathjax %}
-		<script>
-			window.MathJax = {
-				tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-				svg: { fontCache: 'global' }
-			};
-		</script>
-		<script src="/static/mathjax.min.js" async></script>
-	{% endif %}
+	{% block header_scripts %}{% endblock %}
 
 	<script>
 		'use strict';

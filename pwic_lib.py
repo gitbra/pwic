@@ -149,7 +149,6 @@ class PwicConst:
            'magic_bytes': TyEnv(True, False, False, False),
            'maintenance': TyEnv(True, False, False, False),
            'mathjax': TyEnv(True, True, True, False),
-           'mde': TyEnv(True, True, True, False),
            'message': TyEnv(True, True, True, False),
            'no_cache': TyEnv(True, True, False, False),
            'no_copy_code': TyEnv(True, True, True, False),
@@ -866,7 +865,7 @@ class PwicLib:
     @staticmethod
     def x(value: Any) -> str:
         ''' Reduce an input value to a boolean string '''
-        return '' if value in [None, '', 0, '0', False, 'false', 'False', 'FALSE', '-', '~', 'no', 'No', 'NO', 'off', 'Off', 'OFF'] else 'X'
+        return '' if value in [None, 'none', 'None', 'NONE', 'null', 'Null', 'NULL', '', 0, '0', False, 'false', 'False', 'FALSE', '-', '~', 'no', 'No', 'NO', 'off', 'Off', 'OFF', 'undefined'] else 'X'
 
     @staticmethod
     def xb(value: str) -> bool:

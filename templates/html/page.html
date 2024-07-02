@@ -1,6 +1,19 @@
 {% extends 'html/main.html' %}
 
 
+{% block header_scripts %}
+	{% if pwic.env.mathjax %}
+		<script>
+			window.MathJax = {
+				tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+				svg: { fontCache: 'global' }
+			};
+		</script>
+		<script src="/static/mathjax.min.js" async></script>
+	{% endif %}
+{% endblock %}
+
+
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/{% if pwic.page != pwic.constants['default_home'] %}{{pwic.project|urlencode}}{% endif %}">{{pwic.project_description|escape}}</a></div>

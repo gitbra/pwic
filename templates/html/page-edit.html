@@ -1,6 +1,15 @@
 {% extends 'html/main.html' %}
 
 
+{% block header_scripts %}
+	<link rel="stylesheet" type="text/css" href="/static/codemirror.min.css">
+	<style>
+		.CodeMirror { height: 75vh; margin-top: 5px; border: 1px solid black }
+	</style>
+	<script src="/static/codemirror_md.min.js"></script>
+{% endblock %}
+
+
 {% block content %}
 	<header>
 		<div class="pwic_ph1"><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}">{{pwic.emojis.finger_left}} {% trans %}Edit the page{% endtrans %}</a></div>
@@ -17,21 +26,21 @@
 
 				<p><strong>{% trans %}Tags:{% endtrans %}</strong> <input id="edit_tags" class="pwic_fill" type="text" value="{{pwic.tags|escape}}" title="{% trans %}No hash and separated by a space{% endtrans %}" spellcheck="false"></p>
 
-				<div id="edit_toolbar" {% if pwic.env.mde %} class="pwic_hidden" {% endif %}>
+				<div id="edit_toolbar">
 					<div>
-						<input type="button" value="{{pwic.emojis.glasses}}" title="{% trans %}Preview{% endtrans %}" onclick="edit_preview_md('{{pwic.page|urlencode}}')" data-shortcut="Ctrl+P">
+						<input type="button" value="{{pwic.emojis.glasses}}" title="{% trans %}Preview{% endtrans %}" onclick="edit_preview_md('{{pwic.page|urlencode}}')" data-shortcut="Ctrl-P">
 					</div>
 					<div>
-						<input type="button" value="B" title="** {% trans %}Bold{% endtrans %} **" style="font-weight: bold" onclick="edit_decorate('**', '**')" data-shortcut="Ctrl+B">
-						<input type="button" value="I" title="* {% trans %}Italic{% endtrans %} *" style="font-style: italic" onclick="edit_decorate('*', '*')" data-shortcut="Ctrl+I">
-						<input type="button" value="U" title="-- {% trans %}Underline{% endtrans %} --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" data-shortcut="Ctrl+U">
+						<input type="button" value="B" title="** {% trans %}Bold{% endtrans %} **" style="font-weight: bold" onclick="edit_decorate('**', '**')" data-shortcut="Ctrl-B">
+						<input type="button" value="I" title="* {% trans %}Italic{% endtrans %} *" style="font-style: italic" onclick="edit_decorate('*', '*')" data-shortcut="Ctrl-I">
+						<input type="button" value="U" title="-- {% trans %}Underline{% endtrans %} --" style="text-decoration: underline" onclick="edit_decorate('--', '--')" data-shortcut="Ctrl-U">
 						<input type="button" value="S" title="~~ {% trans %}Strikethrough{% endtrans %} ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')">
 						<input type="button" value="^2" title="<sup> {% trans %}Superscript{% endtrans %} </sup>" onclick="edit_decorate('<sup>', '</sup>')">
 						<input type="button" value="_2" title="<sub> {% trans %}Subscript{% endtrans %} </sub>" onclick="edit_decorate('<sub>', '</sub>')">
-						<input type="button" value="{{pwic.emojis.chains}}" title="[{% trans %}Link{% endtrans %}](url)" onclick="edit_link()" data-shortcut="Ctrl+K">
+						<input type="button" value="{{pwic.emojis.chains}}" title="[{% trans %}Link{% endtrans %}](url)" onclick="edit_link()" data-shortcut="Ctrl-K">
 					</div>
 					<div>
-						<input type="button" value="abCD" title="{% trans %}Upper/Lower case{% endtrans %}" onclick="edit_switch_case()" data-shortcut="Shift+F3">
+						<input type="button" value="abCD" title="{% trans %}Upper/Lower case{% endtrans %}" onclick="edit_switch_case()" data-shortcut="Shift-F3">
 						<input type="button" value="{{pwic.emojis.double}}" title="{% trans %}No double spaces{% endtrans %}" onclick="edit_double_spaces()">
 						<input type="button" value="{{pwic.emojis.right}}" title="{% trans %}Shift to the right{% endtrans %}" onclick="edit_prepend('    ')">
 						<input type="button" value="{{pwic.emojis.left}}" title="{% trans %}Shift to the left{% endtrans %}" onclick="edit_left_line()">
@@ -39,12 +48,12 @@
 						<input type="button" value="{{pwic.emojis.oneline}}" title="{% trans %}As single line{% endtrans %}" onclick="edit_single_line()">
 					</div>
 					<div>
-						<input type="button" value="H1" title="# {% trans %}Title{% endtrans %} 1" onclick="edit_prepend('# ')" data-shortcut="Ctrl+Shift+F1">
-						<input type="button" value="H2" title="## {% trans %}Title{% endtrans %} 2" onclick="edit_prepend('## ')" data-shortcut="Ctrl+Shift+F2">
-						<input type="button" value="H3" title="### {% trans %}Title{% endtrans %} 3" onclick="edit_prepend('### ')" data-shortcut="Ctrl+Shift+F3">
-						<input type="button" value="H4" title="#### {% trans %}Title{% endtrans %} 4" onclick="edit_prepend('#### ')" data-shortcut="Ctrl+Shift+F4">
-						<input type="button" value="H5" title="##### {% trans %}Title{% endtrans %} 5" onclick="edit_prepend('##### ')" data-shortcut="Ctrl+Shift+F5">
-						<input type="button" value="H6" title="###### {% trans %}Title{% endtrans %} 6" onclick="edit_prepend('###### ')" data-shortcut="Ctrl+Shift+F6">
+						<input type="button" value="H1" title="# {% trans %}Title{% endtrans %} 1" onclick="edit_prepend('# ')" data-shortcut="Shift-Ctrl-F1">
+						<input type="button" value="H2" title="## {% trans %}Title{% endtrans %} 2" onclick="edit_prepend('## ')" data-shortcut="Shift-Ctrl-F2">
+						<input type="button" value="H3" title="### {% trans %}Title{% endtrans %} 3" onclick="edit_prepend('### ')" data-shortcut="Shift-Ctrl-F3">
+						<input type="button" value="H4" title="#### {% trans %}Title{% endtrans %} 4" onclick="edit_prepend('#### ')" data-shortcut="Shift-Ctrl-F4">
+						<input type="button" value="H5" title="##### {% trans %}Title{% endtrans %} 5" onclick="edit_prepend('##### ')" data-shortcut="Shift-Ctrl-F5">
+						<input type="button" value="H6" title="###### {% trans %}Title{% endtrans %} 6" onclick="edit_prepend('###### ')" data-shortcut="Shift-Ctrl-F6">
 						<input type="button" value="{% trans %}Footnote{% endtrans %}" title="[^1] {% trans %}Footnote{% endtrans %}" onclick="edit_footnote()">
 						<input type="button" value="[{% trans %}Annotation{% endtrans %}]" title="&lt;!-- {% trans %}Annotation{% endtrans %} --&gt;" onclick="edit_decorate('&lt;!-- ', ' --&gt;')">
 					</div>
@@ -52,15 +61,15 @@
 						<input type="button" value="{% trans %}Line{% endtrans %}" title="{% trans %}Horizontal line{% endtrans %}" onclick="edit_decorate('\n---\n\n', '')">
 						<input id="edit_toolbar_table" type="button" value="Table" title="{% trans %}Table{% endtrans %} | {% trans %}Table{% endtrans %}" onclick="edit_table()">
 						<input type="button" value="{% trans %}AutoTable{% endtrans %}" title="{% trans %}Paste as target table{% endtrans %}" onclick="edit_table_import()">
-						<input type="button" value="- {% trans %}List{% endtrans %}" title="- {% trans %}Bulleted list{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl+L">
+						<input type="button" value="- {% trans %}List{% endtrans %}" title="- {% trans %}Bulleted list{% endtrans %}" onclick="edit_prepend('- ')" data-shortcut="Ctrl-L">
 						<input type="button" value="1. {% trans %}List{% endtrans %}" title="1. {% trans %}Numbered list{% endtrans %}" onclick="edit_prepend_nlist()">
 						<input type="button" value="- [X] {% trans %}Tasks{% endtrans %}" onclick="edit_prepend('- [ ] ')">
 						<input type="button" value="> {% trans %}Quote{% endtrans %}" onclick="edit_prepend('> ')">
 						<input type="button" value=">! {% trans %}Spoiler{% endtrans %}" onclick="edit_prepend('>! ')">
-						<input type="button" value="`{% trans %}Keyword{% endtrans %}`" title="`{% trans %}Monospaced keyword{% endtrans %}`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl+'">
+						<input type="button" value="`{% trans %}Keyword{% endtrans %}`" title="`{% trans %}Monospaced keyword{% endtrans %}`" onclick="edit_decorate('`', '`')" data-shortcut="Ctrl-'">
 						<input type="button" value="{% trans %}Code{% endtrans %}" title="```{% trans %}Code{% endtrans %}```" onclick="edit_decorate('```\n', '\n```')">
 						{% if pwic.env.emojis %}
-							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden')">
+							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden');md_editor.focus()">
 						{% endif %}
 					</div>
 				</div>
@@ -75,17 +84,13 @@
 								{% else %}
 									{% set e = '&#x' + e|upper + ';' %}
 								{% endif %}
-								<span title="{% trans %}Insert{% endtrans %}" onclick="edit_decorate_end('{{e|escape}}')">{{e}}</span>
+								<span title="{% trans %}Insert{% endtrans %}" onclick="edit_decorate_end('{{e|escape}} ')">{{e}}</span>
 							{% endif %}
 						{% endfor %}
 					</div>
 				{% endif %}
 
 				<textarea id="edit_markdown">{{pwic.markdown|escape}}</textarea>
-
-				{% if pwic.env.mde %}
-					{% include 'js/page-edit-easymde.js' %}
-				{% endif %}
 
 				{% if (not pwic.env.document_size_max) or (pwic.env.document_size_max.value|int > 0) %}
 					<h2>Documents</h2>

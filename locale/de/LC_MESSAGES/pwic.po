@@ -357,7 +357,7 @@ msgid "Refresh"
 msgstr "Aktualisieren"
 
 msgid "Upload a new document"
-msgstr "Ein neues Dokument hochladen."
+msgstr "Ein neues Dokument hochladen"
 
 msgid "Drop the files here"
 msgstr "Ablegen Sie die Dateien hier"
@@ -907,31 +907,15 @@ msgstr "Der Benutzer besitzt kein Dokument."
 msgid "'The parameters are not acceptable.'"
 msgstr "'Die Aufrufparameter sind nicht annehmbar.'"
 
-#: ../templates/js/page-edit-easymde.js
+#: ../templates/js/page-edit.js
+msgid "'Paste the link:'"
+msgstr "'Der Link einfügen:'"
+
 msgid "'Number of columns:'"
 msgstr "'Zahl von Spalten:'"
 
 msgid "'Number of rows:'"
 msgstr "'Zahl von Reihen:'"
-
-msgid "'Insert a table'"
-msgstr "'Eine Tabelle einfügen'"
-
-msgid "'From the list of documents, please rather use the sign + in front of the file that you want to attach as an image or as a link.'"
-msgstr "'Um ein Bild oder einen Link einzufügen, benutzen Sie bitte das geeignete Zeichen + vor den Dateien von den Dokumentenliste.'"
-
-msgid "'Attach an uploaded document'"
-msgstr "'Ein hochgeladenes Dokument einfügen'"
-
-msgid "'Are you sure to switch back to the basic editor?'"
-msgstr "'Möchten Sie wirklich, den klassichen Editor benutzen?'"
-
-msgid "'Switch to the classical editor'"
-msgstr "'Zum klassischen Editor wechseln'"
-
-#: ../templates/js/page-edit.js
-msgid "'Paste the link:'"
-msgstr "'Der Link einfügen:'"
 
 msgid "'You cannot use this feature.'"
 msgstr "'Diese Funktion ist nicht verfügbar.'"
