@@ -29,6 +29,8 @@
 				<div id="edit_toolbar">
 					<div>
 						<input type="button" value="{{pwic.emojis.glasses}}" title="{% trans %}Preview{% endtrans %}" onclick="edit_preview_md('{{pwic.page|urlencode}}')" data-shortcut="Ctrl-P">
+						<input type="button" value="{{pwic.emojis.round_arrow_left}}" title="{% trans %}Undo{% endtrans %}" onclick="edit_undo(true)" data-shortcut="Ctrl-Z">
+						<input type="button" value="{{pwic.emojis.round_arrow_right}}" title="{% trans %}Redo{% endtrans %}" onclick="edit_undo(false)" data-shortcut="Ctrl-Y">
 					</div>
 					<div>
 						<input type="button" value="B" title="** {% trans %}Bold{% endtrans %} **" style="font-weight: bold" onclick="edit_decorate('**', '**')" data-shortcut="Ctrl-B">
@@ -71,6 +73,9 @@
 						{% if pwic.env.emojis %}
 							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden');md_editor.focus()">
 						{% endif %}
+						{% if pwic.env.remote_url %}
+							<input type="button" value="{{pwic.emojis.recycle}}" title="{% trans %}Fetch a remote web page{% endtrans %}" onclick="edit_convert_remote_document()">
+						{% endif %}
 					</div>
 				</div>
 
@@ -93,7 +98,7 @@
 				<textarea id="edit_markdown">{{pwic.markdown|escape}}</textarea>
 
 				{% if (not pwic.env.document_size_max) or (pwic.env.document_size_max.value|int > 0) %}
-					<h2>Documents</h2>
+					<h2>{% trans %}Documents{% endtrans %}</h2>
 					<div id="edit_files_drop" ondrop="edit_drop(event)" ondragover="edit_dragover(event)" ondragleave="edit_dragleave(event)">
 						<input type="button" value="{{pwic.emojis.refresh}}" title="{% trans %}Refresh{% endtrans %}" onclick="edit_refresh_documents()">
 						<input class="pwic_mobile" type="button" value="{{pwic.emojis.inbox}}" title="{% trans %}Upload a new document{% endtrans %}" onclick="edit_upload_document()" style="margin-left: 15px">

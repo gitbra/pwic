@@ -3,8 +3,7 @@
 
 	function page_start_search() {
 		var args = {q: $('#page_search').val()};
-		if (args['q'].length > 0)
-		{
+		if (args['q'].length > 0) {
 			if ($('#page_search_withrev').prop('checked'))
 				args['rev'] = 'on';
 			if ($('#page_search_casesensitive').prop('checked'))

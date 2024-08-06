@@ -3,8 +3,7 @@
 
 	function roles_toggle(id, project, user, role) {
 		var element = $('#roles_tag_' + id);
-		if (element.length > 0)
-		{
+		if (element.length > 0) {
 			element.toggleClass('pwic_hidden');				// Hide until the request is completed
 			fetch('/api/user/roles/set', {	method: 'POST',
 											body: new URLSearchParams({	project: project,

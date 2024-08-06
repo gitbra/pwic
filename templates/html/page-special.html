@@ -81,8 +81,8 @@
 
 				{% for recent in pwic.recents %}
 					<tr>
-						<td class="pwic_nowrap">{{recent.date}}</td>
-						<td class="pwic_desktop">{{recent.time}}</td>
+						<td class="pwic_nowrap">{{recent.date|escape}}</td>
+						<td class="pwic_desktop">{{recent.time|escape}}</td>
 						<td><a href="/{{pwic.project|urlencode}}/{{recent.page|urlencode}}">{{recent.title|escape}}</a></td>
 						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{recent.author|urlencode}}" rel="nofollow">{{recent.author|escape}}</a></td>
 						<td>{{recent.comment|escape}}</td>
@@ -212,11 +212,11 @@
 			<p id="page_documents_space" class="pwic_center"><strong>{% trans %}Disk space usage:{% endtrans %}</strong>
 				{% if pwic.disk_space.project_max > 0 %}
 					<span class="pwic_progressbar">
-						<span style="width:{{pwic.disk_space.percentage}}%">&nbsp;</span>
+						<span style="width:{{pwic.disk_space.percentage|escape}}%">&nbsp;</span>
 					</span>
-					<span class="pwic_nowrap">{{pwic.disk_space.used_str}} / {{pwic.disk_space.project_max_str}} ({{pwic.disk_space.percentage}} %)</span>
+					<span class="pwic_nowrap">{{pwic.disk_space.used_str|escape}} / {{pwic.disk_space.project_max_str|escape}} ({{pwic.disk_space.percentage|escape}} %)</span>
 				{% else %}
-					{{pwic.disk_space.used_str}}
+					{{pwic.disk_space.used_str|escape}}
 				{% endif %}
 			</p>
 

@@ -30,6 +30,8 @@ from base64 import b64encode
 from string import ascii_lowercase, ascii_uppercase
 from aiohttp import web
 from html.parser import HTMLParser
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
@@ -188,6 +190,7 @@ class PwicConst:
            'pwic_audit_id': TyEnv(True, False, False, True),
            'pwic_session': TyEnv(True, False, False, True),
            'quick_fix': TyEnv(True, True, True, False),
+           'remote_url': TyEnv(True, False, False, False),
            'registration_link': TyEnv(True, False, False, False),
            'revision_count_max': TyEnv(True, True, False, False),
            'revision_size_max': TyEnv(True, True, False, False),
@@ -217,6 +220,7 @@ class PwicConst:
     VOID_HTML = ['area', 'base', 'br', 'col', 'embed',
                  'hr', 'img', 'input', 'link', 'meta',
                  'source', 'track', 'wbr']                  # Self-closing HTML tags
+    USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
     # ========
     #  Emojis
@@ -273,6 +277,8 @@ class PwicConst:
               'red_check': '&#x274C;',
               'refresh': '&#x1F504;',
               'right': '&#x226B;',
+              'round_arrow_left': '&#x27F2;',
+              'round_arrow_right': '&#x27F3;',
               'rss': '&#x1F50A;',
               'save': '&#x1F4BE;',
               'scroll': '&#x1F4DC;',
@@ -581,6 +587,27 @@ class PwicLib:
         # Convert to the target unit
         length /= factors[target_unit][0]
         return str(round(length, precision)) + target_unit
+
+    @staticmethod
+    async def download_str(url: str, root_mime: str = '') -> Optional[str]:
+        # Check
+        pu = urlparse(url)
+        if (pu.scheme not in ['http', 'https']) or ('\\' in pu.path) or ('..' in pu.path):
+            return None
+
+        # Download
+        from pwic_extension import PwicExtension
+        try:
+            req = Request(url, headers={'User-Agent': PwicConst.USER_AGENT})
+            PwicExtension.on_download_pre(url, req)
+            with urlopen(req) as response:
+                data = response.read()
+            if response.headers.get('Content-Type', '')[:len(root_mime)] != root_mime:
+                del data
+                return None
+            return data.decode(response.info().get_content_charset('utf-8'))
+        except Exception:
+            return None
 
     @staticmethod
     def dt(days: int = 0) -> Dict[str, str]:
@@ -1086,7 +1113,7 @@ class PwicLib:
 
 
 class PwicBuffer:
-    ''' Class to concatenate long strings through a short buffer '''
+    ''' Class to concatenate long strings through a short buffer for better performances '''
     def __init__(self):
         self.buflen = 262144
         self.reset()

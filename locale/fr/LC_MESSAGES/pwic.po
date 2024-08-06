@@ -257,6 +257,12 @@ msgstr "Titre :"
 msgid "Preview"
 msgstr "Aperçu"
 
+msgid "Undo"
+msgstr "Annuler la modification"
+
+msgid "Redo"
+msgstr "Refaire la modification"
+
 msgid "Bold"
 msgstr "Gras"
 
@@ -349,6 +355,9 @@ msgstr "Code"
 
 msgid "Emojis"
 msgstr "Emojis"
+
+msgid "Fetch a remote web page"
+msgstr "Récupérer une page web distante"
 
 msgid "Insert"
 msgstr "Insérer"
@@ -873,7 +882,7 @@ msgstr "Projets :"
 msgid "Change your password"
 msgstr "Changer votre mot de passe"
 
-msgid "Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else."
+msgid "Warning: the site does not use a secure protocol. Please choose a dedicated password that you use nowhere else."
 msgstr "Attention : ce site n'utilise pas de protocole sécurisé. Veuillez choisir un mot de passe que vous n'utilisez nulle part ailleurs."
 
 msgid "Current password:"
@@ -928,6 +937,9 @@ msgstr "'Texte alternatif pour l\\'image :'"
 
 msgid "'Do you want to replace the current content by the one of the selected document?'"
 msgstr "'Voulez-vous remplacer le contenu actuel par celui du document sélectionné ?'"
+
+msgid "'Remote URL to fetch:'"
+msgstr "'Adresse Internet à récupérer :'"
 
 msgid "Add a link"
 msgstr "Ajouter un lien"

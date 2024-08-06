@@ -63,7 +63,7 @@ class PwicImporter():
                         break
         except Exception:
             return None
-        return PwicExtension.on_api_document_convert(sql, row['project'], user, row['page'], identifier, result)
+        return PwicExtension.on_api_document_convert(sql, row['project'], user, row['page'], identifier, None, result)
 
     @staticmethod
     def get_allowed_extensions() -> List[str]:
@@ -252,10 +252,11 @@ class PwicImporterHtml(PwicHTMLParserTL):
             content = b''
             with open(filename, 'rb') as f:
                 content = f.read()
-            html = content.decode()
+            return self.get_md_memory(content.decode())
         except Exception:
             return ''
 
+    def get_md_memory(self, html: str) -> str:
         # Extract the main content
         for tag in ['body', 'article']:
             p1 = html.find(f'<{tag}')

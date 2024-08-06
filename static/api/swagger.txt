@@ -133,18 +133,49 @@ paths:
           description: Update temporarily unavailable or ongoing server maintenance
   /api/document/convert:
     post:
-      summary: Convert a loaded OpenDocument to Markdown
+      summary: Convert a loaded document to Markdown
       tags:
         - document
       consumes:
         - application/x-www-form-urlencoded
       produces:
-        - text/plain
+        - text/markdown
       parameters:
         - in: formData
           name: id
           type: integer
           description: Identifier of the document
+          required: true
+      responses:
+        200:
+          description: Successful operation
+        400:
+          description: Invalid parameters
+        401:
+          description: Unsufficient authorizations
+        403:
+          description: Disabled feature
+        422:
+          description: File cannot be converted
+  /api/document/remote/convert:
+    post:
+      summary: Convert a remote URL to Markdown
+      tags:
+        - document
+      consumes:
+        - application/x-www-form-urlencoded
+      produces:
+        - text/markdown
+      parameters:
+        - in: formData
+          name: project
+          type: string
+          description: Name of the project (declarative)
+          required: true
+        - in: formData
+          name: url
+          type: string
+          description: Remote URL if allowed by the configuation
           required: true
       responses:
         200:
@@ -336,7 +367,7 @@ paths:
           name: markdown
           type: string
           description: Content written in Markdown
-          required: false
+          required: true
       responses:
         200:
           description: Successful operation

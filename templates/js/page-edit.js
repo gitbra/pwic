@@ -6,8 +6,7 @@
 	function edit_decorate(tagStart, tagEnd) {
 		var nosel = !md_editor.somethingSelected();
 		md_editor.replaceSelection(tagStart + md_editor.getSelection() + tagEnd);
-		if (nosel)
-		{
+		if (nosel) {
 			var cur = md_editor.getCursor();
 			md_editor.setCursor(cur.line, cur.ch - tagEnd.length);
 		}
@@ -20,26 +19,23 @@
 	}
 
 	function edit_link() {
-		if (md_editor.somethingSelected())
-		{
+		if (md_editor.somethingSelected()) {
 			// Check the current selection for an autolink
 			var	txt = md_editor.getSelection();
-			if (txt.match('^[a-z]{3,7}:\/\/'))
-			{
+			if (txt.match('^[a-z]{3,7}:\/\/')) {
 				edit_decorate('<', '>');
 				return;
 			}
 
 			// Ask for the link
 			var url = prompt({% trans %}'Paste the link:'{% endtrans %}, '');
-			if ((url != null) && (url != ''))
-			{
+			if ((url != null) && (url != '')) {
 				url = url.trim();
 				if ((url.length > 0)
 				 && (url.indexOf(':') === -1)
 				 && (url.indexOf('/') === -1)
 				 && (url == url.toLowerCase()))
-					url = '/{{pwic.project}}/' + url;
+					url = '/{{pwic.project|escape}}/' + url;
 
 				// Replace the text by another one
 				md_editor.replaceSelection('[' + txt + '](' + url + ')');
@@ -111,14 +107,12 @@
 
 		// Prepare the associated markdown
 		var i, j, buffer = '';
-		for (i=0 ; i<nrow ; i++)
-		{
+		for (i=0 ; i<nrow ; i++) {
 			buffer += '|';
 			for (j=0 ; j<ncol ; j++)
 				buffer += '          |';
 			buffer += '\n';
-			if (i == 0)
-			{
+			if (i == 0) {
 				buffer += '|';
 				for (j=0 ; j<ncol ; j++)
 					buffer += ' -------- |';
@@ -142,20 +136,17 @@
 
 					// Check
 					input_text = input_text.replaceAll('\r', '').trim();
-					if (input_text.length == 0)
-					{
+					if (input_text.length == 0) {
 						$('#edit_toolbar_table').trigger('click');
 						return;
 					}
 
 					// Scan the dimensions of the table
 					lines = input_text.split('\n');
-					for (i=0 ; i<lines.length ; i++)
-					{
+					for (i=0 ; i<lines.length ; i++) {
 						cols = lines[i].split('\t');
 						ncols = Math.max(ncols, cols.length);
-						for (j=0 ; j<cols.length ; j++)
-						{
+						for (j=0 ; j<cols.length ; j++) {
 							if (nlens.length <= j)
 								nlens.push(0);
 							nlens[j] = Math.max(nlens[j], cols[j].trim().length);
@@ -165,20 +156,17 @@
 
 					// Build the final text
 					buffer = '';
-					for (i=0 ; i<lines.length ; i++)
-					{
+					for (i=0 ; i<lines.length ; i++) {
 						buffer += '\n';
 						cols = lines[i].split('\t');
-						for (j=0 ; j<ncols ; j++)
-						{
+						for (j=0 ; j<ncols ; j++) {
 							txt = (j < cols.length ? cols[j] : '').trim();
 							buffer += '| ' + txt + ' '.repeat((nice ? nlens[j] - txt.length : 0) + 1);
 						}
 						buffer += '|';
 
 						// Header line
-						if (i == 0)
-						{
+						if (i == 0) {
 							buffer += '\n';
 							for (j=0 ; j<ncols ; j++)
 								buffer += '|' + '-'.repeat((nice ? nlens[j] : 1) + 2);
@@ -216,8 +204,7 @@
 		var buffer = '';
 
 		// Include an image
-		if (mime.substring(0, 6) == 'image/')
-		{
+		if (mime.substring(0, 6) == 'image/') {
 			var tip = prompt({% trans %}'Tooltip of the image:'{% endtrans %}, ''),
 				alt = prompt({% trans %}'Alternate text for the image:'{% endtrans %}, '');
 			buffer = '![';
@@ -238,17 +225,16 @@
 		md_editor.focus();
 	}
 
-	function edit_convert_document(id) {
-		fetch('/api/document/convert', {method: 'POST',
-										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({id: id}),
-										credentials: 'same-origin' })
+	function _edit_convert(endpoint, payload) {
+		fetch(endpoint, {	method: 'POST',
+							headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+							body: new URLSearchParams(payload),
+							credentials: 'same-origin' })
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
 				response.text().then(text => {
-					if ((text != '') && confirm({% trans %}'Do you want to replace the current content by the one of the selected document?'{% endtrans %}))
-					{
+					if ((text != '') && confirm({% trans %}'Do you want to replace the current content by the one of the selected document?'{% endtrans %})) {
 						md_editor.setValue(text);
 						md_editor.focus();
 					}
@@ -256,6 +242,19 @@
 			})
 			.catch(error => alert(error));
 	}
+
+	function edit_convert_document(id) {
+		_edit_convert('/api/document/convert', {id: id});
+	}
+
+	{% if pwic.env.remote_url %}
+		function edit_convert_remote_document() {
+			var url = prompt({% trans %}'Remote URL to fetch:'{% endtrans %}, '');
+			if ((url != null) && (url != ''))
+				_edit_convert(	'/api/document/remote/convert',
+								{project: '{{pwic.project|escape}}', url: url});
+		}
+	{% endif %}
 
 
 	// -------------------------------- File drop
@@ -271,8 +270,7 @@
 					throw Error(response.status + ' ' + response.statusText);
 				response.json().then(data => {
 					var i, doc, buffer = '';
-					for (i=0 ; i<data.length ; i++)
-					{
+					for (i=0 ; i<data.length ; i++) {
 						doc = data[i];
 						buffer += '<tr>\
 										<td>\
@@ -304,8 +302,7 @@
 	function _edit_transfer_files(files) {
 		// Create an XHR for each file
 		var notification = null;
-		for (var i=0 ; i<files.length ; i++)
-		{
+		for (var i=0 ; i<files.length ; i++) {
 			// Fields
 			var form = new FormData();
 			form.append('project', '{{pwic.project|escape}}');
@@ -342,13 +339,11 @@
 
 	function edit_drop(event) {
 		$('#edit_files_drop').removeClass('pwic_dragover');
-		if (event.dataTransfer.items)
-		{
+		if (event.dataTransfer.items) {
 			event.preventDefault();
 			event.stopPropagation();
 			_edit_transfer_files(event.dataTransfer.files);
-		}
-		else
+		} else
 			alert({% trans %}'Unsupported feature.'{% endtrans %});
 	}
 
@@ -366,8 +361,7 @@
 
 	function edit_rename_document(id, filename) {
 		var newfn = prompt('Type the new file name:', filename);
-		if ((newfn != null) && (newfn != filename))
-		{
+		if ((newfn != null) && (newfn != filename)) {
 			fetch('/api/document/rename', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
@@ -385,8 +379,7 @@
 	}
 
 	function edit_delete_document(id, filename) {
-		if (confirm({% trans %}'Are sure to delete "%s"?'{% endtrans %}.replace('%s', filename)))
-		{
+		if (confirm({% trans %}'Are sure to delete "%s"?'{% endtrans %}.replace('%s', filename))) {
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
@@ -417,8 +410,7 @@
 		// Check the current values
 		edit_submittable = ($('#edit_title').val() != '')
 						&& ($('#edit_comment').val() != '');
-		if (!edit_submittable)
-		{
+		if (!edit_submittable) {
 			alert({% trans %}'Some fields are mandatory.'{% endtrans %});
 			return false;
 		}
@@ -436,15 +428,13 @@
 					alert('['+response.status+'] '+errorPing);
 				else
 					response.text().then(text => {
-						if (text != 'OK')
-						{
+						if (text != 'OK') {
 							alert(errorPing);
 							return;
 						}
 
 						// Close the preview
-						if (edit_preview_hwnd != null)
-						{
+						if (edit_preview_hwnd != null) {
 							edit_preview_hwnd.close();
 							edit_preview_hwnd = null;
 						}
@@ -460,8 +450,7 @@
 									throw Error('['+response.status+'] '+response.statusText);
 								response.json().then(data => {
 									// Check the conflict
-									if (data['{{pwic.page|escape}}']['revisions'][0]['revision'] > {{pwic.revision}})
-									{
+									if (data['{{pwic.page|escape}}']['revisions'][0]['revision'] > {{pwic.revision}}) {
 										if (!confirm({% trans %}'Warning: the page has been modified in parallel of your current modifications.\n\nConsequently, your changes will be posted as a removable draft. You must merge the changes manually later.'{% endtrans %}))
 											return false;
 										$('#edit_draft').prop('checked', true);
@@ -522,8 +511,7 @@
 		'+text+'\
 	<\/article>';
 					edit_preview_hwnd.window.onkeydown = function(event) {
-							if (event.key == 'Escape')
-							{
+							if (event.key == 'Escape') {
 								edit_preview_hwnd.close();
 								edit_preview_hwnd = null;
 							}
@@ -539,8 +527,7 @@
 	window.onbeforeunload = function(e) {
 		var	msg = {% trans %}'The current changes may be lost.'{% endtrans %},
 			e = e || window.event;
-		if (!edit_submittable)
-		{
+		if (!edit_submittable) {
 			if (e)
 				e.returnValue = msg;
 			return msg;
@@ -549,6 +536,15 @@
 
 
 	// -------------------------------- Markdown editor
+
+	function edit_undo(mode) {
+		if (mode)
+			md_editor.undo();
+		else
+			md_editor.redo();
+		md_editor.focus();
+		return false;
+	}
 
 	function _edit_get_shortcuts() {		// Callable once
 		var sc = {};

@@ -242,6 +242,12 @@ msgstr ""
 msgid "Preview"
 msgstr ""
 
+msgid "Undo"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
 msgid "Bold"
 msgstr ""
 
@@ -333,6 +339,9 @@ msgid "Code"
 msgstr ""
 
 msgid "Emojis"
+msgstr ""
+
+msgid "Fetch a remote web page"
 msgstr ""
 
 msgid "Insert"
@@ -858,7 +867,7 @@ msgstr ""
 msgid "Change your password"
 msgstr ""
 
-msgid "Warning: the site is not using a secure protocol. Please choose a dedicated password that you use nowhere else."
+msgid "Warning: the site does not use a secure protocol. Please choose a dedicated password that you use nowhere else."
 msgstr ""
 
 msgid "Current password:"
@@ -912,6 +921,9 @@ msgid "'Alternate text for the image:'"
 msgstr ""
 
 msgid "'Do you want to replace the current content by the one of the selected document?'"
+msgstr ""
+
+msgid "'Remote URL to fetch:'"
 msgstr ""
 
 msgid "Add a link"

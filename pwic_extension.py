@@ -23,6 +23,7 @@ from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
 from prettytable import PrettyTable
+from urllib.request import Request
 
 from pwic_lib import PwicLib
 
@@ -48,11 +49,12 @@ class PwicExtension():
     def on_api_document_convert(sql: sqlite3.Cursor,                    # Cursor to query the database
                                 project: str,                           # Name of the project
                                 user: str,                              # Name of the user
-                                page: str,                              # Name of the page
+                                page: Optional[str],                    # Name of the page
                                 doc_id: int,                            # Identifier of the document
+                                url: Optional[str],                     # Remote web page
                                 markdown: str,                          # Converted Markdown
                                 ) -> str:
-        ''' Event when a file is converted to Markdown.
+        ''' Event when a file (doc_id>0) or remote web page (doc_id=0) is converted to Markdown.
             The result is the new converted text.
         '''
         return markdown
@@ -316,12 +318,12 @@ class PwicExtension():
                  event: Dict[str, Any],                     # Details of the event
                  ) -> None:
         ''' Event after an auditable operation is just executed:
-                archive-audit      change-password  clear-cache      create-backup     create-document  create-project     create-revision
-                create-user        delete-document  delete-page      delete-project    delete-revision  delete-user        execute-sql
-                export-project     grant-admin      grant-editor     grant-manager     grant-reader     grant-validator    init-db
-                login              logout           rename-document  repair-documents  reset-password   reset-totp         set-*
-                shutdown-server    split-project    start-server     ungrant-admin     ungrant-editor   ungrant-manager    ungrant-reader
-                ungrant-validator  unlock-db        unset-*          update-document   update-revision  validate-revision
+                archive-audit   change-password    clear-cache    create-backup    create-document   create-project   create-revision
+                create-user     delete-document    delete-page    delete-project   delete-revision   delete-user      execute-sql
+                export-project  fetch-url          grant-admin    grant-editor     grant-manager     grant-reader     grant-validator
+                init-db         login              logout         rename-document  repair-documents  reset-password   reset-totp
+                set-*           shutdown-server    split-project  start-server     ungrant-admin     ungrant-editor   ungrant-manager
+                ungrant-reader  ungrant-validator  unlock-db      unset-*          update-document   update-revision  validate-revision
             You cannot change the content of the event that is saved already.
             You should not write yourself to the table 'audit'.
             The database is not committed yet.
@@ -364,6 +366,15 @@ class PwicExtension():
             The result indicates if the download of the document is allowed.
         '''
         return True
+
+    @staticmethod
+    def on_download_pre(url: str,                           # Target URL
+                        request: Request,                   # Changeable request
+                        ) -> None:
+        ''' Event when the server downloads a file on behalf of the user.
+            You can populate the session cookies to bypass an authentication wall for example.
+        '''
+        # request.add_header('Cookie', '...')
 
     @staticmethod
     def on_html(sql: sqlite3.Cursor,                        # Cursor to query the database
@@ -550,8 +561,8 @@ class PwicExtension():
                          ) -> None:
         ''' Event to determine the related pages of a page.
             Modify the parameter 'relations' without reallocating it.
-            A related link is a tuple made of the URI and its description.
-            The URI should respect the formats "/project/page" or "http://your-site.tld/page".
+            A related link is a tuple made of the URL and its description.
+            The URL should respect the formats "/project/page" or "http://your-site.tld/project/page".
         '''
 
     @staticmethod

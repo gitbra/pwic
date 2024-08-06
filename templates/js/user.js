@@ -3,10 +3,14 @@
 
 	function user_password_popup() {
 		$('#user_password_popup').toggleClass('pwic_hidden');
+		$('BODY').toggleClass('pwic_nooverflow');
 		if ($('#user_password_popup').hasClass('pwic_hidden'))
 			$('#user_password_current, #user_password_new1, #user_password_new2').val('');
-		else
+		else {
+			window.scrollTo(0, 0);
+			$('#user_password_notice').toggleClass('pwic_hidden', window.location.toString().startsWith('https'));
 			document.getElementById('user_password_current').focus();
+		}
 		return false;
 	}
 

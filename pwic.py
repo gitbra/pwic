@@ -53,7 +53,7 @@ from pwic_md import Markdown
 from pwic_lib import PwicConst, PwicLib, PwicError
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
-from pwic_importer import PwicImporter
+from pwic_importer import PwicImporter, PwicImporterHtml
 
 IPR_EQ, IPR_NET, IPR_REG = range(3)
 
@@ -3521,7 +3521,7 @@ class PwicServer():
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project'))
         markdown = post.get('markdown', '')
-        if project == '':
+        if '' in [project, markdown]:
             raise web.HTTPBadRequest()
 
         # Verify that the user is able to write on the project
@@ -4224,7 +4224,7 @@ class PwicServer():
         raise web.HTTPOk()
 
     async def api_document_convert(self, request: web.Request) -> web.Response:
-        ''' Convert a document to MD '''
+        ''' Convert a local document to Markown '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -4233,10 +4233,10 @@ class PwicServer():
         # Get the parameters
         post = await self._handle_post(request)
         docid = PwicLib.intval(post.get('id', 0))
-        if docid == 0:
+        if docid <= 0:
             raise web.HTTPBadRequest()
 
-        # Verify the authorizations
+        # Processing of an internal file
         sql = self.dbconn.cursor()
         sql.execute(''' SELECT b.project, b.filename, b.mime, b.exturl
                         FROM roles AS a
@@ -4251,16 +4251,61 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             raise web.HTTPUnauthorized()    # Or not found
-        if PwicLib.option(sql, row['project'], 'no_document_conversion') is not None:
-            raise web.HTTPForbidden()
         if row['exturl'] != '':
             raise web.HTTPUnprocessableEntity()
+        if PwicLib.option(sql, row['project'], 'no_document_conversion') is not None:
+            raise web.HTTPForbidden()
 
-        # Convert to Markdown
+        # Convert a local document to Markdown
         converter = PwicImporter()
         data = converter.convert(sql, user, docid)
         if data in [None, '', b'']:
             raise web.HTTPUnprocessableEntity()
+        return web.Response(text=str(data), content_type=PwicLib.mime('md'))
+
+    async def api_document_remote_convert(self, request: web.Request) -> web.Response:
+        ''' Convert a remote document to Markown '''
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Get the parameters
+        post = await self._handle_post(request)
+        project = PwicLib.safe_name(post.get('project'))
+        url = post.get('url', '').strip()
+        if '' in [project, url]:
+            raise web.HTTPBadRequest()
+
+        # Verify that the user is able to write on the project
+        sql = self.dbconn.cursor()
+        if PwicLib.option(sql, '', 'remote_url') is None:
+            raise web.HTTPForbidden()
+        sql.execute(''' SELECT user
+                        FROM roles
+                        WHERE   project  = ?
+                          AND   user     = ?
+                          AND ( manager  = 'X'
+                            OR  editor   = 'X' )
+                          AND   disabled = '' ''',
+                    (project, user))
+        if sql.fetchone() is None:
+            raise web.HTTPUnauthorized()
+
+        # Audit the action before the download
+        PwicLib.audit(sql, {'author': user,
+                            'event': 'fetch-url',
+                            'project': f'*{project}',   # Declarative value
+                            'string': url},
+                      request)
+        self.dbconn.commit()
+
+        # Convert the data
+        data = await PwicLib.download_str(url, 'text/')
+        if data is None:
+            raise web.HTTPUnprocessableEntity()
+        data = PwicImporterHtml().get_md_memory(data)
+        data = PwicExtension.on_api_document_convert(sql, project, user, None, 0, url, data)
         return web.Response(text=str(data), content_type=PwicLib.mime('md'))
 
     async def api_odata(self, request: web.Request) -> web.Response:
@@ -4591,6 +4636,7 @@ def main() -> bool:
                     web.post('/api/document/list', app['pwic'].api_document_list),
                     web.post('/api/document/rename', app['pwic'].api_document_rename),
                     web.post('/api/document/delete', app['pwic'].api_document_delete),
+                    web.post('/api/document/remote/convert', app['pwic'].api_document_remote_convert),
                     web.post('/api/document/convert', app['pwic'].api_document_convert),
                     web.get('/api/odata/$metadata', app['pwic'].api_odata_metadata),
                     web.get('/api/odata/{table:[a-z]+}', app['pwic'].api_odata_content),

@@ -48,7 +48,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Automatic numbering of the headers with no gap
 - Mandatory, linear and partially undoable versioning
 - Management of attached documents by name, mime, size and magic bytes
-- Import of texts from OpenDocument Text, HTML and Markdown
+- Import of texts from OpenDocument Text (ODT), HTML, Markdown and remote web pages
 
 ### For the managers
 
@@ -152,8 +152,7 @@ To enhance the existing translations, you may edit the selected languages by [jo
 - [aiohttp-cors](https://github.com/aio-libs/aiohttp-cors) is released under Apache 2.0 License
 - [aiohttp-session](https://github.com/aio-libs/aiohttp-session) is released under Apache 2.0 License
 - [cash.js](https://github.com/fabiospampinato/cash) is released under MIT License
-- [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) is released under MIT License
-- [FontAwesome](https://github.com/FortAwesome/Font-Awesome) is released under both SIL OFL 1.1 (font) and MIT License (CSS)
+- [CodeMirror](https://github.com/codemirror/codemirror5) is released under MIT License
 - [ImageSize](https://github.com/shibukawa/imagesize_py) is released under MIT License
 - [Jinja2](https://github.com/pallets/jinja) is released under BSD-3-Clause License
 - [Markdown2](https://github.com/trentm/python-markdown2) is released under MIT License
@@ -161,10 +160,9 @@ To enhance the existing translations, you may edit the selected languages by [jo
 - [Noto Sans](https://fonts.google.com/specimen/Noto+Sans) is released under Open Font License
 - [PrettyTable](https://github.com/jazzband/prettytable) is released under BSD License
 - [pygments](https://github.com/pygments/pygments) is released under BSD-2-Clause License
+- [pyotp](https://github.com/pyauth/pyotp) is released under MIT License
 - [Python](https://github.com/python/cpython/) is released under Python Software Foundation License
 - [SQLite](https://www.sqlite.org) is released in the public domain
 - [SVG pan & zoom](https://github.com/ariutta/svg-pan-zoom) is released under BSD-2-Clause License
 - [Swagger UI](https://github.com/swagger-api/swagger-ui) is released under Apache 2.0 License
 - [Viz.js](https://github.com/mdaines/viz.js) is released under MIT License
-
-Note: EasyMDE and Markdown2 contain little modifications to adapt to Pwic.wiki. You cannot upgrade them automatically.

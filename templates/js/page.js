@@ -46,8 +46,7 @@
 	}
 
 	function page_post_action(action, confirmText) {
-		if (confirm(confirmText))
-		{
+		if (confirm(confirmText)) {
 			fetch('/api/page/'+action, {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 										body:	'project={{pwic.project|urlencode}}&' +
@@ -122,11 +121,9 @@
 				table = this.parentElement;
 
 			csv = [];
-			for (y=0; y<table.rows.length; y++)
-			{
+			for (y=0; y<table.rows.length; y++) {
 				row = [];
-				for (x=0; x<table.rows[y].cells.length; x++)
-				{
+				for (x=0; x<table.rows[y].cells.length; x++) {
 					val = table.rows[y].cells[x].textContent;
 					if ((val.indexOf('"') != -1) || (val.indexOf(';') != -1))
 						val = '"' + val.replaceAll('"', '""') + '"';

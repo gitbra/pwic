@@ -25,8 +25,8 @@
 
 			{% for rev in pwic.revisions %}
 				<tr>
-					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision}}" onclick="return history_compare()"></td>
-					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision}}">{{rev.revision}}</a></td>
+					<td class="pwic_js"><input type="checkbox" data-revision="{{rev.revision|escape}}" onclick="return history_compare()"></td>
+					<td><a href="/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev{{rev.revision|urlencode}}">{{rev.revision|escape}}</a></td>
 					<td>
 						{% if rev.draft %}
 							<span title="{% trans %}Draft{% endtrans %}">{{pwic.emojis.hourglass}}</span>
