@@ -1020,7 +1020,7 @@ class PwicServer():
                         pwic[k + 's'].append(row['user'])
 
         # Fetch the pages of the project
-        sql.execute(''' SELECT page, title, revision, final, author,
+        sql.execute(''' SELECT page, title, revision, draft, final, author,
                                date, time, milestone, valuser, valdate,
                                valtime
                         FROM pages
@@ -1266,7 +1266,8 @@ class PwicServer():
                 'project_description': row['description'],
                 'range': days,
                 'systime': PwicLib.dt(),
-                'up': app['up']}
+                'up': app['up'],
+                'protocol': 'IPv6' if ':' in PwicExtension.on_ip_header(request) else 'IPv4'}
 
         # Read the audit data
         sql.execute(''' SELECT id, date, time, author, event, user,
@@ -2923,10 +2924,10 @@ class PwicServer():
         # Handle the creation of the page
         dt = PwicLib.dt()
         revision = 1
-        sql.execute(''' INSERT INTO pages (project, page, revision, latest, author, date, time, title, markdown, tags, comment, milestone)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (project, page, revision, 'X', user, dt['date'], dt['time'], default_title, default_markdown,
-                     PwicLib.list_tags(tags + ' ' + default_tags), 'Initial', milestone))
+        sql.execute(''' INSERT INTO pages (project, page, revision, latest, draft, author, date, time, title, markdown, tags, comment, milestone)
+                        VALUES (?, ?, ?, 'X', 'X', ?, ?, ?, ?, ?, ?, 'Initial', ?)''',
+                    (project, page, revision, user, dt['date'], dt['time'], default_title, default_markdown,
+                     PwicLib.list_tags(tags + ' ' + default_tags), milestone))
         PwicLib.audit(sql, {'author': user,
                             'event': 'create-revision',
                             'project': project,
@@ -4085,7 +4086,10 @@ class PwicServer():
         for row in documents:
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
             row['size'] = PwicLib.size2str(row['size'])
-            row['used'] = (f'(/special/document/{row["id"]})' in markdown) or (f'(/special/document/{row["id"]} "' in markdown)
+            row['used'] = ((f'(/special/document/{row["id"]})' in markdown)
+                           or (f'(/special/document/{row["id"]}?' in markdown)
+                           or (f'(/special/document/{row["id"]}#' in markdown)
+                           or (f'(/special/document/{row["id"]} "' in markdown))
             row['url'] = f'{app["options"]["base_url"]}/special/document/{row["id"]}/{row["filename"]}'
             row['extension'] = PwicLib.file_ext(row['filename'])
             row['convertible'] = conversion_allowed and (row['extension'] in convertible_exts)

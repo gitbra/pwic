@@ -153,14 +153,17 @@ msgstr "Audit des activités"
 msgid "Settings"
 msgstr "Paramètres"
 
-msgid "Reference time"
-msgstr "Temps de référence"
+msgid "Server information"
+msgstr "Informations du serveur"
 
 msgid "The server has started on %(date)s at %(time)s."
 msgstr "Le serveur a démarré le %(date)s à %(time)s."
 
 msgid "The current time on the server is %(date)s at %(time)s."
 msgstr "L'heure courante du serveur est %(date)s à %(time)s."
+
+msgid "You are connected in %(protocol)s."
+msgstr "Vous êtes connecté en %(protocol)s."
 
 msgid "Environment variables"
 msgstr "Variables d'environnement"
@@ -361,6 +364,9 @@ msgstr "Récupérer une page web distante"
 
 msgid "Insert"
 msgstr "Insérer"
+
+msgid "Documents"
+msgstr "Documents"
 
 msgid "Refresh"
 msgstr "Rafraîchir"
@@ -782,9 +788,6 @@ msgstr "Score"
 
 msgid "Latest"
 msgstr "Le plus récent"
-
-msgid "Documents"
-msgstr "Documents"
 
 #: ../templates/html/user-create.html
 msgid "Create a new user"

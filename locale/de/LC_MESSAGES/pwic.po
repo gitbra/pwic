@@ -153,14 +153,17 @@ msgstr "Prüfung der Tätigkeiten"
 msgid "Settings"
 msgstr "Einstellungen"
 
-msgid "Reference time"
-msgstr "Bezugszeit"
+msgid "Server information"
+msgstr "Serverinformationen"
 
 msgid "The server has started on %(date)s at %(time)s."
 msgstr "Der Server hat am %(date)s um %(time)s gestartet."
 
 msgid "The current time on the server is %(date)s at %(time)s."
 msgstr "Die aktuelle Uhrzeit auf dem Server ist %(date)s um %(time)s."
+
+msgid "You are connected in %(protocol)s."
+msgstr "Sie sind durch %(protocol)s verbunden."
 
 msgid "Environment variables"
 msgstr "Umgebungsvariablen"
@@ -361,6 +364,9 @@ msgstr "Eine Remote-Webseite abrufen"
 
 msgid "Insert"
 msgstr "Einfügen"
+
+msgid "Documents"
+msgstr "Dokumente"
 
 msgid "Refresh"
 msgstr "Aktualisieren"
@@ -782,9 +788,6 @@ msgstr "Punktestand"
 
 msgid "Latest"
 msgstr "Letzte"
-
-msgid "Documents"
-msgstr "Dokumente"
 
 #: ../templates/html/user-create.html
 msgid "Create a new user"

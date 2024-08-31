@@ -80,8 +80,7 @@
 		}
 
 		function pwic_kick(value, chars) {
-			while (true)
-			{
+			while (true) {
 				var curlen = value.length;
 				for (var i=0 ; i<chars.length ; i++)
 					value = value.replaceAll(chars[i], '');
@@ -150,11 +149,9 @@
 						});
 
 				// Update DOM
-				for (i=0 ; i<data.length ; i++)
-				{
+				for (i=0 ; i<data.length ; i++) {
 					src = data[i][0];
-					if (src != i + 1)
-					{
+					if (src != i + 1) {
 						table.rows[src].parentNode.insertBefore(table.rows[src], table.rows[i+1]);
 						for (j=0; j<data.length; j++)
 							if (data[j][0] < src)

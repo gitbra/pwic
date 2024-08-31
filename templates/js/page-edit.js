@@ -23,7 +23,8 @@
 			// Check the current selection for an autolink
 			var	txt = md_editor.getSelection();
 			if (txt.match('^[a-z]{3,7}:\/\/')) {
-				edit_decorate('<', '>');
+				md_editor.replaceSelection('<' + md_editor.getSelection().replaceAll(' ', '%20') + '>');
+				md_editor.focus();
 				return;
 			}
 

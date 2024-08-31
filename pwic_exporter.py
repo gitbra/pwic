@@ -318,6 +318,8 @@ class PwicCleanerHtml(PwicHTMLParserTL):    # html2html
             if (((k in ['alt', 'checked', 'class', 'colspan', 'data-src', 'disabled', 'height', 'href', 'id', 'rel', 'src', 'style', 'title', 'type', 'width'])
                  or ((self.code == 'svg') and (k[:2] != 'on')))):
                 v2 = PwicLib.shrink(v)
+                if (tag == 'a') and (k == 'href'):
+                    v = v.replace(' ', '%20')
                 if ('javascript' not in v2) and ('url:' not in v2):
                     buffer += f' {k}="{v}"'
         self.buffer.push(f'<{tag}{buffer}>')

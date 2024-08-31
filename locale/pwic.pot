@@ -138,13 +138,16 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-msgid "Reference time"
+msgid "Server information"
 msgstr ""
 
 msgid "The server has started on %(date)s at %(time)s."
 msgstr ""
 
 msgid "The current time on the server is %(date)s at %(time)s."
+msgstr ""
+
+msgid "You are connected in %(protocol)s."
 msgstr ""
 
 msgid "Environment variables"
@@ -345,6 +348,9 @@ msgid "Fetch a remote web page"
 msgstr ""
 
 msgid "Insert"
+msgstr ""
+
+msgid "Documents"
 msgstr ""
 
 msgid "Refresh"
@@ -766,9 +772,6 @@ msgid "Score"
 msgstr ""
 
 msgid "Latest"
-msgstr ""
-
-msgid "Documents"
 msgstr ""
 
 #: ../templates/html/user-create.html

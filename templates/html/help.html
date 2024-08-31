@@ -118,6 +118,12 @@
 						<td>If the option <code>no_cache</code> is disabled, you have the choice to compress the HTML cache of the pages to save some disk space in the database, but a little CPU effort is required to decompress all the output pages. Restart the server after the option is modified and clear the cache the use the new option.</td>
 					</tr>
 					<tr>
+						<td><code>copyright_years</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Override the copyright years in the footer so that it corresponds to your own website.</td>
+					</tr>
+					<tr>
 						<td><code>css</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
@@ -290,7 +296,7 @@
 						<td><code>magic_bytes</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td><em>Pwic.wiki</em> has a predefined list of usual file types and their signature. This security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code> (under Windows only).</td>
+						<td><em>Pwic.wiki</em> has a predefined list of usual file types and their signature. This security feature ensures that a file has the expected extension of its first bytes. Your local mimes can be listed by running the command <code>python pwic_admin.py show-mime</code>.</td>
 					</tr>
 					<tr>
 						<td><code>maintenance</code></td>
@@ -326,7 +332,13 @@
 						<td><code>no_document_conversion</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Disable the possibility to convert an attached document from OpenDocument/HTML to Markdown.</td>
+						<td>Disable the possibility to convert an attached document to Markdown when you edit a page.</td>
+					</tr>
+					<tr>
+						<td><code>no_document_list</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Hide the attachments at the end of the pages. You should then include direct links in your pages.</td>
 					</tr>
 					<tr>
 						<td><code>no_export_project</code></td>
