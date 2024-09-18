@@ -94,8 +94,8 @@ class PwicExporter():
         markdown = PwicExtension.on_markdown_pre(sql, row['project'], row['page'], row['revision'], row['markdown'])
         try:
             html = self.app_markdown.convert(markdown.replace('\r', ''))
-        except MarkdownError:
-            html = ''
+        except (MarkdownError, AssertionError):
+            html = '<em>Internal error in the renderer md2html :(</em>'
         (otag, ctag) = ('<blockcode>', '</blockcode>') if export_odt else ('<code>', '</code>')
         html = html.replace('<div class="codehilite">\n<pre><span></span><code>', otag)     # With pygments
         html = html.replace('\n</code></pre>\n</div>', ctag)
@@ -309,8 +309,10 @@ class PwicCleanerHtml(PwicHTMLParserTL):    # html2html
 
         # Detect the external links
         props = _list2obj(attrs)
-        if (tag == 'a') and self.nofollow and ('://' in props.get('href', '')):
-            props['rel'] = 'nofollow'
+        if (tag == 'a') and ('://' in props.get('href', '')):
+            props['class'] = 'pwic_external_link'
+            if self.nofollow:
+                props['rel'] = 'nofollow'
 
         # Process the attributes
         buffer = ''
@@ -584,12 +586,16 @@ class PwicMapperOdt(PwicHTMLParserTL):      # html2odt
                             if key == property_value:
                                 # Fix the base URL for the links
                                 if (tag == 'a') and (key == 'href'):
-                                    if value[:1] in ['/']:
-                                        value = self.base_url + str(value)
-                                    elif value[:1] in ['?', '#', '.']:
-                                        value = f'{self.base_url}/{self.project}/{self.page}{value}'
-                                    elif value[:2] == './' or value[:3] == '../':
+                                    if value[:3] == '../':
                                         value = f'{self.base_url}/{self.project}/{self.page}/{value}'
+                                    if value[:2] == './':
+                                        value = f'{self.base_url}/{self.project}/{self.page}/{value[2:]}'
+                                    elif value[:1] in ['?', '#']:
+                                        value = f'{self.base_url}/{self.project}/{self.page}{value}'
+                                    elif value[:1] == '/':
+                                        value = self.base_url + str(value)
+                                    elif value == '.':
+                                        value = f'{self.base_url}/{self.project}/{self.page}'
 
                                 # Fix the attributes for the pictures
                                 if tag == 'img':

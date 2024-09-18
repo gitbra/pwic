@@ -2409,7 +2409,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         if project == '':
             raise web.HTTPBadRequest()
-        page = PwicLib.safe_name(post.get('page'))                                  # Optional
+        page = PwicLib.safe_name(post.get('page'))                                      # Optional
         allrevs = PwicLib.xb(PwicLib.x(post.get('all')))
         no_markdown = PwicLib.xb(PwicLib.x(post.get('no_markdown')))
         no_document = PwicLib.xb(PwicLib.x(post.get('no_document')))
@@ -2421,10 +2421,13 @@ class PwicServer():
         pure_reader = self._is_pure_reader(sql, project, user)
         if pure_reader is None:
             raise web.HTTPUnauthorized()                                                # No access to the project
-        if pure_reader and (PwicLib.option(sql, project, 'no_history') is not None):
-            if PwicLib.option(sql, project, 'validated_only') is not None:
-                raise web.HTTPNotImplemented()
-            allrevs = False
+        if pure_reader:
+            if PwicLib.option(sql, project, 'api_restrict') is not None:
+                raise web.HTTPUnauthorized()
+            if PwicLib.option(sql, project, 'no_history') is not None:
+                if PwicLib.option(sql, project, 'validated_only') is not None:
+                    raise web.HTTPNotImplemented()
+                allrevs = False
 
         # Fetch the pages
         api_expose_markdown = PwicLib.option(sql, project, 'api_expose_markdown') is not None
@@ -3950,8 +3953,8 @@ class PwicServer():
                         (row['id'], ))
             forcedId = row['id']
 
-        # Verify the content of the zip files
-        if (PwicLib.file_ext(doc['filename']) == 'zip') and (PwicLib.option(sql, doc['project'], 'zip_no_exec') is not None):
+        # Verify the content of the zipped files
+        if (PwicLib.option(sql, doc['project'], 'zip_no_exec') is not None) and PwicLib.mime_zipped(PwicLib.file_ext(doc['filename'])):
             magics = PwicLib.magic_bytes('zip')
             if (magics is not None) and (doc['content'][:len(magics[0])] == PwicLib.str2bytearray(magics[0])):
                 # Read the file names
@@ -4552,7 +4555,7 @@ def main() -> bool:
 
     # Command-line
     parser = argparse.ArgumentParser(description=f'Pwic.wiki Server version {PwicConst.VERSION}')
-    parser.add_argument('--host', default='127.0.0.1', help='Listening host')
+    parser.add_argument('--host', default=PwicConst.DEFAULTS['host'], help='Listening host')
     parser.add_argument('--port', type=int, default=PwicLib.intval(PwicConst.DEFAULTS['port']), help='Listening port')
     parser.add_argument('--new-session', action='store_true', help='Generate a new secret key for the session (it will disconnect all the users)')
     parser.add_argument('--sql-trace', action='store_true', help='Display the SQL queries in the console for debugging purposes')
@@ -4578,8 +4581,8 @@ def main() -> bool:
             entry.install_null_translations()
         else:
             entry.install_gettext_translations(translation('pwic', localedir='locale', languages=[lang]))
-        entry.filters['ishex'] = PwicLib.ishex
-        entry.filters['notag'] = PwicLib.notag
+        entry.filters['is_hex'] = PwicLib.is_hex
+        entry.filters['no_tag'] = PwicLib.no_tag
         app['jinja'][lang] = entry
     # ... client size
     app._client_max_size = max(app._client_max_size, PwicLib.intval(PwicLib.option(sql, '', 'client_size_max')))

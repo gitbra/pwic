@@ -83,7 +83,7 @@
 					<div id="edit_emojis" class="pwic_hidden">
 						{% set list = pwic.emojis_toolbar.split(' ') %}
 						{% for e in list %}
-							{% if e|ishex %}
+							{% if e|is_hex %}
 								{% if e[-4:] == 'fe0f' %}
 									{% set e = '&#x' + e[:-4]|upper + ';&#xFE0F;' %}
 								{% else %}

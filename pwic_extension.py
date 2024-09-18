@@ -423,7 +423,7 @@ class PwicExtension():
                         request: web.Request,               # HTTP request
                         headers: MultiDict,                 # Output HTTP headers
                         project: str,                       # Name of the project
-                        template: Optional[str],            # Layout of the page. 'None' denotes a file download
+                        template: Optional[str],            # Layout of the page. None denotes a file download
                         ) -> None:
         ''' Event when a page or a document is delivered, excluding the API and the static files.
             To change the HTTP headers, modify the parameter 'headers' without reallocating it.

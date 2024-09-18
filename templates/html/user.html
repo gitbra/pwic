@@ -85,8 +85,8 @@
 
 				{% for page in pwic.pages %}
 					<tr>
-						<td class="pwic_desktop">{{page.project|escape}}</td>
-						<td class="pwic_desktop">{{page.page|escape}}</td>
+						<td class="pwic_desktop pwic_break">{{page.project|escape}}</td>
+						<td class="pwic_desktop pwic_break">{{page.page|escape}}</td>
 						<td><a href="/{{page.project|urlencode}}/{{page.page|urlencode}}">{{page.title|escape}}</a></td>
 						<td>
 							{% if page.draft %}
@@ -114,6 +114,7 @@
 		{% else %}
 			<table>
 				<tr>
+					<th class="pwic_desktop">{% trans %}Project{% endtrans %}</th>
 					<th class="pwic_desktop">{% trans %}Page{% endtrans %}</th>
 					<th>{% trans %}File name{% endtrans %}</th>
 					<th class="pwic_desktop">{% trans %}Format{% endtrans %}</th>
@@ -126,7 +127,8 @@
 
 				{% for doc in pwic.documents %}
 					<tr>
-						<td class="pwic_desktop">{{doc.project|escape}} / <a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
+						<td class="pwic_desktop pwic_break">{{doc.project|escape}}</td>
+						<td class="pwic_desktop pwic_break"><a href="/{{doc.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
 						<td>
 							<a class="pwic_break" href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}">{{doc.filename|escape}}</a>
 							{% if doc.exturl != ''%}

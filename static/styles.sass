@@ -53,6 +53,9 @@ A
 	text-decoration: none
 	color: black
 
+ABBR
+	cursor: help
+
 BLOCKQUOTE
 	margin-left: 0
 	margin-right: 0
@@ -502,6 +505,14 @@ SPAN.pwic_progressbar
 .pwic_disabled_bg
 	background-color: lightgray
 
+A.pwic_external_link
+	margin-right: 15px
+	&::after
+		content: "\238B"
+		color: purple
+		position: absolute
+		margin-left: 3px
+
 .pwic_fill
 	width: 100%
 
@@ -524,7 +535,7 @@ SPAN.pwic_progressbar
 	border: none
 
 .pwic_nooverflow
-	overflow:hidden
+	overflow: hidden
 
 .pwic_nowrap
 	white-space: pre

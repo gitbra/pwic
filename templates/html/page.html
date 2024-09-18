@@ -102,7 +102,7 @@
 			</div>
 			<div id="pwic_browser" class="pwic_hidden">
 				{% for tmap in pwic.tmap %}
-					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#{{tmap.tag|urlencode}}" onclick="page_tmap()">{% if not pwic.env.no_heading %}<span class="pwic_bold">{{tmap.header|escape}}</span> {% endif %}{{tmap.title|notag|escape}}</a>
+					<a class="pwic_browser_item pwic_browser_item_h{{tmap.level}}" href="#{{tmap.tag|urlencode}}" onclick="page_tmap()">{% if not pwic.env.no_heading %}<span class="pwic_bold">{{tmap.header|escape}}</span> {% endif %}{{tmap.title|no_tag|escape}}</a>
 				{% endfor %}
 
 				{% if not pwic.env.no_document_list and (pwic.documents|count + pwic.images|count > 0) %}

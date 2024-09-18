@@ -84,6 +84,7 @@ class PwicConst:
              'system': 'pwic_system'}                       # Account for the technical operations
     DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',             # Fixed format of the datetime
                 'heading': '1.1.1.1.1.1.',                  # Default format of the paragraphs
+                'host': '127.0.0.1',                        # Default HTTP host when the server starts
                 'kb_mask': 'kb%06d',                        # Format for the KB pages
                 'language': 'en',                           # Default language-dependent template for the UI
                 'limit_filename': '128',                    # Max length for the file names
@@ -92,7 +93,7 @@ class PwicConst:
                 'odt_img_defpix': '150',                    # Unknown size of a picture for the export to ODT
                 'page': 'home',                             # Root page of every project
                 'password': 'initial',                      # Default password for the new accounts
-                'port': '8080',                             # Default HTTP port
+                'port': '8080',                             # Default HTTP port when the server starts
                 }
     REGEXES = {'document': re.compile(r'\]\(\/special\/document\/([0-9]+)(\)|\/|\#|\?| ")'),                    # Find a document in Markdown
                'document_imgsrc': re.compile(r'^\/?special\/document\/([0-9]+)([\#\?].*)?$'),                   # Find the picture ID in IMG.SRC
@@ -116,6 +117,7 @@ class PwicConst:
 
     ENV = {'api_cors': TyEnv(True, False, False, False),
            'api_expose_markdown': TyEnv(True, True, False, False),
+           'api_restrict': TyEnv(True, True, True, False),
            'audit_range': TyEnv(True, True, True, False),
            'auto_join': TyEnv(False, True, True, False),
            'base_url': TyEnv(True, False, False, False),
@@ -642,21 +644,6 @@ class PwicLib:
         return datetime.strftime(curtime, '%a, %d %b %Y %H:%M:%S %Z').replace('UTC', 'UT').strip()
 
     @staticmethod
-    def intval(value: Any, base=10) -> int:
-        ''' Safe conversion to integer in the chosen base '''
-        try:
-            if base != 10:
-                return int(value, base)
-            return int(float(value) if '.' in str(value) else value)
-        except (ValueError, TypeError):
-            return 0
-
-    @staticmethod
-    def ishex(value: str) -> bool:
-        ''' Check if the value is a non-zero hexadecimal value '''
-        return PwicLib.intval(str(value), base=16) > 0
-
-    @staticmethod
     def flag(flag: str) -> str:
         ''' Convert a country in ISO format to emoji '''
         # Check the parameter
@@ -672,6 +659,29 @@ class PwicLib:
             else:
                 return ''
         return emoji
+
+    @staticmethod
+    def floatval(value: Any) -> float:
+        ''' Safe conversion to float '''
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return 0.0
+
+    @staticmethod
+    def intval(value: Any, base=10) -> int:
+        ''' Safe conversion to integer in the chosen base '''
+        try:
+            if base != 10:
+                return int(value, base)
+            return int(float(value) if '.' in str(value) else value)
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
+    def is_hex(value: str) -> bool:
+        ''' Check if the value is a non-zero hexadecimal value '''
+        return PwicLib.intval(str(value), base=16) > 0
 
     @staticmethod
     def list(inputstr: Optional[str], do_sort: bool = False) -> List[str]:
@@ -695,7 +705,7 @@ class PwicLib:
         return str('' if value is None else value)
 
     @staticmethod
-    def notag(value: str) -> str:
+    def no_tag(value: str) -> str:
         ''' Remove the HTML tags from a string '''
         while True:
             i = len(value)
@@ -926,15 +936,6 @@ class PwicLib:
         return None if len(values) == 0 else values[0]
 
     @staticmethod
-    def mime_list(ext: str) -> List[str]:
-        ''' Return the possible mimes that correspond to the file extension '''
-        ext = ext.strip().lower()
-        for item in PwicConst.MIMES:
-            if ext in item.exts:
-                return item.mimes
-        return []
-
-    @staticmethod
     def mime_compressed(ext: str) -> bool:
         ''' Return the possible state of compression based on the file extension '''
         ext = ext.strip().lower()
@@ -942,6 +943,15 @@ class PwicLib:
             if ext in item.exts:
                 return item.compressed
         return False
+
+    @staticmethod
+    def mime_list(ext: str) -> List[str]:
+        ''' Return the possible mimes that correspond to the file extension '''
+        ext = ext.strip().lower()
+        for item in PwicConst.MIMES:
+            if ext in item.exts:
+                return item.mimes
+        return []
 
     @staticmethod
     def mime2icon(mime: str) -> str:
@@ -955,6 +965,15 @@ class PwicLib:
         if mime[:12] == 'application/':
             return PwicConst.EMOJIS['server']
         return PwicConst.EMOJIS['sheet']
+
+    @staticmethod
+    def mime_zipped(ext: str) -> bool:
+        ''' Return if a file extension is a disguised ZIP file '''
+        ext = ext.strip().lower()
+        for item in PwicConst.MIMES:
+            if ext in item.exts:
+                return item.magic == ZIP
+        return False
 
     # ===============
     #  Search engine
