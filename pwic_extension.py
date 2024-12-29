@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2024 Alexandre Bréard
+# Copyright (C) 2020-2025 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -25,7 +25,7 @@ from aiohttp import web
 from prettytable import PrettyTable
 from urllib.request import Request
 
-from pwic_lib import PwicLib
+from pwic_lib import PwicConst, PwicLib
 
 
 class PwicExtension():
@@ -333,10 +333,10 @@ class PwicExtension():
     @staticmethod
     def on_audit_skip(sql: sqlite3.Cursor,                  # Cursor to query the database
                       request: Optional[web.Request],       # HTTP request, None if called from the console
-                      event: Dict[str, Any],                # Details of the event
+                      event: Dict[str, Any],                # Details of the event (passed by value)
                       ) -> bool:
         ''' Event to block some audit events. You have no possibility to recover the rejected events.
-            The result indicates if the audit event is skipped.
+            You can't edit the event in the parameter. The result indicates if the audit event is skipped.
         '''
         return False
 
@@ -391,6 +391,30 @@ class PwicExtension():
         return html
 
     @staticmethod
+    def on_html_description(sql: sqlite3.Cursor,            # Cursor to query the database
+                            project: str,                   # Name of the project
+                            user: str,                      # Name of the user
+                            page: str,                      # Name of the page
+                            revision: int,                  # Revision of the page
+                            ) -> str:
+        ''' Event to determine the description of the page in the HTML field "meta description".
+            The impact on SEO is limited but this may be required by some search engines.
+            The result is the calculated description.
+        '''
+        # Read the first paragraph to provide the description of the page
+        sql.execute(''' SELECT markdown
+                        FROM pages
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?''',
+                    (project, page, revision))
+        lines = sql.fetchone()['markdown'][:500].split('\n')
+        for e in lines:
+            if (e[:1] not in ['', '#', '<', '>', '[', '!', '&']) and (e[:3] != '```') and (len(e) > 64):
+                return PwicConst.REGEXES['md_strip'].sub('', e).replace('  ', ' ').replace(' .', '.').strip()
+        return ''
+
+    @staticmethod
     def on_html_robots(sql: sqlite3.Cursor,                 # Cursor to query the database
                        request: web.Request,                # HTTP request
                        project: str,                        # Name of the project
@@ -403,7 +427,7 @@ class PwicExtension():
             The result indicates if the parameter 'robots' (that contains the result) has been changed.
         '''
         # Offline mode for the special pages
-        offline = template in ['search', 'page-history']
+        offline = template in ['login', 'logout', 'page-404', 'page-history', 'page-special', 'search', 'user']
         if (template == 'page') and not data['latest']:
             seo_hide_revs = PwicLib.option(sql, project, 'seo_hide_revs') is not None
             validated_only = PwicLib.option(sql, project, 'validated_only') is not None
@@ -412,7 +436,8 @@ class PwicExtension():
         if offline:
             robots['archive'] = False
             robots['cache'] = False
-            # robots['follow'] = False
+            if template in ['page-history']:
+                robots['follow'] = False
             robots['imageindex'] = False
             robots['index'] = False
             robots['snippet'] = False

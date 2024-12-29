@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2024 Alexandre Bréard
+# Copyright (C) 2020-2025 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -496,7 +496,7 @@ class PwicAdmin():
         for row in sql.fetchall():
             if tab is None:
                 tab = self._prepare_prettytable([k[:1].upper() + k[1:] for k in row])
-            tab.add_row([str(row[k]).replace('\r', '').replace('\n', ' ').strip()[:255].strip() for k in row])
+            tab.add_row([str(row[k]).replace('\n', ' ').strip()[:255].strip() for k in row])
         return tab
 
     # =========
@@ -582,7 +582,7 @@ class PwicAdmin():
             value = row['value']
             if (row['key'] in PwicConst.ENV) and PwicConst.ENV[row['key']].private:
                 value = '(Secret value not displayed)'
-            value = value.replace('\r', '').replace('\n', '\\n')
+            value = value.replace('\n', '\\n')
             if dolist:
                 print(f'{row["project"] or "*"}.{row["key"]} = {value}')
             else:
@@ -780,7 +780,7 @@ class PwicAdmin():
         if (((project in PwicConst.NOT_PROJECT)
              or ('' in [description, admin])
              or (project[:4] == 'pwic')
-             or (admin[:4] == 'pwic'))):
+             or PwicLib.reserved_user_name(admin))):
             print('Error: invalid arguments')
             return False
 
@@ -847,8 +847,10 @@ class PwicAdmin():
         print(f'- Administrator : {admin}')
         print(f'- Password      : "{PwicConst.DEFAULTS["password"]}" or the existing password')
         print('')
-        print('WARNING:')
-        print("To create new pages in the project, you must change your password and grant the role 'manager' to the suitable user account.")
+        print("WARNING: to create new pages in the project, you must change your password and grant the role 'manager' to the suitable user account.")
+        home = PwicLib.option(sql, '', 'base_url', f'http://{PwicConst.DEFAULTS["host"]}:{PwicConst.DEFAULTS["port"]}')
+        print(f'  {home}/special/user/{admin}')
+        print(f'  {home}/{project}/special/roles')
         print('')
         print('Thanks for using Pwic.wiki!')
         return True
@@ -992,11 +994,12 @@ class PwicAdmin():
             sql.execute(''' SELECT *
                             FROM env
                             WHERE project = ?
-                              AND key     NOT LIKE 'pwic%'
                               AND value   <> '' ''',
                         (p, ))
             for row in sql.fetchall():
-                _transfer_record(newsql, 'env', row)
+                if row['key'] in PwicConst.ENV:
+                    if not PwicConst.ENV[row['key']].private:
+                        _transfer_record(newsql, 'env', row)
         # ... pages
         for p in projects:
             keep_last = collapse and (PwicLib.option(sql, p, 'validated_only') is None)

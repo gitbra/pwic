@@ -94,6 +94,9 @@ msgid "the login page"
 msgstr ""
 
 #: ../templates/html/main.html
+msgid "No description"
+msgstr ""
+
 msgid "Search in project %(project)s"
 msgstr ""
 
@@ -681,7 +684,7 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">non-validated revisions</a> are pending."
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">other revisions</a> are pending."
 msgstr ""
 
 msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span>, but the <a href=\"/%(project)s/%(page)s\">latest version</a> is available."
@@ -895,9 +898,6 @@ msgid "The user has no recent contribution."
 msgstr ""
 
 msgid "Uploaded documents"
-msgstr ""
-
-msgid "The user owns no document."
 msgstr ""
 
 #: ../templates/js/page-create.js

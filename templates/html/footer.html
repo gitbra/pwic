@@ -5,12 +5,12 @@
 
 <footer>
 	<div>
-		{% trans %}Powered by{% endtrans %} <a href="https://pwic.wiki">Pwic.wiki</a> v{{pwic.constants.version|escape}} &copy; {% if pwic.env.copyright_years %}{{pwic.env.copyright_years.value|escape}}{% else %}2020-2024{% endif %}
+		{% trans %}Powered by{% endtrans %} <a href="https://pwic.wiki">Pwic.wiki</a> v{{pwic.constants.version|escape}} &copy; {% if pwic.env.copyright_years %}{{pwic.env.copyright_years.value|escape}}{% else %}2020-2025{% endif %}
 		{% if not pwic.env.no_help %}
 			&mdash; {{pwic.emojis.help}}&nbsp;<a href="/special/help">{% trans %}Help{% endtrans %}</a>
 		{% endif %}
 		&mdash;
-		{% if (pwic.user != '') and (pwic.user[:4] != 'pwic') %}
+		{% if not pwic.user|reserved_user_name %}
 			 {{pwic.emojis.laptop}}&nbsp;<a href="/special/user/{{pwic.user|urlencode}}" title="{% trans %}Your profile{% endtrans %}" rel="nofollow">{{pwic.user|escape}}</a> (<a class="pwic_bold" href="/special/logout" onclick="return confirm({% trans %}'Are you sure to disconnect from Pwic.wiki?'{% endtrans %})">{% trans %}Log out{% endtrans %}</a>)
 		{% else %}
 			 <a class="pwic_bold" href="/special/login">{% trans %}Log in{% endtrans %}</a>

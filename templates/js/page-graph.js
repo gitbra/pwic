@@ -13,8 +13,8 @@
 		// Else first download
 		fetch('/api/project/graph/get', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body: 'project={{pwic.project|urlencode}}',
-											credentials: 'same-origin' })
+											body: new URLSearchParams({project: '{{pwic.project}}'}),
+											credentials: 'same-origin'})
 		.then(response => {
 			if (!response.ok)
 				throw Error(response.status + ' ' + response.statusText);
@@ -38,7 +38,7 @@
 		$(document.createElement('a'))
 					.addClass('pwic_hidden')
 					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
-					.attr('download', '{{pwic.project|escape}}.gv')
+					.attr('download', '{{pwic.project}}.gv')
 					.appendTo('body')
 					.trigger('click')
 					.remove();

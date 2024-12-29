@@ -23,7 +23,7 @@
 				{% endif %}
 				{% if pwic.password_oauth %}
 					<span title="{% trans %}Federated authentication only{% endtrans %}">{{pwic.emojis.id}}</span>
-				{% elif (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
+				{% elif (pwic.user == pwic.userpage) and (not pwic.userpage|reserved_user_name) %}
 					<span class="pwic_js">(<a href="#" onclick="return user_password_popup()">{% trans %}change it{% endtrans %}</a>)</span>
 				{% endif %}
 			</li>
@@ -47,7 +47,7 @@
 			{% endif %}
 		</ul>
 
-		{% if not pwic.password_oauth and (pwic.user == pwic.userpage) and (pwic.userpage[:4] != 'pwic') %}
+		{% if (not pwic.password_oauth) and (pwic.user == pwic.userpage) and (not pwic.userpage|reserved_user_name) %}
 			<div id="user_password_popup" class="pwic_blurcontainer pwic_hidden">
 				<div class="pwic_popup">
 					<form autocomplete="new-password">
@@ -108,10 +108,8 @@
 		{% endif %}
 
 
-		<h2>{% trans %}Uploaded documents{% endtrans %}</h2>
-		{% if pwic.documents|count == 0 %}
-			<p class="pwic_center pwic_italic">{% trans %}The user owns no document.{% endtrans %}</p>
-		{% else %}
+		{% if (pwic.documents|count > 0) and (not pwic.user|reserved_user_name) %}
+			<h2>{% trans %}Uploaded documents{% endtrans %}</h2>
 			<table>
 				<tr>
 					<th class="pwic_desktop">{% trans %}Project{% endtrans %}</th>
@@ -136,7 +134,7 @@
 							{% endif%}
 						</td>
 						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
-						<td>{{doc.size_str|escape}}</td>
+						<td data-sort="{{doc.size|escape}}">{{doc.size_str|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %} <span title="{% trans %}Duplicate file{% endtrans %}">{{pwic.emojis.gemini}}</span> {% endif %}

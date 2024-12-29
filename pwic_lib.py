@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2024 Alexandre Bréard
+# Copyright (C) 2020-2025 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -67,7 +67,7 @@ class PwicConst:
     #  Security
     # ==========
 
-    SALT = ''                                               # Random string to secure the generated hashes for the passwords
+    SALT = ''                                               # Private random characters to secure the generated hashes for the passwords
     PRIVATE_KEY = 'db/pwic_https.key'
     PUBLIC_KEY = 'db/pwic_https.crt'
     CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'               # Various signs incompatible with filesystem, HTML, SQL...
@@ -102,6 +102,7 @@ class PwicConst:
                'adjacent_tag': re.compile(r'<\/(b|big|em|i|small|span|strong|sub|sup)[ \t]*>([ \t]*)<\1[ \t]*>', re.IGNORECASE),    # Removable adjacent inline HTML tags
                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                          # Name of the pages KB
                'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                                  # Length in XML
+               'md_strip': re.compile(r'\([^\)]+\)|\*+|-+|\[|\]|`'),                                            # QnD removal of Markdown
                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$', re.IGNORECASE),                                 # Check the format of the mime
                'page': re.compile(r'\]\((\.|\/[^\/\#\?\)"]+)\/([^\/\#\?\)"]+)(\/rev[0-9]+)?(\#|\?|\)| ")'),     # Find a page in Markdown
                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                          # Valid protocols for the links
@@ -153,6 +154,7 @@ class PwicConst:
            'link_nofollow': TyEnv(True, True, True, False),
            'magic_bytes': TyEnv(True, False, False, False),
            'maintenance': TyEnv(True, False, False, False),
+           'manifest': TyEnv(True, True, True, False),
            'mathjax': TyEnv(True, True, True, False),
            'message': TyEnv(True, True, True, False),
            'no_cache': TyEnv(True, True, False, False),
@@ -463,7 +465,7 @@ class PwicLib:
             raise PwicError
         if request is not None:
             obj['ip'] = PwicExtension.on_ip_header(request)
-        if PwicExtension.on_audit_skip(sql, request, obj):
+        if PwicExtension.on_audit_skip(sql, request, obj.copy()):
             return
 
         # Log the event
@@ -747,10 +749,7 @@ class PwicLib:
                 row = sql.execute(query, (project, name)).fetchone()
 
             # Result
-            result = default if row is None else row['value']
-            if isinstance(result, str):
-                result = result.replace('\r', '')
-            return result
+            return default if row is None else row['value']
         except sqlite3.OperationalError:    # During init-db
             return default
 
@@ -788,6 +787,11 @@ class PwicLib:
         return text
 
     @staticmethod
+    def reserved_user_name(user: str) -> str:
+        user = str(user)
+        return (user == '') or ((user[:4].lower() == 'pwic') and ('@' not in user))
+
+    @staticmethod
     def robots2str(robots: TyRobotsDict) -> str:
         ''' Convert structured boolean values into a meta string robots '''
         return ' '.join([('' if robots[k] else 'no') + k for k in robots if robots[k] is not None])
@@ -799,6 +803,8 @@ class PwicLib:
         for idx, col in enumerate(cursor.description):
             if col[0] in PwicConst.BOOL_COLUMNS:
                 d[col[0]] = PwicLib.xb(row[idx])
+            elif ((col[0] == 'value') or ('markdown' in col[0])) and isinstance(row[idx], str):
+                d[col[0]] = row[idx].replace('\r', '')
             else:
                 d[col[0]] = row[idx]
         return d

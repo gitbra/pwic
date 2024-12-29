@@ -9,7 +9,7 @@
 											body: new URLSearchParams({	project: project,
 																		name: user,
 																		role: role}),
-											credentials: 'same-origin' })
+											credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);

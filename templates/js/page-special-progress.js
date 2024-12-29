@@ -45,13 +45,13 @@
 			// Calculate the progress
 			var buffer = '';
 			if (tags.length > 0) {
-				var args = {project: '{{pwic.project|urlencode}}',
+				var args = {project: '{{pwic.project}}',
 							tags: tags,
 							combined: $('#page_progress_tags > A:nth-child(3)').hasClass('pwic_selected') ? 'on' : ''},
 					options = {	method: 'POST',
 								headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 								body: new URLSearchParams(args),
-								credentials: 'same-origin' };
+								credentials: 'same-origin'};
 				try {
 					var request = await fetch('/api/project/progress/get', options);
 					if (request.ok) {

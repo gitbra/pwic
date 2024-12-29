@@ -26,6 +26,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Export of a page to Markdown (.md), web page (.html) and OpenDocument (.odt)
 - OData feed for BI reports
 - RSS feed
+- Progressive web application (PWA)
 - Share by link
 - Share by email
 - Internationalization: English, French, German, extendable to your language from a template or [online](https://explore.transifex.com/pwicwiki/pwicwiki/)
@@ -141,7 +142,7 @@ To enhance the existing translations, you may edit the selected languages by [jo
 ### Main
 
 - Pwic.wiki server running on Python and SQLite
-- Copyright (C) 2020-2024 Alexandre Bréard
+- Copyright (C) 2020-2025 Alexandre Bréard
 	- <https://pwic.wiki>
 	- <https://github.com/gitbra/pwic>
 - Released under the terms of the GNU Affero General Public License v3+

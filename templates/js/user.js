@@ -31,7 +31,7 @@
 												body: new URLSearchParams({	password_current: cur,
 																			password_new1: new1,
 																			password_new2: new2}),
-												credentials: 'same-origin' })
+												credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok) {
 						document.getElementById('user_password_new1').focus();
@@ -49,7 +49,7 @@
 		fetch('/api/user/language/set', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({language: $('#user_language').val()}),
-											credentials: 'same-origin' })
+											credentials: 'same-origin'})
 			.then(response => { if (response.ok) location.reload() });
 	}
 </script>

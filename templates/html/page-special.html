@@ -139,7 +139,7 @@
 		{% endif %}
 
 
-		{% if (pwic.pages|count > 0) and (pwic.user[:4] != 'pwic') %}
+		{% if (pwic.pages|count > 0) and (not pwic.user|reserved_user_name) %}
 			<h1 class="pwic_cursor" title="{% trans %}Expand/Collapse{% endtrans %}" onclick="$('#page_pages_list').toggleClass('pwic_hidden')">{% trans %}All the pages of the project{% endtrans %}</h1>
 			<table id="page_pages_list">
 				<tr>
@@ -178,7 +178,7 @@
 		{% endif %}
 
 
-		{% if pwic.tags|count > 0 %}
+		{% if (pwic.tags|count > 0) and (not pwic.user|reserved_user_name) %}
 			<h1 class="pwic_js">{% trans %}Progress by tag{% endtrans %}</h1>
 			<div id="page_progress_tags" class="pwic_tagbox pwic_js">
 				<a href="#" title="{% trans %}Select all{% endtrans %}">{{pwic.emojis.check}}</a>
@@ -207,7 +207,7 @@
 		{% endif %}
 
 
-		{% if (pwic.documents|count > 0) and (pwic.user[:4] != 'pwic') %}
+		{% if (pwic.documents|count > 0) and (not pwic.user|reserved_user_name) %}
 			<h1 class="pwic_cursor" title="{% trans %}Expand/Collapse{% endtrans %}" onclick="$('#page_documents_space, #page_documents_list').toggleClass('pwic_hidden')">{% trans %}All the documents of the project{% endtrans %}</h1>
 			<p id="page_documents_space" class="pwic_center"><strong>{% trans %}Disk space usage:{% endtrans %}</strong>
 				{% if pwic.disk_space.project_max > 0 %}

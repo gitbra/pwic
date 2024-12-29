@@ -36,7 +36,7 @@
 				 && (url.indexOf(':') === -1)
 				 && (url.indexOf('/') === -1)
 				 && (url == url.toLowerCase()))
-					url = '/{{pwic.project|escape}}/' + url;
+					url = '/{{pwic.project}}/' + url;
 
 				// Replace the text by another one
 				md_editor.replaceSelection('[' + txt + '](' + url + ')');
@@ -230,7 +230,7 @@
 		fetch(endpoint, {	method: 'POST',
 							headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 							body: new URLSearchParams(payload),
-							credentials: 'same-origin' })
+							credentials: 'same-origin'})
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
@@ -253,7 +253,7 @@
 			var url = prompt({% trans %}'Remote URL to fetch:'{% endtrans %}, '');
 			if ((url != null) && (url != ''))
 				_edit_convert(	'/api/document/remote/convert',
-								{project: '{{pwic.project|escape}}', url: url});
+								{project: '{{pwic.project}}', url: url});
 		}
 	{% endif %}
 
@@ -263,9 +263,9 @@
 	function edit_refresh_documents() {
 		fetch('/api/document/list', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	'project={{pwic.project|urlencode}}' +
-												'&page={{pwic.page|urlencode}}',
-										credentials: 'same-origin' })
+										body: new URLSearchParams({	project: '{{pwic.project}}',
+																	page: '{{pwic.page}}' }),
+										credentials: 'same-origin'})
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
@@ -306,14 +306,14 @@
 		for (var i=0 ; i<files.length ; i++) {
 			// Fields
 			var form = new FormData();
-			form.append('project', '{{pwic.project|escape}}');
-			form.append('page', '{{pwic.page|escape}}');
+			form.append('project', '{{pwic.project}}');
+			form.append('page', '{{pwic.page}}');
 			form.append('content', files[i]);
 
 			// Request
 			fetch('/api/document/create', {	method: 'POST',
 											body: form,
-											credentials: 'same-origin' })
+											credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
@@ -366,9 +366,9 @@
 			fetch('/api/document/rename', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
-																		project: '{{pwic.project|urlencode}}',
+																		project: '{{pwic.project}}',
 																		filename: newfn}),
-											credentials: 'same-origin' })
+											credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
@@ -384,8 +384,8 @@
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
-																		project: '{{pwic.project|urlencode}}'}),
-											credentials: 'same-origin' })
+																		project: '{{pwic.project}}'}),
+											credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
@@ -422,7 +422,7 @@
 
 		// First ping-pong the server to make sure that the session is still valid
 		fetch('/api/server/ping', {	method: 'POST',
-									credentials: 'same-origin' })
+									credentials: 'same-origin'})
 			.then(response => {
 				var errorPing = {% trans %}'Your session is not valid anymore. Please reconnect from another tab and retry.'{% endtrans %};
 				if (!response.ok)
@@ -443,15 +443,15 @@
 						// Query the current revision of the modified page
 						fetch('/api/project/get', {	method: 'POST',
 													headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-													body:	'project={{pwic.project|urlencode}}'+
-															'&page={{pwic.page|urlencode}}',
-													credentials: 'same-origin' })
+													body: new URLSearchParams({	project: '{{pwic.project}}',
+																				page: '{{pwic.page}}'}),
+													credentials: 'same-origin'})
 							.then(response => {
 								if (!response.ok)
 									throw Error('['+response.status+'] '+response.statusText);
 								response.json().then(data => {
 									// Check the conflict
-									if (data['{{pwic.page|escape}}']['revisions'][0]['revision'] > {{pwic.revision}}) {
+									if (data['{{pwic.page}}']['revisions'][0]['revision'] > {{pwic.revision}}) {
 										if (!confirm({% trans %}'Warning: the page has been modified in parallel of your current modifications.\n\nConsequently, your changes will be posted as a removable draft. You must merge the changes manually later.'{% endtrans %}))
 											return false;
 										$('#edit_draft').prop('checked', true);
@@ -460,8 +460,8 @@
 
 									// Submit the modifications
 									{# sof/7542586 #}
-									var form = {project:	'{{pwic.project|escape}}',
-												page:		'{{pwic.page|escape}}',
+									var form = {project:	'{{pwic.project}}',
+												page:		'{{pwic.page}}',
 												title:		$('#edit_title').val(),
 												tags:		$('#edit_tags').val(),
 												markdown:	md_editor.getValue(),
@@ -474,7 +474,7 @@
 									fetch('/api/page/edit', {	method: 'POST',
 																headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 																body: new URLSearchParams(form),
-																credentials: 'same-origin' })
+																credentials: 'same-origin'})
 										.then(response => {
 											if (!response.ok)
 												throw Error(response.status + ' ' + response.statusText);
@@ -492,9 +492,9 @@
 	function edit_preview_md(pageName) {
 		fetch('/api/markdown/convert', {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({	project: '{{pwic.project|urlencode}}',
+										body: new URLSearchParams({	project: '{{pwic.project}}',
 																	markdown: md_editor.somethingSelected() ? md_editor.getSelection() : md_editor.getValue()}),
-										credentials: 'same-origin' })
+										credentials: 'same-origin'})
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);

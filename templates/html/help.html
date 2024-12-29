@@ -244,7 +244,7 @@
 						<td><code>https</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Enable HTTP<strong>S</strong> provided that you have installed or generated the appropriate certificates. The new value is effective after the restart of the server.</td>
+						<td>Enable HTTP<strong>S</strong> provided that you have installed or generated the appropriate certificates whose paths are defined by the internal constants <code>PRIVATE_KEY</code> and <code>PUBLIC_KEY</code>. The new value is effective after the restart of the server.</td>
 					</tr>
 					<tr>
 						<td><code>ip_filter</code></td>
@@ -309,6 +309,12 @@
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
 						<td>The value is displayed on the pages to inform the users of a planned maintenance. The upload and the deletion of the documents are immediately disabled.</td>
+					</tr>
+					<tr>
+						<td><code>manifest</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
+						<td>Enable the progressive web application (PWA) for the project. The web browsers expect your website be setup with HTTPS, either with the option `https`, or behind a reverse proxy server.</td>
 					</tr>
 					<tr>
 						<td><code>mathjax</code></td>
@@ -386,7 +392,7 @@
 						<td><code>no_history</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td>Disable the ability to see the revisions of a page (a fortiori to access one of its revisions explicitly) when the user is a pure reader. In other words, the pure readers only see the latest revision, or the latest validated revision if the option <code>validated_only</code> is used too.</td>
+						<td>Disable the ability to see and search the revisions of a page (a fortiori to access one of its revisions explicitly) when the user is a pure reader. In other words, the pure readers only see the latest revision, or the latest validated revision if the option <code>validated_only</code> is used too.</td>
 					</tr>
 					<tr>
 						<td><code>no_link_review</code></td>

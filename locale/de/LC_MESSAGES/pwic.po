@@ -109,6 +109,9 @@ msgid "the login page"
 msgstr "die Anmeldungsseite"
 
 #: ../templates/html/main.html
+msgid "No description"
+msgstr "Keine Beschreibung"
+
 msgid "Search in project %(project)s"
 msgstr "Im Projekt %(project)s durchsuchen"
 
@@ -696,8 +699,8 @@ msgstr "'Das Löschen der Revision kann nicht abgebrochen werden.\\n\\nMöchten 
 msgid "Delete"
 msgstr "Löschen"
 
-msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">non-validated revisions</a> are pending."
-msgstr "Sie lesen die <span class=\"pwic_bold\">Revision %(revision)d</span> aber <a href=\"/%(project)s/%(page)s/history\">nicht validierte Revisionen</a> sind gespeichert."
+msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span> and <a href=\"/%(project)s/%(page)s/history\">other revisions</a> are pending."
+msgstr "Sie lesen die <span class=\"pwic_bold\">Revision %(revision)d</span> aber <a href=\"/%(project)s/%(page)s/history\">andere Revisionen</a> sind gespeichert."
 
 msgid "You are viewing the <span class=\"pwic_bold\">revision %(revision)d</span>, but the <a href=\"/%(project)s/%(page)s\">latest version</a> is available."
 msgstr "Sie lesen die <span class=\"pwic_bold\">Revision %(revision)d</span>, aber die <a href=\"/%(project)s/%(page)s\">letzte Revision</a> ist verfügbar."
@@ -911,9 +914,6 @@ msgstr "Der Benutzer hat keine aktuelle Änderung."
 
 msgid "Uploaded documents"
 msgstr "Hochgeladene Dokumente"
-
-msgid "The user owns no document."
-msgstr "Der Benutzer besitzt kein Dokument."
 
 #: ../templates/js/page-create.js
 msgid "'The parameters are not acceptable.'"

@@ -12,7 +12,7 @@
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 										body: new URLSearchParams({	project: project,
 																	user: user}),
-										credentials: 'same-origin' })
+										credentials: 'same-origin'})
 				.then(response => {
 					$('INPUT[type=button]').removeAttr('disabled');
 					if (!response.ok)

@@ -12,7 +12,7 @@
 			return false;
 		if (rev.length == 2) {
 			rev.sort();
-			window.location = '/{{pwic.project|escape}}/{{pwic.page|escape}}/rev'+rev[1]+'/compare/rev'+rev[0];
+			window.location = '/{{pwic.project|urlencode}}/{{pwic.page|urlencode}}/rev'+rev[1]+'/compare/rev'+rev[0];
 		}
 		return true;
 	}

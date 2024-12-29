@@ -1,5 +1,5 @@
 # Pwic.wiki server running on Python and SQLite
-# Copyright (C) 2020-2024 Alexandre Bréard
+# Copyright (C) 2020-2025 Alexandre Bréard
 #
 #   https://pwic.wiki
 #   https://github.com/gitbra/pwic
@@ -602,6 +602,43 @@ class PwicServer():
             return _feed_rss(sql, project, row['description'], feed_size)
         return _feed_json(sql, project, days)
 
+    async def project_manifest(self, request: web.Request) -> web.Response:
+        # Verify that the user is connected
+        user = await self._suser(request)
+        if user == '':
+            raise web.HTTPUnauthorized()
+
+        # Verify the authorization
+        project = PwicLib.safe_name(request.match_info.get('project'))
+        sql = self.dbconn.cursor()
+        if PwicLib.option(sql, project, 'manifest') is None:
+            raise web.HTTPServiceUnavailable()
+        sql.execute(''' SELECT b.description
+                        FROM roles AS a
+                            INNER JOIN projects AS b
+                                ON b.project = a.project
+                        WHERE a.project  = ?
+                          AND a.user     = ?
+                          AND a.disabled = '' ''',
+                    (project, user))
+        row = sql.fetchone()
+        if row is None:
+            raise web.HTTPUnauthorized()
+
+        # Manifest
+        manifest = {'name': project,
+                    'short_name': project,
+                    'description': row['description'],
+                    'start_url': f'/{project}',
+                    'scope': f'/{project}',
+                    'display': 'standalone',
+                    'orientation': 'portrait',
+                    'lang': PwicLib.option(sql, project, 'language', PwicConst.DEFAULTS['language']),
+                    'icons': [{'src': '/static/icon.png', 'sizes': '320x320', 'type': 'image/png'}],
+                    'screenshots': [{'src': '/static/icon.png', 'type': 'image/png', 'sizes': '320x320', 'form_factor': 'narrow'},
+                                    {'src': '/static/icon.png', 'type': 'image/jpg', 'sizes': '320x320', 'form_factor': 'wide'}]}
+        return web.Response(text=json.dumps(manifest), content_type=PwicLib.mime('json'))
+
     async def project_export(self, request: web.Request) -> web.Response:
         ''' Download the project as a ZIP file '''
         # Verify that the user is connected
@@ -806,7 +843,7 @@ class PwicServer():
         pwic['title'] = row['description']
 
         # Grant the default rights as a reader
-        if (user[:4] != 'pwic') and (PwicLib.option(sql, project, 'auto_join') == 'passive'):
+        if (not PwicLib.reserved_user_name(user)) and (PwicLib.option(sql, project, 'auto_join') == 'passive'):
             if sql.execute(''' SELECT 1
                                FROM roles
                                WHERE project = ?
@@ -956,6 +993,7 @@ class PwicServer():
                                  and pwic['draft']))
         pwic['file_formats'] = PwicExporter.get_allowed_extensions()
         pwic['canonical'] = f'{app["options"]["base_url"]}/{project}/{page}' + ('' if pwic['latest'] else f'/rev{revision}')
+        pwic['description'] = PwicExtension.on_html_description(sql, project, user, page, revision)
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -1861,8 +1899,8 @@ class PwicServer():
         # Show the page
         def _diff(tfrom: str, tto: str) -> str:
             diff = HtmlDiff()
-            tfrom2 = tfrom.replace('\r', '').split('\n')
-            tto2 = tto.replace('\r', '').split('\n')
+            tfrom2 = tfrom.split('\n')
+            tto2 = tto.split('\n')
             return diff.make_table(tfrom2, tto2)            \
                        .replace('&nbsp;', ' ')              \
                        .replace(' nowrap="nowrap"', '')     \
@@ -1979,7 +2017,7 @@ class PwicServer():
     def _auto_join(self, sql: sqlite3.Cursor, request: web.Request, user: str, categories: List[str]) -> bool:
         ''' Assign a user to the projects that require a forced membership '''
         ok = False
-        if user[:4] not in ['', 'pwic']:
+        if not PwicLib.reserved_user_name(user):
             query = ''' SELECT a.project
                         FROM env AS a
                             LEFT OUTER JOIN roles AS b
@@ -2205,7 +2243,7 @@ class PwicServer():
                     user = item
                     cursor = index
         user = PwicLib.safe_user_name(user)
-        if (user[:4] in ['', 'pwic']) or ('@' not in user):
+        if PwicLib.reserved_user_name(user) or ('@' not in user):
             _oauth_failed()
 
         # Create the default user account
@@ -2307,7 +2345,7 @@ class PwicServer():
         ''' Return the received headers for a request '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user[:4] in ['', 'pwic']:
+        if PwicLib.reserved_user_name(user):
             raise web.HTTPUnauthorized()
 
         # JSON serialization of the object of type CIMultiDictProxy
@@ -2499,7 +2537,7 @@ class PwicServer():
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project'))
         key = PwicLib.safe_name(post.get('key'))
-        value = post.get('value', '').replace('\r', '').strip()
+        value = post.get('value', '').strip()
         if (((project == '')
              or (key not in PwicConst.ENV)
              or not PwicConst.ENV[key].pdep
@@ -2524,9 +2562,14 @@ class PwicServer():
         # Update the variable
         value = str(PwicExtension.on_api_project_env_set(sql, request, project, user, key, value))
         if value == '':
-            sql.execute(''' DELETE FROM env WHERE project = ? AND key = ?''', (project, key))
+            sql.execute(''' DELETE FROM env
+                            WHERE project = ?
+                              AND key     = ?''',
+                        (project, key))
         else:
-            sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''', (project, key, value))
+            sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
+                            VALUES (?, ?, ?)''',
+                        (project, key, value))
         PwicLib.audit(sql, {'author': user,
                             'event': '%sset-%s' % ('un' if value == '' else '', key),
                             'project': project,
@@ -2611,7 +2654,7 @@ class PwicServer():
         ''' API to analyze the progress of the project '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user == '':
+        if PwicLib.reserved_user_name(user):
             raise web.HTTPUnauthorized()
 
         # Fetch the submitted data
@@ -2958,7 +3001,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         page = PwicLib.safe_name(post.get('page'))
         title = post.get('title', '').strip()
-        markdown = post.get('markdown', '').replace('\r', '')       # No strip()
+        markdown = post.get('markdown', '')                         # No strip()
         tags = PwicLib.list_tags(post.get('tags', ''))
         comment = post.get('comment', '').strip()
         milestone = post.get('milestone', '').strip()
@@ -3562,7 +3605,7 @@ class PwicServer():
         project = PwicLib.safe_name(post.get('project'))
         wisheduser = post.get('user', '').strip().lower()
         newuser = PwicLib.safe_user_name(post.get('user'))
-        if (project in PwicConst.NOT_PROJECT) or (wisheduser != newuser) or (newuser[:4] in ['', 'pwic']):
+        if (project in PwicConst.NOT_PROJECT) or (wisheduser != newuser) or PwicLib.reserved_user_name(newuser):
             raise web.HTTPBadRequest()
 
         # Verify that the user is administrator and has changed his password
@@ -3634,7 +3677,7 @@ class PwicServer():
         ''' Change the password of the current user '''
         # Verify that the user is connected
         user = await self._suser(request)
-        if user[:4] in ['', 'pwic']:
+        if PwicLib.reserved_user_name(user):
             raise web.HTTPUnauthorized()
 
         # Get the posted values
@@ -3645,7 +3688,7 @@ class PwicServer():
         if ((('' in [current, new1, new2])
              or (new1 != new2)
              or (new1 in [current, PwicConst.DEFAULTS['password']])
-             or (new1.strip().lower() == user)
+             or (user in new1.strip().lower())
              )):
             raise web.HTTPBadRequest()
 
@@ -3706,7 +3749,7 @@ class PwicServer():
             delete = roles[roleid] == 'delete'
         except ValueError as e:
             raise web.HTTPBadRequest() from e
-        if (project in PwicConst.NOT_PROJECT) or (userpost == '') or ((userpost[:4] == 'pwic') and (roles in ['admin', 'delete'])):
+        if (project in PwicConst.NOT_PROJECT) or (userpost == '') or (PwicLib.reserved_user_name(userpost) and (roles in ['admin', 'delete'])):
             raise web.HTTPBadRequest()
 
         # Select the current rights of the user
@@ -4583,6 +4626,7 @@ def main() -> bool:
             entry.install_gettext_translations(translation('pwic', localedir='locale', languages=[lang]))
         entry.filters['is_hex'] = PwicLib.is_hex
         entry.filters['no_tag'] = PwicLib.no_tag
+        entry.filters['reserved_user_name'] = PwicLib.reserved_user_name
         app['jinja'][lang] = entry
     # ... client size
     app._client_max_size = max(app._client_max_size, PwicLib.intval(PwicLib.option(sql, '', 'client_size_max')))
@@ -4664,6 +4708,7 @@ def main() -> bool:
                     web.get(r'/{project:[^\/]+}/special/env', app['pwic'].page_env),
                     web.get(r'/{project:[^\/]+}/special/page', app['pwic'].page_create),
                     web.get(r'/{project:[^\/]+}/special/feed/{format:json|atom|rss}', app['pwic'].project_feed),
+                    web.get(r'/{project:[^\/]+}/special/manifest', app['pwic'].project_manifest),
                     web.get(r'/{project:[^\/]+}/special/links', app['pwic'].page_links),
                     web.get(r'/{project:[^\/]+}/special/graph', app['pwic'].page_graph),
                     web.get(r'/{project:[^\/]+}/special/export/{format:zip}', app['pwic'].project_export),
@@ -4712,8 +4757,7 @@ def main() -> bool:
                       'http_referer': (base_url != '') and (PwicLib.option(sql, '', 'http_referer') is not None),
                       'ip_filter': [],
                       'no_login': PwicLib.option(sql, '', 'no_login') is not None,
-                      'session_expiry': PwicLib.intval(PwicLib.option(sql, '', 'session_expiry', '0')),
-                      }
+                      'session_expiry': PwicLib.intval(PwicLib.option(sql, '', 'session_expiry', '0'))}
     if app['options']['base_url'] == '':
         print('Warning: defining the option "base_url" is highly recommended')
     app['oauth'] = {'provider': PwicLib.option(sql, '', 'oauth_provider', None),

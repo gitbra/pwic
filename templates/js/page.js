@@ -10,7 +10,7 @@
 	window.onscroll = () => {
 		var	scroll = document.body.scrollTop || document.documentElement.scrollTop,
 			height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-		$('#pwic_progress')[0].style.height = ((scroll / height) * 100).toString() + 'vh';
+		$('#pwic_progress')[0].style.width = ((scroll / height) * 100).toString() + 'vw';
 		$('#page_topofpage').toggleClass('pwic_hidden', scroll == 0);
 	};
 
@@ -49,16 +49,16 @@
 		if (confirm(confirmText)) {
 			fetch('/api/page/'+action, {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body:	'project={{pwic.project|urlencode}}&' +
-												'page={{pwic.page|urlencode}}&' +
-												'revision={{pwic.revision|urlencode}}',
-										credentials: 'same-origin' })
+										body: new URLSearchParams({	project: '{{pwic.project}}',
+																	page: '{{pwic.page}}',
+																	revision: {{pwic.revision}}}),
+										credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
 						throw Error(response.status + ' ' + response.statusText);
-					window.location =	'/{{pwic.project|escape}}' +
-										'/{{pwic.page|escape}}' +
-										(action != 'delete' ? '/rev{{pwic.revision|escape}}' : '') +
+					window.location =	'/{{pwic.project|urlencode}}' +
+										'/{{pwic.page|urlencode}}' +
+										(action != 'delete' ? '/rev{{pwic.revision|urlencode}}' : '') +
 										(action == 'delete' ? '?success' : '');
 				})
 				.catch(error => alert(error));
@@ -69,11 +69,11 @@
 	function page_export(format) {
 		fetch('/api/page/export', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body:	'project={{pwic.project|urlencode}}&' +
-											'page={{pwic.page|urlencode}}&' +
-											'revision={{pwic.revision|urlencode}}&'+
-											'format=' + encodeURIComponent(format),
-									credentials: 'same-origin' })
+									body: new URLSearchParams({	project: '{{pwic.project}}',
+																page: '{{pwic.page}}',
+																revision: {{pwic.revision}},
+																format: format}),
+									credentials: 'same-origin'})
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
@@ -144,7 +144,7 @@
 		$('ARTICLE > TABLE').each((i, e) => {
 			if (e.rows.length >= 10)
 				$(e).append($(document.createElement('CAPTION'))
-								.html({% trans %}'Download this table as CSV file'{% endtrans %})
+								.html('<span class="pwic_desktop">' + {% trans %}'Download this table as CSV file'{% endtrans %} + '<\/span><span class="pwic_mobile">&#x1F4BE;&nbsp;CSV<\/span>')
 								.on('click', page_export_table));
 		});
 	{% endif %}

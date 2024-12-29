@@ -37,7 +37,7 @@
 				<tr id="roles_tag_{{u.value+7}}">
 					<td><a class="pwic_break" href="/special/user/{{role.user|urlencode}}" rel="nofollow">{{role.user|escape}}</a></td>
 					<td class="pwic_desktop">
-						{% if role.user[:4] == 'pwic' %}
+						{% if role.user|reserved_user_name %}
 							<span title="{% trans %}Special account{% endtrans %}">{{pwic.emojis.star}}</span>
 						{% elif role.oauth %}
 							<span title="{% trans %}Federated authentication{% endtrans %}">{{pwic.emojis.id}}</span>
@@ -51,7 +51,7 @@
 					<td>
 						<input	id="roles_tag_{{u.value+1}}"
 								type="checkbox"
-							{% if (role.user == pwic.user) or (role.user[:4] == 'pwic') or role.initial %}
+							{% if (role.user == pwic.user) or role.user|reserved_user_name or role.initial %}
 								disabled="disabled"
 							{% else %}
 								onclick="return roles_toggle({{u.value+1}}, '{{pwic.project|escape}}', '{{role.user|escape}}', 'admin')"
@@ -122,7 +122,7 @@
 						>
 					</td>
 					<td>
-						{% if (role.user != pwic.user) and (role.user[:4] != 'pwic') %}
+						{% if (role.user != pwic.user) and (not role.user|reserved_user_name) %}
 							<input	type="button"
 									onclick="return roles_delete('Are you sure to delete the rights of the user \'{{role.user|escape}}\' for the project?', {{u.value+7}}, '{{pwic.project|escape}}', '{{role.user|escape}}')"
 									value="{{pwic.emojis.red_check}}"
