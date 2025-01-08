@@ -746,7 +746,10 @@ class PwicServer():
                             content = b''
                             with open(fn, 'rb') as f:
                                 content = f.read()
-                            archive.writestr(f'documents/{doc["filename"]}', content)
+                            if PwicLib.mime_compressed(PwicLib.file_ext(doc['filename'])):
+                                archive.writestr(f'documents/{doc["filename"]}', content, compress_type=ZIP_STORED, compresslevel=0)
+                            else:
+                                archive.writestr(f'documents/{doc["filename"]}', content)
                             del content
         except Exception as e:
             raise web.HTTPInternalServerError() from e
@@ -994,6 +997,7 @@ class PwicServer():
         pwic['file_formats'] = PwicExporter.get_allowed_extensions()
         pwic['canonical'] = f'{app["options"]["base_url"]}/{project}/{page}' + ('' if pwic['latest'] else f'/rev{revision}')
         pwic['description'] = PwicExtension.on_html_description(sql, project, user, page, revision)
+        pwic['keywords'] = PwicExtension.on_html_keywords(sql, project, user, page, revision)
 
         # File gallery
         query = ''' SELECT id, filename, mime, size, author, date, time
@@ -4625,7 +4629,7 @@ def main() -> bool:
         else:
             entry.install_gettext_translations(translation('pwic', localedir='locale', languages=[lang]))
         entry.filters['is_hex'] = PwicLib.is_hex
-        entry.filters['no_tag'] = PwicLib.no_tag
+        entry.filters['no_html'] = PwicLib.no_html
         entry.filters['reserved_user_name'] = PwicLib.reserved_user_name
         app['jinja'][lang] = entry
     # ... client size

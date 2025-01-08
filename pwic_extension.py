@@ -25,7 +25,7 @@ from aiohttp import web
 from prettytable import PrettyTable
 from urllib.request import Request
 
-from pwic_lib import PwicConst, PwicLib
+from pwic_lib import PwicLib
 
 
 class PwicExtension():
@@ -393,7 +393,7 @@ class PwicExtension():
     @staticmethod
     def on_html_description(sql: sqlite3.Cursor,            # Cursor to query the database
                             project: str,                   # Name of the project
-                            user: str,                      # Name of the user
+                            user: Optional[str],            # Name of the user
                             page: str,                      # Name of the page
                             revision: int,                  # Revision of the page
                             ) -> str:
@@ -411,7 +411,44 @@ class PwicExtension():
         lines = sql.fetchone()['markdown'][:500].split('\n')
         for e in lines:
             if (e[:1] not in ['', '#', '<', '>', '[', '!', '&']) and (e[:3] != '```') and (len(e) > 64):
-                return PwicConst.REGEXES['md_strip'].sub('', e).replace('  ', ' ').replace(' .', '.').strip()
+                return PwicLib.no_md(e).replace('  ', ' ').replace(' .', '.').strip()
+        return ''
+
+    @staticmethod
+    def on_html_keywords(sql: sqlite3.Cursor,               # Cursor to query the database
+                         project: str,                      # Name of the project
+                         user: Optional[str],               # Name of the user
+                         page: str,                         # Name of the page
+                         revision: int,                     # Revision of the page
+                         ) -> str:
+        ''' Event to determine the keywords of the page in the HTML field "meta keywords".
+            The impact on SEO is limited but this may be required by some search engines.
+            The result is the calculated keywords.
+        '''
+        # Read the existing tags
+        sql.execute(''' SELECT tags --, markdown
+                        FROM pages
+                        WHERE project  = ?
+                          AND page     = ?
+                          AND revision = ?''',
+                    (project, page, revision))
+        row = sql.fetchone()
+        if row['tags'] != '':
+            return row['tags'].replace(' ', ', ')
+
+        # Determine the most occurring words from the Mardown
+        # words = PwicLib.no_html(PwicLib.no_md(row['markdown'])).lower()
+        # for w in ['\n', '.', ',', ':', "'", '’']:
+        #     words = words.replace(w, ' ')
+        # words = [w for w in words.split(' ') if (len(w) > 6) and ('/' not in w)]
+        # words = [(w, words.count(w)) for w in set(words)]
+        # words = [w for w in words if w[1] > 1]
+        # if len(words) > 0:
+        #     words.sort(key=lambda w: w[1], reverse=True)
+        #     words = [w[0] for w in words[:10]]
+        #     return ', '.join(words)
+
+        # Default result
         return ''
 
     @staticmethod

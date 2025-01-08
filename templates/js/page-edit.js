@@ -210,7 +210,7 @@
 				alt = prompt({% trans %}'Alternate text for the image:'{% endtrans %}, '');
 			buffer = '![';
 			if (alt != '')
-				buffer += pwic_kick(alt, '[]');
+				buffer += pwic_kick(alt, '["]');
 			buffer += '](/special/document/' + id;
 			if (tip != '')
 				buffer += ' "'+pwic_kick(tip, '"')+'"';

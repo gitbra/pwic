@@ -116,6 +116,8 @@ class PwicExporter():
         html = htmlStyles.html % (row['author'].replace('"', '&quote;'),
                                   row['date'],
                                   row['time'],
+                                  PwicExtension.on_html_description(sql, row['project'], None, row['page'], row['revision']).replace('"', '&quote;'),
+                                  PwicExtension.on_html_keywords(sql, row['project'], None, row['page'], row['revision']).replace('"', '&quote;'),
                                   row['page'].replace('<', '&lt;').replace('>', '&gt;'),
                                   row['title'].replace('<', '&lt;').replace('>', '&gt;'),
                                   htmlStyles.get_css(rel=self.options['relative_html']).replace('src:url(/', 'src:url(%s/' % escape(base_url)),
@@ -371,6 +373,8 @@ class PwicStylerHtml:
     <meta charset="utf-8">
     <meta name="author" content="%s">
     <meta name="last-modified" content="%s %s">
+    <meta name="description" content="%s">
+    <meta name="keywords" content="%s">
     <title>[%s] %s</title>
     %s
 </head>

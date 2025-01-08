@@ -102,7 +102,7 @@ class PwicConst:
                'adjacent_tag': re.compile(r'<\/(b|big|em|i|small|span|strong|sub|sup)[ \t]*>([ \t]*)<\1[ \t]*>', re.IGNORECASE),    # Removable adjacent inline HTML tags
                'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                          # Name of the pages KB
                'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                                  # Length in XML
-               'md_strip': re.compile(r'\([^\)]+\)|\*+|-+|\[|\]|`'),                                            # QnD removal of Markdown
+               'md_strip': re.compile(r'\([^\)]+\)|\*+|-+|\~+|\[|\]|\(|\)|`'),                                  # QnD removal of Markdown
                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$', re.IGNORECASE),                                 # Check the format of the mime
                'page': re.compile(r'\]\((\.|\/[^\/\#\?\)"]+)\/([^\/\#\?\)"]+)(\/rev[0-9]+)?(\#|\?|\)| ")'),     # Find a page in Markdown
                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                          # Valid protocols for the links
@@ -707,7 +707,7 @@ class PwicLib:
         return str('' if value is None else value)
 
     @staticmethod
-    def no_tag(value: str) -> str:
+    def no_html(value: str) -> str:
         ''' Remove the HTML tags from a string '''
         while True:
             i = len(value)
@@ -716,6 +716,10 @@ class PwicLib:
             if len(value) == i:
                 break
         return value
+
+    @staticmethod
+    def no_md(value: str) -> str:
+        return PwicConst.REGEXES['md_strip'].sub('', value)
 
     @staticmethod
     def option(sql: Optional[sqlite3.Cursor],

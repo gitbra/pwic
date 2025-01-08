@@ -10,6 +10,9 @@
 	{% endif %}
 	<meta charset="utf-8">
 	<meta name="description" content="{{(pwic.description or gettext('No description'))|escape}}">
+	{% if pwic.keywords %}
+		<meta name="keywords" content="{{pwic.keywords|escape}}">
+	{% endif %}
 	<title>{% block title %}{{pwic.title|escape}}{% endblock %}{% if pwic.env.title %} - {{pwic.env.title.value|escape}}{% endif %}</title>
 	{% if pwic.canonical %}
 		<link rel="canonical" href="{{pwic.canonical|escape}}">
