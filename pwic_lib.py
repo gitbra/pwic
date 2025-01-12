@@ -140,6 +140,7 @@ class PwicConst:
            'file_formats_disabled': TyEnv(True, True, True, False),
            'fixed_templates': TyEnv(True, False, False, False),
            'heading_mask': TyEnv(True, True, True, False),
+           'http_404': TyEnv(True, True, True, False),
            'http_log_file': TyEnv(True, False, False, False),
            'http_log_format': TyEnv(True, False, False, False),
            'http_referer': TyEnv(True, False, False, False),
@@ -709,6 +710,7 @@ class PwicLib:
     @staticmethod
     def no_html(value: str) -> str:
         ''' Remove the HTML tags from a string '''
+        value = value.replace('&nbsp;', ' ')
         while True:
             i = len(value)
             value = PwicConst.REGEXES['tag_all'].sub('', value)

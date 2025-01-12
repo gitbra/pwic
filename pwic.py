@@ -811,6 +811,8 @@ class PwicServer():
         if not page_special:
             revision = self._redirect_revision(sql, project, user, page, revision)
             if revision == 0:
+                if PwicLib.option(sql, project, 'http_404') is not None:
+                    raise web.HTTPNotFound()
                 return await self._handle_output(request, 'page-404', pwic)     # Page not found
 
         # Show the requested page
@@ -841,6 +843,8 @@ class PwicServer():
                     (project, ))
         row = sql.fetchone()
         if row is None:
+            if PwicLib.option(sql, '', 'http_404') is not None:
+                raise web.HTTPNotFound()
             raise web.HTTPTemporaryRedirect('/')    # Project not found
         pwic['project_description'] = row['description']
         pwic['title'] = row['description']
