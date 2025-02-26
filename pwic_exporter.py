@@ -561,7 +561,7 @@ class PwicMapperOdt(PwicHTMLParserTL):      # html2odt
 
         # Surrounding extra tags
         if tag not in self.maps:
-            raise PwicError
+            raise PwicError()
         if self.maps[tag] is None:
             if (tag == 'input') and (PwicLib.read_attr(attrs, 'type') == 'checkbox'):
                 self.buffer.push('\u2611' if PwicLib.read_attr_key(attrs, 'checked') else '\u2610')
@@ -672,7 +672,7 @@ class PwicMapperOdt(PwicHTMLParserTL):      # html2odt
 
         # Identify the tag
         if self.tag_path[-1] != tag:
-            raise PwicError
+            raise PwicError()
         self.tag_path.pop()
 
         # Surrounding extra tags

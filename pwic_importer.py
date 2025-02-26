@@ -21,7 +21,7 @@ from typing import Dict, List, Optional, Tuple
 import sqlite3
 from os.path import join
 import re
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 from html import unescape
 from html.parser import HTMLParser
 
@@ -370,7 +370,7 @@ class PwicImporterOdt(PwicHTMLParserTL):
                     content = f.read().decode()
                 with odt.open('styles.xml') as f:           # Optional
                     styles = f.read().decode()
-        except (FileNotFoundError, KeyError):
+        except (BadZipFile, FileNotFoundError, KeyError):
             pass
         if content == '':
             return False

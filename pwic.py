@@ -37,20 +37,19 @@ import sqlite3
 import sys
 from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED, BadZipFile
 from ipaddress import ip_network, ip_address
-from urllib.parse import parse_qs, quote, urlencode
-from urllib.request import Request, urlopen
+from urllib.parse import parse_qs, quote
 from gettext import translation
 from http.cookies import CookieError
 import imagesize
 from jinja2 import Environment, FileSystemLoader
 from multidict import MultiDict
-from aiohttp import web, MultipartReader, hdrs
+from aiohttp import ClientSession, hdrs, MultipartReader, web
 from aiohttp_session import setup, get_session, new_session, Session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from pyotp import TOTP
 
 from pwic_md import Markdown
-from pwic_lib import PwicConst, PwicLib, PwicError
+from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
 from pwic_importer import PwicImporter, PwicImporterHtml
@@ -337,6 +336,10 @@ class PwicServer():
 
     async def _handle_headers(self, request: web.Request, response: web.Response) -> None:
         response.headers['Server'] = f'Pwic.wiki v{PwicConst.VERSION}'
+
+    async def static_robots(self, request: web.Request) -> web.Response:
+        ''' Deliver the policy for the robots '''
+        return web.HTTPPermanentRedirect('/static/robots.txt')
 
     async def project_searchlink(self, request: web.Request) -> web.Response:
         ''' Search link to be added to the browser '''
@@ -2126,30 +2129,23 @@ class PwicServer():
         def _oauth_failed(parent_exception: Optional[Exception] = None) -> None:
             raise web.HTTPTemporaryRedirect('/?failed') from parent_exception
 
-        def _fetch_token(url: str, query: Dict[str, Any]) -> Tuple[str, str]:
+        async def _fetch_token(url: str, query: Dict[str, Any]) -> Tuple[str, str]:
             try:
-                with urlopen(Request(url,
-                                     urlencode(query).encode(),
-                                     method='POST',
-                                     headers={'Accept': 'application/json'})) as response:
-                    data = response.read()
-                    data = data.decode(response.info().get_content_charset())
-                data = json.loads(data)
-                token = data.get('access_token', None)
-                if token is None:
-                    raise PwicError()
+                async with ClientSession() as client:
+                    async with client.post(url=url, data=query, headers={'Accept': PwicLib.mime('json')}) as response:
+                        data = await response.json()
+                token = data.get('access_token')
+                assert token is not None
                 return data.get('token_type', 'Bearer'), token
             except Exception as e:
                 _oauth_failed(e)
 
-        def _call_api(url: str, token_type: str, token: str) -> Dict:
+        async def _call_api(url: str, token_type: str, token: str) -> Dict:
             try:
-                with urlopen(Request(url, headers={'Authorization': f'{token_type} {token}'})) as response:
-                    data = response.read()
-                    data = data.decode(response.info().get_content_charset())
-                data = json.loads(data)
-                if data is None:
-                    raise PwicError()
+                async with ClientSession() as client:
+                    async with client.get(url=url, headers={'Authorization': f'{token_type} {token}'}) as response:
+                        data = await response.json()
+                assert data is not None
                 return data
             except Exception as e:
                 _oauth_failed(e)
@@ -2183,10 +2179,10 @@ class PwicServer():
                      'client_secret': oauth['server_secret'],
                      'code': code,
                      'state': state}
-            _, token = _fetch_token('https://github.com/login/oauth/access_token', query)
+            _, token = await _fetch_token('https://github.com/login/oauth/access_token', query)
 
             # Fetch the emails of the user
-            data = _call_api('https://api.github.com/user/emails', 'token', token)
+            data = await _call_api('https://api.github.com/user/emails', 'token', token)
             for entry in data:
                 if entry.get('verified', False) is True:
                     if no_domain and not entry.get('primary', False):   # If the domain is not verified, only the primary email is targeted
@@ -2204,10 +2200,10 @@ class PwicServer():
                      'code': code,
                      'redirect_uri': app['options']['base_url'] + '/api/oauth',
                      'client_secret': oauth['server_secret']}
-            token_type, token = _fetch_token('https://oauth2.googleapis.com/token', query)
+            token_type, token = await _fetch_token('https://oauth2.googleapis.com/token', query)
 
             # Fetch the email of the user
-            data = _call_api('https://www.googleapis.com/userinfo/v2/me', token_type, token)
+            data = await _call_api('https://www.googleapis.com/userinfo/v2/me', token_type, token)
             if data.get('verified_email', False) is True:
                 item = data.get('email', '').strip().lower()
                 if '@' in item and '+' not in item:
@@ -2217,14 +2213,14 @@ class PwicServer():
             # Fetch an authentication token
             query = {'client_id': oauth['identifier'],
                      'grant_type': 'authorization_code',
-                     'scope': 'https://graph.microsoft.com/user.read',
+                     'scope': 'https://graph.microsoft.com/User.Read',
                      'code': code,
                      'redirect_uri': app['options']['base_url'] + '/api/oauth',
                      'client_secret': oauth['server_secret']}
-            token_type, token = _fetch_token(f'https://login.microsoftonline.com/{oauth["tenant"]}/oauth2/v2.0/token', query)
+            token_type, token = await _fetch_token(f'https://login.microsoftonline.com/{oauth["tenant"]}/oauth2/v2.0/token', query)
 
             # Fetch the email of the user
-            data = _call_api('https://graph.microsoft.com/v1.0/me/', token_type, token)
+            data = await _call_api('https://graph.microsoft.com/v1.0/me/', token_type, token)
             item = data.get('mail', '').strip().lower()
             if '@' in item:
                 emails.append(item)
@@ -4604,7 +4600,7 @@ def main() -> bool:
         print('Error: the databases are not initialized by the admin command "init-db"')
         return False
 
-    # Command-line
+    # Command line
     parser = argparse.ArgumentParser(description=f'Pwic.wiki Server version {PwicConst.VERSION}')
     parser.add_argument('--host', default=PwicConst.DEFAULTS['host'], help='Listening host')
     parser.add_argument('--port', type=int, default=PwicLib.intval(PwicConst.DEFAULTS['port']), help='Listening port')
@@ -4666,7 +4662,8 @@ def main() -> bool:
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
     app.add_routes(PwicExtension.load_custom_routes(app['pwic']))
-    app.add_routes([web.post('/api/login', app['pwic'].api_login),
+    app.add_routes([web.get('/robots.txt', app['pwic'].static_robots),
+                    web.post('/api/login', app['pwic'].api_login),
                     web.get('/api/oauth', app['pwic'].api_oauth),
                     web.post('/api/server/env/get', app['pwic'].api_server_env_get),
                     web.get('/api/server/headers/get', app['pwic'].api_server_headers_get),

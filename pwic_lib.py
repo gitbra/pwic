@@ -28,10 +28,9 @@ from os.path import splitext
 from hashlib import sha256
 from base64 import b64encode
 from string import ascii_lowercase, ascii_uppercase
-from aiohttp import web
+from aiohttp import ClientSession, web
 from html.parser import HTMLParser
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
 
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
@@ -463,7 +462,7 @@ class PwicLib:
 
         # Check
         if obj.get('event') in [None, '']:
-            raise PwicError
+            raise PwicError()
         if request is not None:
             obj['ip'] = PwicExtension.on_ip_header(request)
         if PwicExtension.on_audit_skip(sql, request, obj.copy()):
@@ -485,7 +484,7 @@ class PwicLib:
                      str(obj.get('ip', '')),
                      ))
         if sql.rowcount != 1:
-            raise PwicError
+            raise PwicError()
 
         # Specific event
         try:
@@ -605,14 +604,13 @@ class PwicLib:
         # Download
         from pwic_extension import PwicExtension
         try:
-            req = Request(url, headers={'User-Agent': PwicConst.USER_AGENT})
-            PwicExtension.on_download_pre(url, req)
-            with urlopen(req) as response:
-                data = response.read()
-            if response.headers.get('Content-Type', '')[:len(root_mime)] != root_mime:
-                del data
-                return None
-            return data.decode(response.info().get_content_charset('utf-8'))
+            headers = {'User-Agent': PwicConst.USER_AGENT}
+            PwicExtension.on_download_pre(url, headers)
+            async with ClientSession() as client:
+                async with client.get(url=url, headers=headers) as response:
+                    data = await response.text()
+            assert response.content_type[:len(root_mime)] == root_mime
+            return data
         except Exception:
             return None
 
@@ -843,7 +841,7 @@ class PwicLib:
         ''' Calculate the SHA256 as string for the given value '''
         if isinstance(value, bytearray):
             if salt:
-                raise PwicError
+                raise PwicError()
             return sha256(value).hexdigest()
         text = (PwicConst.SALT if salt else '') + str(value)
         return sha256(text.encode()).hexdigest()

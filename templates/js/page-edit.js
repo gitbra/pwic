@@ -526,13 +526,10 @@
 	// -------------------------------- Leave without saving
 
 	window.onbeforeunload = function(e) {
-		var	msg = {% trans %}'The current changes may be lost.'{% endtrans %},
-			e = e || window.event;
-		if (!edit_submittable) {
+		var	e = e || window.event;
+		if (!edit_submittable)
 			if (e)
-				e.returnValue = msg;
-			return msg;
-		}
+				e.returnValue = {% trans %}'The current changes may be lost.'{% endtrans %};
 	};
 
 

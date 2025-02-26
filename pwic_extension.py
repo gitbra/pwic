@@ -369,12 +369,12 @@ class PwicExtension():
 
     @staticmethod
     def on_download_pre(url: str,                           # Target URL
-                        request: Request,                   # Changeable request
+                        headers: Dict[str, str],            # Changeable headers
                         ) -> None:
         ''' Event when the server downloads a file on behalf of the user.
             You can populate the session cookies to bypass an authentication wall for example.
         '''
-        # request.add_header('Cookie', '...')
+        # headers['Cookie'] = '...'
 
     @staticmethod
     def on_html(sql: sqlite3.Cursor,                        # Cursor to query the database
@@ -411,7 +411,7 @@ class PwicExtension():
         lines = sql.fetchone()['markdown'][:500].split('\n')
         for e in lines:
             if (e[:1] not in ['', '#', '<', '>', '[', '!', '&']) and (e[:3] != '```') and (len(e) > 64):
-                return PwicLib.no_md(e).replace('  ', ' ').replace(' .', '.').strip()
+                return PwicLib.no_md(e).replace('  ', ' ').replace(' .', '.').strip()[:150]
         return ''
 
     @staticmethod
@@ -718,7 +718,7 @@ class PwicExtension():
                            ) -> List[web.RouteDef]:
         # return [web.static('/.well-known/acme-challenge/', '/path/to/acme/challenge/'),
         #         web.get('/special/sample', PwicExtension.on_page_special_sample),
-        #         web.get('/robots.txt', PwicExtension.on_page_static_robots)]
+        #         web.get('/virtual-file.txt', PwicExtension.on_page_virtual_file)]
         return []
 
     # @staticmethod
@@ -726,5 +726,5 @@ class PwicExtension():
     #     return web.Response(text='Hello world!', content_type=PwicLib.mime('html'))
 
     # @staticmethod
-    # async def on_page_static_robots(request: web.Request) -> web.Response:
-    #     return web.FileResponse('./static/robots.txt')    # sof/34121814
+    # async def on_page_virtual_file(request: web.Request) -> web.Response:
+    #     return web.FileResponse('./static/virtual-file.txt')  # sof/34121814

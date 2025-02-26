@@ -786,6 +786,8 @@ paths:
       summary: List the projects accessible to the user
       tags:
         - project
+      consumes:
+        - application/x-www-form-urlencoded
       produces:
         - application/json
       parameters:
