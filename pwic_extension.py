@@ -23,7 +23,6 @@ from datetime import tzinfo
 from multidict import MultiDict
 from aiohttp import web
 from prettytable import PrettyTable
-from urllib.request import Request
 
 from pwic_lib import PwicLib
 

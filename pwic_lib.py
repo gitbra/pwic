@@ -28,9 +28,9 @@ from os.path import splitext
 from hashlib import sha256
 from base64 import b64encode
 from string import ascii_lowercase, ascii_uppercase
-from aiohttp import ClientSession, web
 from html.parser import HTMLParser
 from urllib.parse import urlparse
+from aiohttp import ClientSession, web
 
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
@@ -791,7 +791,7 @@ class PwicLib:
         return text
 
     @staticmethod
-    def reserved_user_name(user: str) -> str:
+    def reserved_user_name(user: str) -> bool:
         user = str(user)
         return (user == '') or ((user[:4].lower() == 'pwic') and ('@' not in user))
 

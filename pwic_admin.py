@@ -304,6 +304,7 @@ class PwicAdmin():
             sql.execute(''' BEGIN EXCLUSIVE TRANSACTION''')
             return True
         except sqlite3.OperationalError:
+            sql.close()
             return False
 
     def db_create_tables_audit(self) -> bool:
@@ -359,7 +360,7 @@ class PwicAdmin():
                                 FROM audit
                                 WHERE id = OLD.id;
                         END''')
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
     def db_create_tables_main(self, dbfile: str = PwicConst.DB_SQLITE) -> bool:
@@ -480,16 +481,20 @@ class PwicAdmin():
                             PRIMARY KEY("id" AUTOINCREMENT),
                             UNIQUE("project","filename")
                         )''')
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
-    def db_commit(self) -> None:
+    def db_commit(self, sql: Optional[sqlite3.Cursor]) -> None:
         if self.db is not None:
             self.db.commit()
+            if sql is not None:
+                sql.close()
 
-    def db_rollback(self) -> None:
+    def db_rollback(self, sql: Optional[sqlite3.Cursor]) -> None:
         if self.db is not None:
             self.db.rollback()
+            if sql is not None:
+                sql.close()
 
     def db_sql2table(self, sql: sqlite3.Cursor) -> Optional[PrettyTable]:
         tab = None
@@ -535,7 +540,7 @@ class PwicAdmin():
                                 'string': '' if PwicConst.ENV[key].private else value})
 
         # Confirmation
-        self.db_commit()
+        self.db_commit(sql)
         print(f'The databases are created in "{PwicConst.DB_SQLITE}" and "{PwicConst.DB_SQLITE_AUDIT}"')
         return True
 
@@ -590,6 +595,7 @@ class PwicAdmin():
             ok = True
         if tab.rowcount > 0:
             print(tab.get_string())
+        sql.close()
         return ok
 
     def set_env(self, project: str, key: str, value: str, override: bool, append: bool, remove: bool) -> bool:
@@ -654,7 +660,7 @@ class PwicAdmin():
                             'event': '%sset-%s' % ('un' if value == '' else '', key),
                             'project': project,
                             'string': '' if PwicConst.ENV[key].private else value})
-        self.db_commit()
+        self.db_commit(sql)
         if project != '':
             print(f'Variable {verb} for the project "{project}"')
         else:
@@ -679,7 +685,9 @@ class PwicAdmin():
                  or ((row['project'] == '') and not PwicConst.ENV[row['key']].pindep)
                  or (row['value'] in [None, '']))):
                 buffer.append((row['project'], row['key']))
-        if not test:
+        if test:
+            sql.close()
+        else:
             for e in buffer:
                 sql.execute(''' DELETE FROM env
                                 WHERE project = ?
@@ -687,7 +695,7 @@ class PwicAdmin():
                 PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': f'unset-{e[1]}',
                                     'project': e[0]})
-            self.db_commit()
+            self.db_commit(sql)
 
         # Report
         if len(buffer) == 0:
@@ -764,6 +772,7 @@ class PwicAdmin():
                                         'admin': []}
             if row['user'] is not None:
                 data[row['project']]['admin'].append(row['user'])
+        sql.close()
 
         # Display the entries
         tab = self._prepare_prettytable(['Project', 'Description', 'Administrators', 'Count'])
@@ -794,6 +803,7 @@ class PwicAdmin():
         sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, ))
         if sql.fetchone() is not None:
             print('Error: the project already exists')
+            sql.close()
             return False
 
         # Create the workspace for the documents of the project
@@ -841,7 +851,6 @@ class PwicAdmin():
                             'reference': 1})
 
         # Finalization
-        self.db_commit()
         print('The project is created:')
         print(f'- Project       : {project}')
         print(f'- Administrator : {admin}')
@@ -853,6 +862,7 @@ class PwicAdmin():
         print(f'  {home}/{project}/special/roles')
         print('')
         print('Thanks for using Pwic.wiki!')
+        self.db_commit(sql)
         return True
 
     def takeover_project(self, project: str, admin: str) -> bool:
@@ -863,16 +873,18 @@ class PwicAdmin():
 
         # Verify that the project exists
         project = PwicLib.safe_name(project)
-        if project == '' or sql.execute(''' SELECT project
-                                            FROM projects
-                                            WHERE project = ?''',
-                                        (project, )).fetchone() is None:
+        if (project == '') or sql.execute(''' SELECT project
+                                              FROM projects
+                                              WHERE project = ?''',
+                                          (project, )).fetchone() is None:
             print(f'Error: the project "{project}" does not exist')
+            sql.close()
             return False
 
         # Verify that the user is valid and has changed his password
         admin = PwicLib.safe_user_name(admin)
-        if admin[:4] == 'pwic':
+        if PwicLib.reserved_user_name(admin):
+            sql.close()
             return False
         if sql.execute(''' SELECT user
                            FROM users
@@ -880,6 +892,7 @@ class PwicAdmin():
                              AND initial = '' ''',
                        (admin, )).fetchone() is None:
             print(f'Error: the user "{admin}" is unknown or has not changed his password yet')
+            sql.close()
             return False
 
         # Assign the user to the project
@@ -897,7 +910,7 @@ class PwicAdmin():
                             'event': 'grant-admin',
                             'project': project,
                             'user': admin})
-        self.db_commit()
+        self.db_commit(sql)
         print(f'The user "{admin}" is now an administrator of the project "{project}"')
         return True
 
@@ -913,14 +926,12 @@ class PwicAdmin():
                                                ', '.join('?' * len(row)))
             sql.execute(query, list(row.values()))
 
-        # Connect to the database
-        sql = self.db_connect()             # Don't lock this connection
-        if sql is None:
-            return False
-
         # Fetch the projects
         projects = sorted(set(projects))
         if len(projects) == 0:
+            return False
+        sql = self.db_connect()             # Don't lock this connection
+        if sql is None:
             return False
         for p in projects:
             sql.execute(''' SELECT project
@@ -929,6 +940,7 @@ class PwicAdmin():
                         (p, ))
             if (sql.fetchone() is None) or (p != PwicLib.safe_name(p)):
                 print(f'Error: unknown project "{p}"')
+                sql.close()
                 return False
 
         # Create the new database
@@ -1030,7 +1042,7 @@ class PwicAdmin():
             PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                 'event': 'split-project',
                                 'project': p})
-        self.db_commit()
+        self.db_commit(sql)
         print('The projects "%s" are copied into the separate database "%s" without the audit data and the file documents.' % (', '.join(projects), fn))
         return True
 
@@ -1044,6 +1056,7 @@ class PwicAdmin():
         project = PwicLib.safe_name(project)
         if (project == '') or (sql.execute(''' SELECT project FROM projects WHERE project = ?''', (project, )).fetchone() is None):
             print(f'Error: the project "{project}" does not exist')
+            sql.close()
             return False
 
         # Confirm
@@ -1063,7 +1076,7 @@ class PwicAdmin():
             fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
             if not PwicExtension.on_api_document_delete(sql, None, project, PwicConst.USERS['system'], row['page'], row['id'], row['filename']):
                 print(f'Error: unable to delete "{fn}"')
-                self.db_rollback()
+                self.db_rollback(sql)
                 return False
             if row['exturl'] == '':
                 try:
@@ -1071,7 +1084,7 @@ class PwicAdmin():
                 except OSError:
                     if isfile(fn):
                         print(f'Error: unable to delete "{fn}"')
-                        self.db_rollback()
+                        self.db_rollback(sql)
                         return False
 
         # Remove the folder of the project used to upload files
@@ -1080,7 +1093,7 @@ class PwicAdmin():
             rmdir(fn)
         except OSError:
             print(f'Error: unable to remove "{fn}". The folder may be not empty')
-            self.db_rollback()
+            self.db_rollback(sql)
             return False
 
         # Delete
@@ -1093,7 +1106,7 @@ class PwicAdmin():
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'delete-project',
                             'project': project})
-        self.db_commit()
+        self.db_commit(sql)
         print(f'\nThe project "{project}" is deleted')
         print('Warning: the file structure is now inconsistent with the old backups (if any)')
         return True
@@ -1128,6 +1141,7 @@ class PwicAdmin():
 
         # Show the list
         tab = self.db_sql2table(sql)
+        sql.close()
         if tab is not None:
             print(tab.get_string())
             print(f'\n{tab.rowcount} entries found.')
@@ -1153,6 +1167,7 @@ class PwicAdmin():
                                  project   ASC''',
                     (PwicLib.safe_user_name(user), ))
         tab = self.db_sql2table(sql)
+        sql.close()
         if tab is not None:
             print(tab.get_string())
             return True
@@ -1166,8 +1181,9 @@ class PwicAdmin():
 
         # Verify the user account
         user = PwicLib.safe_user_name(user)
-        if user[:4] in ['', 'pwic']:
+        if PwicLib.reserved_user_name(user):
             print('Error: invalid user')
+            sql.close()
             return False
         sql.execute(''' SELECT 1
                         FROM users
@@ -1175,6 +1191,7 @@ class PwicAdmin():
                     (user, ))
         if sql.fetchone() is not None:
             print(f'Error: the user "{user}" exists already')
+            sql.close()
             return False
 
         # Create the user account
@@ -1185,7 +1202,7 @@ class PwicAdmin():
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'create-user',
                             'user': user})
-        self.db_commit()
+        self.db_commit(sql)
         print(f'The user "{user}" is created with the default password "{PwicConst.DEFAULTS["password"]}".')
 
         # TOTP
@@ -1202,8 +1219,9 @@ class PwicAdmin():
         # Warn if the user is an administrator
         user = PwicLib.safe_user_name(user)
         new_account = sql.execute(''' SELECT 1 FROM users WHERE user = ?''', (user, )).fetchone() is None
-        if (user[:4] in ['', 'pwic']) or (not create and new_account):
+        if PwicLib.reserved_user_name(user) or (not create and new_account):
             print('Error: invalid user')
+            sql.close()
             return False
         sql.execute(''' SELECT 1
                         FROM roles
@@ -1254,7 +1272,7 @@ class PwicAdmin():
                                 'user': user,
                                 'string': PwicConst.MAGIC_OAUTH if pwd == PwicConst.MAGIC_OAUTH else ''})
             print(f'\nThe password has been changed for the user "{user}"')
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
     def reset_totp(self, user: str, disable: bool) -> bool:
@@ -1272,6 +1290,7 @@ class PwicAdmin():
                     (user, ))
         if sql.fetchone() is None:
             print(f'Error: the user "{user}" does not exist')
+            sql.close()
             return False
 
         # 2FA TOTP without no_totp
@@ -1285,6 +1304,7 @@ class PwicAdmin():
             host = urlparse(str(PwicLib.option(sql, '', 'base_url', ''))).netloc
             if host == '':
                 print('Error: the option "base_url" is not defined')
+                sql.close()
                 return False
             if PwicLib.option(sql, '', 'totp') is None:
                 print('Warning: 2FA TOTP is not enabled yet')
@@ -1303,7 +1323,7 @@ class PwicAdmin():
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'reset-totp',
                             'user': user})
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
     def assign_user(self, project: str, user: str) -> bool:
@@ -1329,7 +1349,7 @@ class PwicAdmin():
                     (project, user))
         if sql.fetchone() is not None:
             print('Error: user already assigned to the project')
-            self.db_rollback()
+            self.db_rollback(sql)
             return False
 
         # Check the existence of the project
@@ -1339,7 +1359,7 @@ class PwicAdmin():
                     (project, ))
         if sql.fetchone() is None:
             print('Error: unknown project')
-            self.db_rollback()
+            self.db_rollback(sql)
             return False
 
         # Check the existence of the user
@@ -1349,7 +1369,7 @@ class PwicAdmin():
                     (user, ))
         if sql.fetchone() is None:
             print('Error: unknown user')
-            self.db_rollback()
+            self.db_rollback(sql)
             return False
 
         # Assign the user as a reader
@@ -1360,26 +1380,27 @@ class PwicAdmin():
                             'event': 'grant-reader',
                             'project': project,
                             'user': user})
-        self.db_commit()
+        self.db_commit(sql)
         print(f'The user "{user}" is added to the project "{project}" as a reader')
         return True
 
     def revoke_user(self, user: str, force: bool) -> bool:
+        # Verify the user name
+        user = PwicLib.safe_user_name(user)
+        if PwicLib.reserved_user_name(user):
+            print('Error: this user cannot be managed')
+            return False
+
         # Connect to the database
         sql = self.db_connect()
         if sql is None:
-            return False
-
-        # Verify the user name
-        user = PwicLib.safe_user_name(user)
-        if user[:4] == 'pwic':
-            print('Error: this user cannot be managed')
             return False
         if sql.execute(''' SELECT user
                            FROM users
                            WHERE user = ?''',
                        (user, )).fetchone() is None:
             print(f'Error: the user "{user}" does not exist')
+            sql.close()
             return False
 
         # Check if there is a project where the user is the sole active administrator
@@ -1413,6 +1434,7 @@ class PwicAdmin():
         if tab is not None:
             print(tab.get_string())
             if not force:
+                sql.close()
                 return False
 
         # Confirm
@@ -1420,6 +1442,7 @@ class PwicAdmin():
             print('This operation in mass needs your confirmation.')
             print(f'Type "YES" in uppercase to confirm the revocation of the user "{user}": ', end='')
             if input() != 'YES':
+                sql.close()
                 return False
 
         # Disable the user for every project
@@ -1437,7 +1460,7 @@ class PwicAdmin():
         sql.execute(''' DELETE FROM roles WHERE user = ?''', (user, ))
 
         # Final
-        self.db_commit()
+        self.db_commit(sql)
         print(f'The user "{user}" is fully unassigned to the projects but remains in the database')
         return True
 
@@ -1466,6 +1489,7 @@ class PwicAdmin():
 
         # Report the log
         tab = self.db_sql2table(sql)
+        sql.close()
         if tab is not None:
             print(tab.get_string())
             return True
@@ -1496,6 +1520,7 @@ class PwicAdmin():
 
         # Report the log
         tab = self.db_sql2table(sql)
+        sql.close()
         if tab is not None:
             print(tab.get_string())
             return True
@@ -1909,6 +1934,7 @@ class PwicAdmin():
         # Final output
         PwicExtension.on_admin_stats(sql, tab)
         print(tab.get_string())
+        sql.close()
         return True
 
     def show_inactivity(self, project: str, days: int) -> bool:
@@ -1949,6 +1975,7 @@ class PwicAdmin():
             tab.add_row([row['user'], row['project'], roles])
         print('The pure readers are not included in the list.')
         print(tab.get_string())
+        sql.close()
         return True
 
     def compress_static(self, revert: bool) -> bool:
@@ -2019,7 +2046,7 @@ class PwicAdmin():
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'clear-cache',
                             'project': project})
-        self.db_commit()
+        self.db_commit(sql)
         if selective:
             print('The cache is partially cleared.')
         else:
@@ -2048,6 +2075,7 @@ class PwicAdmin():
                 projects = []
         if len(projects) == 0:
             print('Error: no project found')
+            sql.close()
             return False
         projects.sort()
 
@@ -2060,7 +2088,7 @@ class PwicAdmin():
 
         # Authentication
         headers = {}
-        if user[:4] != 'pwic':
+        if not PwicLib.reserved_user_name(user):
             print(f'Password of the account "{user}": ', end='')
             try:
                 with urlopen(Request(f'{protocol}://127.0.0.1:{port}/api/login',
@@ -2075,6 +2103,7 @@ class PwicAdmin():
                     print('Error: the host is not running or cannot be reached')
                 else:
                     print(str(e))
+                sql.close()
                 return False
 
         # Prepare the query
@@ -2122,21 +2151,22 @@ class PwicAdmin():
                         ko += 1
                     if ok + ko > nmax:
                         print('\nError: possible infinite loop, check your options')
+                        sql.close()
                         return False
                 if not once:
                     break
         print(f'\r{ok} pages')
         del headers
+        sql.close()
         return (ok > 0) and (ko == 0)
 
     def rotate_logs(self, nfiles: int) -> bool:
-        # Connect to the database
+        # Read the file name
         sql = self.db_connect()
         if sql is None:
             return False
-
-        # Read the file name
         fn = PwicLib.option(sql, '', 'http_log_file')
+        sql.close()
         if fn is None:
             print('Error: option "http_log_file" not defined')
             return False
@@ -2242,7 +2272,7 @@ class PwicAdmin():
         # Result
         PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                             'event': 'archive-audit'})
-        self.db_commit()
+        self.db_commit(sql)
         print(f'{counter} entries moved to the table "audit_arch". Do what you want with them.')
         return True
 
@@ -2291,7 +2321,7 @@ class PwicAdmin():
                 PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                                     'event': 'create-backup',
                                     'string': stamp})
-                self.db_commit()
+                self.db_commit(sql)
 
             # Mark the new database
             if audit_id > 0:
@@ -2300,7 +2330,7 @@ class PwicAdmin():
                     sql.execute(''' INSERT OR REPLACE INTO env (project, key, value)
                                     VALUES ('', 'pwic_audit_id', ?)''',
                                 (audit_id, ))
-                    self.db_commit()
+                    self.db_commit(sql)
 
             # Final
             chmod(new, S_IREAD)
@@ -2338,6 +2368,7 @@ class PwicAdmin():
         print('')
         print('Type "YES" to agree and continue: ', end='')
         if input() != 'YES':
+            sql.close()
             return False
         print('')
 
@@ -2357,7 +2388,7 @@ class PwicAdmin():
             projects.append(PwicLib.safe_name(row['project']))
         if not multi:
             if project not in projects:
-                self.db_commit()            # To end the empty transaction
+                self.db_commit(sql)         # To end the empty transaction
                 return False
             projects = [project]
 
@@ -2488,7 +2519,7 @@ class PwicAdmin():
                                     'event': 'repair-documents',
                                     'project': project,
                                     'string': tab.rowcount})
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
     def execute_optimize(self) -> bool:
@@ -2502,6 +2533,7 @@ class PwicAdmin():
         # Run the optimizer
         sql.execute(''' PRAGMA optimize''')
         print('Done')
+        sql.close()
         return True
 
     def unlock_db(self, port: bool, force: bool) -> bool:
@@ -2522,6 +2554,7 @@ class PwicAdmin():
         else:
             protocol = 'https'
             ssl._create_default_https_context = ssl._create_unverified_context
+        sql.close()
 
         # Connect to the API
         print('Sending the signal... ', end='', flush=True)
@@ -2610,7 +2643,7 @@ class PwicAdmin():
                 print('\nNo log')
         except sqlite3.OperationalError as e:
             print(f'\nError: {e}')
-            self.db_rollback()
+            self.db_rollback(sql)
             return False
 
         # Trace
@@ -2620,7 +2653,7 @@ class PwicAdmin():
                                 'string': query.replace('\n', ' ')})
         except sqlite3.OperationalError:
             print('\nWarning: no audit saved for technical reasons')
-        self.db_commit()
+        self.db_commit(sql)
         return True
 
     def shutdown_server(self, port: int, force: bool) -> bool:
@@ -2641,6 +2674,7 @@ class PwicAdmin():
         else:
             protocol = 'https'
             ssl._create_default_https_context = ssl._create_unverified_context
+        sql.close()
 
         # Terminate
         print('Sending the kill signal... ', end='', flush=True)

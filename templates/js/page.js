@@ -5,6 +5,7 @@
 		$(document).on('keydown', e => !((e.key == 'F12') || (e.ctrlKey && e.shiftKey && (e.key == 'I')) || (e.ctrlKey && (e.key == 'u'))));
 		$(document).on('selectstart', () => false);
 		$(document).on('contextmenu', () => false);
+		$('ARTICLE *').css(atob('dXNlci1zZWxlY3Q='), 'none');
 	{% endif %}
 
 	window.onscroll = () => {
@@ -120,6 +121,7 @@
 			var csv, row, x, y, val,
 				table = this.parentElement;
 
+			// Prepare the table
 			csv = [];
 			for (y=0; y<table.rows.length; y++) {
 				row = [];
@@ -132,13 +134,16 @@
 				csv.push(row.join(';'));
 			}
 
+			// Download the file
+			var blob = window.URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
 			$(document.createElement('a'))
 				.addClass('pwic_hidden')
-				.attr('href', 'data:text/csv;base64,' + btoa(unescape(encodeURIComponent(csv.join('\n')))))
+				.attr('href', blob)
 				.attr('download', 'table.csv')
-				.appendTo('body')
+				.appendTo('BODY')
 				.trigger('click')
 				.remove();
+			window.URL.revokeObjectURL(blob);
 		}
 
 		$('ARTICLE > TABLE').each((i, e) => {

@@ -35,13 +35,15 @@
 	function graph_download() {
 		if (graph_cache == null)
 			return false;
+		var blob = window.URL.createObjectURL(new Blob([graph_cache], {type: 'text/vnd.graphviz'}));
 		$(document.createElement('a'))
 					.addClass('pwic_hidden')
-					.attr('href', 'data:text/vnd.graphviz;base64,' + btoa(unescape(encodeURIComponent(graph_cache))))
+					.attr('href', blob)
 					.attr('download', '{{pwic.project}}.gv')
-					.appendTo('body')
+					.appendTo('BODY')
 					.trigger('click')
 					.remove();
+		window.URL.revokeObjectURL(blob);
 		return true;
 	}
 
