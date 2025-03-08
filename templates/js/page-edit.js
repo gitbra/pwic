@@ -257,6 +257,74 @@
 		}
 	{% endif %}
 
+	// -------------------------------- Dictation
+
+	class PwicSpeech {
+		constructor() {
+			this._timeout = null;
+
+			// Load the speech recognition
+			if ((location.protocol != 'https:') || (window.webkitSpeechRecognition === undefined)) {
+				$('#edit_toolbar_dictate').prop('disabled', 'disabled');
+				return false;
+			}
+			this._handler = new webkitSpeechRecognition();
+			this._handler.continuous = true;
+			this._handler.interimResults = true;
+			this._handler.lang = $('HTML').prop('lang');
+
+			// Event when started
+			this._handler.onstart = () => {
+				this._timeout = setTimeout(() => this._handler.stop(), 5000);
+				$('#edit_toolbar_dictate').addClass('pwic_limebg');
+			};
+
+			// Event on word received
+			// https://developer.chrome.com/blog/voice-driven-web-apps-introduction-to-the-web-speech-api
+			this._handler.onresult = (event) => {
+				// Fetch the words
+				var buffer, i, result, lft, rgt;
+				buffer = '';
+				for (i=event.resultIndex; i<event.results.length; ++i) {
+					result = event.results[i];
+					buffer += result[0].transcript;
+				}
+
+				// Update the Markdown editor
+				md_editor.replaceSelection(buffer);
+				if (!result.isFinal) {
+					rgt = md_editor.getCursor();
+					lft = {...rgt};
+					lft.ch -= buffer.length;
+					md_editor.setSelection(lft, rgt);
+				}
+
+				// Delay
+				clearTimeout(this._timeout);
+				this._timeout = setTimeout(() => this._handler.stop(), 5000);
+			};
+
+			// Event when ended
+			this._handler.onend = () => {
+				clearTimeout(this._timeout);
+				this._timeout = null;
+				$('#edit_toolbar_dictate').removeClass('pwic_limebg');
+			};
+
+			// Install
+			$('#edit_toolbar_dictate').on('click', (event) => {
+				if ($(event.target).hasClass('pwic_limebg'))
+					this._handler.stop();
+				else
+					if (this._timeout == null) {
+						this._handler.start();
+						md_editor.focus();
+					}
+			});
+			return true;
+		}
+	};
+	new PwicSpeech();
 
 	// -------------------------------- File drop
 

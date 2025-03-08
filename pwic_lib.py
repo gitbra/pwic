@@ -268,6 +268,7 @@ class PwicConst:
               'left': '&#x226A;',
               'locked': '&#x1F512;',
               'map': '&#x1F5FA;&#xFE0F;',
+              'microphone': '&#x1F3A4;',
               'noblank': '&#x22DB;',
               'notes': '&#x1F4CB;',
               'oneline': '&#x2AA5;',

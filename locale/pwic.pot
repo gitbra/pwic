@@ -350,6 +350,9 @@ msgstr ""
 msgid "Fetch a remote web page"
 msgstr ""
 
+msgid "Dictate"
+msgstr ""
+
 msgid "Insert"
 msgstr ""
 

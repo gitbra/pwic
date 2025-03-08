@@ -365,6 +365,9 @@ msgstr "Emojis"
 msgid "Fetch a remote web page"
 msgstr "Eine Remote-Webseite abrufen"
 
+msgid "Dictate"
+msgstr "Diktieren"
+
 msgid "Insert"
 msgstr "Einfügen"
 
