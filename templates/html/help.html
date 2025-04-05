@@ -278,7 +278,7 @@
 							<br>- The sessions of the users are never terminated, unless they expire after some time due to the option <code>session_expiry</code> or you restart <em>Pwic.wiki</em> with the command line option <code>--new-session</code>.
 							<br>- While they are writing, the users don't have to reconnect in another tab after the server is restarted, but the session expiry is still applicable.
 							<br>- The following message disappear from the console: "<em>Cannot decrypt cookie value, create a new fresh session</em>".
-							<br><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise the data stored in the database.</td>
+							<br><strong>Warning:</strong> the cryptographic key is stored in the database when the option is enabled. Leaking its value may compromise all the data stored in the database.</td>
 					</tr>
 					<tr>
 						<td><code>language</code></td>
@@ -550,9 +550,9 @@
 					</tr>
 					<tr>
 						<td><code>remote_url</code></td>
+						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>This option allows the conversion of a remote web page into Markdown when you edit a page. For technical reasons related to CORS, the download is made by the server that may be busy during the processing. The fetched URLs are added to the audit log.</td>
+						<td>This option allows the conversion of a remote web page into Markdown when you edit a page. For technical reasons related to CORS, the download is made by the server. The fetched URLs are added to the audit log.</td>
 					</tr>
 					<tr>
 						<td><code>revision_count_max</code></td>

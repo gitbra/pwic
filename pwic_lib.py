@@ -79,6 +79,7 @@ class PwicConst:
     # ========
 
     USERS = {'anonymous': 'pwic_anonymous',                 # Account for the random visitors
+             'bot': 'pwic_bot',                             # Account for the detected bots
              'ghost': 'pwic_ghost',                         # Account for the deleted users (not implemented)
              'system': 'pwic_system'}                       # Account for the technical operations
     DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',             # Fixed format of the datetime
@@ -107,7 +108,7 @@ class PwicConst:
                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                          # Valid protocols for the links
                'search_terms': re.compile(r'(-?)("[^"\n]+"|[^ \n]+)[\t ]*', re.IGNORECASE),                     # Split the search terms
                'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                                      # Find the HTML tags
-               'tag_all': re.compile(r'<\/?\w+( [^>]+)?>', re.IGNORECASE),                                      # Tag in HTML
+               'tag_all': re.compile(r'<\??\/?\w+( [^>]+)?>', re.IGNORECASE),                                   # Tag in HTML
                'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                                          # Comment in HTML
                }
 
@@ -196,7 +197,7 @@ class PwicConst:
            'pwic_audit_id': TyEnv(True, False, False, True),
            'pwic_session': TyEnv(True, False, False, True),
            'quick_fix': TyEnv(True, True, True, False),
-           'remote_url': TyEnv(True, False, False, False),
+           'remote_url': TyEnv(True, True, False, False),
            'registration_link': TyEnv(True, False, False, False),
            'revision_count_max': TyEnv(True, True, False, False),
            'revision_size_max': TyEnv(True, True, False, False),

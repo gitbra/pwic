@@ -50,6 +50,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Mandatory, linear and partially undoable versioning
 - Management of attached documents by name, mime, size and magic bytes
 - Import of texts from OpenDocument Text (ODT), HTML, Markdown and remote web pages
+- Dictation
 
 ### For the managers
 
@@ -74,6 +75,7 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Support for HTTP, HTTPS and reverse proxy
 - Unicode content and URL
 - HTTP logging
+- Basic filter of bots
 - IP filtering
 - Expirable sessions
 

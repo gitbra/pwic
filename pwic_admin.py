@@ -75,6 +75,8 @@ class PwicAdmin():
         # ... Initialization
         subparsers.add_parser('init-db', help='Initialize the database once')
 
+        subparsers.add_parser('upgrade-db', help='Upgrade the data model')
+
         spb = subparsers.add_parser('show-env', help='Show the current configuration')
         spb.add_argument('--project', default='', help='Name of the project')
         spb.add_argument('--var', default='', help='Name of the variable for exclusive display')
@@ -203,6 +205,8 @@ class PwicAdmin():
         args = parser.parse_args()
         if args.command == 'init-db':
             return self.init_db()
+        if args.command == 'upgrade-db':
+            return self.upgrade_db()
         if args.command == 'show-env':
             return self.show_env(args.project, args.var, args.list)
         if args.command == 'set-env':
@@ -399,7 +403,7 @@ class PwicAdmin():
                             "password_time" TEXT NOT NULL,
                             PRIMARY KEY("user")
                         )''')
-        for e in ['', PwicConst.USERS['anonymous'], PwicConst.USERS['ghost']]:
+        for e in ['', PwicConst.USERS['anonymous'], PwicConst.USERS['ghost'], PwicConst.USERS['bot']]:
             sql.execute(''' INSERT INTO users (user, password, initial, totp, password_date, password_time)
                             VALUES (?, '', '', '', ?, ?)''',
                         (e, dt['date'], dt['time']))
@@ -504,6 +508,36 @@ class PwicAdmin():
             tab.add_row([str(row[k]).replace('\n', ' ').strip()[:255].strip() for k in row])
         return tab
 
+    def db_upgrade(self, sql: sqlite3.Cursor) -> bool:
+        if not self.db_lock(sql):
+            return False
+
+        # Mandatory fields
+        sql.execute(''' UPDATE projects SET date          = '1970-01-01' WHERE date          = '' ''')
+        sql.execute(''' UPDATE users    SET password_date = '1970-01-01' WHERE password_date = '' ''')
+        sql.execute(''' UPDATE users    SET password_time = '00:00:00'   WHERE password_time = '' ''')
+
+        # Each project must have some specific technical users
+        sql.execute(''' INSERT OR IGNORE INTO users ('user', 'password_date', 'password_time')
+                        VALUES (?, '1970-01-01', '00:00:00')''',
+                    (PwicConst.USERS['bot'], ))
+        sql.execute(''' SELECT project FROM projects''')
+        for row in sql.fetchall():
+            sql.execute(''' INSERT OR IGNORE INTO roles ('project', 'user', 'reader', 'disabled')
+                            VALUES (?, ?, 'X', 'X')''',
+                        (row['project'], PwicConst.USERS['bot']))
+
+        # Envs
+        sql.execute(''' SELECT DISTINCT key FROM env''')
+        for row in sql.fetchall():
+            if row['key'] not in PwicConst.ENV:
+                print("Tip: run 'repair-env'")
+                break
+
+        # Finish
+        self.db_commit(sql)
+        return True
+
     # =========
     #  Methods
     # =========
@@ -543,6 +577,16 @@ class PwicAdmin():
         self.db_commit(sql)
         print(f'The databases are created in "{PwicConst.DB_SQLITE}" and "{PwicConst.DB_SQLITE_AUDIT}"')
         return True
+
+    def upgrade_db(self) -> bool:
+        # Upgrade the database
+        sql = self.db_connect()
+        if sql is None:
+            print('Error: the database is not initialized yet')
+            return False
+        ok = self.db_upgrade(sql)
+        print('OK' if ok else 'Failed')
+        return ok
 
     def show_env(self, project: str, var: str, dolist: bool) -> bool:
         # Package info

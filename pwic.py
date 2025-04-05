@@ -215,6 +215,13 @@ class PwicServer():
 
     async def _suser(self, request: web.Request) -> str:
         ''' Retrieve the logged user after some technical checks '''
+        # Bots by user agent that don't respect robots.txt
+        ua = request.headers.get('User-Agent', '').lower()
+        for bot in app['bots']:
+            if (ua == '') or (bot in ua):
+                # raise web.HTTPServiceUnavailable()        # Hard
+                return PwicConst.USERS['bot']               # Soft
+
         # Check the IP address
         ip = PwicExtension.on_ip_header(request)
         self._check_ip(ip)
@@ -4445,7 +4452,7 @@ class PwicServer():
 
         # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
-        if PwicLib.option(sql, '', 'remote_url') is None:
+        if PwicLib.option(sql, project, 'remote_url') is None:
             sql.close()
             raise web.HTTPForbidden()
         sql.execute(''' SELECT user
@@ -4929,6 +4936,16 @@ def main() -> bool:
         else:
             item[2] = mask
         app['options']['ip_filter'].append(item)
+
+    # Load the bots
+    app['bots'] = []
+    with open('./static/robots.txt', 'r') as f:
+        bots = f.read().replace('\r', '').split('\n')
+    for buffer in bots:
+        if buffer[:11] == 'User-agent:':
+            buffer = buffer[12:].strip().lower()
+            if len(buffer) > 4:
+                app['bots'].append(buffer)
 
     # Logging
     http_log_file = PwicLib.option(sql, '', 'http_log_file', '')
