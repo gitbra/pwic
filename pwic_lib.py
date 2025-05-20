@@ -32,6 +32,8 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 from aiohttp import ClientSession, web
 
+from pwic_md import Markdown
+
 
 TyEnv = namedtuple('TyEnv', 'pindep, pdep, online, private')
 TyMime = namedtuple('TyMime', 'exts, mimes, magic, compressed')
@@ -160,6 +162,7 @@ class PwicConst:
            'message': TyEnv(True, True, True, False),
            'no_cache': TyEnv(True, True, False, False),
            'no_copy_code': TyEnv(True, True, True, False),
+           'no_dictation': TyEnv(True, True, True, False),
            'no_document_conversion': TyEnv(True, True, True, False),
            'no_document_list': TyEnv(True, True, True, False),
            'no_export_project': TyEnv(True, True, False, False),
@@ -545,6 +548,13 @@ class PwicLib:
         # Custom detection
         from pwic_extension import PwicExtension
         return PwicExtension.on_language_detected(request, result, allowed_langs, sso)
+
+    @staticmethod
+    def init_markdown(sql: Optional[sqlite3.Cursor]) -> Markdown:
+        extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'task_list', 'underline']
+        if (sql is not None) and (PwicLib.option(sql, '', 'no_highlight') is not None):
+            extras.append('highlightjs-lang')                               # highlight.js is not used in the foreground
+        return Markdown(extras=extras, safe_mode=False, html4tags=True)
 
     # ====================
     #  Reusable functions

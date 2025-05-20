@@ -76,7 +76,9 @@
 						{% if pwic.env.remote_url %}
 							<input type="button" value="{{pwic.emojis.recycle}}" title="{% trans %}Fetch a remote web page{% endtrans %}" onclick="edit_convert_remote_document()">
 						{% endif %}
-						<input id="edit_toolbar_dictate" type="button" value="{{pwic.emojis.microphone}}" title="{% trans %}Dictate{% endtrans %}">
+						{% if not pwic.env.no_dictation %}
+							<input id="edit_toolbar_dictate" type="button" value="{{pwic.emojis.microphone}}" title="{% trans %}Dictate{% endtrans %}">
+						{% endif %}
 					</div>
 				</div>
 

@@ -30,9 +30,8 @@ from os.path import getsize, isdir, isfile, join, splitext
 from shutil import copyfile, copyfileobj
 from subprocess import call
 from stat import S_IREAD
-from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlparse
 from http.client import RemoteDisconnected
 import imagesize
 from prettytable import PrettyTable
@@ -40,6 +39,7 @@ import pyotp
 
 from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
+from pwic_exporter import PwicExporter
 
 
 class PwicAdmin():
@@ -163,11 +163,9 @@ class PwicAdmin():
         spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
         spb.add_argument('--selective', action='store_true', help='Keep the latest pages in cache')
 
-        spb = subparsers.add_parser('regenerate-cache', help='Regenerate the cache of the pages through mass HTTP requests')
+        spb = subparsers.add_parser('regenerate-cache', help='Regenerate the cache of the pages')
         spb.add_argument('--project', default='', help='Name of the project (if project-dependent)')
-        spb.add_argument('--user', default='', help='User account to access some private projects')
         spb.add_argument('--full', action='store_true', help='Include the revisions (not recommended)')
-        spb.add_argument('--port', type=int, default=PwicConst.DEFAULTS['port'], help='Target instance defined by the listened port', metavar=PwicConst.DEFAULTS['port'])
 
         spb = subparsers.add_parser('rotate-logs', help='Rotate Pwic.wiki\'s HTTP log files')
         spb.add_argument('--count', type=int, default=9, help='Number of log files', metavar='9')
@@ -252,7 +250,7 @@ class PwicAdmin():
         if args.command == 'clear-cache':
             return self.clear_cache(args.project, args.selective)
         if args.command == 'regenerate-cache':
-            return self.regenerate_cache(args.project, args.user, args.full, args.port)
+            return self.regenerate_cache(args.project, args.full)
         if args.command == 'rotate-logs':
             return self.rotate_logs(args.count)
         if args.command == 'archive-audit':
@@ -719,7 +717,7 @@ class PwicAdmin():
 
         # Analyze each variables
         all_keys = list(PwicConst.ENV)
-        buffer = []
+        buffer: List[Tuple[str, str]] = []
         sql.execute(''' SELECT project, key, value
                         FROM env
                         ORDER BY project, key''')
@@ -2094,64 +2092,39 @@ class PwicAdmin():
         if selective:
             print('The cache is partially cleared.')
         else:
-            print('Please expect a workload of regeneration for a short period of time.')
+            print('The cache will regenerate itself over time, or run the command "regenerate-cache".')
         return True
 
-    def regenerate_cache(self, project: str, user: str, full: bool, port: int) -> bool:
+    def regenerate_cache(self, project: str, full: bool) -> bool:
         # Connect to the database
         sql = self.db_connect()             # Don't lock this connection
         if sql is None:
             return False
+        if PwicLib.option(sql, project, 'no_cache') is not None:
+            print('Error: the cache is disabled')                       # project='' means globally
+            sql.close()
+            return False
 
-        # Fetch the projects
-        user = PwicLib.safe_user_name(user or PwicConst.USERS['anonymous'])
-        project = PwicLib.safe_name(project)
-        sql.execute(''' SELECT project
-                        FROM roles
-                        WHERE user     = ?
-                          AND disabled = '' ''',
-                    (user, ))
-        projects = [row['project'] for row in sql.fetchall()]
+        # Fetch the projects by order of importance
         if project != '':
-            if project in projects:
-                projects = [project]
-            else:
-                projects = []
+            projects = [project]
+        else:
+            sql.execute(''' SELECT project, COUNT(page) AS total
+                            FROM pages
+                            WHERE latest = 'X'
+                            GROUP BY project
+                            ORDER BY total DESC''')
+            projects = [e['project'] for e in sql.fetchall()]
         if len(projects) == 0:
             print('Error: no project found')
             sql.close()
             return False
-        projects.sort()
 
-        # Detection of HTTPS
-        if PwicLib.option(sql, '', 'https') is None:
-            protocol = 'http'
-        else:
-            protocol = 'https'
-            ssl._create_default_https_context = ssl._create_unverified_context
-
-        # Authentication
-        headers = {}
-        if not PwicLib.reserved_user_name(user):
-            print(f'Password of the account "{user}": ', end='')
-            try:
-                with urlopen(Request(f'{protocol}://127.0.0.1:{port}/api/login',
-                                     urlencode({'user': user,
-                                                'password': input()}).encode(),
-                                     method='POST')) as response:
-                    headers['Cookie'] = response.headers.get('Set-Cookie', '')
-            except Exception as e:
-                if isinstance(e, HTTPError):
-                    print('Error: %d %s' % (PwicLib.intval(e.getcode()), e.reason))
-                elif isinstance(e, URLError):
-                    print('Error: the host is not running or cannot be reached')
-                else:
-                    print(str(e))
-                sql.close()
-                return False
-
-        # Prepare the query
-        query = ''' SELECT a.project, a.page, a.revision
+        # Initialization
+        sql_write = self.db.cursor()
+        converter = PwicExporter(PwicLib.init_markdown(sql), PwicConst.USERS['system'])
+        compressed = PwicLib.option(sql, '', 'compressed_cache') is not None
+        query = ''' SELECT a.page, a.revision, a.latest, a.markdown, a.valuser
                     FROM pages AS a
                         LEFT OUTER JOIN cache AS b
                             ON  b.project  = a.project
@@ -2162,47 +2135,51 @@ class PwicAdmin():
         if not full:
             query += ''' AND ( a.latest   = 'X'
                             OR a.valuser != '' )'''
-        query += ''' LIMIT 500'''
+        query += ''' ORDER BY a.latest         DESC,
+                              LENGTH(markdown) DESC'''
 
-        # Select the pages by project and by blocks of N entries (to avoid concurrent locks)
-        nmax = 0
-        ok = 0
-        ko = 0
+        # Generate the pages
+        n = 0
+        uts = PwicLib.timestamp()
         for p in projects:
-            if (((PwicLib.option(sql, p, 'no_cache') is not None)
-                 or (PwicLib.option(sql, p, 'no_history') is not None)
-                 or (PwicLib.option(sql, p, 'validated_only') is not None))):
-                print(f'\rProject "{p}" is excluded')
+            if PwicLib.option(sql, p, 'no_cache') is not None:
+                print(f'\rError: project "{p}" skipped')
                 continue
-            sql.execute(''' SELECT COUNT(*) AS total
-                            FROM pages
-                            WHERE project = ?''',
-                        (p, ))
-            nmax += sql.fetchone()['total']             # Moving max number of regeneratable pages
+            no_history = PwicLib.option(sql, p, 'no_history') is not None
+            validated_only = PwicLib.option(sql, p, 'validated_only') is not None
+
+            # Filter
+            sql.execute(query, (p, ))
             while True:
-                once = False
-                sql.execute(query, (p, ))
-                for row in sql.fetchall():
-                    # Refresh the page
-                    try:
-                        url = f'{protocol}://127.0.0.1:{port}/{row["project"]}/{row["page"]}/rev{row["revision"]}'
-                        urlopen(Request(url, None, headers=headers, method='GET'))
-                        once = True
-                        ok += 1
-                        if ok % 10 == 0:
-                            print(f'\r{ok} pages', end='', flush=True)
-                    except Exception:
-                        ko += 1
-                    if ok + ko > nmax:
-                        print('\nError: possible infinite loop, check your options')
-                        sql.close()
-                        return False
-                if not once:
+                row = sql.fetchone()
+                if row is None:
                     break
-        print(f'\r{ok} pages')
-        del headers
+                if no_history and not row['latest']:
+                    continue
+                if validated_only and ((row['valuser'] == '') or not row['latest']):
+                    continue
+
+                # Save
+                row['project'] = p
+                html = converter.md2corehtml(sql_write, row, export_odt=False)
+                sql_write.execute(''' INSERT OR REPLACE INTO cache (project, page, revision, html)
+                                      VALUES (?, ?, ?, ?)''',
+                                  (p, row['page'], row['revision'],
+                                   gzip.compress(html.encode(), compresslevel=9) if compressed else html))
+                n += 1
+                if (n % 10 == 0) and (PwicLib.timestamp() >= uts + 5):
+                    self.db.commit()
+                    print(f'\r{n} pages regenerated', end='')
+                    uts = PwicLib.timestamp()
+
+        # Report
+        PwicLib.audit(sql_write, {'author': PwicConst.USERS['system'],
+                                  'event': 'regenerate-cache',
+                                  'project': project})
+        self.db_commit(sql_write)
         sql.close()
-        return (ok > 0) and (ko == 0)
+        print(f'\r{n} pages regenerated')
+        return n > 0
 
     def rotate_logs(self, nfiles: int) -> bool:
         # Read the file name

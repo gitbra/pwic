@@ -48,7 +48,6 @@ from aiohttp_session import setup, get_session, new_session, Session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from pyotp import TOTP
 
-from pwic_md import Markdown
 from pwic_lib import PwicConst, PwicLib
 from pwic_extension import PwicExtension
 from pwic_exporter import PwicExporter, PwicStylerHtml
@@ -407,7 +406,9 @@ class PwicServer():
                                                escape(app['options']['base_url']),
                                                escape(project))
         sql.close()
-        return web.Response(text=PwicLib.recursive_replace(xml.strip(), ' <', '<'), content_type=PwicLib.mime('xml'))
+        return web.Response(text=PwicLib.recursive_replace(xml.strip(), ' <', '<'),
+                            headers={'Cache-Control': 'max-age=2592000'},       # Expires is then optional, 30 days
+                            content_type=PwicLib.mime('xml'))
 
     async def project_sitemap(self, request: web.Request) -> web.Response:
         ''' Produce the site map of the project '''
@@ -679,7 +680,9 @@ class PwicServer():
                     'screenshots': [{'src': '/static/icon.png', 'type': 'image/png', 'sizes': '320x320', 'form_factor': 'narrow'},
                                     {'src': '/static/icon.png', 'type': 'image/jpg', 'sizes': '320x320', 'form_factor': 'wide'}]}
         sql.close()
-        return web.Response(text=json.dumps(manifest), content_type=PwicLib.mime('json'))
+        return web.Response(text=json.dumps(manifest),
+                            headers={'Cache-Control': 'max-age=2592000'},       # Expires is then optional, 30 days
+                            content_type=PwicLib.mime('json'))
 
     async def project_export(self, request: web.Request) -> web.Response:
         ''' Download the project as a ZIP file '''
@@ -4793,10 +4796,7 @@ def main() -> bool:
                                       samesite='Strict' if PwicLib.option(sql, '', 'strict_cookies') is not None else 'Lax'))
     del skey
     # ... Markdown parser
-    extras = ['code-friendly', 'cuddled-lists', 'fenced-code-blocks', 'footnotes', 'spoiler', 'strike', 'tables', 'task_list', 'underline']
-    if PwicLib.option(sql, '', 'no_highlight') is not None:
-        extras.append('highlightjs-lang')                       # highlight.js is not used in the foreground
-    app['markdown'] = Markdown(extras=extras, safe_mode=False, html4tags=True)
+    app['markdown'] = PwicLib.init_markdown(sql)
 
     # Routes
     app.router.add_static('/static/', path='./static/', append_version=False)
