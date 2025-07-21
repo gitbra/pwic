@@ -2,10 +2,12 @@
 	'use strict';
 
 	$('#create_kb').on('change', event => {
-		var state = $(event.target).prop('checked');
-		$('#create_page').toggleClass('pwic_hidden', state);
-		if (state)
-			$('#create_page').val('');
+		if ($(event.target).prop('checked')) {
+			var e = $('#create_page');
+			if (e.val() == '')
+				e.val('kb');
+			e[0].select();
+		}
 	});
 
 	function create_submit() {
@@ -14,11 +16,7 @@
 			page = $('#create_page').val().trim().toLowerCase();
 
 		// Check the parameters
-		if (	!pwic_is_safe(project)
-			||	!pwic_is_safe(page)
-			||	(['', 'api', 'special'].indexOf(project) !== -1)
-			||	(!kbmode && ((['', 'special'].indexOf(page) !== -1) || page.match(/^kb[0-9]{6}$/i)))
-		) {
+		if (!pwic_is_safe(project) || !pwic_is_safe(page)) {
 			alert({% trans %}'The parameters are not acceptable.'{% endtrans %});
 			return false;
 		}

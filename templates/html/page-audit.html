@@ -25,30 +25,14 @@
 		<p>{{ gettext('You are connected in %(protocol)s.')|format(protocol=pwic.protocol|escape) }}</p>
 
 
-		{% if pwic.env|count > 0 %}
-			<h1>{% trans %}Environment variables{% endtrans %}</h1>
-			<table>
-				<tr>
-					<th>{% trans %}Key{% endtrans %}</th>
-					<th>{% trans %}Scope{% endtrans %}</th>
-					<th>{% trans %}Value{% endtrans %}</th>
-				</tr>
-
-				{% for key in pwic.env %}
-					<tr>
-						<td><code>{{key|escape}}</code></td>
-						<td>
-							{% if pwic.env[key].global %}
-								<span title="{% trans %}Global{% endtrans %}">{{pwic.emojis.globe}}</span>
-							{% else %}
-								<span title="{% trans %}Project-dependent{% endtrans %}">{{pwic.emojis.hammer}}</span>
-							{% endif %}
-						</td>
-						<td class="pwic_monospace">{{pwic.env[key].value|escape}}</td>
-					</tr>
-				{% endfor %}
-			</table>
-		{% endif %}
+        <h1>{% trans %}Environment variables{% endtrans %}</h1>
+        <table id="audit_envs">
+            <tr>
+                <th>{% trans %}Key{% endtrans %}</th>
+                <th>{% trans %}Scope{% endtrans %}</th>
+                <th>{% trans %}Value{% endtrans %}</th>
+            </tr>
+        </table>
 
 
 		{% if pwic.audits|count > 0 %}
@@ -103,5 +87,7 @@
 				{% endfor %}
 			</table>
 		{% endif %}
+
+        {% include 'js/page-audit.js' %}
 	</article>
 {% endblock %}

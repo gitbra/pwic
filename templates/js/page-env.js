@@ -33,7 +33,7 @@
 	$('INPUT[type=text]').attr('readonly', '').addClass('pwic_disabled_bg');
 	fetch('/api/server/env/get', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body: new URLSearchParams({project: '{{pwic.project}}'}),
+									body: new URLSearchParams({project: '{{pwic.project|slash}}'}),
 									credentials: 'same-origin'})
 		.then(response => {
 			if (!response.ok)
@@ -61,7 +61,7 @@
 	function env_set(key, value) {
 		fetch('/api/project/env/set', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({	project: '{{pwic.project}}',
+										body: new URLSearchParams({	project: '{{pwic.project|slash}}',
 																	key: key,
 																	value: value}),
 										credentials: 'same-origin'})

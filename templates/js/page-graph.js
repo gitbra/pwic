@@ -13,7 +13,7 @@
 		// Else first download
 		fetch('/api/project/graph/get', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-											body: new URLSearchParams({project: '{{pwic.project}}'}),
+											body: new URLSearchParams({project: '{{pwic.project|slash}}'}),
 											credentials: 'same-origin'})
 		.then(response => {
 			if (!response.ok)
@@ -36,10 +36,10 @@
 		if (graph_cache == null)
 			return false;
 		var blob = window.URL.createObjectURL(new Blob([graph_cache], {type: 'text/vnd.graphviz'}));
-		$(document.createElement('a'))
+		$(document.createElement('A'))
 					.addClass('pwic_hidden')
 					.attr('href', blob)
-					.attr('download', '{{pwic.project}}.gv')
+					.attr('download', '{{pwic.project|slash}}.gv')
 					.appendTo('BODY')
 					.trigger('click')
 					.remove();

@@ -45,7 +45,7 @@
 			// Calculate the progress
 			var buffer = '';
 			if (tags.length > 0) {
-				var args = {project: '{{pwic.project}}',
+				var args = {project: '{{pwic.project|slash}}',
 							tags: tags,
 							combined: $('#page_progress_tags > A:nth-child(3)').hasClass('pwic_selected') ? 'on' : ''},
 					options = {	method: 'POST',

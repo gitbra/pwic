@@ -253,7 +253,7 @@
 			var url = prompt({% trans %}'Remote URL to fetch:'{% endtrans %}, '');
 			if ((url != null) && (url != ''))
 				_edit_convert(	'/api/document/remote/convert',
-								{project: '{{pwic.project}}', url: url});
+								{project: '{{pwic.project|slash}}', url: url});
 		}
 	{% endif %}
 
@@ -333,41 +333,104 @@
 	function edit_refresh_documents() {
 		fetch('/api/document/list', {	method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({	project: '{{pwic.project}}',
-																	page: '{{pwic.page}}' }),
+										body: new URLSearchParams({	project: '{{pwic.project|slash}}',
+																	page: '{{pwic.page|slash}}' }),
 										credentials: 'same-origin'})
 			.then(response => {
 				if (!response.ok)
 					throw Error(response.status + ' ' + response.statusText);
 				response.json().then(data => {
-					var i, doc, buffer = '';
+                    $('#edit_files_list TR:nth-child(n+2)').remove();
+					var i, doc, tr, td;
 					for (i=0 ; i<data.length ; i++) {
 						doc = data[i];
-						buffer += '<tr>\
-										<td>\
-											<input type="button" value="{{pwic.emojis.plus}}" title="{% trans %}Add a link{% endtrans %}" onclick="edit_join_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\', \''+pwic_slash(doc['mime'])+'\')" \/>' +
-											(doc['convertible'] ? ' <input class="pwic_desktop" type="button" value="{{pwic.emojis.hammer}}" title="{% trans %}Import the content of the document{% endtrans %}" onclick="edit_convert_document('+doc['id']+')" \/>' : '') +
-										'<\/td>\
-										<td><a href="/special/document/'+encodeURIComponent(doc['id'])+'/'+encodeURIComponent(doc['filename'])+'" target="_blank">'+pwic_entities(doc['filename'])+'<\/a>'+(doc['exturl']!=''?' {{pwic.emojis.cloud}}':'')+'<\/td>\
-										<td class="pwic_desktop">'+(doc['used']?' {{pwic.emojis.green_check}}':'')+'<\/td>\
-										<td title="{% trans %}Hash:{% endtrans %} '+pwic_entities(doc['hash'])+'">'+pwic_entities(doc['size'])+'<\/td>\
-										<td class="pwic_desktop" title="'+pwic_entities(doc['mime'])+'">'+doc['mime_icon']+' '+pwic_entities(doc['extension'].toUpperCase())+'<\/td>\
-										<td class="pwic_desktop"><a href="/special/user/'+encodeURIComponent(doc['author'])+'" target="_blank" rel="nofollow">'+pwic_entities(doc['author'])+'<\/a><\/td>\
-										<td>'+pwic_entities(doc['date'])+'<\/td>\
-										<td class="pwic_desktop">'+pwic_entities(doc['time'])+'<\/td>\
-										<td>\
-											<input type="button" value="{{pwic.emojis.curved_left_arrow}}{{pwic.emojis.zwj}}" title="{% trans %}Rename the document{% endtrans %}" onclick="edit_rename_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" \/>\
-											<input type="button" onclick="return edit_delete_document('+doc['id']+', \''+pwic_slash(doc['filename'])+'\')" value="{{pwic.emojis.red_check}}" title="{% trans %}Delete the document{% endtrans %}" />\
-										<\/td>\
-									<\/tr>';
+						tr = $(document.createElement('TR')).appendTo($('#edit_files_list'));
+						td = $(document.createElement('TD')).appendTo(tr);
+						$(document.createElement('INPUT'))
+							.attr('type', 'button')
+							.val(pwic_unimoji('{{pwic.emojis.plus}}'))
+							.attr('title', "{% trans %}Add a link{% endtrans %}")
+                            .data('id', doc.id)
+                            .data('filename', doc.filename)
+                            .data('mime', doc.mime)
+							.on('click', (e) => edit_join_document($(e.target).data('id'), $(e.target).data('filename'), $(e.target).data('mime')))
+							.appendTo(td);
+						if (doc.convertible)
+							$(document.createElement('INPUT'))
+								.addClass('pwic_desktop')
+								.attr('type', 'button')
+								.val(pwic_unimoji('{{pwic.emojis.hammer}}'))
+								.attr('title', "{% trans %}Import the content of the document{% endtrans %}")
+								.data('id', doc.id)
+								.on('click', (e) => edit_convert_document($(e.target).data('id')))
+								.appendTo(td);
+
+						td = $(document.createElement('TD')).appendTo(tr);
+						$(document.createElement('A'))
+							.attr('href', '/special/document/' + encodeURIComponent(doc.id) + '/' + encodeURIComponent(doc.filename))
+							.attr('target', '_blank')
+							.html(pwic_entities(doc.filename) + (doc.exturl != '' ? ' {{pwic.emojis.cloud}}' : ''))
+							.appendTo(td);
+
+						$(document.createElement('TD'))
+							.addClass('pwic_desktop')
+                            .html(doc.used ? '{{pwic.emojis.green_check}}' : '')
+							.appendTo(tr);
+
+						$(document.createElement('TD'))
+							.attr('title', "{% trans %}Hash:{% endtrans %} " + pwic_entities(doc.hash.substring(0, 8)))
+							.html(doc.size_str)
+							.appendTo(tr);
+
+						$(document.createElement('TD'))
+							.addClass('pwic_desktop')
+							.attr('title', pwic_entities(doc.mime))
+							.html(doc.mime_icon + ' ' + pwic_entities(doc.extension).toUpperCase())
+							.appendTo(tr);
+
+						td = $(document.createElement('TD'))
+							.addClass('pwic_desktop')
+							.appendTo(tr);
+						$(document.createElement('A'))
+							.attr('href', '/special/user/' + encodeURIComponent(doc.author))
+							.attr('target', '_blank')
+							.attr('rel', 'nofollow')
+							.html(pwic_entities(doc.author))
+							.appendTo(td);
+
+						$(document.createElement('TD'))
+							.html(pwic_entities(doc.date))
+							.appendTo(tr);
+
+						$(document.createElement('TD'))
+							.addClass('pwic_desktop')
+							.html(pwic_entities(doc.time))
+							.appendTo(tr);
+
+						td = $(document.createElement('TD')).appendTo(tr);
+						$(document.createElement('INPUT'))
+							.attr('type', 'button')
+							.val(pwic_unimoji('{{pwic.emojis.curved_left_arrow}}'))
+							.attr('title', "{% trans %}Rename the document{% endtrans %}")
+                            .data('id', doc.id)
+                            .data('filename', doc.filename)
+							.on('click', (e) => edit_rename_document($(e.target).data('id'), $(e.target).data('filename')))
+							.appendTo(td);
+						$(document.createElement('INPUT'))
+							.attr('type', 'button')
+							.val(pwic_unimoji('{{pwic.emojis.red_check}}'))
+							.attr('title', "{% trans %}Delete the document{% endtrans %}")
+                            .data('id', doc.id)
+                            .data('filename', doc.filename)
+							.on('click', (e) => edit_delete_document($(e.target).data('id'), $(e.target).data('filename')))
+							.appendTo(td);
 					}
-					$('#edit_files_list').html(edit_files_list_initial + buffer).toggleClass('pwic_hidden', data.length == 0);
+					$('#edit_files_list').toggleClass('pwic_hidden', data.length == 0);
 				});
 			})
 			.catch(error => alert(error));
 	}
 
-	var edit_files_list_initial = $('#edit_files_list').html();
 	edit_refresh_documents();	// For the initialization
 
 	function _edit_transfer_files(files) {
@@ -376,8 +439,8 @@
 		for (var i=0 ; i<files.length ; i++) {
 			// Fields
 			var form = new FormData();
-			form.append('project', '{{pwic.project}}');
-			form.append('page', '{{pwic.page}}');
+			form.append('project', '{{pwic.project|slash}}');
+			form.append('page', '{{pwic.page|slash}}');
 			form.append('content', files[i]);
 
 			// Request
@@ -399,7 +462,7 @@
 	}
 
 	function edit_upload_document() {
-		var obj = $(document.createElement('input'))
+		var obj = $(document.createElement('INPUT'))
 						.attr('type', 'file')
 						.addClass('pwic_hidden')
 						.appendTo('body')
@@ -436,7 +499,7 @@
 			fetch('/api/document/rename', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
-																		project: '{{pwic.project}}',
+																		project: '{{pwic.project|slash}}',
 																		filename: newfn}),
 											credentials: 'same-origin'})
 				.then(response => {
@@ -454,7 +517,7 @@
 			fetch('/api/document/delete', {	method: 'POST',
 											headers: {'Content-Type': 'application/x-www-form-urlencoded'},
 											body: new URLSearchParams({	id: id,
-																		project: '{{pwic.project}}'}),
+																		project: '{{pwic.project|slash}}'}),
 											credentials: 'same-origin'})
 				.then(response => {
 					if (!response.ok)
@@ -513,15 +576,15 @@
 						// Query the current revision of the modified page
 						fetch('/api/project/get', {	method: 'POST',
 													headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-													body: new URLSearchParams({	project: '{{pwic.project}}',
-																				page: '{{pwic.page}}'}),
+													body: new URLSearchParams({	project: '{{pwic.project|slash}}',
+																				page: '{{pwic.page|slash}}'}),
 													credentials: 'same-origin'})
 							.then(response => {
 								if (!response.ok)
 									throw Error('['+response.status+'] '+response.statusText);
 								response.json().then(data => {
 									// Check the conflict
-									if (data['{{pwic.page}}']['revisions'][0]['revision'] > {{pwic.revision}}) {
+									if (data['{{pwic.page|slash}}']['revisions'][0]['revision'] > {{pwic.revision}}) {
 										if (!confirm({% trans %}'Warning: the page has been modified in parallel of your current modifications.\n\nConsequently, your changes will be posted as a removable draft. You must merge the changes manually later.'{% endtrans %}))
 											return false;
 										$('#edit_draft').prop('checked', true);
@@ -530,8 +593,8 @@
 
 									// Submit the modifications
 									{# sof/7542586 #}
-									var form = {project:	'{{pwic.project}}',
-												page:		'{{pwic.page}}',
+									var form = {project:	'{{pwic.project|slash}}',
+												page:		'{{pwic.page|slash}}',
 												title:		$('#edit_title').val(),
 												tags:		$('#edit_tags').val(),
 												markdown:	md_editor.getValue(),
@@ -562,7 +625,7 @@
 	function edit_preview_md(pageName) {
 		fetch('/api/markdown/convert', {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({	project: '{{pwic.project}}',
+										body: new URLSearchParams({	project: '{{pwic.project|slash}}',
 																	markdown: md_editor.somethingSelected() ? md_editor.getSelection() : md_editor.getValue()}),
 										credentials: 'same-origin'})
 			.then(response => {

@@ -214,9 +214,9 @@
 					<span class="pwic_progressbar">
 						<span style="width:{{pwic.disk_space.percentage|escape}}%">&nbsp;</span>
 					</span>
-					<span class="pwic_nowrap">{{pwic.disk_space.used_str|escape}} / {{pwic.disk_space.project_max_str|escape}} ({{pwic.disk_space.percentage|escape}} %)</span>
+					<span class="pwic_nowrap">{{pwic.disk_space.used|size2str|escape}} / {{pwic.disk_space.project_max|size2str|escape}} ({{pwic.disk_space.percentage|escape}} %)</span>
 				{% else %}
-					{{pwic.disk_space.used_str|escape}}
+					{{pwic.disk_space.used|size2str|escape}}
 				{% endif %}
 			</p>
 
@@ -242,7 +242,7 @@
 							{% endif%}
 						</td>
 						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
-						<td data-sort="{{doc.size|escape}}">{{doc.size_str|escape}}</td>
+						<td data-sort="{{doc.size|escape}}">{{doc.size|size2str|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %}

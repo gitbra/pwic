@@ -87,7 +87,7 @@ class PwicConst:
     DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',             # Fixed format of the datetime
                 'heading': '1.1.1.1.1.1.',                  # Default format of the paragraphs
                 'host': '127.0.0.1',                        # Default HTTP host when the server starts
-                'kb_mask': 'kb%06d',                        # Format for the KB pages
+                'kb_length': 6,                             # Length of the identifier for the KB pages
                 'language': 'en',                           # Default language-dependent template for the UI
                 'limit_filename': '128',                    # Max length for the file names
                 'limit_field': '2048',                      # Max length for the submitted inline strings
@@ -102,7 +102,6 @@ class PwicConst:
                'empty_tag': re.compile(r'<\b(\w+)\b(?<!table)\b(?<!tr|th|td)><\/\1>', re.IGNORECASE),           # Removable blank HTML tags, except table elements
                'empty_tag_with_attrs': re.compile(r'<(\w+(?<!th|td))(\s+\w+="?\w+"?)*>(\s*)<\/\1>', re.IGNORECASE),                 # Removable blank HTML tags, except table elements
                'adjacent_tag': re.compile(r'<\/(b|big|em|i|small|span|strong|sub|sup)[ \t]*>([ \t]*)<\1[ \t]*>', re.IGNORECASE),    # Removable adjacent inline HTML tags
-               'kb_mask': re.compile(r'^kb[0-9]{6}$'),                                                          # Name of the pages KB
                'length': re.compile(r'^(\d+(.\d*)?)(cm|mm|in|pt|pc|px|em)?$'),                                  # Length in XML
                'md_strip': re.compile(r'\([^\)]+\)|\*+|-+|\~+|\[|\]|\(|\)|`'),                                  # QnD removal of Markdown
                'mime': re.compile(r'^[a-z]+\/[a-z0-9\.\+\-]+$', re.IGNORECASE),                                 # Check the format of the mime
@@ -148,7 +147,6 @@ class PwicConst:
            'http_referer': TyEnv(True, False, False, False),
            'https': TyEnv(True, False, False, False),
            'ip_filter': TyEnv(True, False, False, False),
-           'kbid': TyEnv(True, True, False, False),
            'keep_drafts': TyEnv(True, True, True, False),
            'keep_sessions': TyEnv(True, False, False, False),
            'language': TyEnv(True, True, True, False),
@@ -878,8 +876,10 @@ class PwicLib:
         return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
 
     @staticmethod
-    def size2str(size: Union[int, float]) -> str:
+    def size2str(size: Union[int, float, str]) -> str:
         ''' Convert a size to a readable format '''
+        if isinstance(size, str):
+            size = PwicLib.floatval(size)
         units = ' kMGTPEZ'
         for i in range(len(units)):
             if size < 1024:
@@ -926,7 +926,8 @@ class PwicLib:
     @staticmethod
     def x(value: Any) -> str:
         ''' Reduce an input value to a boolean string '''
-        return '' if value in [None, 'none', 'None', 'NONE', 'null', 'Null', 'NULL', '', 0, '0', False, 'false', 'False', 'FALSE', '-', '~', 'no', 'No', 'NO', 'off', 'Off', 'OFF', 'undefined'] else 'X'
+        return '' if value in [None, 'none', 'None', 'NONE', 'null', 'Null', 'NULL', 'nil', 'Nil', 'NIL', '', 0, '0',
+                               False, 'false', 'False', 'FALSE', '-', '~', 'no', 'No', 'NO', 'off', 'Off', 'OFF', 'undefined'] else 'X'
 
     @staticmethod
     def xb(value: str) -> bool:

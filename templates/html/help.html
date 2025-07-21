@@ -259,12 +259,6 @@
 						<td>List of IP addresses or IP networks separated by a space. The unauthorized addresses are prefixed by the tilde character <code>~</code> and used as <em>AND</em> conditions. The authorized addresses are <em>OR</em> conditions and must be true at least once. Use the prefix <code>#</code> to ignore a value. The IP address used for the check is deducted from the HTTP headers through a custom code. The option does not affect the static files. You need to restart the server to consider the made changes.</td>
 					</tr>
 					<tr>
-						<td><code>kbid</code></td>
-						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
-						<td class="pwic_desktop">{{pwic.emojis.red_check}}</td>
-						<td>Self-managed counter on 6 figures to allocate an identifier to a knowledge base article. If you need to change the length of the key, you must edit <code>kb_mask</code> in the source code directly when <em>Pwic.wiki</em> is installed.</td>
-					</tr>
-					<tr>
 						<td><code>keep_drafts</code></td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
 						<td class="pwic_desktop">{{pwic.emojis.green_check}}</td>
@@ -829,9 +823,9 @@
 
 
 		<h1 id="help_create_page"><a href="#top">{{pwic.emojis.finger_up}}</a> Create a page</h1>
-		<p>The creation of new pages is restricted to the managers in order to monitor the documentation efficiently. Each page is codified with an external identifier that can be listed alphabetically in each project overview.</p>
+		<p>The creation of new pages is restricted to the managers in order to monitor the documentation efficiently. Each page is codified with an external identifier that can be listed alphabetically in each project overview. If you tick the checkbox to generate a knowledge page, an incremental counter is appended to the name of the page that acts as a prefix.</p>
 		<p>If a page is created in reference to another page, its content is copied by default. In that way, you can dedicate a project to store the default templates. It is not possible to refer to a page that doesn't exist or for which you have no access rights.</p>
-		<p>A page cannot be renamed to ensure the consistency of the documentation and the audit tables.</p>
+		<p>A page can be <a href="#help_move_page">renamed and moved</a> to another project as long as you have access rights to the target project.</p>
 		<p>Each project must contain the home page <code>{{pwic.constants.default_home|escape}}</code>. It is accessed by default, it is sorted in first place in the header bar, and it holds the link to the special section of the site. Thus it is not recommended to delete this particular page.</p>
 
 
@@ -878,7 +872,7 @@
 				<li>Rename a page within the same project,</li>
 				<li>Move a page to another project: the page is eventually renamed at the same time, and the documents are moved if the source file names don't exist in the target project already.</li>
 			</ul>
-		<p>Because the manager is responsible for the organization of the pages, you must have this role for the source and destination projects. The existing pages are not updated, then <a href="#help_links">broken links</a> will appear.</p>
+		<p>Because the manager is responsible for the organization of the pages, you must have this role for the source and destination projects. The internal links won't be updated automatically, but the list of the affected pages is displayed. The <a href="#help_links">broken links</a> can be found also in the special pages</p>
 
 
 		<h1 id="help_delete_page"><a href="#top">{{pwic.emojis.finger_up}}</a> Delete a page</h1>

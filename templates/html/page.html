@@ -150,7 +150,7 @@
 						{% for doc in pwic.documents %}
 							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
-								<br><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+								<br><small>{{doc.mime|escape}}</small> ({{doc.size|size2str|escape}})
 							</a>
 						{% endfor %}
 					</div>
@@ -167,7 +167,7 @@
 						{% for doc in pwic.images %}
 							<a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|urlencode}}" title="{{ gettext('Uploaded by %(author)s on %(date)s at %(time)s.')|format(author=doc.author|escape, date=doc.date|escape, time=doc.time|escape) }}">
 								<span>{{doc.filename|escape}}</span>
-								<br><small>{{doc.mime|escape}}</small> ({{doc.size|escape}})
+								<br><small>{{doc.mime|escape}}</small> ({{doc.size|size2str|escape}})
 							</a>
 						{% endfor %}
 					</div>

@@ -107,8 +107,8 @@
 						<input class="pwic_mobile" type="button" value="{{pwic.emojis.inbox}}" title="{% trans %}Upload a new document{% endtrans %}" onclick="edit_upload_document()" style="margin-left: 15px">
 						<br>
 						{% trans %}Drop the files here{% endtrans %}
-						{% if pwic.env.document_size_max_str %}
-							({% trans %}max:{% endtrans %} {{pwic.env.document_size_max_str.value}})
+						{% if pwic.env.document_size_max %}
+							({% trans %}max:{% endtrans %} {{pwic.env.document_size_max.value|size2str|escape}})
 						{% endif %}
 
 						{% trans %}and save immediately{% endtrans %}

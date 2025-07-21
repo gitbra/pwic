@@ -134,7 +134,7 @@
 							{% endif%}
 						</td>
 						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
-						<td data-sort="{{doc.size|escape}}">{{doc.size_str|escape}}</td>
+						<td data-sort="{{doc.size|escape}}">{{doc.size|size2str|escape}}</td>
 						<td class="pwic_desktop">
 							<span title="{{doc.hash|escape}}">{{doc.hash[:8]|escape}}</span>
 							{% if doc.occurrence > 1 %} <span title="{% trans %}Duplicate file{% endtrans %}">{{pwic.emojis.gemini}}</span> {% endif %}

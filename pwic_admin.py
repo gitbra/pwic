@@ -595,7 +595,7 @@ class PwicAdmin():
                 tab = self._prepare_prettytable(['Package', 'Version'])
                 tab.align['Version'] = 'r'
                 for package in ['aiohttp', 'aiohttp-cors', 'aiohttp-session', 'cryptography', 'imagesize',
-                                'jinja2', 'PrettyTable', 'pygments', 'pyotp', 'setuptools']:
+                                'jinja2', 'prettytable', 'pygments', 'pyotp', 'setuptools']:
                     try:
                         tab.add_row([package, version(package)])
                     except PackageNotFoundError:
@@ -1116,7 +1116,8 @@ class PwicAdmin():
                     (project, ))
         for row in sql.fetchall():
             fn = join(PwicConst.DOCUMENTS_PATH % project, row['filename'])
-            if not PwicExtension.on_api_document_delete(sql, None, project, PwicConst.USERS['system'], row['page'], row['id'], row['filename']):
+            if not PwicExtension.on_api_document_delete(sql, None, project, PwicConst.USERS['system'],
+                                                        row['page'], row['id'], row['filename'], row['exturl']):
                 print(f'Error: unable to delete "{fn}"')
                 self.db_rollback(sql)
                 return False
@@ -2456,7 +2457,7 @@ class PwicAdmin():
                 if row['filename'] in files:
                     files.remove(row['filename'])
                 else:
-                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, row['filename']):
+                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, row['filename'], ''):
                         if not test:
                             sql.execute(''' DELETE FROM documents
                                             WHERE ID = ?''',
@@ -2465,7 +2466,7 @@ class PwicAdmin():
             # Delete the left files that can't be reassigned to the right objects
             if not keep_orphans:
                 for f in files:
-                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, f):
+                    if PwicExtension.on_api_document_delete(sql, None, p, PwicConst.USERS['system'], None, None, f, ''):
                         path = join(PwicConst.DOCUMENTS_PATH % p, f)
                         try:
                             if not test:

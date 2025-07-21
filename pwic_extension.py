@@ -87,6 +87,7 @@ class PwicExtension():
                                page: Optional[str],                     # Name of the page
                                doc_id: Optional[int],                   # Identifier of the document
                                filename: str,                           # Name of the file
+                               exturl: str,                             # External URL of the file
                                ) -> bool:
         ''' Event when the file must be deleted.
             For the local files, the result indicates if the deletion of the document is possible and Pwic.wiki will perform the deletion.

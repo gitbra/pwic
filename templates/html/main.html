@@ -75,10 +75,12 @@
 		'use strict';
 
 		function pwic_entities(value) {
-			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quote;');
+			return value.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 		}
 
 		function pwic_is_safe(name) {
+			if (name == '')
+				return false;
 			var chars = '{{pwic.constants.unsafe_chars|replace("\\", "\\\\")|replace("'", "\\'")}}';
 			for (var i=0 ; i<chars.length ; i++)
 				if (name.indexOf(chars[i]) !== -1)
@@ -100,6 +102,12 @@
 		function pwic_slash(value) {
 			{# sof/18251399 #}
 			return value.split("'").join("\\'").split('"').join('\\"');
+		}
+
+		function pwic_unimoji(value) {
+			return value.replace(/&#x([0-9a-f]+);/gi, (match, v) => {
+				return String.fromCodePoint(parseInt(v, 16));
+			});
 		}
 
 		function pwic_url_status(success, failed) {

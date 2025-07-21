@@ -106,6 +106,57 @@ class PwicServer():
                 break
         return obj['mime'] != ''
 
+    def _check_roles(self, sql: Optional[sqlite3.Cursor], project: Optional[str], user: str,
+                     admin: Optional[bool] = None, manager: Optional[bool] = None,
+                     editor: Optional[bool] = None, validator: Optional[bool] = None,
+                     reader: Optional[bool] = None) -> bool:
+        ''' Check the roles of the user for a given project or globally '''
+        if sql is None:
+            return False
+
+        # Case without a project
+        if project in [None, '']:
+            query = ''' SELECT 1
+                        FROM roles
+                        WHERE user     = ?
+                          AND %s       = ?
+                          AND disabled = '' '''
+            for (b, k) in [(admin, 'admin'),
+                           (manager, 'manager'),
+                           (editor, 'editor'),
+                           (validator, 'validator'),
+                           (reader, 'reader')]:
+                if b is not None:
+                    sql.execute(query % k, (user, PwicLib.x(b)))
+                    if sql.fetchone() is None:
+                        return False
+            return True
+
+        # Case with a project
+        # ... read
+        sql.execute(''' SELECT admin, manager, editor, validator, reader
+                        FROM roles
+                        WHERE project  = ?
+                          AND user     = ?
+                          AND disabled = '' ''',
+                    (project, user))
+        row = sql.fetchone()
+        if row is None:
+            return False
+        # ... analyze
+        if ((((admin is not None) and (row['admin'] != admin))
+             or ((manager is not None) and (row['manager'] != manager))
+             or ((editor is not None) and (row['editor'] != editor))
+             or ((validator is not None) and (row['validator'] != validator))
+             or ((reader is not None) and (row['reader'] != reader)))):
+            return False
+        return True
+
+    def _check_reader_only(self, sql: Optional[sqlite3.Cursor], project: str, user: str) -> Optional[bool]:
+        ''' Check if the user is a only a reader '''
+        return self._check_roles(sql, project, user, admin=False, manager=False,
+                                 editor=False, validator=False, reader=True)
+
     def _check_ip(self, ip: str) -> None:
         ''' Check if the IP address is authorized '''
         # Initialization
@@ -141,26 +192,9 @@ class PwicServer():
         if unauth:
             raise web.HTTPUnauthorized()
 
-    def _is_pure_reader(self, sql: sqlite3.Cursor, project: str, user: str) -> Optional[bool]:
-        # Check if the user is a pure reader
-        sql.execute(''' SELECT admin, manager, editor, validator, reader
-                        FROM roles
-                        WHERE project  = ?
-                          AND user     = ?
-                          AND disabled = '' ''',
-                    (project, user))
-        row = sql.fetchone()
-        if row is None:
-            return None
-        return (not row['admin']
-                and not row['manager']
-                and not row['editor']
-                and not row['validator']
-                and row['reader'])
-
     def _redirect_revision(self, sql: sqlite3.Cursor, project: str, user: str, page: str, revision: int) -> int:
         # Check if the user is a pure reader
-        pure_reader = self._is_pure_reader(sql, project, user)
+        pure_reader = self._check_reader_only(sql, project, user)
         if pure_reader is None:
             return 0
 
@@ -321,9 +355,6 @@ class PwicServer():
                 continue
             pwic['env'][key] = {'value': value,
                                 'global': global_}
-            if key in ['document_size_max', 'project_size_max']:
-                pwic['env'][key + '_str'] = {'value': PwicLib.size2str(PwicLib.intval(value)),
-                                             'global': global_}
 
         # Dynamic settings for the robots
         robots = PwicLib.str2robots(str(PwicLib.option(sql, project, 'robots', '')))
@@ -375,18 +406,14 @@ class PwicServer():
 
         # Verify that the user has access to the project
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT b.description
-                        FROM roles AS a
-                            INNER JOIN projects AS b
-                                ON b.project = a.project
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.disabled = '' ''',
-                    (project, user))
-        row = sql.fetchone()
-        if row is None:
+        if not self._check_roles(sql, project, user):
             sql.close()
             raise web.HTTPUnauthorized()
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        row = sql.fetchone()
 
         # Additional parameters
         if (app['options']['base_url'] == '') or (PwicLib.option(sql, project, 'no_search') is not None):
@@ -398,10 +425,11 @@ class PwicServer():
                 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
                     <Description>%s</Description>
                     <InputEncoding>UTF-8</InputEncoding>
-                    <Language>*</Language>
+                    <Language>%s</Language>
                     <ShortName>%s</ShortName>
                     <Url rel="results" type="text/html" method="get" template="%s/%s/special/search?q={searchTerms}"></Url>
                 </OpenSearchDescription>''' % (escape(row['description']),
+                                               PwicLib.option(sql, project, 'language', str(PwicConst.DEFAULTS['language'])),
                                                escape(project),
                                                escape(app['options']['base_url']),
                                                escape(project))
@@ -423,17 +451,9 @@ class PwicServer():
 
         # Check the authorizations
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT 1
-                        FROM roles
-                        WHERE project  = ?
-                          AND user     = ?
-                          AND disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
+        if not self._check_roles(sql, project, user):
             sql.close()
             raise web.HTTPUnauthorized()
-
-        # Additional parameters
         if PwicLib.option(sql, project, 'no_sitemap') is not None:
             sql.close()
             raise web.HTTPForbidden()
@@ -487,7 +507,7 @@ class PwicServer():
                             <updated>%sT%sZ</updated>%s
                             <generator uri="https://pwic.wiki" version="%s">Pwic.wiki v%s</generator>
                     ''' % (escape(app['options']['base_url']),
-                           escape(str(PwicLib.option(sql, project, 'language', PwicConst.DEFAULTS['language']))),
+                           escape(str(PwicLib.option(sql, project, 'language', str(PwicConst.DEFAULTS['language'])))),
                            escape(url),
                            escape(project),
                            escape(project_description),
@@ -615,24 +635,20 @@ class PwicServer():
 
         # Verify that the user has access to the feed
         sql = self.dbconn.cursor()
+        if not self._check_roles(sql, project, user):
+            sql.close()
+            raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'no_feed') is not None:
             sql.close()
             raise web.HTTPForbidden()
-        sql.execute(''' SELECT b.description
-                        FROM roles AS a
-                            INNER JOIN projects AS b
-                                ON b.project = a.project
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.disabled = '' ''',
-                    (project, user))
-        row = sql.fetchone()
-        if row is None:
-            sql.close()
-            raise web.HTTPUnauthorized()
-        if self._is_pure_reader(sql, project, user) and (PwicLib.option(sql, project, 'no_history') is not None):
+        if (PwicLib.option(sql, project, 'no_history') is not None) and self._check_reader_only(sql, project, user):
             sql.close()
             raise web.HTTPForbidden()
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        row = sql.fetchone()
 
         # Result
         feed_size = max(1, PwicLib.intval(PwicLib.option(sql, project, 'feed_size', '25')))
@@ -651,23 +667,19 @@ class PwicServer():
         # Verify the authorization
         project = PwicLib.safe_name(request.match_info.get('project'))
         sql = self.dbconn.cursor()
+        if not self._check_roles(sql, project, user):
+            sql.close()
+            raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'manifest') is None:
             sql.close()
             raise web.HTTPServiceUnavailable()
-        sql.execute(''' SELECT b.description
-                        FROM roles AS a
-                            INNER JOIN projects AS b
-                                ON b.project = a.project
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.disabled = '' ''',
-                    (project, user))
-        row = sql.fetchone()
-        if row is None:
-            sql.close()
-            raise web.HTTPUnauthorized()
 
         # Manifest
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        row = sql.fetchone()
         manifest = {'name': project,
                     'short_name': project,
                     'description': row['description'],
@@ -675,7 +687,7 @@ class PwicServer():
                     'scope': f'/{project}',
                     'display': 'standalone',
                     'orientation': 'portrait',
-                    'lang': PwicLib.option(sql, project, 'language', PwicConst.DEFAULTS['language']),
+                    'lang': PwicLib.option(sql, project, 'language', str(PwicConst.DEFAULTS['language'])),
                     'icons': [{'src': '/static/icon.png', 'sizes': '320x320', 'type': 'image/png'}],
                     'screenshots': [{'src': '/static/icon.png', 'type': 'image/png', 'sizes': '320x320', 'form_factor': 'narrow'},
                                     {'src': '/static/icon.png', 'type': 'image/jpg', 'sizes': '320x320', 'form_factor': 'wide'}]}
@@ -699,14 +711,7 @@ class PwicServer():
 
         # Verify that the export is authorized
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT 1
-                        FROM roles
-                        WHERE project  = ?
-                          AND user     = ?
-                          AND admin    = 'X'
-                          AND disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
+        if not self._check_roles(sql, project, user, admin=True):
             sql.close()
             raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'no_export_project') is not None:
@@ -826,7 +831,7 @@ class PwicServer():
 
         # Show the requested page
         project = PwicLib.safe_name(request.match_info.get('project'))
-        page = PwicLib.safe_name(request.match_info.get('page', PwicConst.DEFAULTS['page']))
+        page = PwicLib.safe_name(request.match_info.get('page', str(PwicConst.DEFAULTS['page'])))
         page_special = page == 'special'
         revision = PwicLib.intval(request.match_info.get('revision', '0'))
         action = request.match_info.get('action', 'view')
@@ -982,7 +987,7 @@ class PwicServer():
         if row is None:
             return False
         pwic.update(row)
-        pwic['pure_reader'] = pwic['reader'] and not pwic['admin'] and not pwic['manager'] and not pwic['editor'] and not pwic['validator']
+        pwic['pure_reader'] = not pwic['admin'] and not pwic['manager'] and not pwic['editor'] and not pwic['validator'] and pwic['reader']
         return True
 
     async def _page_view(self,
@@ -1011,12 +1016,13 @@ class PwicServer():
         cache = ((PwicLib.option(sql, project, 'no_cache') is None)
                  and PwicExtension.on_cache(sql, request, project, user, page, revision))
         if cache:
-            row = sql.execute(''' SELECT html
-                                  FROM cache
-                                  WHERE project  = ?
-                                    AND page     = ?
-                                    AND revision = ?''',
-                              (project, page, revision)).fetchone()
+            sql.execute(''' SELECT html
+                            FROM cache
+                            WHERE project  = ?
+                              AND page     = ?
+                              AND revision = ?''',
+                        (project, page, revision))
+            row = sql.fetchone()
         else:
             row = None
 
@@ -1066,8 +1072,6 @@ class PwicServer():
         for cat, op in [('images', ''), ('documents', 'NOT')]:
             sql.execute(query % op, (project, page))
             pwic[cat] = sql.fetchall()
-            for row in pwic[cat]:
-                row['size'] = PwicLib.size2str(row['size'])
 
         # Related links
         pwic['relations'] = []
@@ -1165,12 +1169,9 @@ class PwicServer():
             used_size += row['size']
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
             row['extension'] = PwicLib.file_ext(row['filename'])
-            row['size_str'] = PwicLib.size2str(row['size'])
         pmax = PwicLib.intval(PwicLib.option(sql, project, 'project_size_max'))
         pwic['disk_space'] = {'used': used_size,
-                              'used_str': PwicLib.size2str(used_size),
                               'project_max': pmax,
-                              'project_max_str': PwicLib.size2str(pmax),
                               'percentage': min(100, float('%.2f' % (0 if pmax == 0 else 100. * used_size / pmax)))}
         return await self._handle_output(sql, request, 'page-special', pwic)
 
@@ -1341,7 +1342,7 @@ class PwicServer():
         raise web.HTTPTemporaryRedirect(f'/{project}/{row["page"]}')
 
     async def page_audit(self, request: web.Request) -> web.Response:
-        ''' Serve the page to monitor the settings and the activty '''
+        ''' Serve the page to monitor the settings and the activities '''
         # Verify that the user is connected
         user = await self._suser(request)
         if user == '':
@@ -1354,19 +1355,14 @@ class PwicServer():
         dt = PwicLib.dt(days)
 
         # Fetch the name of the project
-        sql.execute(''' SELECT b.description
-                        FROM roles AS a
-                            INNER JOIN projects AS b
-                                ON b.project = a.project
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.admin    = 'X'
-                          AND a.disabled = '' ''',
-                    (project, user))
-        row = sql.fetchone()
-        if row is None:
+        if not self._check_roles(sql, project, user, admin=True):
             sql.close()
             raise web.HTTPTemporaryRedirect(f'/{project}/special')  # Project not found, or user not authorized to view it
+        sql.execute(''' SELECT description
+                        FROM projects
+                        WHERE project = ?''',
+                    (project, ))
+        row = sql.fetchone()
         pwic = {'project': project,
                 'project_description': row['description'],
                 'range': days,
@@ -1453,10 +1449,11 @@ class PwicServer():
         # Fetch the information of the user
         sql = self.dbconn.cursor()
         userpage = PwicLib.safe_user_name(request.match_info.get('userpage'))
-        row = sql.execute(''' SELECT IIF(password == ?, 'X', '') AS oauth, initial, IIF(totp <> '', 'X', '') AS totp
-                              FROM users
-                              WHERE user = ?''',
-                          (PwicConst.MAGIC_OAUTH, userpage)).fetchone()
+        sql.execute(''' SELECT IIF(password == ?, 'X', '') AS oauth, initial, IIF(totp <> '', 'X', '') AS totp
+                        FROM users
+                        WHERE user = ?''',
+                    (PwicConst.MAGIC_OAUTH, userpage))
+        row = sql.fetchone()
         if row is None:
             sql.close()
             raise web.HTTPNotFound()
@@ -1504,7 +1501,6 @@ class PwicServer():
         for row in pwic['documents']:
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
             row['extension'] = PwicLib.file_ext(row['filename'])
-            row['size_str'] = PwicLib.size2str(row['size'])
 
         # Fetch the latest pages updated by the selected user
         dt = PwicLib.dt()
@@ -1562,7 +1558,7 @@ class PwicServer():
             raise web.HTTPTemporaryRedirect(f'/{project}')
 
         # Restrict the parameters
-        pure_reader = self._is_pure_reader(sql, project, user)
+        pure_reader = self._check_reader_only(sql, project, user)
         if pure_reader is None:
             sql.close()
             raise web.HTTPUnauthorized()
@@ -1704,7 +1700,6 @@ class PwicServer():
 
                 # Save the found document
                 row['mime_icon'] = PwicLib.mime2icon(row['mime'])
-                row['size'] = PwicLib.size2str(row['size'])
                 pwic['documents'].append(row)
 
         # Show the pages by score desc, date desc and time desc
@@ -1719,18 +1714,10 @@ class PwicServer():
         if user == '':
             return await self._handle_login(request)
 
-        # Fetch the parameters
-        project = PwicLib.safe_name(request.match_info.get('project'))
-
         # Verify that the user is an administrator
+        project = PwicLib.safe_name(request.match_info.get('project'))
         sql = self.dbconn.cursor()
-        if sql.execute(''' SELECT user
-                           FROM roles
-                           WHERE project  = ?
-                             AND user     = ?
-                             AND admin    = 'X'
-                             AND disabled = '' ''',
-                       (project, user)).fetchone() is None:
+        if not self._check_roles(sql, project, user, admin=True):
             sql.close()
             raise web.HTTPUnauthorized()
 
@@ -1739,8 +1726,9 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
+        row = sql.fetchone()
         pwic = {'project': project,
-                'project_description': sql.fetchone()['description'],
+                'project_description': row['description'],
                 'changeable_vars': sorted([k for k in PwicConst.ENV if PwicConst.ENV[k].pdep and PwicConst.ENV[k].online])}
         return await self._handle_output(sql, request, 'page-env', pwic=pwic)
 
@@ -1810,34 +1798,31 @@ class PwicServer():
         if user == '':
             return await self._handle_login(request)
 
-        # Fetch the parameters
+        # Verify the authorizations
         project = PwicLib.safe_name(request.match_info.get('project'))
-
-        # Fetch the documents of the project
         sql = self.dbconn.cursor()
+        if not self._check_roles(sql, project, user, manager=True):
+            sql.close()
+            raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'no_link_review') is not None:
             sql.close()
             raise web.HTTPForbidden()
+
+        # Fetch the documents
         sql.execute(''' SELECT CAST(id AS TEXT) AS id
                         FROM documents
                         ORDER BY id''')
         docids = [row['id'] for row in sql.fetchall()]
 
         # Fetch the pages
-        sql.execute(''' SELECT b.page, b.header, b.markdown
-                        FROM roles AS a
-                            INNER JOIN pages AS b
-                                ON  b.project = a.project
-                                AND b.latest  = 'X'
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.manager  = 'X'
-                          AND a.disabled = ''
-                        ORDER BY b.page''',
-                    (project, user))
+        sql.execute(''' SELECT page, header, markdown
+                        FROM pages
+                        WHERE project = ?
+                          AND latest  = 'X'
+                        ORDER BY page''',
+                    (project, ))
 
         # Extract the links between the pages
-        ok = False
         linkmap: Dict[str, List[str]] = {PwicConst.DEFAULTS['page']: []}
         broken_docs: Dict[str, List[int]] = {}
         while True:
@@ -1845,7 +1830,6 @@ class PwicServer():
             if row is None:
                 break
 
-            ok = True
             page = row['page']
             if page not in linkmap:
                 linkmap[page] = []
@@ -1869,9 +1853,6 @@ class PwicServer():
                         if page not in broken_docs:
                             broken_docs[page] = []
                         broken_docs[page].append(PwicLib.intval(sd[0]))
-        if not ok:
-            sql.close()
-            raise web.HTTPUnauthorized()
 
         # Find the orphaned and broken links
         allpages = list(linkmap)                    # Keys
@@ -1890,8 +1871,9 @@ class PwicServer():
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
+        row = sql.fetchone()
         pwic = {'project': project,
-                'project_description': sql.fetchone()['description'],
+                'project_description': row['description'],
                 'orphans': orphans,
                 'broken': broken,
                 'broken_docs': broken_docs}
@@ -1909,27 +1891,21 @@ class PwicServer():
 
         # Check the authorizations
         sql = self.dbconn.cursor()
+        if not self._check_roles(sql, project, user, manager=True):
+            sql.close()
+            raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'no_graph') is not None:
             sql.close()
             raise web.HTTPForbidden()
-        sql.execute(''' SELECT user
-                        FROM roles
-                        WHERE project  = ?
-                          AND user     = ?
-                          AND manager  = 'X'
-                          AND disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
-            sql.close()
-            raise web.HTTPUnauthorized()
 
         # Show the page
         sql.execute(''' SELECT description
                         FROM projects
                         WHERE project = ?''',
                     (project, ))
+        row = sql.fetchone()
         pwic = {'project': project,
-                'project_description': sql.fetchone()['description']}
+                'project_description': row['description']}
         return await self._handle_output(sql, request, 'page-graph', pwic=pwic)
 
     async def page_compare(self, request: web.Request) -> web.Response:
@@ -1947,7 +1923,7 @@ class PwicServer():
         old_revision = PwicLib.intval(request.match_info.get('old_revision', ''))
 
         # Fetch the pages
-        if (PwicLib.option(sql, project, 'no_history') is not None) and self._is_pure_reader(sql, project, user):
+        if (PwicLib.option(sql, project, 'no_history') is not None) and self._check_reader_only(sql, project, user):
             sql.close()
             raise web.HTTPUnauthorized()
         sql.execute(''' SELECT d.description,
@@ -2161,11 +2137,12 @@ class PwicServer():
         ok_pwd = False
         ok_totp = True
         sql = self.dbconn.cursor()
-        row = sql.execute(''' SELECT totp
-                              FROM users
-                              WHERE user     = ?
-                              AND password = ?''',
-                          (user, pwd)).fetchone()
+        sql.execute(''' SELECT totp
+                        FROM users
+                        WHERE user     = ?
+                        AND password = ?''',
+                    (user, pwd))
+        row = sql.fetchone()
         if row is not None:
             # 2FA TOTP and custom checks
             if (row['totp'] != '') and (PwicLib.option(sql, '', 'no_totp') is None):
@@ -2378,23 +2355,10 @@ class PwicServer():
         # Verify that the user is an administrator of the/a project
         sql = self.dbconn.cursor()
         if project != '':
-            sql.execute(''' SELECT 1
-                            FROM roles
-                            WHERE project  = ?
-                              AND user     = ?
-                              AND admin    = 'X'
-                              AND disabled = '' ''',
-                        (project, user))
-            if sql.fetchone() is None:
+            if not self._check_roles(sql, project, user, admin=True):
                 project = ''
         if project == '':
-            sql.execute(''' SELECT 1
-                            FROM roles
-                            WHERE user     = ?
-                              AND admin    = 'X'
-                              AND disabled = '' ''',
-                        (user, ))
-            if sql.fetchone() is None:
+            if not self._check_roles(sql, None, user, admin=True):
                 sql.close()
                 raise web.HTTPUnauthorized()
 
@@ -2541,7 +2505,7 @@ class PwicServer():
 
         # Restriction of the API
         sql = self.dbconn.cursor()
-        pure_reader = self._is_pure_reader(sql, project, user)
+        pure_reader = self._check_reader_only(sql, project, user)
         if pure_reader is None:
             sql.close()
             raise web.HTTPUnauthorized()                                                # No access to the project
@@ -2566,7 +2530,7 @@ class PwicServer():
                     WHERE   project = ?
                       AND ( page    = ?   OR '' = ? )
                       AND ( latest  = 'X' OR 1  = ? )
-                    ORDER BY page ASC,
+                    ORDER BY page     ASC,
                              revision DESC'''
         sql.execute(query % ('' if api_expose_markdown else "'' AS "),
                     (project, page, page, int(allrevs)))
@@ -2691,13 +2655,7 @@ class PwicServer():
 
         # Verify that the user belongs to the project
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT 1
-                        FROM roles
-                        WHERE project  = ?
-                          AND user     = ?
-                          AND disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
+        if not self._check_roles(sql, project, user):
             sql.close()
             raise web.HTTPUnauthorized()
 
@@ -2707,7 +2665,7 @@ class PwicServer():
             # The user has one of the selected roles
             sql.execute(''' SELECT user
                             FROM roles
-                            WHERE project  = ?
+                            WHERE project = ?
                               AND ((1 = ? AND admin     = 'X')
                                 OR (1 = ? AND manager   = 'X')
                                 OR (1 = ? AND editor    = 'X')
@@ -2719,7 +2677,7 @@ class PwicServer():
             # The user has all the selected roles at least
             sql.execute(''' SELECT user
                             FROM roles
-                            WHERE project  = ?
+                            WHERE project = ?
                               AND (0 = ? OR admin     = 'X')
                               AND (0 = ? OR manager   = 'X')
                               AND (0 = ? OR editor    = 'X')
@@ -2761,12 +2719,7 @@ class PwicServer():
 
         # Verify that the user is authorized for the project
         sql = self.dbconn.cursor()
-        if sql.execute(''' SELECT user
-                           FROM roles
-                           WHERE project  = ?
-                             AND user     = ?
-                             AND disabled = '' ''',
-                       (project, user)).fetchone() is None:
+        if not self._check_roles(sql, project, user):
             sql.close()
             raise web.HTTPUnauthorized()
 
@@ -2980,50 +2933,65 @@ class PwicServer():
         post = await self._handle_post(request)
         project = PwicLib.safe_name(post.get('project'))
         kb = PwicLib.xb(PwicLib.x(post.get('kb')))
-        page = '' if kb else PwicLib.safe_name(post.get('page'))
+        page = PwicLib.safe_name(post.get('page'))
         tags = PwicLib.list_tags(post.get('tags', ''))
         milestone = post.get('milestone', '').strip()
         ref_project = PwicLib.safe_name(post.get('ref_project'))
         ref_page = PwicLib.safe_name(post.get('ref_page'))
         ref_tags = PwicLib.xb(PwicLib.x(post.get('ref_tags')))
         if (((project in PwicConst.NOT_PROJECT)
-             or (not kb and (page in PwicConst.NOT_PAGE))
+             or (page in PwicConst.NOT_PAGE)
              or ((ref_page != '') and (ref_project == '')))):
             raise web.HTTPBadRequest()
 
-        # Consume a KBid
+        # Verify that the user is a manager of the provided project
         sql = self.dbconn.cursor()
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
-        if kb:
-            kbid = PwicLib.intval(PwicLib.option(sql, project, 'kbid', '0')) + 1
-            sql.execute(''' INSERT OR REPLACE INTO env (project, key, value) VALUES (?, ?, ?)''',
-                        (project, 'kbid', kbid))
-            page = PwicConst.DEFAULTS['kb_mask'] % kbid
-            # No commit because the creation of the page can fail below
-        else:
-            if PwicLib.option(sql, project, 'no_space_page') is not None:
-                page = page.replace(' ', '_')
-            if PwicConst.REGEXES['kb_mask'].match(page) is not None:
-                self._commit(sql, False)
-                raise web.HTTPBadRequest()
-
-        # Verify that the user is manager of the provided project, and that the page doesn't exist yet
-        sql.execute(''' SELECT b.page
-                        FROM roles AS a
-                            LEFT OUTER JOIN pages AS b
-                                ON  b.project = a.project
-                                AND b.page    = ?
-                                AND b.latest  = 'X'
-                        WHERE a.project  = ?
-                          AND a.user     = ?
-                          AND a.manager  = 'X'
-                          AND a.disabled = '' ''',
-                    (page, project, user))
-        row = sql.fetchone()
-        if row is None or row['page'] is not None:
+        if not self._check_roles(sql, project, user, manager=True):
             self._commit(sql, False)
             raise web.HTTPUnauthorized()
+
+        # Consume a KBid
+        if PwicLib.option(sql, project, 'no_space_page') is not None:
+            page = page.replace(' ', '_')
+        if kb:
+            sql.execute(''' SELECT page
+                            FROM pages
+                            WHERE project       = ?
+                              AND page         >= ?
+                              AND page         <= ?
+                              AND LENGTH(page)  = ?
+                              AND latest        = 'X'
+                            ORDER BY page DESC''',
+                        (project,
+                         page + PwicConst.DEFAULTS['kb_length'] * '0',
+                         page + PwicConst.DEFAULTS['kb_length'] * '9',
+                         len(page) + PwicConst.DEFAULTS['kb_length']))
+            kbid = 1
+            while True:
+                row = sql.fetchone()
+                if row is None:
+                    break
+                s = row['page'][len(page):]
+                if s.isdigit():
+                    kbid = PwicLib.intval(s) + 1
+                    break
+            if kbid >= 10 ** PwicConst.DEFAULTS['kb_length']:
+                self._commit(sql, False)
+                raise web.HTTPLengthRequired()
+            page = page + (f'%0{PwicConst.DEFAULTS["kb_length"]}d' % (kbid, ))
+
+        # Check the availability of the renamed page
+        sql.execute(''' SELECT 1
+                        FROM pages
+                        WHERE project = ?
+                          AND page    = ?
+                          AND latest  = 'X' ''',
+                    (project, page))
+        if sql.fetchone() is not None:
+            self._commit(sql, False)
+            raise web.HTTPBadRequest()
 
         # Check the maximal number of pages per project
         page_count_max = PwicLib.intval(PwicLib.option(sql, project, 'page_count_max'))
@@ -3111,9 +3079,9 @@ class PwicServer():
         header = PwicLib.xb(PwicLib.x(post.get('header')))
         protection = PwicLib.xb(PwicLib.x(post.get('protection')))
         no_quick_fix = PwicLib.xb(PwicLib.x(post.get('no_quick_fix')))
-        dt = PwicLib.dt()
         if (project in PwicConst.NOT_PROJECT) or (page in PwicConst.NOT_PAGE) or ('' in [user, title, comment]):
             raise web.HTTPBadRequest()
+        dt = PwicLib.dt()
 
         # Check the maximal size of a revision
         sql = self.dbconn.cursor()
@@ -3365,14 +3333,7 @@ class PwicServer():
         if not self._lock(sql):
             raise web.HTTPServiceUnavailable()
         for p in [srcproj, dstproj]:
-            sql.execute(''' SELECT 1
-                            FROM roles
-                            WHERE project  = ?
-                              AND user     = ?
-                              AND manager  = 'X'
-                              AND disabled = '' ''',
-                        (p, user))
-            if sql.fetchone() is None:
+            if not self._check_roles(sql, p, user, manager=True):
                 self._commit(sql, False)
                 raise web.HTTPUnauthorized()
 
@@ -3584,7 +3545,8 @@ class PwicServer():
                 ko = False
 
                 # Attempt to delete the file
-                if not PwicExtension.on_api_document_delete(sql, request, project, user, page, row['id'], row['filename']):
+                if not PwicExtension.on_api_document_delete(sql, request, project, user, page,
+                                                            row['id'], row['filename'], row['exturl']):
                     ko = True
                 else:
                     if row['exturl'] == '':
@@ -3679,15 +3641,7 @@ class PwicServer():
 
         # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
-        sql.execute(''' SELECT user
-                        FROM roles
-                        WHERE   project  = ?
-                          AND   user     = ?
-                          AND ( manager  = 'X'
-                            OR  editor   = 'X' )
-                          AND   disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
+        if not self._check_roles(sql, project, user, manager=True, editor=True):
             sql.close()
             raise web.HTTPUnauthorized()
 
@@ -3790,13 +3744,13 @@ class PwicServer():
 
         # Get the posted values
         post = await self._handle_post(request)
-        current = post.get('password_current', '')
-        new1 = post.get('password_new1', '')
-        new2 = post.get('password_new2', '')
+        current = post.get('password_current', '').strip()
+        new1 = post.get('password_new1', '').strip()
+        new2 = post.get('password_new2', '').strip()
         if ((('' in [current, new1, new2])
              or (new1 != new2)
              or (new1 in [current, PwicConst.DEFAULTS['password']])
-             or (user in new1.strip().lower())
+             or (user in new1.lower())
              )):
             raise web.HTTPBadRequest()
 
@@ -4105,7 +4059,8 @@ class PwicServer():
                         raise web.HTTPInternalServerError() from e
             else:
                 # External file
-                if not PwicExtension.on_api_document_delete(sql, request, doc['project'], user, doc['page'], row['id'], doc['filename']):
+                if not PwicExtension.on_api_document_delete(sql, request, doc['project'], user, doc['page'],
+                                                            row['id'], doc['filename'], doc['exturl']):
                     self._commit(sql, False)
                     raise web.HTTPInternalServerError()
             sql.execute(''' DELETE FROM documents
@@ -4250,7 +4205,7 @@ class PwicServer():
         documents = sql.fetchall()
         for row in documents:
             row['mime_icon'] = PwicLib.mime2icon(row['mime'])
-            row['size'] = PwicLib.size2str(row['size'])
+            row['size_str'] = PwicLib.size2str(row['size'])
             row['used'] = ((f'(/special/document/{row["id"]})' in markdown)
                            or (f'(/special/document/{row["id"]}?' in markdown)
                            or (f'(/special/document/{row["id"]}#' in markdown)
@@ -4369,7 +4324,8 @@ class PwicServer():
         if row is None:
             self._commit(sql, False)
             raise web.HTTPUnauthorized()  # Or not found
-        if not PwicExtension.on_api_document_delete(sql, request, project, user, row['page'], docid, row['filename']):
+        if not PwicExtension.on_api_document_delete(sql, request, project, user, row['page'],
+                                                    docid, row['filename'], row['exturl']):
             self._commit(sql, False)
             raise web.HTTPUnauthorized() if row['exturl'] == '' else web.HTTPInternalServerError()
 
@@ -4455,20 +4411,12 @@ class PwicServer():
 
         # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
+        if not self._check_roles(sql, project, user, manager=True, editor=True):
+            sql.close()
+            raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'remote_url') is None:
             sql.close()
             raise web.HTTPForbidden()
-        sql.execute(''' SELECT user
-                        FROM roles
-                        WHERE   project  = ?
-                          AND   user     = ?
-                          AND ( manager  = 'X'
-                            OR  editor   = 'X' )
-                          AND   disabled = '' ''',
-                    (project, user))
-        if sql.fetchone() is None:
-            sql.close()
-            raise web.HTTPUnauthorized()
 
         # Audit the action before the download
         PwicLib.audit(sql, {'author': user,
@@ -4566,14 +4514,15 @@ class PwicServer():
         user, passwd = auth.split(':', 1)
 
         # Verify the user and password
-        if user == PwicConst.USERS['anonymous']:
+        if PwicLib.reserved_user_name(user):
             sql.close()
             raise web.HTTPUnauthorized()
-        row = sql.execute(''' SELECT password
-                              FROM users
-                              WHERE user    = ?
-                                AND initial = '' ''',
-                          (user, )).fetchone()
+        sql.execute(''' SELECT password
+                        FROM users
+                        WHERE user    = ?
+                          AND initial = '' ''',
+                    (user, ))
+        row = sql.fetchone()
         if row is None:
             sql.close()
             raise web.HTTPUnauthorized()
@@ -4594,13 +4543,7 @@ class PwicServer():
         base_url = str(PwicLib.option(sql, '', 'base_url', ''))
         table = PwicLib.safe_name(request.match_info.get('table'))
         if table == 'env':
-            sql.execute(''' SELECT 1
-                            FROM roles
-                            WHERE user     = ?
-                              AND admin    = 'X'
-                              AND disabled = '' ''',
-                        (user, ))
-            if sql.fetchone() is None:
+            if not self._check_roles(sql, None, user, admin=True):
                 sql.close()
                 raise web.HTTPUnauthorized()
             sql.execute(''' SELECT a.project, a.key, a.value
@@ -4773,6 +4716,8 @@ def main() -> bool:
         entry.filters['is_hex'] = PwicLib.is_hex
         entry.filters['no_html'] = PwicLib.no_html
         entry.filters['reserved_user_name'] = PwicLib.reserved_user_name
+        entry.filters['size2str'] = PwicLib.size2str
+        entry.filters['slash'] = lambda v: v.replace("'", "\\'")
         app['jinja'][lang] = entry
     # ... client size
     app._client_max_size = max(app._client_max_size, PwicLib.intval(PwicLib.option(sql, '', 'client_size_max')))
@@ -4957,14 +4902,16 @@ def main() -> bool:
     # Launch the server
     if not PwicExtension.on_server_ready(app, sql):
         return False
-    row = sql.execute(''' SELECT MAX(id) AS id
-                          FROM audit.audit
-                          WHERE event = 'start-server' ''').fetchone()
+    sql.execute(''' SELECT MAX(id) AS id
+                    FROM audit.audit
+                    WHERE event = 'start-server' ''')
+    row = sql.fetchone()
     if row['id'] is not None:
-        row = sql.execute(''' SELECT date, time
-                              FROM audit.audit
-                              WHERE id = ?''',
-                          (row['id'], )).fetchone()
+        sql.execute(''' SELECT date, time
+                        FROM audit.audit
+                        WHERE id = ?''',
+                    (row['id'], ))
+        row = sql.fetchone()
         print(f'Last started on {row["date"]} {row["time"]}.')
     PwicLib.audit(sql, {'author': PwicConst.USERS['system'],
                         'event': 'start-server',

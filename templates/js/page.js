@@ -50,8 +50,8 @@
 		if (confirm(confirmText)) {
 			fetch('/api/page/'+action, {method: 'POST',
 										headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-										body: new URLSearchParams({	project: '{{pwic.project}}',
-																	page: '{{pwic.page}}',
+										body: new URLSearchParams({	project: '{{pwic.project|slash}}',
+																	page: '{{pwic.page|slash}}',
 																	revision: {{pwic.revision}}}),
 										credentials: 'same-origin'})
 				.then(response => {
@@ -70,8 +70,8 @@
 	function page_export(format) {
 		fetch('/api/page/export', {	method: 'POST',
 									headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-									body: new URLSearchParams({	project: '{{pwic.project}}',
-																page: '{{pwic.page}}',
+									body: new URLSearchParams({	project: '{{pwic.project|slash}}',
+																page: '{{pwic.page|slash}}',
 																revision: {{pwic.revision}},
 																format: format}),
 									credentials: 'same-origin'})
@@ -82,7 +82,7 @@
 				filename = filename.substring(10,filename.length-2);
 				filename = decodeURIComponent(escape(atob(filename)))
 				response.blob().then(blob => {
-					var dl = $(document.createElement('a'))
+					var dl = $(document.createElement('A'))
 								.addClass('pwic_hidden')
 								.attr('href', window.URL.createObjectURL(new Blob([blob], {type: blob.type})))
 								.attr('download', filename)
@@ -136,7 +136,7 @@
 
 			// Download the file
 			var blob = window.URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
-			$(document.createElement('a'))
+			$(document.createElement('A'))
 				.addClass('pwic_hidden')
 				.attr('href', blob)
 				.attr('download', 'table.csv')

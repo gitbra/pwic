@@ -291,6 +291,8 @@ paths:
                 mime_icon:
                   type: string
                 size:
+                  type: integer
+                size_str:
                   type: string
                 hash:
                   type: string
@@ -391,7 +393,7 @@ paths:
           description: Name of the project
           required: true
         - in: formData
-          name: kbid
+          name: kb
           type: boolean
           description: Generate a knowledge base article
           required: false
@@ -447,6 +449,8 @@ paths:
           description: Exceeded limitations
         404:
           description: Reference page not found
+        411:
+          description: Exhausted automatic identifier
         503:
           description: Update temporarily unavailable
   /api/page/delete:
