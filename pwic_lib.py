@@ -87,7 +87,7 @@ class PwicConst:
     DEFAULTS = {'dt_mask': '%Y-%m-%d %H:%M:%S',             # Fixed format of the datetime
                 'heading': '1.1.1.1.1.1.',                  # Default format of the paragraphs
                 'host': '127.0.0.1',                        # Default HTTP host when the server starts
-                'kb_length': 6,                             # Length of the identifier for the KB pages
+                'kb_length': '6',                           # Length of the identifier for the KB pages
                 'language': 'en',                           # Default language-dependent template for the UI
                 'limit_filename': '128',                    # Max length for the file names
                 'limit_field': '2048',                      # Max length for the submitted inline strings

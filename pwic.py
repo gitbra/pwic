@@ -109,10 +109,10 @@ class PwicServer():
     def _check_roles(self, sql: Optional[sqlite3.Cursor], project: Optional[str], user: str,
                      admin: Optional[bool] = None, manager: Optional[bool] = None,
                      editor: Optional[bool] = None, validator: Optional[bool] = None,
-                     reader: Optional[bool] = None) -> bool:
+                     reader: Optional[bool] = None) -> Optional[bool]:
         ''' Check the roles of the user for a given project or globally '''
         if sql is None:
-            return False
+            return None
 
         # Case without a project
         if project in [None, '']:
@@ -142,7 +142,7 @@ class PwicServer():
                     (project, user))
         row = sql.fetchone()
         if row is None:
-            return False
+            return None
         # ... analyze
         if ((((admin is not None) and (row['admin'] != admin))
              or ((manager is not None) and (row['manager'] != manager))
@@ -153,7 +153,7 @@ class PwicServer():
         return True
 
     def _check_reader_only(self, sql: Optional[sqlite3.Cursor], project: str, user: str) -> Optional[bool]:
-        ''' Check if the user is a only a reader '''
+        ''' Check if the user is only a reader '''
         return self._check_roles(sql, project, user, admin=False, manager=False,
                                  editor=False, validator=False, reader=True)
 
@@ -1700,6 +1700,7 @@ class PwicServer():
 
                 # Save the found document
                 row['mime_icon'] = PwicLib.mime2icon(row['mime'])
+                row['extension'] = PwicLib.file_ext(row['filename'])
                 pwic['documents'].append(row)
 
         # Show the pages by score desc, date desc and time desc
@@ -2965,9 +2966,9 @@ class PwicServer():
                               AND latest        = 'X'
                             ORDER BY page DESC''',
                         (project,
-                         page + PwicConst.DEFAULTS['kb_length'] * '0',
-                         page + PwicConst.DEFAULTS['kb_length'] * '9',
-                         len(page) + PwicConst.DEFAULTS['kb_length']))
+                         page + int(PwicConst.DEFAULTS['kb_length']) * '0',
+                         page + int(PwicConst.DEFAULTS['kb_length']) * '9',
+                         len(page) + int(PwicConst.DEFAULTS['kb_length'])))
             kbid = 1
             while True:
                 row = sql.fetchone()
@@ -2977,7 +2978,7 @@ class PwicServer():
                 if s.isdigit():
                     kbid = PwicLib.intval(s) + 1
                     break
-            if kbid >= 10 ** PwicConst.DEFAULTS['kb_length']:
+            if kbid >= 10 ** int(PwicConst.DEFAULTS['kb_length']):
                 self._commit(sql, False)
                 raise web.HTTPLengthRequired()
             page = page + (f'%0{PwicConst.DEFAULTS["kb_length"]}d' % (kbid, ))

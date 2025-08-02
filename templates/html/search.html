@@ -87,7 +87,7 @@
 					<tr>
 						<td><a href="/{{pwic.project|urlencode}}/{{doc.page|urlencode}}">{{doc.page|escape}}</a></td>
 						<td><a href="/special/document/{{doc.id|urlencode}}/{{doc.filename|escape}}">{{doc.filename|escape}}</a></td>
-						<td class="pwic_desktop">{{doc.mime_icon}} {{doc.mime|escape}}</td>
+						<td class="pwic_desktop" title="{{doc.mime|escape}}">{{doc.mime_icon}} {{doc.extension|upper}}</td>
 						<td>{{doc.size|size2str|escape}}</td>
 						<td class="pwic_desktop"><a class="pwic_break" href="/special/user/{{doc.author|urlencode}}" rel="nofollow">{{doc.author|escape}}</a></td>
 						<td>{{doc.date|escape}}</td>
