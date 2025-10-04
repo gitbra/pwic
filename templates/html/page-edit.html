@@ -47,7 +47,7 @@
 						<input type="button" value="{{pwic.emojis.right}}" title="{% trans %}Shift to the right{% endtrans %}" onclick="edit_prepend('    ')">
 						<input type="button" value="{{pwic.emojis.left}}" title="{% trans %}Shift to the left{% endtrans %}" onclick="edit_left_line()">
 						<input type="button" value="{{pwic.emojis.noblank}}" title="{% trans %}No blank line{% endtrans %}" onclick="edit_no_blank_line()">
-						<input type="button" value="{{pwic.emojis.oneline}}" title="{% trans %}As single line{% endtrans %}" onclick="edit_single_line()">
+						<input type="button" value="{{pwic.emojis.oneline}}" title="{% trans %}As single line{% endtrans %}" onclick="edit_single_line()" data-shortcut="Ctrl-J">
 					</div>
 					<div>
 						<input type="button" value="H1" title="# {% trans %}Title{% endtrans %} 1" onclick="edit_prepend('# ')" data-shortcut="Shift-Ctrl-F1">

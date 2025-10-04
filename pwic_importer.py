@@ -488,4 +488,97 @@ class PwicImporterOdt(PwicHTMLParserTL):
         return PwicLib.recursive_replace('\n'.join(lines), '\n\n\n', '\n\n').strip()
 
 
-handlers = [PwicImporterMd, PwicImporterHtml, PwicImporterOdt]
+# ========
+#  odp2md
+# ========
+
+class PwicImporterOdp():
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['odp']
+
+    def get_md(self, filename: str, options: Dict[str, str]) -> str:
+        ''' Convert an OpenDocument Presentation into a basic text '''
+        # Read the content
+        content = None
+        with ZipFile(filename, mode='r') as archive:
+            with archive.open('content.xml') as file:
+                content = file.read().decode()
+        if content is None:
+            return ''
+
+        # Extract the content
+        p1 = content.find('<office:presentation')
+        p2 = content.rfind('</office:presentation>')
+        if (-1 in [p1, p2]) or (p2 < p1):
+            return ''
+        content = content[p1:p2].replace('<text:line-break/>', '\n')    \
+                                .replace('<text:p ', '\n\n<text:p ')    \
+                                .replace('<text:p>', '\n\n')            \
+                                .replace('</draw:page>', '\n\n---\n\n')
+        return PwicLib.shrink_space(unescape(PwicLib.no_html(content)))
+
+
+# =========
+#  docx2md
+# =========
+
+class PwicImporterDocx():
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['docx']
+
+    def get_md(self, filename: str, options: Dict[str, str]) -> str:
+        ''' Convert an Office Open XML text into a basic text '''
+        # Read the content
+        content = None
+        with ZipFile(filename, mode='r') as archive:
+            with archive.open('word/document.xml') as file:
+                content = file.read().decode()
+        if content is None:
+            return ''
+
+        # Extract the content
+        p1 = content.find('<w:body>')
+        p2 = content.rfind('</w:body>')
+        if (-1 in [p1, p2]) or (p2 < p1):
+            return ''
+        content = content[p1:p2].replace('<w:br/>', '\n')       \
+                                .replace('<w:tab/>', '\t')      \
+                                .replace('<w:p ', '\n\n<w:p ')  \
+                                .replace('<w:p>', '\n\n')
+        return PwicLib.shrink_space(unescape(PwicLib.no_html(content)))
+
+
+# =========
+#  pptx2md
+# =========
+
+class PwicImporterPptx():
+    @staticmethod
+    def get_extensions() -> List[str]:
+        return ['ppsx', 'pptx']
+
+    def get_md(self, filename: str, options: Dict[str, str]) -> str:
+        ''' Convert an Office Open XML Presentation file into a basic text '''
+        # Iterate on each slide
+        rxp = re.compile(r'<a:t>([^\<]+)<\/a:t>')
+        buffer = ''
+        sid = 1
+        with ZipFile(filename, mode='r') as archive:
+            while True:
+                with archive.open(f'ppt/slides/slide{sid}.xml') as file:
+                    content = file.read().decode()
+                if content is None:
+                    break
+
+                # Extract the text of the slide
+                if sid > 1:
+                    buffer += '\n\n---\n\n'
+                buffer += '\n\n'.join(rxp.findall(content)) + '\n\n'
+                sid += 1
+        return PwicLib.shrink_space(unescape(buffer))
+
+
+handlers = [PwicImporterMd, PwicImporterHtml, PwicImporterOdt,
+            PwicImporterOdp, PwicImporterDocx, PwicImporterPptx]

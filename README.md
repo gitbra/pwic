@@ -23,13 +23,16 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - In-text search with inclusion, exclusion, hash tags and special keywords
 - Search link for the browsers
 - Highlight of the lines of code
-- Export of a page to Markdown (.md), web page (.html) and OpenDocument (.odt)
+- Export of a page to:
+	- OpenDocument Text (odt)
+	- Markdown (md)
+	- HTML (htm)
 - OData feed for BI reports
 - RSS feed
 - Progressive web application (PWA)
 - Share by link
 - Share by email
-- Internationalization: English, French, German, extendable to your language from a template or [online](https://explore.transifex.com/pwicwiki/pwicwiki/)
+- Internationalization: English, French, German, extendable to your language from a template
 - LTR/RTL
 
 ### For the validators
@@ -49,7 +52,16 @@ The [official homepage](https://pwic.wiki) is running the latest version.
 - Automatic numbering of the headers with no gap
 - Mandatory, linear and partially undoable versioning
 - Management of attached documents by name, mime, size and magic bytes
-- Import of texts from OpenDocument Text (ODT), HTML, Markdown and remote web pages
+- Import of texts from external formats:
+	- OpenDocument Text (odt)
+	- HTML (htm)
+	- Remote web pages (url)
+	- Markdown (md)
+	- Plain text (txt)
+	- Partially supported:
+		- OpenDocument Presentation (ods)
+		- Office Open XML Text (docx)
+		- Office Open XML Presentation (ppsx, pptx)
 - Dictation
 
 ### For the managers
@@ -135,8 +147,6 @@ Once you have well tested Pwic.wiki and defined the global and project-dependent
 ## Support
 
 Please use the [issue tracker](https://github.com/gitbra/pwic/issues) on Github to ask questions, report bugs and request new features.
-
-To enhance the existing translations, you may edit the selected languages by [joining the online workspace](https://explore.transifex.com/pwicwiki/pwicwiki/). Native speakers can achieve one translation precisely in few hours.
 
 
 ## Licenses

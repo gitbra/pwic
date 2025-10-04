@@ -4920,12 +4920,16 @@ def main() -> bool:
     app['sql'].commit()
     sql.close()
     del sql
-    web.run_app(app,
-                host=args.host,
-                port=args.port,
-                ssl_context=https,
-                access_log_format=http_log_format)
-    return True
+    try:
+        web.run_app(app,
+                    host=args.host,
+                    port=args.port,
+                    ssl_context=https,
+                    access_log_format=http_log_format)
+        return True
+    except OSError:
+        print(f'Error: instance already running on the same port {args.port}')
+        return False
 
 
 main()

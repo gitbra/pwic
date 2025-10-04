@@ -73,8 +73,8 @@ class PwicConst:
     PUBLIC_KEY = 'db/pwic_https.crt'
     CHARS_UNSAFE = '\\/:;%*?=&#\'"!<>(){}[]|'               # Various signs incompatible with filesystem, HTML, SQL...
     MAGIC_OAUTH = 'OAuth'
-    NOT_PROJECT = ['', 'admin', 'api', 'bugs', 'issues', 'special', 'static', 'tracker']
-    NOT_PAGE = ['', 'special']
+    NOT_PROJECT = ['', 'admin', 'api', 'issues', 'special', 'static', 'tracker']
+    NOT_PAGE = ['', 'issues', 'special']
 
     # ========
     #  Packed
@@ -108,8 +108,8 @@ class PwicConst:
                'page': re.compile(r'\]\((\.|\/[^\/\#\?\)"]+)\/([^\/\#\?\)"]+)(\/rev[0-9]+)?(\#|\?|\)| ")'),     # Find a page in Markdown
                'protocol': re.compile(r'^https?:\/\/', re.IGNORECASE),                                          # Valid protocols for the links
                'search_terms': re.compile(r'(-?)("[^"\n]+"|[^ \n]+)[\t ]*', re.IGNORECASE),                     # Split the search terms
-               'tag_name': re.compile(r'<\/?([a-z]+)[ >]', re.IGNORECASE),                                      # Find the HTML tags
-               'tag_all': re.compile(r'<\??\/?\w+( [^>]+)?>', re.IGNORECASE),                                   # Tag in HTML
+               'tag_name': re.compile(r'<\/?([a-z:-]+)[ >]', re.IGNORECASE),                                    # Find the HTML tags
+               'tag_all': re.compile(r'<\??\/?[a-z:-]+( [^>]+)?\/?>', re.IGNORECASE),                           # Tag in HTML
                'tag_comment': re.compile(r'<!--.*-->', re.IGNORECASE),                                          # Comment in HTML
                }
 
@@ -718,7 +718,7 @@ class PwicLib:
     @staticmethod
     def no_html(value: str) -> str:
         ''' Remove the HTML tags from a string '''
-        value = value.replace('&nbsp;', ' ')
+        value = value.replace('&nbsp;', ' ').replace('\xa0', ' ')
         while True:
             i = len(value)
             value = PwicConst.REGEXES['tag_all'].sub('', value)
@@ -874,6 +874,20 @@ class PwicLib:
         if value is None:
             return ''
         return value.replace('\r', '').replace('\n', '').replace('\t', '').replace(' ', '').strip().lower()
+
+    @staticmethod
+    def shrink_space(value: str) -> str:
+        ''' Reduce the empty spaces within a plain text '''
+        value = value.replace('\r', '').replace('\t', ' ')
+        while True:
+            i = len(value)
+            value = value.replace('\n\n\n', '\n\n') \
+                         .replace('  ', ' ')        \
+                         .replace('\n ', '\n')      \
+                         .replace(' \n', '\n')
+            if len(value) == i:
+                break
+        return value.strip()
 
     @staticmethod
     def size2str(size: Union[int, float, str]) -> str:
