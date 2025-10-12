@@ -135,7 +135,7 @@
 			}
 
 			// Download the file
-			var blob = window.URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+			var blob = window.URL.createObjectURL(new Blob([csv.join('\n')], {type: 'text/csv'}));
 			$(document.createElement('A'))
 				.addClass('pwic_hidden')
 				.attr('href', blob)

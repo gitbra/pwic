@@ -180,12 +180,6 @@ msgstr "Périmètre"
 msgid "Value"
 msgstr "Valeur"
 
-msgid "Global"
-msgstr "Global"
-
-msgid "Project-dependent"
-msgstr "Dépendant du projet"
-
 msgid "Audit of the last %(n)d days"
 msgstr "Audit des %(n)d derniers jours"
 
@@ -286,6 +280,12 @@ msgstr "Exposant"
 
 msgid "Subscript"
 msgstr "Indice"
+
+msgid "Case-sensitive replace"
+msgstr "Remplacement sensible à la casse"
+
+msgid "Image"
+msgstr "Image"
 
 msgid "Link"
 msgstr "Lien"
@@ -918,13 +918,32 @@ msgstr "L'utilisateur n'a pas de contribution récente."
 msgid "Uploaded documents"
 msgstr "Documents chargés"
 
+#: ../templates/js/page-audit.js
+msgid "Global"
+msgstr "Global"
+
+msgid "Project-dependent"
+msgstr "Dépendant du projet"
+
 #: ../templates/js/page-create.js
 msgid "'The parameters are not acceptable.'"
 msgstr "'Les paramètres ne sont pas acceptables.'"
 
 #: ../templates/js/page-edit.js
+msgid "'Text to search:'"
+msgstr "'Texte à rechercher :'"
+
+msgid "'Text to replace:'"
+msgstr "'Texte à remplacer :'"
+
 msgid "'Paste the link:'"
 msgstr "'Collez le lien :'"
+
+msgid "'Description for the user:'"
+msgstr "'Description pour l\\'utilisateur :'"
+
+msgid "'Text of the link:'"
+msgstr "'Texte du lien :'"
 
 msgid "'Number of columns:'"
 msgstr "'Nombre de colonnes :'"

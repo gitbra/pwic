@@ -18,29 +18,82 @@
 		md_editor.focus();
 	}
 
+	function edit_replace() {
+		var txt, search, replace;
+
+		// Ask for the texts
+		txt = md_editor.getSelection();
+		search = prompt({% trans %}'Text to search:'{% endtrans %}) || '';
+		if (search != '') {
+			replace = prompt({% trans %}'Text to replace:'{% endtrans %});
+			if (replace != null) {
+				// Replace
+				if (txt.length == 0)
+					md_editor.setValue(md_editor.getValue().replaceAll(search, replace));
+				else
+					md_editor.replaceSelection(txt.replaceAll(search, replace));
+			}
+		}
+		md_editor.focus();
+	}
+
+	function edit_image() {
+		var txt, url, title, buffer;
+
+		// Check the current selection
+		txt = md_editor.getSelection();
+		if (txt.indexOf('\n') !== -1) {
+			md_editor.focus();
+			return;
+		}
+
+		// Ask for the link of the image
+		url = prompt({% trans %}'Paste the link:'{% endtrans %}, '') || '';
+		if (url != '') {
+			title = prompt({% trans %}'Description for the user:'{% endtrans %}, txt) || '';
+
+			// Build the link
+			buffer = '![' + txt + '](' + url;
+			if (title != '')
+				buffer += ' "' + title.replaceAll('"', '') + '"';
+			md_editor.replaceSelection(buffer + ')');
+		}
+		md_editor.focus();
+	}
+
 	function edit_link() {
-		if (md_editor.somethingSelected()) {
-			// Check the current selection for an autolink
-			var	txt = md_editor.getSelection();
-			if (txt.match('^[a-z]{3,7}:\/\/')) {
-				md_editor.replaceSelection('<' + md_editor.getSelection().replaceAll(' ', '%20') + '>');
-				md_editor.focus();
-				return;
-			}
+		var txt, url, title, buffer;
 
-			// Ask for the link
-			var url = prompt({% trans %}'Paste the link:'{% endtrans %}, '');
-			if ((url != null) && (url != '')) {
-				url = url.trim();
-				if ((url.length > 0)
-				 && (url.indexOf(':') === -1)
-				 && (url.indexOf('/') === -1)
-				 && (url == url.toLowerCase()))
-					url = '/{{pwic.project}}/' + url;
+		// Check the current selection for an autolink
+		txt = md_editor.getSelection();
+		if (txt.indexOf('\n') !== -1) {
+			md_editor.focus();
+			return;
+		}
+		if (txt.match('^[a-z]{3,7}:\/\/')) {
+			md_editor.replaceSelection('<' + txt.replaceAll(' ', '%20') + '>');
+			md_editor.focus();
+			return;
+		}
 
-				// Replace the text by another one
-				md_editor.replaceSelection('[' + txt + '](' + url + ')');
-			}
+		// Ask for the link
+		url = prompt({% trans %}'Paste the link:'{% endtrans %}, '') || '';
+		if (url != '') {
+			url = url.trim();
+			if ((url.length > 0)
+			 && (url.indexOf(':') === -1)
+			 && (url.indexOf('/') === -1)
+			 && (url == url.toLowerCase()))
+				url = '/{{pwic.project}}/' + url;
+
+			// Replace the text by another one
+			if (txt.length == 0)
+				txt = prompt({% trans %}'Text of the link:'{% endtrans %}, '') || 'link';
+			title = prompt({% trans %}'Description for the user:'{% endtrans %}) || '';
+			buffer = '[' + txt + '](' + url;
+			if (title != '')
+				buffer += ' "' + title.replaceAll('"', '') + '"';
+			md_editor.replaceSelection(buffer + ')');
 		}
 		md_editor.focus();
 	}

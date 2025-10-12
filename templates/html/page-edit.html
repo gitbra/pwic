@@ -39,6 +39,8 @@
 						<input type="button" value="S" title="~~ {% trans %}Strikethrough{% endtrans %} ~~" style="text-decoration: line-through" onclick="edit_decorate('~~', '~~')">
 						<input type="button" value="^2" title="<sup> {% trans %}Superscript{% endtrans %} </sup>" onclick="edit_decorate('<sup>', '</sup>')">
 						<input type="button" value="_2" title="<sub> {% trans %}Subscript{% endtrans %} </sub>" onclick="edit_decorate('<sub>', '</sub>')">
+						<input type="button" value="{{pwic.emojis.search}}" title="{% trans %}Case-sensitive replace{% endtrans %}" onclick="edit_replace()" data-shortcut="Ctrl-H">
+						<input type="button" value="{{pwic.emojis.image}}" title="![{% trans %}Image{% endtrans %}](url)" onclick="edit_image()">
 						<input type="button" value="{{pwic.emojis.chains}}" title="[{% trans %}Link{% endtrans %}](url)" onclick="edit_link()" data-shortcut="Ctrl-K">
 					</div>
 					<div>
@@ -74,7 +76,7 @@
 							<input type="button" value="{{pwic.emojis.bang}}" title="{% trans %}Emojis{% endtrans %}" onclick="$('#edit_emojis').toggleClass('pwic_hidden');md_editor.focus()">
 						{% endif %}
 						{% if pwic.env.remote_url %}
-							<input type="button" value="{{pwic.emojis.recycle}}" title="{% trans %}Fetch a remote web page{% endtrans %}" onclick="edit_convert_remote_document()">
+							<input type="button" value="{{pwic.emojis.inbox}}" title="{% trans %}Fetch a remote web page{% endtrans %}" onclick="edit_convert_remote_document()">
 						{% endif %}
 						{% if not pwic.env.no_dictation %}
 							<input id="edit_toolbar_dictate" type="button" value="{{pwic.emojis.microphone}}" title="{% trans %}Dictate{% endtrans %}">

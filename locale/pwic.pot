@@ -165,12 +165,6 @@ msgstr ""
 msgid "Value"
 msgstr ""
 
-msgid "Global"
-msgstr ""
-
-msgid "Project-dependent"
-msgstr ""
-
 msgid "Audit of the last %(n)d days"
 msgstr ""
 
@@ -270,6 +264,12 @@ msgid "Superscript"
 msgstr ""
 
 msgid "Subscript"
+msgstr ""
+
+msgid "Case-sensitive replace"
+msgstr ""
+
+msgid "Image"
 msgstr ""
 
 msgid "Link"
@@ -903,12 +903,31 @@ msgstr ""
 msgid "Uploaded documents"
 msgstr ""
 
+#: ../templates/js/page-audit.js
+msgid "Global"
+msgstr ""
+
+msgid "Project-dependent"
+msgstr ""
+
 #: ../templates/js/page-create.js
 msgid "'The parameters are not acceptable.'"
 msgstr ""
 
 #: ../templates/js/page-edit.js
+msgid "'Text to search:'"
+msgstr ""
+
+msgid "'Text to replace:'"
+msgstr ""
+
 msgid "'Paste the link:'"
+msgstr ""
+
+msgid "'Description for the user:'"
+msgstr ""
+
+msgid "'Text of the link:'"
 msgstr ""
 
 msgid "'Number of columns:'"

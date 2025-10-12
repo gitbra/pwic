@@ -180,12 +180,6 @@ msgstr "Bereich"
 msgid "Value"
 msgstr "Wert"
 
-msgid "Global"
-msgstr "Global"
-
-msgid "Project-dependent"
-msgstr "Projektabhängig"
-
 msgid "Audit of the last %(n)d days"
 msgstr "Prüfung der letzten %(n)d Tagen"
 
@@ -286,6 +280,12 @@ msgstr "Hochgestellt"
 
 msgid "Subscript"
 msgstr "Tiefgestellt"
+
+msgid "Case-sensitive replace"
+msgstr "Mit Groß- und Kleinschreibung ersetzen"
+
+msgid "Image"
+msgstr "Bild"
 
 msgid "Link"
 msgstr "Link"
@@ -918,13 +918,32 @@ msgstr "Der Benutzer hat keine aktuelle Änderung."
 msgid "Uploaded documents"
 msgstr "Hochgeladene Dokumente"
 
+#: ../templates/js/page-audit.js
+msgid "Global"
+msgstr "Global"
+
+msgid "Project-dependent"
+msgstr "Projektabhängig"
+
 #: ../templates/js/page-create.js
 msgid "'The parameters are not acceptable.'"
 msgstr "'Die Aufrufparameter sind nicht annehmbar.'"
 
 #: ../templates/js/page-edit.js
+msgid "'Text to search:'"
+msgstr "'Text zu finden:'"
+
+msgid "'Text to replace:'"
+msgstr "'Text zu ersetzen:'"
+
 msgid "'Paste the link:'"
 msgstr "'Der Link einfügen:'"
+
+msgid "'Description for the user:'"
+msgstr "'Beschreibung für den Benutzer:'"
+
+msgid "'Text of the link:'"
+msgstr "'Text des Links:'"
 
 msgid "'Number of columns:'"
 msgstr "'Zahl von Spalten:'"
