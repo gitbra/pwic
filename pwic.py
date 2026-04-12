@@ -109,9 +109,15 @@ class PwicServer():
     def _check_roles(self, sql: Optional[sqlite3.Cursor], project: Optional[str], user: str,
                      admin: Optional[bool] = None, manager: Optional[bool] = None,
                      editor: Optional[bool] = None, validator: Optional[bool] = None,
-                     reader: Optional[bool] = None) -> Optional[bool]:
+                     reader: Optional[bool] = None, partial: bool = False) -> Optional[bool]:
         ''' Check the roles of the user for a given project or globally '''
-        if sql is None:
+        # Check the parameters
+        scan = [e for e in [('reader', reader),
+                            ('editor', editor),
+                            ('validator', validator),
+                            ('manager', manager),
+                            ('admin', admin)] if e[1] is not None]
+        if (sql is None) or (len(scan) == 0):
             return None
 
         # Case without a project
@@ -121,19 +127,16 @@ class PwicServer():
                         WHERE user     = ?
                           AND %s       = ?
                           AND disabled = '' '''
-            for (b, k) in [(admin, 'admin'),
-                           (manager, 'manager'),
-                           (editor, 'editor'),
-                           (validator, 'validator'),
-                           (reader, 'reader')]:
-                if b is not None:
-                    sql.execute(query % k, (user, PwicLib.x(b)))
-                    if sql.fetchone() is None:
-                        return False
-            return True
+            for (k, b) in scan:
+                sql.execute(query % k, (user, PwicLib.x(b)))
+                ok = (sql.fetchone() is not None) == b
+                if partial and ok:
+                    return True
+                if not partial and not ok:
+                    return False
+            return not partial
 
         # Case with a project
-        # ... read
         sql.execute(''' SELECT admin, manager, editor, validator, reader
                         FROM roles
                         WHERE project  = ?
@@ -143,14 +146,13 @@ class PwicServer():
         row = sql.fetchone()
         if row is None:
             return None
-        # ... analyze
-        if ((((admin is not None) and (row['admin'] != admin))
-             or ((manager is not None) and (row['manager'] != manager))
-             or ((editor is not None) and (row['editor'] != editor))
-             or ((validator is not None) and (row['validator'] != validator))
-             or ((reader is not None) and (row['reader'] != reader)))):
-            return False
-        return True
+        for (k, b) in scan:
+            ok = row[k] == b
+            if partial and ok:
+                return True
+            if not partial and not ok:
+                return False
+        return not partial
 
     def _check_reader_only(self, sql: Optional[sqlite3.Cursor], project: str, user: str) -> Optional[bool]:
         ''' Check if the user is only a reader '''
@@ -3642,7 +3644,7 @@ class PwicServer():
 
         # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
-        if not self._check_roles(sql, project, user, manager=True, editor=True):
+        if not self._check_roles(sql, project, user, manager=True, editor=True, partial=True):
             sql.close()
             raise web.HTTPUnauthorized()
 
@@ -4412,7 +4414,7 @@ class PwicServer():
 
         # Verify that the user is able to write on the project
         sql = self.dbconn.cursor()
-        if not self._check_roles(sql, project, user, manager=True, editor=True):
+        if not self._check_roles(sql, project, user, manager=True, editor=True, partial=True):
             sql.close()
             raise web.HTTPUnauthorized()
         if PwicLib.option(sql, project, 'remote_url') is None:

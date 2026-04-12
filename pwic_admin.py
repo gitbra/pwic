@@ -717,7 +717,7 @@ class PwicAdmin():
 
         # Analyze each variables
         all_keys = list(PwicConst.ENV)
-        buffer: List[Tuple[str, str]] = []
+        buffer: List[List[str]] = []
         sql.execute(''' SELECT project, key, value
                         FROM env
                         ORDER BY project, key''')
@@ -726,7 +726,7 @@ class PwicAdmin():
                  or ((row['project'] != '') and not PwicConst.ENV[row['key']].pdep)
                  or ((row['project'] == '') and not PwicConst.ENV[row['key']].pindep)
                  or (row['value'] in [None, '']))):
-                buffer.append((row['project'], row['key']))
+                buffer.append([row['project'], row['key']])
         if test:
             sql.close()
         else:
